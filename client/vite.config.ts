@@ -122,7 +122,7 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: '../build',
     },
     server: {
       port: 3000,

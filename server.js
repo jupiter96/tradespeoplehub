@@ -2,16 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import passport from './services/passport.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 
-// Load environment variables
-// In Vercel, environment variables are automatically available
-// dotenv.config() is safe to call as it won't override existing env vars
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -122,6 +124,29 @@ app.use('/api/auth', authRoutes);
 app.get('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
+
+// Serve React build when running the full server (non-Vercel)
+if (process.env.VERCEL !== '1') {
+  const clientBuildPath = path.join(__dirname, 'build');
+  app.use(express.static(clientBuildPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
+
+// Start server (only if not in Vercel serverless environment)
+if (process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 5000;
+  const CLIENT_PORT = process.env.CLIENT_PORT || 3000;
+  
+  app.listen(PORT, () => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🚀 Server is running!');
+    console.log(`📡 Server Port: http://localhost:${PORT}`);
+    console.log(`💻 Client Port: http://localhost:${CLIENT_PORT}`);
+    console.log('═══════════════════════════════════════════════════════');
+  });
+}
 
 // Export for Vercel serverless functions
 export default app;
