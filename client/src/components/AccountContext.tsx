@@ -93,6 +93,9 @@ interface AccountContextType {
   fetchPendingSocialProfile: () => Promise<PendingSocialProfile | null>;
   completeSocialRegistration: (payload: SocialRegistrationPayload) => Promise<UserInfo>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<UserInfo>;
+  requestEmailChangeOTP: (email: string) => Promise<{ message: string; emailCode?: string }>;
+  requestPhoneChangeOTP: (phone: string) => Promise<{ message: string; phoneCode?: string }>;
+  verifyOTP: (code: string, type: 'email' | 'phone') => Promise<{ message: string }>;
   uploadAvatar: (file: File) => Promise<UserInfo>;
   removeAvatar: () => Promise<UserInfo>;
   requestPasswordReset: (email: string) => Promise<void>;
@@ -230,6 +233,39 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     [applyUserSession, requestJson]
   );
 
+  const requestEmailChangeOTP = useCallback(
+    async (email: string) => {
+      const data = await requestJson("/api/auth/profile/verify-email-change", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
+  const requestPhoneChangeOTP = useCallback(
+    async (phone: string) => {
+      const data = await requestJson("/api/auth/profile/verify-phone-change", {
+        method: "POST",
+        body: JSON.stringify({ phone }),
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
+  const verifyOTP = useCallback(
+    async (code: string, type: 'email' | 'phone') => {
+      const data = await requestJson("/api/auth/profile/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ code, type }),
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
   const updateProfile = useCallback(
     async (payload: ProfileUpdatePayload) => {
       const data = await requestJson("/api/auth/profile", {
@@ -283,10 +319,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const requestPasswordReset = useCallback(
     async (email: string) => {
-      await requestJson("/api/auth/password/forgot", {
+      const data = await requestJson("/api/auth/password/forgot", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
+      return data;
     },
     [requestJson]
   );
@@ -359,6 +396,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         fetchPendingSocialProfile,
         completeSocialRegistration,
         updateProfile,
+        requestEmailChangeOTP,
+        requestPhoneChangeOTP,
+        verifyOTP,
         uploadAvatar,
         removeAvatar,
         requestPasswordReset,

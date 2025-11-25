@@ -1491,7 +1491,7 @@ function JobsSection() {
 
 // Details Section
 function DetailsSection() {
-  const { userInfo, userRole, updateProfile, uploadAvatar, removeAvatar } = useAccount();
+  const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
   const [isEditing, setIsEditing] = useState(false);
   const initialFormState = useMemo(
     () => ({
@@ -1530,6 +1530,22 @@ function DetailsSection() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  // OTP verification states
+  const [emailChanged, setEmailChanged] = useState(false);
+  const [phoneChanged, setPhoneChanged] = useState(false);
+  const [emailOTPSent, setEmailOTPSent] = useState(false);
+  const [phoneOTPSent, setPhoneOTPSent] = useState(false);
+  const [emailOTPVerified, setEmailOTPVerified] = useState(false);
+  const [phoneOTPVerified, setPhoneOTPVerified] = useState(false);
+  const [emailOTPCode, setEmailOTPCode] = useState("");
+  const [phoneOTPCode, setPhoneOTPCode] = useState("");
+  const [emailOTPHint, setEmailOTPHint] = useState<string | null>(null);
+  const [phoneOTPHint, setPhoneOTPHint] = useState<string | null>(null);
+  const [isSendingEmailOTP, setIsSendingEmailOTP] = useState(false);
+  const [isSendingPhoneOTP, setIsSendingPhoneOTP] = useState(false);
+  const [isVerifyingEmailOTP, setIsVerifyingEmailOTP] = useState(false);
+  const [isVerifyingPhoneOTP, setIsVerifyingPhoneOTP] = useState(false);
 
   useEffect(() => {
     setFormData(buildFormState(initialFormState));
@@ -1690,11 +1706,23 @@ function DetailsSection() {
     const lastName = rest.join(" ") || firstName;
 
     if (!firstName || !lastName || !formData.email || !formData.phone || !formData.postcode) {
-      setSaveError("Please complete the required fields.");
+      toast.error("Please complete the required fields.");
       return;
     }
 
-    setSaveError(null);
+    // Check if email or phone changed and require OTP verification
+    const emailIsChanged = formData.email.trim() !== (userInfo?.email || "");
+    const phoneIsChanged = formData.phone.trim() !== (userInfo?.phone || "");
+    
+    if (emailIsChanged && !emailOTPVerified) {
+      toast.error("Please verify your new email address with the OTP code");
+      return;
+    }
+    
+    if (phoneIsChanged && !phoneOTPVerified) {
+      toast.error("Please verify your new phone number with the OTP code");
+      return;
+    }
     setIsSaving(true);
 
     const payload: ProfileUpdatePayload = {
@@ -1722,10 +1750,20 @@ function DetailsSection() {
     try {
       await updateProfile(payload);
       setIsEditing(false);
+      // Reset OTP states after successful save
+      setEmailChanged(false);
+      setPhoneChanged(false);
+      setEmailOTPSent(false);
+      setPhoneOTPSent(false);
+      setEmailOTPVerified(false);
+      setPhoneOTPVerified(false);
+      setEmailOTPCode("");
+      setPhoneOTPCode("");
+      setEmailOTPHint(null);
+      setPhoneOTPHint(null);
       toast.success("Profile updated successfully!");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unable to save changes";
-      setSaveError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);
@@ -1905,9 +1943,88 @@ function DetailsSection() {
             <Input
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) => {
+                const newEmail = e.target.value;
+                setFormData({ ...formData, email: newEmail });
+                const isChanged = newEmail.trim() !== (userInfo?.email || "");
+                setEmailChanged(isChanged);
+                if (isChanged) {
+                  setEmailOTPVerified(false);
+                  setEmailOTPSent(false);
+                  setEmailOTPCode("");
+                  setEmailOTPHint(null);
+                }
+              }}
               className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
+            {emailChanged && !emailOTPVerified && (
+              <div className="mt-2 space-y-2">
+                {!emailOTPSent ? (
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      setIsSendingEmailOTP(true);
+                      try {
+                        const response = await requestEmailChangeOTP(formData.email);
+                        setEmailOTPSent(true);
+                        setEmailOTPHint(response?.emailCode || null);
+                        toast.success("Verification code sent to new email");
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Failed to send verification code");
+                      } finally {
+                        setIsSendingEmailOTP(false);
+                      }
+                    }}
+                    disabled={isSendingEmailOTP}
+                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Poppins',sans-serif]"
+                  >
+                    {isSendingEmailOTP ? "Sending..." : "Send Verification Code"}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter 4-digit code"
+                      value={emailOTPCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setEmailOTPCode(value);
+                      }}
+                      className="h-9 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] text-center tracking-widest"
+                      maxLength={4}
+                    />
+                    {emailOTPHint && (
+                      <p className="text-[11px] text-red-600 font-['Poppins',sans-serif] text-center">
+                        Hint: {emailOTPHint}
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (emailOTPCode.length !== 4) {
+                          toast.error("Please enter a 4-digit code");
+                          return;
+                        }
+                        setIsVerifyingEmailOTP(true);
+                        try {
+                          await verifyOTP(emailOTPCode, 'email');
+                          setEmailOTPVerified(true);
+                          toast.success("Email verified successfully");
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Invalid verification code");
+                        } finally {
+                          setIsVerifyingEmailOTP(false);
+                        }
+                      }}
+                      disabled={isVerifyingEmailOTP || emailOTPCode.length !== 4}
+                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Poppins',sans-serif]"
+                    >
+                      {isVerifyingEmailOTP ? "Verifying..." : "Verify Code"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
@@ -1916,9 +2033,88 @@ function DetailsSection() {
             <Input
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              onChange={(e) => {
+                const newPhone = e.target.value;
+                setFormData({...formData, phone: newPhone});
+                const isChanged = newPhone.trim() !== (userInfo?.phone || "");
+                setPhoneChanged(isChanged);
+                if (isChanged) {
+                  setPhoneOTPVerified(false);
+                  setPhoneOTPSent(false);
+                  setPhoneOTPCode("");
+                  setPhoneOTPHint(null);
+                }
+              }}
               className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
+            {phoneChanged && !phoneOTPVerified && (
+              <div className="mt-2 space-y-2">
+                {!phoneOTPSent ? (
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      setIsSendingPhoneOTP(true);
+                      try {
+                        const response = await requestPhoneChangeOTP(formData.phone);
+                        setPhoneOTPSent(true);
+                        setPhoneOTPHint(response?.phoneCode || null);
+                        toast.success("Verification code sent to new phone");
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Failed to send verification code");
+                      } finally {
+                        setIsSendingPhoneOTP(false);
+                      }
+                    }}
+                    disabled={isSendingPhoneOTP}
+                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Poppins',sans-serif]"
+                  >
+                    {isSendingPhoneOTP ? "Sending..." : "Send Verification Code"}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter 4-digit code"
+                      value={phoneOTPCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setPhoneOTPCode(value);
+                      }}
+                      className="h-9 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] text-center tracking-widest"
+                      maxLength={4}
+                    />
+                    {phoneOTPHint && (
+                      <p className="text-[11px] text-red-600 font-['Poppins',sans-serif] text-center">
+                        Hint: {phoneOTPHint}
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (phoneOTPCode.length !== 4) {
+                          toast.error("Please enter a 4-digit code");
+                          return;
+                        }
+                        setIsVerifyingPhoneOTP(true);
+                        try {
+                          await verifyOTP(phoneOTPCode, 'phone');
+                          setPhoneOTPVerified(true);
+                          toast.success("Phone verified successfully");
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Invalid verification code");
+                        } finally {
+                          setIsVerifyingPhoneOTP(false);
+                        }
+                      }}
+                      disabled={isVerifyingPhoneOTP || phoneOTPCode.length !== 4}
+                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Poppins',sans-serif]"
+                    >
+                      {isVerifyingPhoneOTP ? "Verifying..." : "Verify Code"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {userRole === "professional" && (
             <>
@@ -2123,9 +2319,6 @@ function DetailsSection() {
         )}
 
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4">
-          {saveError && (
-            <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">{saveError}</p>
-          )}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
             <Button
               onClick={handleSaveChanges}
@@ -2138,7 +2331,6 @@ function DetailsSection() {
             variant="outline"
             onClick={() => {
               setFormData(buildFormState(initialFormState));
-              setSaveError(null);
             }}
               className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto"
             >

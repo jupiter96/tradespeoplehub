@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Check,
+  X,
   MapPin,
   Building2,
   Home
@@ -64,6 +65,8 @@ export default function LoginPage() {
   const [isRequestingReset, setIsRequestingReset] = useState(false);
   const [resetRequestSent, setResetRequestSent] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLinkHint, setResetLinkHint] = useState<string | null>(null);
+  const [userNotFound, setUserNotFound] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -301,9 +304,18 @@ export default function LoginPage() {
     setResetError(null);
     setIsRequestingReset(true);
     try {
-      await requestPasswordReset(resetEmail);
+      const response = await requestPasswordReset(resetEmail);
+      console.log('Password reset response:', response);
+      const resetLink = response?.resetLink || null;
+      const notFound = response?.userNotFound || false;
+      console.log('Reset link hint:', resetLink);
+      console.log('User not found:', notFound);
+      setResetLinkHint(resetLink);
+      setUserNotFound(notFound);
+      // Only show modal after we have the response (with or without resetLink)
       setResetRequestSent(true);
     } catch (error) {
+      console.error('Password reset error:', error);
       setResetError(error instanceof Error ? error.message : "Unable to send reset link");
     } finally {
       setIsRequestingReset(false);
@@ -316,6 +328,8 @@ export default function LoginPage() {
     setResetRequestSent(false);
     setResetError(null);
     setIsRequestingReset(false);
+    setResetLinkHint(null);
+    setUserNotFound(false);
   };
 
   return (
@@ -1277,6 +1291,26 @@ export default function LoginPage() {
                       {isRequestingReset ? "Sending..." : "Send Reset Link"}
                     </Button>
                   </form>
+                ) : userNotFound ? (
+                  <div className="text-center py-6">
+                    <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <X className="w-10 h-10 text-red-600" />
+                    </div>
+                    <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
+                      Email Not Found
+                    </h2>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
+                      The email address{" "}
+                      <span className="text-[#3B82F6]">{resetEmail}</span> is not registered in our system.
+                      Please check the email address and try again.
+                    </p>
+                    <Button
+                      onClick={handleCloseResetModal}
+                      className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                    >
+                      Back to Login
+                    </Button>
+                  </div>
                 ) : (
                   <div className="text-center py-6">
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1285,11 +1319,26 @@ export default function LoginPage() {
                     <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
                       Check your email
                     </h2>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-                      We’ve sent a password reset link to{" "}
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                      We've sent a password reset link to{" "}
                       <span className="text-[#3B82F6]">{resetEmail}</span>. Follow the instructions to
                       set a new password.
                     </p>
+                    {resetLinkHint && (
+                      <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                        <p className="font-['Poppins',sans-serif] text-[12px] font-semibold text-red-600 mb-2">
+                          Reset Link (until SMTP is configured):
+                        </p>
+                        <a
+                          href={resetLinkHint}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-['Poppins',sans-serif] text-[11px] text-red-700 break-all font-mono bg-white p-2 rounded border border-red-200 block hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer underline"
+                        >
+                          {resetLinkHint}
+                        </a>
+                      </div>
+                    )}
                     <Button
                       onClick={handleCloseResetModal}
                       className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"

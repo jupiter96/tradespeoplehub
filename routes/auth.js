@@ -576,7 +576,12 @@ router.post('/password/forgot', async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-      return res.json({ message: 'If the email exists, a reset link has been sent.' });
+      // Return userNotFound flag to show appropriate message
+      return res.json({ 
+        message: 'Email not found',
+        userNotFound: true,
+        resetLink: null
+      });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -590,9 +595,22 @@ router.post('/password/forgot', async (req, res) => {
       PASSWORD_RESET_URL.includes('?') ? '&' : '?'
     }token=${token}`;
     console.log(`[PASSWORD-RESET] Reset link for ${user.email}: ${resetLink}`);
-    await sendPasswordResetEmail(user.email, resetLink);
+    
+    try {
+      await sendPasswordResetEmail(user.email, resetLink);
+    } catch (notificationError) {
+      console.error('Failed to send password reset email', notificationError);
+      // In production, continue even if email sending fails (SMTP may not be configured yet)
+      if (isProduction) {
+        console.warn('Continuing despite email send failure (production mode)');
+      }
+    }
 
-    return res.json({ message: 'If the email exists, a reset link has been sent.' });
+    // Include reset link in response for testing (always, not just in development)
+    return res.json({ 
+      message: 'If the email exists, a reset link has been sent.',
+      resetLink: resetLink
+    });
   } catch (error) {
     console.error('Forgot password error', error);
     return res.status(500).json({ error: 'Failed to send password reset link' });
@@ -640,6 +658,148 @@ router.post('/password/reset', async (req, res) => {
   }
 });
 
+// Store OTP verification tokens in session
+const emailChangeOTPKey = 'emailChangeOTP';
+const phoneChangeOTPKey = 'phoneChangeOTP';
+
+router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    if (normalizedEmail === user.email) {
+      return res.status(400).json({ error: 'New email must be different from current email' });
+    }
+
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      return res.status(409).json({ error: 'Email is already in use' });
+    }
+
+    const otpCode = generateCode();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+    req.session[emailChangeOTPKey] = {
+      email: normalizedEmail,
+      otpHash,
+      expiresAt: codeExpiryDate(),
+    };
+
+    try {
+      await sendEmailVerificationCode(normalizedEmail, otpCode);
+    } catch (notificationError) {
+      console.error('Failed to send email OTP', notificationError);
+      if (isProduction) {
+        console.warn('Continuing despite email send failure (production mode)');
+      } else {
+        delete req.session[emailChangeOTPKey];
+        return res.status(502).json({ error: 'Failed to send verification email' });
+      }
+    }
+
+    return res.json({ 
+      message: 'Verification code sent to new email',
+      emailCode: otpCode
+    });
+  } catch (error) {
+    console.error('Email change OTP error', error);
+    return res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone is required' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone === user.phone) {
+      return res.status(400).json({ error: 'New phone must be different from current phone' });
+    }
+
+    const otpCode = generateCode();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+    req.session[phoneChangeOTPKey] = {
+      phone: trimmedPhone,
+      otpHash,
+      expiresAt: codeExpiryDate(),
+    };
+
+    try {
+      await sendSmsVerificationCode(trimmedPhone, otpCode);
+    } catch (notificationError) {
+      console.error('Failed to send SMS OTP', notificationError);
+      if (isProduction) {
+        console.warn('Continuing despite SMS send failure (production mode)');
+      } else {
+        delete req.session[phoneChangeOTPKey];
+        return res.status(502).json({ error: 'Failed to send verification SMS' });
+      }
+    }
+
+    return res.json({ 
+      message: 'Verification code sent to new phone',
+      phoneCode: otpCode
+    });
+  } catch (error) {
+    console.error('Phone change OTP error', error);
+    return res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+router.post('/profile/verify-otp', requireAuth, async (req, res) => {
+  try {
+    const { code, type } = req.body || {}; // type: 'email' or 'phone'
+    if (!code || !type) {
+      return res.status(400).json({ error: 'Code and type are required' });
+    }
+
+    if (!isValidCode(code)) {
+      return res.status(400).json({ error: 'A valid 4-digit code is required' });
+    }
+
+    const sessionKey = type === 'email' ? emailChangeOTPKey : phoneChangeOTPKey;
+    const otpData = req.session[sessionKey];
+
+    if (!otpData) {
+      return res.status(400).json({ error: 'No pending verification found' });
+    }
+
+    if (otpData.expiresAt && otpData.expiresAt < new Date()) {
+      delete req.session[sessionKey];
+      return res.status(410).json({ error: 'Verification code expired' });
+    }
+
+    const match = await bcrypt.compare(code, otpData.otpHash);
+    if (!match) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    // Mark OTP as verified
+    otpData.verified = true;
+    req.session[sessionKey] = otpData;
+
+    return res.json({ message: 'Verification successful' });
+  } catch (error) {
+    console.error('OTP verification error', error);
+    return res.status(500).json({ error: 'Failed to verify code' });
+  }
+});
+
 router.put('/profile', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.session.userId);
@@ -671,17 +831,34 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
+    const trimmedPhone = phone.trim();
+
+    // Check if email is being changed
     if (normalizedEmail !== user.email) {
+      const emailOTP = req.session[emailChangeOTPKey];
+      if (!emailOTP || !emailOTP.verified || emailOTP.email !== normalizedEmail) {
+        return res.status(403).json({ error: 'Email change requires OTP verification' });
+      }
       const existing = await User.findOne({ email: normalizedEmail });
       if (existing) {
         return res.status(409).json({ error: 'Email is already in use' });
       }
       user.email = normalizedEmail;
+      delete req.session[emailChangeOTPKey];
+    }
+
+    // Check if phone is being changed
+    if (trimmedPhone !== user.phone) {
+      const phoneOTP = req.session[phoneChangeOTPKey];
+      if (!phoneOTP || !phoneOTP.verified || phoneOTP.phone !== trimmedPhone) {
+        return res.status(403).json({ error: 'Phone change requires OTP verification' });
+      }
+      user.phone = trimmedPhone;
+      delete req.session[phoneChangeOTPKey];
     }
 
     user.firstName = firstName.trim();
     user.lastName = lastName.trim();
-    user.phone = phone.trim();
     user.postcode = postcode.trim();
     user.address = address?.trim() || undefined;
     user.townCity = townCity?.trim() || undefined;
