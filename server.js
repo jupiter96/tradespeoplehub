@@ -23,7 +23,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/trades';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('❌ Missing MONGODB_URI in your environment (.env)');
+  process.exit(1);
+}
 const clientOriginEnv =
   process.env.CLIENT_ORIGIN || process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN_WHITELIST;
 const parsedOrigins = clientOriginEnv

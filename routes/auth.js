@@ -171,7 +171,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
     });
   })(req, res, next);
 };
-console.log("aaaaaaaaaaaaaaaaaa",googleAuthEnabled);
+
 if (googleAuthEnabled) {
   router.get(
     '/google',
