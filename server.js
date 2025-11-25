@@ -9,6 +9,7 @@ import MongoStore from 'connect-mongo';
 import passport from './services/passport.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
+import { ensureTestUser } from './utils/ensureTestUser.js';
 
 dotenv.config();
 
@@ -109,10 +110,15 @@ const connectMongoDB = async () => {
   }
 };
 
+const initializeDatabase = async () => {
+  await connectMongoDB();
+  await ensureTestUser();
+};
+
 // Initialize MongoDB connection (non-blocking for serverless)
 if (MONGODB_URI) {
-  connectMongoDB().catch((error) => {
-    console.error('Failed to connect to MongoDB:', error);
+  initializeDatabase().catch((error) => {
+    console.error('Failed to initialize database:', error);
   });
 }
 
