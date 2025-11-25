@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build:client",
-  "outputDirectory": "client/build",
+  "outputDirectory": "./build",
   "installCommand": "npm install",
   "framework": null,
   "routes": [

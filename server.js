@@ -115,7 +115,7 @@ const initializeDatabase = async () => {
   await ensureTestUser();
 };
 
-// Initialize MongoDB connection (non-blocking for serverless)
+
 if (MONGODB_URI) {
   initializeDatabase().catch((error) => {
     console.error('Failed to initialize database:', error);
@@ -140,7 +140,7 @@ if (process.env.VERCEL !== '1') {
   });
 }
 
-// Start server (only if not in Vercel serverless environment)
+
 if (process.env.VERCEL !== '1') {
   const PORT = process.env.PORT || 5000;
   const CLIENT_PORT = process.env.CLIENT_PORT || 3000;
