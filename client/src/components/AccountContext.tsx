@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+// const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://tradespeoplehub.vercel.app";
 const resolveApiUrl = (path: string) =>
   path.startsWith("http://") || path.startsWith("https://") ? path : `${API_BASE_URL}${path}`;
 

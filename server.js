@@ -36,7 +36,7 @@ const parsedOrigins = clientOriginEnv
       .map((origin) => origin.trim())
       .filter(Boolean)
   : [];
-const fallbackOrigins = isProduction ? [] : ['http://localhost:3000'];
+const fallbackOrigins = isProduction ? [] : ['http://localhost:5000'];
 const allowedOrigins = [...new Set([...parsedOrigins, ...fallbackOrigins])];
 
 // Middleware

@@ -31,7 +31,7 @@ const CODE_LENGTH = 4;
 const CODE_EXPIRATION_MINUTES = 10;
 const registrationSessionKey = 'pendingRegistrationId';
 const socialSessionKey = 'pendingSocialProfile';
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5000';
 const SOCIAL_SUCCESS_REDIRECT =
   process.env.SOCIAL_SUCCESS_REDIRECT || `${CLIENT_ORIGIN}/account`;
 const SOCIAL_FAILURE_REDIRECT =
