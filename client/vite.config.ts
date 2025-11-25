@@ -4,6 +4,10 @@
   import path from 'path';
 
   export default defineConfig({
+    // 이 설정은 HTML 파일에서 모든 에셋(JS, CSS, 이미지) 경로의
+    // 접두사를 절대 경로('/') 대신 상대 경로('./')로 사용하도록 강제합니다.
+    // Vercel 배포 환경에서 경로 문제를 해결합니다.
+    base: './',
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
