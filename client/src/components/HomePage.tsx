@@ -45,7 +45,7 @@ export default function HomePage() {
           {/* Desktop Video Container - Original design preserved */}
           <div className="hidden md:block relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
             <iframe
-              src="https://streamable.com/e/vxyocn?autoplay=1&muted=1&loop=1"
+              src="https://streamable.com/n5bibx?autoplay=1&muted=1&loop=1"
               className="absolute inset-0 w-full h-full"
               style={{
                 border: 'none',

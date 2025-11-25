@@ -92,9 +92,23 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Middleware to ensure MongoDB connection before API requests
+app.use('/api', async (req, res, next) => {
+  if (MONGODB_URI && mongoose.connection.readyState !== 1) {
+    try {
+      await connectMongoDB();
+    } catch (error) {
+      console.error('Failed to connect MongoDB in middleware:', error);
+      // Continue anyway - some endpoints might not need DB
+    }
+  }
+  next();
+});
+
 // MongoDB connection with serverless optimization
 // Cache connection to reuse across function invocations
 let cachedConnection = null;
+let isConnecting = false;
 
 const connectMongoDB = async () => {
   // Check if already connected
@@ -102,36 +116,88 @@ const connectMongoDB = async () => {
     return mongoose.connection;
   }
 
-  // Return cached connection if exists
-  if (cachedConnection) {
+  // If connection is in progress, wait for it
+  if (isConnecting) {
+    return new Promise((resolve, reject) => {
+      const checkConnection = setInterval(() => {
+        if (mongoose.connection.readyState === 1) {
+          clearInterval(checkConnection);
+          resolve(mongoose.connection);
+        } else if (mongoose.connection.readyState === 0 && !isConnecting) {
+          clearInterval(checkConnection);
+          reject(new Error('Connection failed'));
+        }
+      }, 100);
+      setTimeout(() => {
+        clearInterval(checkConnection);
+        reject(new Error('Connection timeout'));
+      }, 30000);
+    });
+  }
+
+  // Return cached connection if exists and valid
+  if (cachedConnection && mongoose.connection.readyState !== 0) {
     return cachedConnection;
   }
 
+  isConnecting = true;
+
   try {
-    const conn = await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-    });
+    // Optimize connection options for serverless
+    const isServerless = process.env.VERCEL === '1';
+    const connectionOptions = {
+      serverSelectionTimeoutMS: isServerless ? 10000 : 5000,
+      socketTimeoutMS: isServerless ? 60000 : 45000,
+      connectTimeoutMS: isServerless ? 30000 : 10000,
+      maxPoolSize: isServerless ? 1 : 10, // Single connection for serverless
+      minPoolSize: 0,
+      maxIdleTimeMS: isServerless ? 30000 : 45000,
+      retryWrites: true,
+      retryReads: true,
+    };
+
+    const conn = await mongoose.connect(MONGODB_URI, connectionOptions);
     cachedConnection = conn;
+    isConnecting = false;
     console.log('✅ MongoDB connected successfully');
     return conn;
   } catch (error) {
+    isConnecting = false;
+    cachedConnection = null;
     console.error('❌ MongoDB connection error:', error);
     throw error;
   }
 };
 
-const initializeDatabase = async () => {
-  await connectMongoDB();
-  await ensureTestUser();
-};
-
-
+// Handle connection events for better error recovery
 if (MONGODB_URI) {
-  initializeDatabase().catch((error) => {
-    console.error('Failed to initialize database:', error);
+  mongoose.connection.on('error', (err) => {
+    console.error('MongoDB connection error:', err);
+    cachedConnection = null;
   });
+
+  mongoose.connection.on('disconnected', () => {
+    console.warn('MongoDB disconnected');
+    cachedConnection = null;
+  });
+
+  mongoose.connection.on('reconnected', () => {
+    console.log('MongoDB reconnected');
+  });
+
+  const initializeDatabase = async () => {
+    try {
+      await connectMongoDB();
+      await ensureTestUser();
+    } catch (error) {
+      console.error('Failed to initialize database:', error);
+      // Don't throw - allow server to start even if DB init fails
+      // The connection will be retried on first request
+    }
+  };
+
+  // Initialize database connection (non-blocking)
+  initializeDatabase();
 }
 
 // API Routes
