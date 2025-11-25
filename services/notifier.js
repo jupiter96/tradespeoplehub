@@ -46,13 +46,19 @@ export async function sendEmailVerificationCode(to, code) {
     return;
   }
 
-  await mailTransporter.sendMail({
-    from: EMAIL_FROM,
-    to,
-    subject: 'Your TradePplHub verification code',
-    text: `Your verification code is ${code}`,
-    html: `<p>Your verification code is <strong>${code}</strong></p>`,
-  });
+  try {
+    await mailTransporter.sendMail({
+      from: EMAIL_FROM,
+      to,
+      subject: 'Your TradePplHub verification code',
+      text: `Your verification code is ${code}`,
+      html: `<p>Your verification code is <strong>${code}</strong></p>`,
+    });
+  } catch (error) {
+    console.error('[EMAIL] Failed to send verification email:', error);
+    // Don't throw error - allow flow to continue even if email sending fails
+    // This is useful when SMTP is not yet configured in production
+  }
 }
 
 export async function sendSmsVerificationCode(to, code) {
@@ -67,11 +73,17 @@ export async function sendSmsVerificationCode(to, code) {
     return;
   }
 
-  await twilioClient.messages.create({
-    to,
-    from: TWILIO_FROM,
-    body: `Your TradePplHub verification code is ${code}`,
-  });
+  try {
+    await twilioClient.messages.create({
+      to,
+      from: TWILIO_FROM,
+      body: `Your TradePplHub verification code is ${code}`,
+    });
+  } catch (error) {
+    console.error('[SMS] Failed to send verification SMS:', error);
+    // Don't throw error - allow flow to continue even if SMS sending fails
+    // This is useful when Twilio is not yet configured in production
+  }
 }
 
 export async function sendPasswordResetEmail(to, resetUrl) {

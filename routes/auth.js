@@ -317,8 +317,13 @@ router.post('/register/initiate', async (req, res) => {
       await sendEmailVerificationCode(normalizedEmail, emailCode);
     } catch (notificationError) {
       console.error('Failed to send verification email', notificationError);
-      await pendingRegistration.deleteOne();
-      return res.status(502).json({ error: 'Failed to send verification email' });
+      // In production, continue even if email sending fails (SMTP may not be configured yet)
+      if (isProduction) {
+        console.warn('Continuing registration flow despite email send failure (production mode)');
+      } else {
+        await pendingRegistration.deleteOne();
+        return res.status(502).json({ error: 'Failed to send verification email' });
+      }
     }
 
     setPendingRegistrationSession(req, pendingRegistration.id);
@@ -371,7 +376,12 @@ router.post('/register/verify-email', async (req, res) => {
       await sendSmsVerificationCode(pendingRegistration.phone, smsCode);
     } catch (notificationError) {
       console.error('Failed to send SMS code', notificationError);
-      return res.status(502).json({ error: 'Failed to send SMS code' });
+      // In production, continue even if SMS sending fails (Twilio may not be configured yet)
+      if (isProduction) {
+        console.warn('Continuing registration flow despite SMS send failure (production mode)');
+      } else {
+        return res.status(502).json({ error: 'Failed to send SMS code' });
+      }
     }
 
     pendingRegistration.emailVerified = true;
