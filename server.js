@@ -38,7 +38,10 @@ const parsedOrigins = clientOriginEnv
       .map((origin) => origin.trim())
       .filter(Boolean)
   : [];
-const fallbackOrigins = isProduction ? [] : ['http://localhost:5000'];
+// Allow localhost ports in development
+const fallbackOrigins = isProduction
+  ? []
+  : ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
 const allowedOrigins = [...new Set([...parsedOrigins, ...fallbackOrigins])];
 
 // Middleware
@@ -47,7 +50,16 @@ app.set('trust proxy', 1);
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (like mobile apps, Postman, or same-origin requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+      // If no origins are configured, allow all (development fallback)
+      if (allowedOrigins.length === 0) {
+        return callback(null, true);
+      }
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       console.warn(`❌ CORS blocked request from origin: ${origin}`);
@@ -131,22 +143,28 @@ app.get('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
-const clientBuildPath = path.join(__dirname, 'build');
+// Serve React build when running the full server (non-Vercel)
+if (process.env.VERCEL !== '1') {
+  const clientBuildPath = path.join(__dirname, 'build');
   app.use(express.static(clientBuildPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
+}
 
-const PORT = process.env.PORT || 5000;
-const CLIENT_PORT = process.env.CLIENT_PORT || 3000;
+// Start server (only if not in Vercel serverless environment)
+if (process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 5000;
+  const CLIENT_PORT = process.env.CLIENT_PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('🚀 Server is running!');
-  console.log(`📡 Server Port: http://localhost:${PORT}`);
-  console.log(`💻 Client Port: http://localhost:${CLIENT_PORT}`);
-  console.log('═══════════════════════════════════════════════════════');
-});
+  app.listen(PORT, () => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🚀 Server is running!');
+    console.log(`📡 Server Port: http://localhost:${PORT}`);
+    console.log(`💻 Client Port: http://localhost:${CLIENT_PORT}`);
+    console.log('═══════════════════════════════════════════════════════');
+  });
+}
 
 // Export for Vercel serverless functions
 export default app;
