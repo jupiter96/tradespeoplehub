@@ -100,6 +100,8 @@ interface AccountContextType {
   removeAvatar: () => Promise<UserInfo>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<UserInfo>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  deleteAccount: (confirmText: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserInfo: (updates: Partial<UserInfo>) => void;
   refreshUser: () => Promise<UserInfo | null>;
@@ -319,11 +321,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const requestPasswordReset = useCallback(
     async (email: string) => {
-      const data = await requestJson("/api/auth/password/forgot", {
+      await requestJson("/api/auth/password/forgot", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      return data;
     },
     [requestJson]
   );
@@ -337,6 +338,27 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
       applyUserSession(null);
       return data;
+    },
+    [applyUserSession, requestJson]
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      await requestJson("/api/auth/profile/password", {
+        method: "PUT",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    },
+    [requestJson]
+  );
+
+  const deleteAccount = useCallback(
+    async (confirmText: string) => {
+      await requestJson("/api/auth/profile", {
+        method: "DELETE",
+        body: JSON.stringify({ confirmText }),
+      });
+      applyUserSession(null);
     },
     [applyUserSession, requestJson]
   );
@@ -396,13 +418,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         fetchPendingSocialProfile,
         completeSocialRegistration,
         updateProfile,
-        requestEmailChangeOTP,
-        requestPhoneChangeOTP,
-        verifyOTP,
         uploadAvatar,
         removeAvatar,
         requestPasswordReset,
         resetPassword,
+        changePassword,
+        deleteAccount,
         logout,
         updateUserInfo,
         refreshUser,

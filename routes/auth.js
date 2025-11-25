@@ -970,6 +970,80 @@ router.post(
   }
 );
 
+router.put('/profile/password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    return res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error', error);
+    return res.status(500).json({ error: error.message || 'Failed to change password' });
+  }
+});
+
+router.delete('/profile', requireAuth, async (req, res) => {
+  try {
+    const { confirmText } = req.body || {};
+
+    if (confirmText !== 'DELETE') {
+      return res.status(400).json({ error: 'Please type "DELETE" to confirm account deletion' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    // Delete user's avatar from Cloudinary if exists
+    if (user.avatar) {
+      try {
+        const publicId = user.avatar.match(/\/v\d+\/(.+)\./)?.[1];
+        if (publicId) {
+          await cloudinary.uploader.destroy(publicId);
+        }
+      } catch (cloudinaryError) {
+        console.warn('Failed to delete avatar from Cloudinary:', cloudinaryError);
+      }
+    }
+
+    // Delete user account
+    await User.findByIdAndDelete(user._id);
+
+    // Destroy session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+      }
+    });
+
+    return res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete account' });
+  }
+});
+
 router.delete('/profile/avatar', requireAuth, async (req, res) => {
   try {
     // Check if Cloudinary is configured

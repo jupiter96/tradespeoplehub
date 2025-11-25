@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   Check,
-  X,
   MapPin,
   Building2,
   Home
@@ -329,7 +328,6 @@ export default function LoginPage() {
     setResetError(null);
     setIsRequestingReset(false);
     setResetLinkHint(null);
-    setUserNotFound(false);
   };
 
   return (
@@ -1291,26 +1289,6 @@ export default function LoginPage() {
                       {isRequestingReset ? "Sending..." : "Send Reset Link"}
                     </Button>
                   </form>
-                ) : userNotFound ? (
-                  <div className="text-center py-6">
-                    <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <X className="w-10 h-10 text-red-600" />
-                    </div>
-                    <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
-                      Email Not Found
-                    </h2>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-                      The email address{" "}
-                      <span className="text-[#3B82F6]">{resetEmail}</span> is not registered in our system.
-                      Please check the email address and try again.
-                    </p>
-                    <Button
-                      onClick={handleCloseResetModal}
-                      className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
-                    >
-                      Back to Login
-                    </Button>
-                  </div>
                 ) : (
                   <div className="text-center py-6">
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">

@@ -3133,7 +3133,80 @@ function WithdrawSection() {
 
 // Security Section
 function SecuritySection() {
+  const { changePassword, deleteAccount, logout } = useAccount();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("All fields are required");
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      toast.success("Password updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to change password";
+      setPasswordError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+  
+  const handleCancelPasswordChange = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+  };
+  
+  const handleDeleteAccount = async () => {
+    setDeleteError(null);
+    
+    if (deleteConfirmText !== "DELETE") {
+      setDeleteError('Please type "DELETE" to confirm');
+      return;
+    }
+    
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount(deleteConfirmText);
+      toast.success("Account deleted successfully");
+      await logout();
+      window.location.href = "/login";
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete account";
+      setDeleteError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
   
   return (
     <div>
@@ -3160,7 +3233,11 @@ function SecuritySection() {
               </label>
               <input
                 type="password"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
+                  passwordError ? 'border-red-500' : 'border-gray-200'
+                }`}
               />
             </div>
             <div>
@@ -3169,7 +3246,11 @@ function SecuritySection() {
               </label>
               <input
                 type="password"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
+                  passwordError ? 'border-red-500' : 'border-gray-200'
+                }`}
               />
             </div>
             <div>
@@ -3178,14 +3259,32 @@ function SecuritySection() {
               </label>
               <input
                 type="password"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
+                  passwordError ? 'border-red-500' : 'border-gray-200'
+                }`}
               />
             </div>
+            {passwordError && (
+              <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">
+                {passwordError}
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Button className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]">
-                Update Password
+              <Button 
+                onClick={handleChangePassword}
+                disabled={isChangingPassword}
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-70"
+              >
+                {isChangingPassword ? "Updating..." : "Update Password"}
               </Button>
-              <Button variant="outline" className="flex-1 text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif]">
+              <Button 
+                variant="outline" 
+                onClick={handleCancelPasswordChange}
+                disabled={isChangingPassword}
+                className="flex-1 text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] disabled:opacity-70"
+              >
                 Cancel
               </Button>
             </div>
@@ -3264,22 +3363,38 @@ function SecuritySection() {
               <Input
                 type="text"
                 placeholder="DELETE"
-                className="font-['Poppins',sans-serif] text-[14px]"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className={`font-['Poppins',sans-serif] text-[14px] ${
+                  deleteError ? 'border-red-500' : ''
+                }`}
               />
+              {deleteError && (
+                <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] mt-1">
+                  {deleteError}
+                </p>
+              )}
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 font-['Poppins',sans-serif]"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText("");
+                  setDeleteError(null);
+                }}
+                disabled={isDeletingAccount}
+                className="flex-1 font-['Poppins',sans-serif] disabled:opacity-70"
               >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
-                className="flex-1 font-['Poppins',sans-serif] hover:bg-red-700"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount || deleteConfirmText !== "DELETE"}
+                className="flex-1 font-['Poppins',sans-serif] hover:bg-red-700 disabled:opacity-70"
               >
-                Delete Account
+                {isDeletingAccount ? "Deleting..." : "Delete Account"}
               </Button>
             </div>
           </div>
