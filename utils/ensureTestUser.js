@@ -34,6 +34,7 @@ export async function ensureTestUser() {
     townCity: randomFrom(towns),
     address: `${randomHouseNumber()} ${randomFrom(streets)}`,
     travelDistance: '15miles',
+    avatar: null,
   });
 
   console.info(`Seeded default user (${createdUser.email} / 123456)`);

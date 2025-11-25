@@ -1028,9 +1028,9 @@ export default function Nav() {
             aria-label="Scroll left"
           >
             <svg 
-              className="w-3 h-3" 
+              className="w-5 h-5" 
               fill="none" 
-              stroke="#000000" 
+              stroke="#2c353f" 
               viewBox="0 0 24 24"
               strokeWidth="2.5"
             >
@@ -1117,9 +1117,9 @@ export default function Nav() {
             aria-label="Scroll right"
           >
             <svg 
-              className="w-3 h-3" 
+              className="w-5 h-5" 
               fill="none" 
-              stroke="#000000" 
+              stroke="#2c353f" 
               viewBox="0 0 24 24"
               strokeWidth="2.5"
             >

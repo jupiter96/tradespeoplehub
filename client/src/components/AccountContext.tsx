@@ -257,6 +257,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || "Unable to upload avatar");
       }
 
+      // Cloudinary returns full URL, no need to format
       applyUserSession(data.user);
       return data.user;
     },

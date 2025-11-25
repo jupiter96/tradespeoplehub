@@ -2,9 +2,10 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import multer from 'multer';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
 import PendingRegistration from '../models/PendingRegistration.js';
 import passport from '../services/passport.js';
@@ -13,6 +14,9 @@ import {
   sendSmsVerificationCode,
   sendPasswordResetEmail,
 } from '../services/notifier.js';
+
+// Load environment variables
+dotenv.config();
 
 const router = express.Router();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -50,44 +54,44 @@ const facebookAuthEnabled =
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const isServerless = process.env.VERCEL === '1';
-const uploadsRoot = isServerless ? path.join('/tmp', 'uploads') : path.resolve(__dirname, '../uploads');
-const avatarsDir = path.join(uploadsRoot, 'avatars');
 
-try {
-  fs.mkdirSync(avatarsDir, { recursive: true });
-} catch (error) {
-  console.warn('Failed to create uploads directory:', error);
+// Configure Cloudinary
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+
+if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+  console.warn('⚠️ Cloudinary credentials not found in environment variables.');
+  console.warn('   Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.');
 }
+
+cloudinary.config({
+  cloud_name: CLOUDINARY_CLOUD_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET,
+});
+
+// Configure multer for memory storage (Cloudinary requires buffer)
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
+    }
+  },
+});
+
+const avatarUploadMiddleware = avatarUpload.single('avatar');
 
 const generateCode = () =>
   Math.floor(10 ** (CODE_LENGTH - 1) + Math.random() * 9 * 10 ** (CODE_LENGTH - 1)).toString();
 const codeExpiryDate = () => new Date(Date.now() + CODE_EXPIRATION_MINUTES * 60 * 1000);
 const isValidCode = (code) =>
   typeof code === 'string' && code.length === CODE_LENGTH && /^\d+$/.test(code);
-
-const avatarStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, avatarsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
-    cb(null, `${req.session?.userId || 'avatar'}-${Date.now()}${ext}`);
-  },
-});
-
-const avatarUpload = multer({
-  storage: avatarStorage,
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Unsupported file type'));
-    }
-  },
-});
-
-const avatarUploadMiddleware = avatarUpload.single('avatar');
 
 const requireAuth = (req, res, next) => {
   if (!req.session?.userId) {
@@ -96,15 +100,19 @@ const requireAuth = (req, res, next) => {
   return next();
 };
 
-const buildAvatarPath = (filename) => `/uploads/avatars/${filename}`;
-
-const deleteAvatarFile = (storedPath) => {
-  if (!storedPath?.startsWith('/uploads/')) {
-    return;
+// Helper function to extract public_id from Cloudinary URL
+const extractPublicId = (url) => {
+  if (!url) return null;
+  try {
+    // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/image/upload/{folder}/{public_id}.{format}
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
+  } catch {
+    return null;
   }
-  const relative = storedPath.replace(/^\/uploads\//, '');
-  const absolutePath = path.join(uploadsRoot, relative);
-  fs.promises.unlink(absolutePath).catch(() => {});
 };
 
 const setPendingRegistrationSession = (req, registrationId) => {
@@ -705,6 +713,13 @@ router.post(
   },
   async (req, res) => {
     try {
+      // Check if Cloudinary is configured
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+        return res.status(500).json({ 
+          error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+        });
+      }
+
       if (!req.file) {
         return res.status(400).json({ error: 'Avatar file is required' });
       }
@@ -714,30 +729,78 @@ router.post(
         return res.status(401).json({ error: 'Session expired. Please login again.' });
       }
 
+      // Delete old avatar from Cloudinary if exists
       if (user.avatar) {
-        deleteAvatarFile(user.avatar);
+        const oldPublicId = extractPublicId(user.avatar);
+        if (oldPublicId) {
+          try {
+            await cloudinary.uploader.destroy(oldPublicId);
+          } catch (error) {
+            console.warn('Failed to delete old avatar from Cloudinary:', error);
+          }
+        }
       }
 
-      user.avatar = buildAvatarPath(req.file.filename);
+      // Upload to Cloudinary
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'avatars',
+            public_id: `avatar-${user._id}-${Date.now()}`,
+            transformation: [
+              { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+              { quality: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+
+        uploadStream.end(req.file.buffer);
+      });
+
+      // Save Cloudinary URL to user
+      user.avatar = uploadResult.secure_url;
       await user.save();
+
       return res.json({ user: sanitizeUser(user) });
     } catch (error) {
       console.error('Avatar upload error', error);
-      return res.status(500).json({ error: 'Failed to upload avatar' });
+      return res.status(500).json({ 
+        error: error.message || 'Failed to upload avatar' 
+      });
     }
   }
 );
 
 router.delete('/profile/avatar', requireAuth, async (req, res) => {
   try {
+    // Check if Cloudinary is configured
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ 
+        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+      });
+    }
+
     const user = await User.findById(req.session.userId);
     if (!user) {
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
     if (user.avatar) {
-      deleteAvatarFile(user.avatar);
-      user.avatar = undefined;
+      // Delete from Cloudinary
+      const publicId = extractPublicId(user.avatar);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.warn('Failed to delete avatar from Cloudinary:', error);
+        }
+      }
+
+      user.avatar = null;
       await user.save();
     }
 

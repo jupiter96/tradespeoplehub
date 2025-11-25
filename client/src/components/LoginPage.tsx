@@ -70,6 +70,17 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Load rememberMe state and email from localStorage on mount
+  useEffect(() => {
+    const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
+    const savedEmail = localStorage.getItem('savedEmail');
+    
+    if (savedRememberMe && savedEmail) {
+      setRememberMe(true);
+      setLoginEmail(savedEmail);
+    }
+  }, []);
+
   // Register form state - Common fields
   const [registerFirstName, setRegisterFirstName] = useState("");
   const [registerLastName, setRegisterLastName] = useState("");
@@ -91,6 +102,9 @@ export default function LoginPage() {
   const [isSendingRegistration, setIsSendingRegistration] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
 
+  // Field validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -103,6 +117,15 @@ export default function LoginPage() {
         rememberMe,
       });
 
+      // Save rememberMe state and email to localStorage if rememberMe is checked
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('savedEmail', loginEmail);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('savedEmail');
+      }
+
       navigate(user.role === "professional" ? "/professional-setup" : "/account");
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : "Unable to login");
@@ -114,14 +137,59 @@ export default function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError(null);
-    if (registerPassword !== registerConfirmPassword) {
-      alert("Passwords don't match!");
-      return;
+    setFieldErrors({});
+
+    // Validate all required fields
+    const errors: Record<string, string> = {};
+
+    if (!registerFirstName.trim()) {
+      errors.firstName = "First name is required";
+    }
+    if (!registerLastName.trim()) {
+      errors.lastName = "Last name is required";
+    }
+    if (userType === "professional" && !registerTradingName.trim()) {
+      errors.tradingName = "Trading name is required";
+    }
+    if (!registerPostcode.trim()) {
+      errors.postcode = "Postcode is required";
+    }
+    if (userType === "professional" && !registerTownCity.trim()) {
+      errors.townCity = "Town/City is required";
+    }
+    if (userType === "professional" && !registerAddress.trim()) {
+      errors.address = "Address is required";
+    }
+    if (userType === "professional" && !registerTravelDistance) {
+      errors.travelDistance = "Travel distance is required";
+    }
+    if (!registerPhone.trim()) {
+      errors.phone = "Phone number is required";
+    }
+    if (!registerEmail.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerEmail)) {
+      errors.email = "Please enter a valid email address";
+    }
+    if (!registerPassword) {
+      errors.password = "Password is required";
+    } else if (registerPassword.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+    if (!registerConfirmPassword) {
+      errors.confirmPassword = "Please confirm your password";
+    } else if (registerPassword !== registerConfirmPassword) {
+      errors.confirmPassword = "Passwords don't match";
     }
     if (!agreeTerms) {
-      alert("Please accept the terms and conditions!");
+      errors.agreeTerms = "Please accept the terms and conditions";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+
     const registerData = {
       firstName: registerFirstName,
       lastName: registerLastName,
@@ -457,11 +525,27 @@ export default function LoginPage() {
                           type="text"
                           placeholder="Jane"
                           value={registerFirstName}
-                          onChange={(e) => setRegisterFirstName(e.target.value)}
-                          className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                          onChange={(e) => {
+                            setRegisterFirstName(e.target.value);
+                            if (fieldErrors.firstName) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.firstName;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                            fieldErrors.firstName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                          }`}
                           required
                         />
                       </div>
+                      {fieldErrors.firstName && (
+                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                          {fieldErrors.firstName}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -475,11 +559,27 @@ export default function LoginPage() {
                           type="text"
                           placeholder="Smith"
                           value={registerLastName}
-                          onChange={(e) => setRegisterLastName(e.target.value)}
-                          className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                          onChange={(e) => {
+                            setRegisterLastName(e.target.value);
+                            if (fieldErrors.lastName) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.lastName;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                            fieldErrors.lastName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                          }`}
                           required
                         />
                       </div>
+                      {fieldErrors.lastName && (
+                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                          {fieldErrors.lastName}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -496,11 +596,27 @@ export default function LoginPage() {
                           type="text"
                           placeholder="Smith Services Ltd"
                           value={registerTradingName}
-                          onChange={(e) => setRegisterTradingName(e.target.value)}
-                          className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                          onChange={(e) => {
+                            setRegisterTradingName(e.target.value);
+                            if (fieldErrors.tradingName) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.tradingName;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                            fieldErrors.tradingName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                          }`}
                           required
                         />
                       </div>
+                      {fieldErrors.tradingName && (
+                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                          {fieldErrors.tradingName}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -518,11 +634,27 @@ export default function LoginPage() {
                             type="text"
                             placeholder="SW1A 1AA"
                             value={registerPostcode}
-                            onChange={(e) => setRegisterPostcode(e.target.value)}
-                            className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                            onChange={(e) => {
+                              setRegisterPostcode(e.target.value);
+                              if (fieldErrors.postcode) {
+                                setFieldErrors(prev => {
+                                  const newErrors = { ...prev };
+                                  delete newErrors.postcode;
+                                  return newErrors;
+                                });
+                              }
+                            }}
+                            className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                              fieldErrors.postcode ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                            }`}
                             required
                           />
                         </div>
+                        {fieldErrors.postcode && (
+                          <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                            {fieldErrors.postcode}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -536,11 +668,27 @@ export default function LoginPage() {
                             type="text"
                             placeholder="London"
                             value={registerTownCity}
-                            onChange={(e) => setRegisterTownCity(e.target.value)}
-                            className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                            onChange={(e) => {
+                              setRegisterTownCity(e.target.value);
+                              if (fieldErrors.townCity) {
+                                setFieldErrors(prev => {
+                                  const newErrors = { ...prev };
+                                  delete newErrors.townCity;
+                                  return newErrors;
+                                });
+                              }
+                            }}
+                            className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                              fieldErrors.townCity ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                            }`}
                             required
                           />
                         </div>
+                        {fieldErrors.townCity && (
+                          <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                            {fieldErrors.townCity}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -555,11 +703,27 @@ export default function LoginPage() {
                           type="text"
                           placeholder="SW1A 1AA"
                           value={registerPostcode}
-                          onChange={(e) => setRegisterPostcode(e.target.value)}
-                          className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                          onChange={(e) => {
+                            setRegisterPostcode(e.target.value);
+                            if (fieldErrors.postcode) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.postcode;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                            fieldErrors.postcode ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                          }`}
                           required
                         />
                       </div>
+                      {fieldErrors.postcode && (
+                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                          {fieldErrors.postcode}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -576,11 +740,27 @@ export default function LoginPage() {
                           type="text"
                           placeholder="123 High Street"
                           value={registerAddress}
-                          onChange={(e) => setRegisterAddress(e.target.value)}
-                          className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                          onChange={(e) => {
+                            setRegisterAddress(e.target.value);
+                            if (fieldErrors.address) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.address;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                            fieldErrors.address ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                          }`}
                           required
                         />
                       </div>
+                      {fieldErrors.address && (
+                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                          {fieldErrors.address}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -590,8 +770,22 @@ export default function LoginPage() {
                       <Label htmlFor="register-travel-distance" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         How long are you willing to travel for work? *
                       </Label>
-                      <Select value={registerTravelDistance} onValueChange={setRegisterTravelDistance}>
-                        <SelectTrigger className="h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]">
+                      <Select 
+                        value={registerTravelDistance} 
+                        onValueChange={(value) => {
+                          setRegisterTravelDistance(value);
+                          if (fieldErrors.travelDistance) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.travelDistance;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={`h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          fieldErrors.travelDistance ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                        }`}>
                           <SelectValue placeholder="Select distance" />
                         </SelectTrigger>
                         <SelectContent>
@@ -605,6 +799,11 @@ export default function LoginPage() {
                           <SelectItem value="morethan50miles">More than 50 miles</SelectItem>
                         </SelectContent>
                       </Select>
+                      {fieldErrors.travelDistance && (
+                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                          {fieldErrors.travelDistance}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -620,11 +819,27 @@ export default function LoginPage() {
                         type="tel"
                         placeholder="+44 7123 456789"
                         value={registerPhone}
-                        onChange={(e) => setRegisterPhone(e.target.value)}
-                        className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                        onChange={(e) => {
+                          setRegisterPhone(e.target.value);
+                          if (fieldErrors.phone) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.phone;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          fieldErrors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                        }`}
                         required
                       />
                     </div>
+                    {fieldErrors.phone && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.phone}
+                      </p>
+                    )}
                   </div>
 
                   {/* Email */}
@@ -639,11 +854,27 @@ export default function LoginPage() {
                         type="email"
                         placeholder="jane@gmail.com"
                         value={registerEmail}
-                        onChange={(e) => setRegisterEmail(e.target.value)}
-                        className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                        onChange={(e) => {
+                          setRegisterEmail(e.target.value);
+                          if (fieldErrors.email) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.email;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          fieldErrors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                        }`}
                         required
                       />
                     </div>
+                    {fieldErrors.email && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.email}
+                      </p>
+                    )}
                   </div>
 
                   {/* Password */}
@@ -658,8 +889,27 @@ export default function LoginPage() {
                         type={showPassword ? "text" : "password"}
                         placeholder="Create a strong password"
                         value={registerPassword}
-                        onChange={(e) => setRegisterPassword(e.target.value)}
-                        className="pl-10 pr-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                        onChange={(e) => {
+                          setRegisterPassword(e.target.value);
+                          if (fieldErrors.password) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.password;
+                              return newErrors;
+                            });
+                          }
+                          // Clear confirmPassword error if passwords match
+                          if (fieldErrors.confirmPassword && e.target.value === registerConfirmPassword) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.confirmPassword;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        className={`pl-10 pr-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          fieldErrors.password ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                        }`}
                         required
                       />
                       <button
@@ -670,6 +920,11 @@ export default function LoginPage() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {fieldErrors.password && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.password}
+                      </p>
+                    )}
                   </div>
 
                   {/* Confirm Password */}
@@ -684,8 +939,19 @@ export default function LoginPage() {
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="Re-enter your password"
                         value={registerConfirmPassword}
-                        onChange={(e) => setRegisterConfirmPassword(e.target.value)}
-                        className="pl-10 pr-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                        onChange={(e) => {
+                          setRegisterConfirmPassword(e.target.value);
+                          if (fieldErrors.confirmPassword) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.confirmPassword;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        className={`pl-10 pr-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          fieldErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                        }`}
                         required
                       />
                       <button
@@ -696,6 +962,11 @@ export default function LoginPage() {
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {fieldErrors.confirmPassword && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.confirmPassword}
+                      </p>
+                    )}
                   </div>
 
                   {/* Referral Code (Optional) */}
@@ -714,26 +985,42 @@ export default function LoginPage() {
                   </div>
 
                   {/* Terms and Conditions */}
-                  <div className="flex items-start space-x-2">
-                    <Checkbox 
-                      id="terms" 
-                      checked={agreeTerms}
-                      onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-                      className="mt-0.5"
-                    />
-                    <Label 
-                      htmlFor="terms" 
-                      className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
-                    >
-                      I agree to the{" "}
-                      <Link to="/terms" className="text-[#3B82F6] hover:text-[#2563EB]">
-                        Terms & Conditions
-                      </Link>
-                      {" "}and{" "}
-                      <Link to="/privacy" className="text-[#3B82F6] hover:text-[#2563EB]">
-                        Privacy Policy
-                      </Link>
-                    </Label>
+                  <div>
+                    <div className="flex items-start space-x-2">
+                      <Checkbox 
+                        id="terms" 
+                        checked={agreeTerms}
+                        onCheckedChange={(checked) => {
+                          setAgreeTerms(checked as boolean);
+                          if (fieldErrors.agreeTerms) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.agreeTerms;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        className="mt-0.5"
+                      />
+                      <Label 
+                        htmlFor="terms" 
+                        className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
+                      >
+                        I agree to the{" "}
+                        <Link to="/terms" className="text-[#3B82F6] hover:text-[#2563EB]">
+                          Terms & Conditions
+                        </Link>
+                        {" "}and{" "}
+                        <Link to="/privacy" className="text-[#3B82F6] hover:text-[#2563EB]">
+                          Privacy Policy
+                        </Link>
+                      </Label>
+                    </div>
+                    {fieldErrors.agreeTerms && (
+                      <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.agreeTerms}
+                      </p>
+                    )}
                   </div>
 
                   <Button

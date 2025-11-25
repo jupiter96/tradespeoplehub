@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner@2.0.3";
 import {
   User,
   Heart,
@@ -1527,6 +1528,7 @@ function DetailsSection() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -1720,8 +1722,11 @@ function DetailsSection() {
     try {
       await updateProfile(payload);
       setIsEditing(false);
+      toast.success("Profile updated successfully!");
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Unable to save changes");
+      const errorMessage = error instanceof Error ? error.message : "Unable to save changes";
+      setSaveError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -1734,11 +1739,39 @@ function DetailsSection() {
     }
 
     setAvatarError(null);
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError("Unsupported file type. Please upload JPG, PNG, GIF, or WEBP image.");
+      event.target.value = "";
+      return;
+    }
+
+    // Validate file size (5MB for Cloudinary)
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("Image size must be less than 5MB");
+      event.target.value = "";
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
     setIsUploadingAvatar(true);
     try {
       await uploadAvatar(file);
+      // Clear preview after successful upload - Cloudinary URL will be in userInfo
+      setTimeout(() => {
+        setAvatarPreview(null);
+      }, 500);
     } catch (error) {
       setAvatarError(error instanceof Error ? error.message : "Unable to upload photo");
+      setAvatarPreview(null);
     } finally {
       setIsUploadingAvatar(false);
       event.target.value = "";
@@ -1746,10 +1779,15 @@ function DetailsSection() {
   };
 
   const handleRemoveAvatar = async () => {
+    if (!userInfo?.avatar) {
+      return;
+    }
+
     setAvatarError(null);
     setIsUploadingAvatar(true);
     try {
       await removeAvatar();
+      setAvatarPreview(null);
     } catch (error) {
       setAvatarError(error instanceof Error ? error.message : "Unable to remove photo");
     } finally {
@@ -1785,13 +1823,17 @@ function DetailsSection() {
           Profile Picture
         </h3>
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-          <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-[#3B82F6]/20 flex-shrink-0">
-            <AvatarImage src={userInfo?.avatar} />
-            <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[24px] sm:text-[28px]">
+          <Avatar className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-[#3B82F6]/20 flex-shrink-0 shadow-lg">
+            <AvatarImage 
+              src={avatarPreview || userInfo?.avatar || undefined} 
+              alt={userInfo?.name || 'User avatar'}
+              className="object-cover"
+            />
+            <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[28px] sm:text-[32px]">
               {userInfo?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col gap-2 w-full sm:w-auto">
+          <div className="flex flex-col gap-3 w-full sm:w-auto">
             <input
               ref={fileInputRef}
               type="file"
@@ -1803,24 +1845,33 @@ function DetailsSection() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadingAvatar}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-70"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-70 transition-colors"
             >
-              {isUploadingAvatar ? "Uploading..." : "Upload New Photo"}
+              {isUploadingAvatar ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin">⏳</span>
+                  Uploading...
+                </span>
+              ) : (
+                "Upload New Photo"
+              )}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isUploadingAvatar || !userInfo?.avatar}
-              onClick={handleRemoveAvatar}
-              className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-60"
-            >
-              Remove Photo
-            </Button>
+            {userInfo?.avatar && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isUploadingAvatar}
+                onClick={handleRemoveAvatar}
+                className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-60 transition-colors"
+              >
+                Remove Photo
+              </Button>
+            )}
             <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#8d8d8d] mt-1 text-center sm:text-left">
-              JPG, PNG or GIF. Max size 2MB
+              JPG, PNG, GIF, or WEBP. Max size 5MB
             </p>
             {avatarError && (
-              <p className="text-[12px] text-red-600 text-center sm:text-left font-['Poppins',sans-serif]">
+              <p className="text-[12px] text-red-600 text-center sm:text-left font-['Poppins',sans-serif] mt-1">
                 {avatarError}
               </p>
             )}
