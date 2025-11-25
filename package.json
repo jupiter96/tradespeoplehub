@@ -9,9 +9,11 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "node --watch server.js",
     "dev:client": "cd client && npm run dev",
+    "build": "npm run build:client",
     "build:client": "cd client && npm run build",
     "postinstall": "cd client && npm install",
-    "start": "npm run build:client && node server.js"
+    "start": "npm run build:client && node server.js",
+    "vercel-build": "npm run build:client"
   },
   "keywords": [],
   "author": "",

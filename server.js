@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -10,6 +9,8 @@ import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 
 // Load environment variables
+// In Vercel, environment variables are automatically available
+// dotenv.config() is safe to call as it won't override existing env vars
 dotenv.config();
 
 const app = express();
@@ -81,6 +82,12 @@ app.use(passport.session());
 let cachedConnection = null;
 
 const connectMongoDB = async () => {
+  // Check if already connected
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  // Return cached connection if exists
   if (cachedConnection) {
     return cachedConnection;
   }
@@ -88,6 +95,8 @@ const connectMongoDB = async () => {
   try {
     const conn = await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
     });
     cachedConnection = conn;
     console.log('✅ MongoDB connected successfully');
@@ -98,7 +107,7 @@ const connectMongoDB = async () => {
   }
 };
 
-// Initialize MongoDB connection
+// Initialize MongoDB connection (non-blocking for serverless)
 if (MONGODB_URI) {
   connectMongoDB().catch((error) => {
     console.error('Failed to connect to MongoDB:', error);
