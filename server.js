@@ -3,31 +3,29 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import passport from './services/passport.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
-import { ensureTestUser } from './utils/ensureTestUser.js';
 
 // Load environment variables
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
-const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
 const MONGODB_URI = process.env.MONGODB_URI;
+
 if (!MONGODB_URI) {
   console.error('❌ Missing MONGODB_URI in your environment (.env)');
-  process.exit(1);
+  // Don't exit in serverless - let Vercel handle it
+  if (process.env.VERCEL !== '1') {
+    process.exit(1);
+  }
 }
+
+// CORS configuration
 const clientOriginEnv =
   process.env.CLIENT_ORIGIN || process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN_WHITELIST;
 const parsedOrigins = clientOriginEnv
@@ -78,44 +76,43 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// MongoDB connection
-mongoose.connect(MONGODB_URI)
-  .then(async () => {
+// MongoDB connection with serverless optimization
+// Cache connection to reuse across function invocations
+let cachedConnection = null;
+
+const connectMongoDB = async () => {
+  if (cachedConnection) {
+    return cachedConnection;
+  }
+
+  try {
+    const conn = await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    cachedConnection = conn;
     console.log('✅ MongoDB connected successfully');
-    try {
-      await ensureTestUser();
-    } catch (seedError) {
-      console.error('⚠️ Failed to seed sample user:', seedError);
-    }
-  })
-  .catch((error) => {
+    return conn;
+  } catch (error) {
     console.error('❌ MongoDB connection error:', error);
+    throw error;
+  }
+};
+
+// Initialize MongoDB connection
+if (MONGODB_URI) {
+  connectMongoDB().catch((error) => {
+    console.error('Failed to connect to MongoDB:', error);
   });
+}
 
 // API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 
-// Serve static files from the React app build directory
-const clientBuildPath = path.join(__dirname, './client/build');
-const uploadsPath = path.join(__dirname, './uploads');
-fs.mkdirSync(uploadsPath, { recursive: true });
-app.use('/uploads', express.static(uploadsPath));
-app.use(express.static(clientBuildPath));
-
-// API catch-all handler: send back React's index.html file for any non-API routes
+// API catch-all handler
 app.get('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📱 Frontend will be served from ${clientBuildPath}`);
-});
-
+// Export for Vercel serverless functions
+export default app;
