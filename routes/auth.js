@@ -50,9 +50,15 @@ const facebookAuthEnabled =
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsRoot = path.resolve(__dirname, '../uploads');
+const isServerless = process.env.VERCEL === '1';
+const uploadsRoot = isServerless ? path.join('/tmp', 'uploads') : path.resolve(__dirname, '../uploads');
 const avatarsDir = path.join(uploadsRoot, 'avatars');
-fs.mkdirSync(avatarsDir, { recursive: true });
+
+try {
+  fs.mkdirSync(avatarsDir, { recursive: true });
+} catch (error) {
+  console.warn('Failed to create uploads directory:', error);
+}
 
 const generateCode = () =>
   Math.floor(10 ** (CODE_LENGTH - 1) + Math.random() * 9 * 10 ** (CODE_LENGTH - 1)).toString();
