@@ -323,7 +323,11 @@ router.post('/register/initiate', async (req, res) => {
 
     setPendingRegistrationSession(req, pendingRegistration.id);
 
-    return res.status(200).json({ message: 'Email verification code sent' });
+    // Include code in response for testing
+    return res.status(200).json({ 
+      message: 'Email verification code sent',
+      emailCode: emailCode
+    });
   } catch (error) {
     console.error('Register initiate error', error);
     return res.status(500).json({ error: 'Failed to start registration' });
@@ -377,7 +381,11 @@ router.post('/register/verify-email', async (req, res) => {
     pendingRegistration.phoneCodeExpiresAt = codeExpiryDate();
     await pendingRegistration.save();
 
-    return res.json({ message: 'Email verified. SMS code sent' });
+    // Include code in response for testing
+    return res.json({ 
+      message: 'Email verified. SMS code sent',
+      phoneCode: smsCode
+    });
   } catch (err) {
     console.error('Email verification error', err);
     return res.status(500).json({ error: 'Failed to verify email' });

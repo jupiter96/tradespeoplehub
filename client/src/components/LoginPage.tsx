@@ -55,6 +55,8 @@ export default function LoginPage() {
   const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationPhone, setVerificationPhone] = useState("");
+  const [emailCodeHint, setEmailCodeHint] = useState<string | null>(null);
+  const [phoneCodeHint, setPhoneCodeHint] = useState<string | null>(null);
   
   // Forgot Password states
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -210,7 +212,9 @@ export default function LoginPage() {
     setVerificationEmail(registerEmail);
     setVerificationPhone(registerPhone);
     try {
-      await initiateRegistration(registerData);
+      const response = await initiateRegistration(registerData);
+      setEmailCodeHint(response?.emailCode || null);
+      setPhoneCodeHint(null);
       setVerificationStep(1);
       setEmailVerificationCode("");
       setPhoneVerificationCode("");
@@ -231,8 +235,11 @@ export default function LoginPage() {
     setRegisterError(null);
     setIsVerifyingEmail(true);
     try {
-      await verifyRegistrationEmail(emailVerificationCode);
+      const response = await verifyRegistrationEmail(emailVerificationCode);
+      setPhoneCodeHint(response?.phoneCode || null);
+      setEmailCodeHint(null);
       setVerificationStep(2);
+      setEmailVerificationCode("");
     } catch (error) {
       setRegisterError(error instanceof Error ? error.message : "Email verification failed");
     } finally {
@@ -1102,6 +1109,11 @@ export default function LoginPage() {
                           maxLength={4}
                           required
                         />
+                        {emailCodeHint && (
+                          <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
+                            Hint: {emailCodeHint}
+                          </p>
+                        )}
                       </div>
                       
                       <Button
@@ -1170,6 +1182,11 @@ export default function LoginPage() {
                           maxLength={4}
                           required
                         />
+                        {phoneCodeHint && (
+                          <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
+                            Hint: {phoneCodeHint}
+                          </p>
+                        )}
                       </div>
                       
                       <Button

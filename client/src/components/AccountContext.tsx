@@ -179,20 +179,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (payload: RegisterPayload) => {
-      await requestJson("/api/auth/register/initiate", {
+      const data = await requestJson("/api/auth/register/initiate", {
         method: "POST",
         body: JSON.stringify(payload),
       });
+      return data;
     },
     [requestJson]
   );
 
   const verifyRegistrationEmail = useCallback(
     async (code: string) => {
-      await requestJson("/api/auth/register/verify-email", {
+      const data = await requestJson("/api/auth/register/verify-email", {
         method: "POST",
         body: JSON.stringify({ code }),
       });
+      return data;
     },
     [requestJson]
   );
