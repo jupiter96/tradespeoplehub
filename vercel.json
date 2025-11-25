@@ -6,12 +6,11 @@
   "framework": null,
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/api/index.js"
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
+      "dest": "/client/build/assets/$1"
     },
     {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|json))",
@@ -19,6 +18,14 @@
         "cache-control": "public, max-age=31536000, immutable"
       },
       "dest": "/client/build/$1"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "/api/index.js"
     },
     {
       "src": "/(.*)",
@@ -34,4 +41,3 @@
     }
   }
 }
-
