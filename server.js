@@ -11,6 +11,7 @@ import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
+import { ensureAdminUser } from './utils/ensureAdminUser.js';
 
 dotenv.config();
 
@@ -126,6 +127,7 @@ const connectMongoDB = async () => {
 const initializeDatabase = async () => {
   await connectMongoDB();
   await ensureTestUser();
+  await ensureAdminUser();
 };
 
 
