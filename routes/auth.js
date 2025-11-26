@@ -93,10 +93,21 @@ const codeExpiryDate = () => new Date(Date.now() + CODE_EXPIRATION_MINUTES * 60 
 const isValidCode = (code) =>
   typeof code === 'string' && code.length === CODE_LENGTH && /^\d+$/.test(code);
 
-const requireAuth = (req, res, next) => {
+const requireAuth = async (req, res, next) => {
   if (!req.session?.userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
+  
+  // Reject admin users - they should only access admin dashboard
+  try {
+    const user = await User.findById(req.session.userId);
+    if (user && user.role === 'admin') {
+      return res.status(403).json({ error: 'Admin users cannot access regular user features' });
+    }
+  } catch (error) {
+    console.error('Error checking user role in requireAuth', error);
+  }
+  
   return next();
 };
 
@@ -173,6 +184,12 @@ const handleSocialCallback = (provider) => (req, res, next) => {
         lastName: result.lastName || '',
       });
       return res.redirect(SOCIAL_ONBOARDING_REDIRECT);
+    }
+
+    // Reject admin users - they must use admin login
+    if (result.role === 'admin') {
+      clearPendingSocialProfile(req);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=admin_not_allowed');
     }
 
     req.logIn(result, (loginErr) => {
@@ -1094,6 +1111,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Reject admin users - they must use admin login
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Admin users must login through admin portal' });
+    }
+
     if (!user.passwordHash) {
       return res.status(400).json({ error: 'Password login is not enabled for this account' });
     }
@@ -1144,6 +1166,11 @@ router.get('/me', async (req, res) => {
 
     if (!user) {
       req.session.destroy(() => {});
+      return res.json({ user: null });
+    }
+
+    // Return null for admin users - they should use /api/admin/me
+    if (user.role === 'admin') {
       return res.json({ user: null });
     }
 

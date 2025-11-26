@@ -45,14 +45,14 @@ export default function HomePage() {
           {/* Desktop Video Container - Original design preserved */}
           <div className="hidden md:block relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
             <div style={{ position: 'relative', width: '100%', height: 0, paddingBottom: '56.250%' }}>
-              <iframe
+            <iframe
                 allow="fullscreen;autoplay"
                 allowFullScreen
                 height="100%"
                 src="https://streamable.com/e/n5bibx?autoplay=1&muted=1&nocontrols=1"
                 width="100%"
-                style={{
-                  border: 'none',
+              style={{
+                border: 'none',
                   width: '100%',
                   height: '100%',
                   position: 'absolute',
@@ -60,16 +60,16 @@ export default function HomePage() {
                   top: 0,
                   overflow: 'hidden'
                 }}
-              />
-              
-              {/* Dark overlay */}
-              <div 
-                className="absolute inset-0 z-10"
-                style={{
-                  background: 'linear-gradient(90deg, rgba(0,30,60,0.75) 0%, rgba(0,40,80,0.65) 50%, rgba(0,50,100,0.5) 100%)',
-                }}
-              />
+            />
             
+            {/* Dark overlay */}
+            <div 
+              className="absolute inset-0 z-10"
+              style={{
+                background: 'linear-gradient(90deg, rgba(0,30,60,0.75) 0%, rgba(0,40,80,0.65) 50%, rgba(0,50,100,0.5) 100%)',
+              }}
+            />
+          
               <div className="absolute inset-0 z-40 px-6 md:px-12 lg:px-20 xl:px-24 w-full h-full flex flex-col justify-start pt-[3%] md:pt-[2%] lg:pt-[3%] xl:pt-[4%]">
               <div className="max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] 2xl:max-w-[1200px] mx-auto w-full flex flex-col items-center">
                 {/* Modern Badge */}
@@ -134,10 +134,10 @@ export default function HomePage() {
                         </button>
                       ))}
                     </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             </div>
           </div>
 

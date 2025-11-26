@@ -16,6 +16,8 @@ import AllCategoriesPage from "./components/AllCategoriesPage";
 import SectorPage from "./components/SectorPage";
 import DisputeDiscussionPage from "./components/DisputeDiscussionPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
+import AdminLoginPage from "./components/AdminLoginPage";
+import AdminDashboardPage from "./components/AdminDashboardPage";
 import { CartProvider } from "./components/CartContext";
 import { AccountProvider, useAccount } from "./components/AccountContext";
 import { JobsProvider } from "./components/JobsContext";
@@ -50,6 +52,10 @@ function AppContent() {
         <Route path="/disputes/:disputeId" element={<DisputeDiscussionPage />} />
         <Route path="/dispute/:disputeId" element={<DisputeDiscussionPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/admin-login" element={<AdminLoginPage />} />
+        <Route path="/admin" element={<AdminDashboardPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/:section" element={<AdminDashboardPage />} />
         <Route path="/preview_page.html" element={<HomePage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
