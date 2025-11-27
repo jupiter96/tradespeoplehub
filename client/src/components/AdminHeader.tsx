@@ -213,12 +213,12 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             {currentAdmin?.name || "Admin"}
           </span>
 
-          {/* Logout Button */}
+          {/* Logout Button - Hidden on mobile */}
           <Button
             variant="ghost"
             size="icon"
             onClick={handleLogout}
-            className={`hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
+            className={`hidden lg:flex hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
               isDarkMode ? "text-red-300 hover:text-red-200" : "text-red-600 hover:text-red-700"
             }`}
             title="Logout"

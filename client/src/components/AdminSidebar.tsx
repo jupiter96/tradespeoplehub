@@ -45,6 +45,7 @@ import {
   Bell,
   Sun,
   Moon,
+  LogOut,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -455,6 +456,21 @@ export default function AdminSidebar({
   const messageCount = 3;
   const notificationCount = 5;
 
+  // Logout function
+  const handleLogout = async () => {
+    try {
+      const API_BASE_URL = "https://tradespeoplehub.vercel.app";
+      // const API_BASE_URL = "http://localhost:5000";
+      await fetch(`${API_BASE_URL}/api/admin/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      navigate("/admin-login");
+    } catch (error) {
+      navigate("/admin-login");
+    }
+  };
+
   const SidebarPanel = ({ collapsed, isMobile }: { collapsed: boolean; isMobile: boolean }) => (
     <div
       className="flex h-full flex-col"
@@ -520,6 +536,19 @@ export default function AdminSidebar({
               ) : (
                 <Moon className="w-5 h-5" />
               )}
+            </Button>
+
+            {/* Logout Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                isDarkMode ? "text-red-300 hover:text-red-200" : "text-red-600 hover:text-red-700"
+              }`}
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
             </Button>
           </div>
         ) : (

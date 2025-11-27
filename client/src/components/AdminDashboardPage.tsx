@@ -16,6 +16,9 @@ import {
 } from "recharts";
 import AdminGenericPage from "./admin/AdminGenericPage";
 import AdminClientsPage from "./admin/AdminClientsPage";
+import AdminProfessionalsPage from "./admin/AdminProfessionalsPage";
+import AdminAdminsPage from "./admin/AdminAdminsPage";
+import AdminSubAdminsPage from "./admin/AdminSubAdminsPage";
 import AdminDeleteAccountPage from "./admin/AdminDeleteAccountPage";
 import AdminReferralsClientPage from "./admin/AdminReferralsClientPage";
 import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPage";
@@ -149,7 +152,7 @@ export default function AdminDashboardPage() {
                   return (
                     <div
                       key={card.title}
-                      className="group rounded-3xl border-2 border-[#FE8A0F] bg-[#07013d] p-5 
+                      className="group rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-5 
                                  shadow-[0_0_20px_rgba(254,138,15,0.2)]
                                  hover:shadow-[0_0_30px_rgba(254,138,15,0.3)]
                                  transition-all duration-300 transform hover:-translate-y-1"
@@ -159,7 +162,7 @@ export default function AdminDashboardPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.3em] text-slate-900 dark:text-white">
+                          <p className="text-xs uppercase tracking-[0.3em] text-black dark:text-white">
                             {card.title}
                           </p>
                           <p className="mt-3 text-3xl font-semibold text-[#FE8A0F]">
@@ -173,7 +176,7 @@ export default function AdminDashboardPage() {
                       <p className="mt-4 text-xs font-semibold text-[#FE8A0F]">
                         {card.delta}
                       </p>
-                      <p className="mt-1 text-xs text-slate-900 dark:text-white">
+                      <p className="mt-1 text-xs text-black dark:text-white">
                         {card.description}
                       </p>
                     </div>
@@ -182,7 +185,7 @@ export default function AdminDashboardPage() {
               </section>
 
               <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border-2 border-[#FE8A0F] bg-[#07013d] p-6 
+                <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 
                                 shadow-[0_0_20px_rgba(254,138,15,0.2)]
                                 hover:shadow-[0_0_30px_rgba(254,138,15,0.3)]
                                 transition-all duration-300 transform hover:-translate-y-1"
@@ -191,18 +194,18 @@ export default function AdminDashboardPage() {
                      }}>
                   <div className="mb-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-900 dark:text-white">
+                      <p className="text-xs uppercase tracking-[0.3em] text-black dark:text-white">
                         Weekly Activity
                       </p>
                       <h2 className="mt-2 text-lg font-semibold text-[#FE8A0F]">
                         New users per day
                       </h2>
                     </div>
-                    <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">
+                    <span className="rounded-full bg-[#FE8A0F]/20 px-3 py-1 text-xs font-semibold text-[#FE8A0F]">
                       Live
                     </span>
                   </div>
-                  <div className="mt-2 h-64 rounded-2xl bg-[#07013d] p-3">
+                  <div className="mt-2 h-64 rounded-2xl bg-white dark:bg-black p-3">
                     <ResponsiveContainer width="100%" height={256}>
                       <LineChart data={trafficData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
@@ -239,7 +242,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border-2 border-[#FE8A0F] bg-[#07013d] p-6 
+                <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 
                                 shadow-[0_0_20px_rgba(254,138,15,0.2)]
                                 hover:shadow-[0_0_30px_rgba(254,138,15,0.3)]
                                 transition-all duration-300 transform hover:-translate-y-1"
@@ -248,18 +251,18 @@ export default function AdminDashboardPage() {
                      }}>
                   <div className="mb-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-900 dark:text-white">
+                      <p className="text-xs uppercase tracking-[0.3em] text-black dark:text-white">
                         Revenue
                       </p>
                       <h2 className="mt-2 text-lg font-semibold text-[#FE8A0F]">
                         Monthly performance
                       </h2>
                     </div>
-                    <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-100">
+                    <span className="rounded-full bg-[#FE8A0F]/20 px-3 py-1 text-xs font-semibold text-[#FE8A0F]">
                       Demo data
                     </span>
                   </div>
-                  <div className="mt-2 h-64 rounded-2xl bg-[#07013d] p-3">
+                  <div className="mt-2 h-64 rounded-2xl bg-white dark:bg-black p-3">
                     <ResponsiveContainer width="100%" height={256}>
                       <BarChart data={revenueData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
@@ -386,6 +389,12 @@ function SectionRouter({ activeSection }: { activeSection: string }) {
     switch (activeSection) {
       case "clients":
         return <AdminClientsPage />;
+      case "professionals":
+        return <AdminProfessionalsPage />;
+      case "admins":
+        return <AdminAdminsPage />;
+      case "sub-admins":
+        return <AdminSubAdminsPage />;
       case "delete-account":
         return <AdminDeleteAccountPage />;
       case "referrals-client":

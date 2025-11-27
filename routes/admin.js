@@ -159,6 +159,56 @@ router.get('/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Create user
+router.post('/users', requireAdmin, async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, phone, postcode, role, townCity, address, travelDistance, sector, tradingName, referralCode } = req.body || {};
+
+    if (!firstName || !lastName || !email || !password || !phone || !postcode) {
+      return res.status(400).json({ error: 'First name, last name, email, password, phone, and postcode are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    if (role && !['client', 'professional'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be client or professional' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Email already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const userData = {
+      firstName,
+      lastName,
+      email: normalizedEmail,
+      passwordHash,
+      role: role || 'client',
+      phone,
+      postcode,
+      ...(townCity && { townCity }),
+      ...(address && { address }),
+      ...(travelDistance && { travelDistance }),
+      ...(sector && { sector }),
+      ...(tradingName && { tradingName }),
+      ...(referralCode && { referralCode }),
+    };
+
+    const user = await User.create(userData);
+
+    return res.status(201).json({ user: user.toSafeObject() });
+  } catch (error) {
+    console.error('Create user error', error);
+    return res.status(500).json({ error: error.message || 'Failed to create user' });
+  }
+});
+
 // Update user
 router.put('/users/:id', requireAdmin, async (req, res) => {
   try {
@@ -170,9 +220,18 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
       return res.status(403).json({ error: 'Cannot change user to admin role' });
     }
 
-    // Don't allow updating password through this endpoint
-    delete updates.passwordHash;
-    delete updates.password;
+    // If password is provided, hash it
+    if (updates.password) {
+      if (updates.password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+      }
+      updates.passwordHash = await bcrypt.hash(updates.password, 12);
+      delete updates.password;
+    } else {
+      // Don't allow updating password through this endpoint if not provided
+      delete updates.passwordHash;
+      delete updates.password;
+    }
 
     const user = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
     if (!user) {

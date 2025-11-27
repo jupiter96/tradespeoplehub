@@ -3,7 +3,7 @@ import AdminPageLayout from "./AdminPageLayout";
 import AdminUsersTable from "./AdminUsersTable";
 import AdminUserModal from "./AdminUserModal";
 
-export default function AdminClientsPage() {
+export default function AdminAdminsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const tableRef = useRef<{ refresh: () => void }>(null);
@@ -23,7 +23,6 @@ export default function AdminClientsPage() {
   };
 
   const handleSuccess = () => {
-    // Refresh table
     if (tableRef.current) {
       tableRef.current.refresh();
     }
@@ -32,13 +31,13 @@ export default function AdminClientsPage() {
   return (
     <>
       <AdminPageLayout
-        title="Clients"
-        description="Manage client accounts, permissions, and onboarding flows"
+        title="Admins"
+        description="Manage admin accounts and permissions"
       >
         <AdminUsersTable
           ref={tableRef}
-          role="client"
-          title="Clients"
+          role="admin"
+          title="Admins"
           onCreateNew={handleCreateNew}
           onEdit={handleEdit}
           onDelete={handleDelete}
@@ -49,7 +48,7 @@ export default function AdminClientsPage() {
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         user={selectedUser}
-        role="client"
+        role="admin"
         onSuccess={handleSuccess}
       />
     </>

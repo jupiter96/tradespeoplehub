@@ -93,15 +93,10 @@ interface AccountContextType {
   fetchPendingSocialProfile: () => Promise<PendingSocialProfile | null>;
   completeSocialRegistration: (payload: SocialRegistrationPayload) => Promise<UserInfo>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<UserInfo>;
-  requestEmailChangeOTP: (email: string) => Promise<{ message: string; emailCode?: string }>;
-  requestPhoneChangeOTP: (phone: string) => Promise<{ message: string; phoneCode?: string }>;
-  verifyOTP: (code: string, type: 'email' | 'phone') => Promise<{ message: string }>;
   uploadAvatar: (file: File) => Promise<UserInfo>;
   removeAvatar: () => Promise<UserInfo>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<UserInfo>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  deleteAccount: (confirmText: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserInfo: (updates: Partial<UserInfo>) => void;
   refreshUser: () => Promise<UserInfo | null>;
@@ -184,22 +179,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (payload: RegisterPayload) => {
-      const data = await requestJson("/api/auth/register/initiate", {
+      await requestJson("/api/auth/register/initiate", {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      return data;
     },
     [requestJson]
   );
 
   const verifyRegistrationEmail = useCallback(
     async (code: string) => {
-      const data = await requestJson("/api/auth/register/verify-email", {
+      await requestJson("/api/auth/register/verify-email", {
         method: "POST",
         body: JSON.stringify({ code }),
       });
-      return data;
     },
     [requestJson]
   );
@@ -235,39 +228,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     [applyUserSession, requestJson]
   );
 
-  const requestEmailChangeOTP = useCallback(
-    async (email: string) => {
-      const data = await requestJson("/api/auth/profile/verify-email-change", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
-      return data;
-    },
-    [requestJson]
-  );
-
-  const requestPhoneChangeOTP = useCallback(
-    async (phone: string) => {
-      const data = await requestJson("/api/auth/profile/verify-phone-change", {
-        method: "POST",
-        body: JSON.stringify({ phone }),
-      });
-      return data;
-    },
-    [requestJson]
-  );
-
-  const verifyOTP = useCallback(
-    async (code: string, type: 'email' | 'phone') => {
-      const data = await requestJson("/api/auth/profile/verify-otp", {
-        method: "POST",
-        body: JSON.stringify({ code, type }),
-      });
-      return data;
-    },
-    [requestJson]
-  );
-
   const updateProfile = useCallback(
     async (payload: ProfileUpdatePayload) => {
       const data = await requestJson("/api/auth/profile", {
@@ -297,7 +257,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || "Unable to upload avatar");
       }
 
-      // Cloudinary returns full URL, no need to format
       applyUserSession(data.user);
       return data.user;
     },
@@ -338,27 +297,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
       applyUserSession(null);
       return data;
-    },
-    [applyUserSession, requestJson]
-  );
-
-  const changePassword = useCallback(
-    async (currentPassword: string, newPassword: string) => {
-      await requestJson("/api/auth/profile/password", {
-        method: "PUT",
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-    },
-    [requestJson]
-  );
-
-  const deleteAccount = useCallback(
-    async (confirmText: string) => {
-      await requestJson("/api/auth/profile", {
-        method: "DELETE",
-        body: JSON.stringify({ confirmText }),
-      });
-      applyUserSession(null);
     },
     [applyUserSession, requestJson]
   );
@@ -422,8 +360,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         removeAvatar,
         requestPasswordReset,
         resetPassword,
-        changePassword,
-        deleteAccount,
         logout,
         updateUserInfo,
         refreshUser,
