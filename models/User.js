@@ -153,6 +153,25 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Admin notes field
+    adminNotes: {
+      type: String,
+      trim: true,
+    },
+    // Public profile fields
+    publicProfile: {
+      bio: String,
+      portfolio: [{
+        image: String,
+        title: String,
+        description: String,
+      }],
+      publicProfileUrl: String, // Unique URL slug for public profile
+      isPublic: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   {
     timestamps: true,

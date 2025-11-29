@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
-import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff } from "lucide-react";
+import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -21,9 +21,16 @@ import { Badge } from "../ui/badge";
 import AdminVerificationModal from "./AdminVerificationModal";
 import { useMessenger } from "../MessengerContext";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = "https://tradespeoplehub.vercel.app";
-// const API_BASE_URL = "http://localhost:5000";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
+import { Label } from "../ui/label";
+import API_BASE_URL from "../../config/api";
 
 interface User {
   id: string;
@@ -39,6 +46,7 @@ interface User {
   avatar?: string;
   isBlocked?: boolean;
   blockReviewInvitation?: boolean;
+  adminNotes?: string;
   [key: string]: any;
 }
 
@@ -66,6 +74,8 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const navigate = useNavigate();
   const { startConversation } = useMessenger();
   const [selectedUserForVerification, setSelectedUserForVerification] = useState<User | null>(null);
+  const [selectedUserForNote, setSelectedUserForNote] = useState<User | null>(null);
+  const [noteText, setNoteText] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -255,6 +265,56 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     } catch (error) {
       console.error("Error blocking review invitation:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update review invitation block status");
+    }
+  };
+
+  const handleViewNote = async (user: User) => {
+    try {
+      // Fetch user data to get current note
+      const response = await fetch(`${API_BASE_URL}/api/admin/users/${user.id}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+
+      const data = await response.json();
+      setNoteText(data.user.adminNotes || "");
+      setSelectedUserForNote(user);
+    } catch (error) {
+      console.error("Error fetching user note:", error);
+      toast.error("Failed to fetch user note");
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!selectedUserForNote) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/users/${selectedUserForNote.id}/note`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminNotes: noteText,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save note");
+      }
+
+      toast.success("Note saved successfully");
+      setSelectedUserForNote(null);
+      setNoteText("");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error saving note:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save note");
     }
   };
 
@@ -461,6 +521,34 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               View Verification
                             </DropdownMenuItem>
                           )}
+                          {role === "client" && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleSendMessage(user)}
+                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                              >
+                                <MessageCircle className="h-4 w-4 mr-2" />
+                                Send Message
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleBlock(user)}
+                                className={(user.isBlocked || false)
+                                  ? "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
+                                  : "text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 cursor-pointer"
+                                }
+                              >
+                                <Ban className="h-4 w-4 mr-2" />
+                                {(user.isBlocked || false) ? "Unblock" : "Block"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleViewNote(user)}
+                                className="text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 cursor-pointer"
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                View Note
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           {role === "professional" && (
                             <>
                               <DropdownMenuItem
@@ -526,6 +614,54 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             userName={selectedUserForVerification.name || `${selectedUserForVerification.firstName} ${selectedUserForVerification.lastName}`.trim()}
           />
         )}
+
+        {/* Note Modal */}
+        <Dialog open={!!selectedUserForNote} onOpenChange={(open) => {
+          if (!open) {
+            setSelectedUserForNote(null);
+            setNoteText("");
+          }
+        }}>
+          <DialogContent className="bg-white dark:bg-black border-[#FE8A0F]">
+            <DialogHeader>
+              <DialogTitle className="text-[#FE8A0F]">
+                {selectedUserForNote ? `Note for ${selectedUserForNote.name || `${selectedUserForNote.firstName} ${selectedUserForNote.lastName}`.trim()}` : "User Note"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="note" className="text-black dark:text-white">
+                  Admin Notes
+                </Label>
+                <Textarea
+                  id="note"
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Add notes about this user..."
+                  className="mt-2 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[200px]"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedUserForNote(null);
+                  setNoteText("");
+                }}
+                className="border-[#FE8A0F] text-black dark:text-white hover:bg-[#FE8A0F]/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveNote}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+              >
+                Save Note
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Pagination */}
         {totalPages > 1 && (

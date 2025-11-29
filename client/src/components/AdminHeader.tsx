@@ -4,9 +4,7 @@ import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon } from "lucide-react";
 import logoImage from "figma:asset/71632be70905a17fd389a8d053249645c4e8a4df.png";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-
-// const API_BASE_URL = "http://localhost:5000";
-const API_BASE_URL = "https://tradespeoplehub.vercel.app";
+import API_BASE_URL from "../config/api";
 
 interface Admin {
   id: string;

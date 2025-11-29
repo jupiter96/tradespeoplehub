@@ -32,8 +32,7 @@ import { useAccount } from "./AccountContext";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { Textarea } from "./ui/textarea";
 
-// const API_BASE_URL = "http://localhost:5000";
-const API_BASE_URL = "https://tradespeoplehub.vercel.app";
+import API_BASE_URL from "../config/api";
 export default function LoginPage() {
   const navigate = useNavigate();
   const {

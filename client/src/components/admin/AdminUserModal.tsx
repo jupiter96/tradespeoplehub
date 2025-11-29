@@ -18,8 +18,7 @@ import {
 import { toast } from "sonner";
 import AddressAutocomplete from "../AddressAutocomplete";
 
-const API_BASE_URL = "https://tradespeoplehub.vercel.app";
-// const API_BASE_URL = "http://localhost:5000";
+import API_BASE_URL from "../../config/api";
 
 interface User {
   id?: string;

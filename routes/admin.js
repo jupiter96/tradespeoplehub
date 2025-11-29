@@ -558,5 +558,29 @@ router.put('/users/:id/block-review-invitation', requireAdmin, async (req, res) 
   }
 });
 
+// Update user note (Admin only)
+router.put('/users/:id/note', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNotes } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.adminNotes = adminNotes || undefined;
+    await user.save();
+
+    return res.json({ 
+      user: sanitizeUser(user),
+      message: 'Note updated successfully'
+    });
+  } catch (error) {
+    console.error('Update note error', error);
+    return res.status(500).json({ error: 'Failed to update note' });
+  }
+});
+
 export default router;
 

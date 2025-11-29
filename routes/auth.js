@@ -989,6 +989,25 @@ router.put('/profile', requireAuth, async (req, res) => {
       if (['yes', 'no'].includes(hasPublicLiability)) {
         user.hasPublicLiability = hasPublicLiability;
       }
+
+      // Update public profile if provided
+      if (req.body.publicProfile) {
+        if (!user.publicProfile) {
+          user.publicProfile = {};
+        }
+        if (req.body.publicProfile.bio !== undefined) {
+          user.publicProfile.bio = req.body.publicProfile.bio?.trim() || undefined;
+        }
+        if (req.body.publicProfile.portfolio !== undefined) {
+          user.publicProfile.portfolio = req.body.publicProfile.portfolio || [];
+        }
+        if (req.body.publicProfile.publicProfileUrl !== undefined) {
+          user.publicProfile.publicProfileUrl = req.body.publicProfile.publicProfileUrl?.trim() || undefined;
+        }
+        if (req.body.publicProfile.isPublic !== undefined) {
+          user.publicProfile.isPublic = req.body.publicProfile.isPublic;
+        }
+      }
     } else {
       user.tradingName = undefined;
       user.travelDistance = undefined;
@@ -1519,6 +1538,83 @@ router.get('/me', async (req, res) => {
   } catch (error) {
     console.error('Session lookup error', error);
     return res.status(500).json({ error: 'Failed to fetch user session' });
+  }
+});
+
+// Get public profile by ID or publicProfileUrl
+router.get('/profile/:identifier', async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    
+    // Try to find by publicProfileUrl first, then by _id
+    let user = await User.findOne({
+      $or: [
+        { 'publicProfile.publicProfileUrl': identifier },
+        { _id: identifier }
+      ],
+      role: 'professional',
+      isBlocked: { $ne: true },
+      $or: [
+        { 'publicProfile.isPublic': { $ne: false } },
+        { 'publicProfile.isPublic': { $exists: false } }
+      ]
+    });
+
+    // If not found by publicProfileUrl or _id, try MongoDB ObjectId
+    if (!user) {
+      try {
+        const mongoose = require('mongoose');
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+          user = await User.findOne({
+            _id: identifier,
+            role: 'professional',
+            isBlocked: { $ne: true },
+            $or: [
+              { 'publicProfile.isPublic': { $ne: false } },
+              { 'publicProfile.isPublic': { $exists: false } }
+            ]
+          });
+        }
+      } catch (err) {
+        // Invalid ObjectId, continue
+      }
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // Check if profile is explicitly set to private
+    if (user.publicProfile?.isPublic === false) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // Return sanitized public profile data
+    const profileData = {
+      id: user._id.toString(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      tradingName: user.tradingName,
+      avatar: user.avatar,
+      sector: user.sector,
+      services: user.services || [],
+      aboutService: user.aboutService,
+      hasTradeQualification: user.hasTradeQualification,
+      hasPublicLiability: user.hasPublicLiability,
+      townCity: user.townCity,
+      postcode: user.postcode,
+      address: user.address,
+      travelDistance: user.travelDistance,
+      publicProfile: user.publicProfile || {},
+      verification: user.verification || {},
+      createdAt: user.createdAt,
+    };
+
+    return res.json({ profile: profileData });
+  } catch (error) {
+    console.error('Get public profile error', error);
+    return res.status(500).json({ error: 'Failed to get profile' });
   }
 });
 

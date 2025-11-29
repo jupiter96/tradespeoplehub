@@ -72,6 +72,7 @@ import AddServiceSection from "./AddServiceSection";
 import CreatePackageModal from "./CreatePackageModal";
 import PromoCodeSection from "./PromoCodeSection";
 import FavouriteSection from "./FavouriteSection";
+import ProfileSection from "./ProfileSection";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -165,6 +166,7 @@ export default function AccountPage() {
   // Menu items for Professional
   const professionalMenu = [
     { id: "overview", label: "Overview", icon: User },
+    { id: "profile", label: "Profile", icon: User },
     { id: "services", label: "Services", icon: Briefcase },
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "my-jobs", label: "My Jobs", icon: FileText },
@@ -204,7 +206,15 @@ export default function AccountPage() {
           <div className="hidden lg:block lg:col-span-3">
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden sticky top-24">
               {/* User Profile */}
-              <div className="p-6 bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] text-white">
+              <div 
+                className={`p-6 bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] text-white ${userRole === "professional" ? "cursor-pointer hover:from-[#4a8ddb] hover:to-[#3a6ab0] transition-all" : ""}`}
+                onClick={() => {
+                  if (userRole === "professional") {
+                    setActiveSection("profile");
+                    setIsSidebarOpen(false);
+                  }
+                }}
+              >
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16 border-4 border-white/20">
                     <AvatarImage src={userInfo?.avatar} />
@@ -285,6 +295,7 @@ export default function AccountPage() {
           <div className="lg:col-span-9">
             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
               {activeSection === "overview" && <OverviewSection userRole={userRole} />}
+              {activeSection === "profile" && userRole === "professional" && <ProfileSection />}
               {activeSection === "services" && <ServicesSection />}
               {/* Favourites (Client only) */}
               {activeSection === "favourites" && userRole === "client" && <FavouriteSection />}

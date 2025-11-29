@@ -1,9 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
-
-// const API_BASE_URL = "http://localhost:5000";
-const API_BASE_URL = "https://tradespeoplehub.vercel.app";
-const resolveApiUrl = (path: string) =>
-  path.startsWith("http://") || path.startsWith("https://") ? path : `${API_BASE_URL}${path}`;
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
+import API_BASE_URL, { resolveApiUrl } from "../config/api";
 
 type UserRole = "client" | "professional" | null;
 
@@ -31,6 +27,17 @@ interface UserInfo {
   aboutService?: string;
   hasTradeQualification?: string;
   hasPublicLiability?: string;
+  publicProfile?: {
+    bio?: string;
+    portfolio?: Array<{
+      id?: string;
+      image: string;
+      title: string;
+      description: string;
+    }>;
+    publicProfileUrl?: string;
+    isPublic?: boolean;
+  };
 }
 
 interface LoginPayload {

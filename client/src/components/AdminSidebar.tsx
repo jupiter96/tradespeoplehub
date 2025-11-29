@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import API_BASE_URL from "../config/api";
 import {
   Users,
   UserRound,
@@ -459,8 +460,6 @@ export default function AdminSidebar({
   // Logout function
   const handleLogout = async () => {
     try {
-      const API_BASE_URL = "https://tradespeoplehub.vercel.app";
-      // const API_BASE_URL = "http://localhost:5000";
 
       await fetch(`${API_BASE_URL}/api/admin/logout`, {
         method: "POST",

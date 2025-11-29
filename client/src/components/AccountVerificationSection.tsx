@@ -32,7 +32,7 @@ import {
 } from "./ui/dialog";
 import { toast } from "sonner@2.0.3";
 
-const API_BASE_URL = "http://localhost:5000";
+import API_BASE_URL from "../config/api";
 
 interface VerificationItem {
   id: string;

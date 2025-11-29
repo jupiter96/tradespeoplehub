@@ -5,9 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
-
-// const API_BASE_URL = "http://localhost:5000";
-const API_BASE_URL = "https://tradespeoplehub.vercel.app";
+import API_BASE_URL from "../config/api";
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
