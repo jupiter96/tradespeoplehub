@@ -161,6 +161,10 @@ router.get('/users', requireAdmin, async (req, res) => {
       delete userObj.passwordHash;
       userObj.id = userObj._id.toString();
       userObj.name = `${userObj.firstName} ${userObj.lastName}`.trim();
+      // Ensure isBlocked and related fields are included
+      userObj.isBlocked = user.isBlocked || false;
+      userObj.blockReviewInvitation = user.blockReviewInvitation || false;
+      userObj.viewedByAdmin = user.viewedByAdmin || false;
       return userObj;
     });
 
@@ -870,6 +874,29 @@ router.put('/users/:id/block-review-invitation', requireAdmin, async (req, res) 
   } catch (error) {
     console.error('Block review invitation error', error);
     return res.status(500).json({ error: 'Failed to update review invitation block status' });
+  }
+});
+
+// Mark user as viewed by admin (Admin only)
+router.put('/users/:id/viewed', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.viewedByAdmin = true;
+    await user.save();
+
+    return res.json({ 
+      user: sanitizeUser(user),
+      message: 'User marked as viewed'
+    });
+  } catch (error) {
+    console.error('Mark user as viewed error', error);
+    return res.status(500).json({ error: 'Failed to mark user as viewed' });
   }
 });
 

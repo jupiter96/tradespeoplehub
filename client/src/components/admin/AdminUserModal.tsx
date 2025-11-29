@@ -111,11 +111,35 @@ export default function AdminUserModal({
     setLoading(true);
 
     try {
-      // Validation
+      // Validation based on role
       if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.postcode) {
         toast.error("Please fill in all required fields");
         setLoading(false);
         return;
+      }
+
+      // Professional-specific required fields
+      if (formData.role === "professional") {
+        if (!formData.tradingName?.trim()) {
+          toast.error("Trading name is required for professionals");
+          setLoading(false);
+          return;
+        }
+        if (!formData.townCity?.trim()) {
+          toast.error("Town/City is required for professionals");
+          setLoading(false);
+          return;
+        }
+        if (!formData.address?.trim()) {
+          toast.error("Address is required for professionals");
+          setLoading(false);
+          return;
+        }
+        if (!formData.travelDistance?.trim()) {
+          toast.error("Travel distance is required for professionals");
+          setLoading(false);
+          return;
+        }
       }
 
       if (!isEditMode && !formData.password) {
@@ -137,13 +161,19 @@ export default function AdminUserModal({
         phone: formData.phone.trim(),
         postcode: formData.postcode.trim(),
         role: formData.role,
-        ...(formData.townCity && { townCity: formData.townCity.trim() }),
-        ...(formData.address && { address: formData.address.trim() }),
-        ...(formData.travelDistance && { travelDistance: formData.travelDistance.trim() }),
-        ...(formData.sector && { sector: formData.sector.trim() }),
-        ...(formData.tradingName && { tradingName: formData.tradingName.trim() }),
         ...(formData.referralCode && { referralCode: formData.referralCode.trim() }),
       };
+
+      // Add professional-specific fields only if role is professional
+      if (formData.role === "professional") {
+        payload.tradingName = formData.tradingName.trim();
+        payload.townCity = formData.townCity.trim();
+        payload.address = formData.address.trim();
+        payload.travelDistance = formData.travelDistance.trim();
+        if (formData.sector) {
+          payload.sector = formData.sector.trim();
+        }
+      }
 
       if (isEditMode) {
         // Update user
@@ -293,9 +323,9 @@ export default function AdminUserModal({
               <Select
                 value={formData.role}
                 onValueChange={(value) => setFormData({ ...formData, role: value })}
-                disabled={isEditMode && formData.role === "admin"}
+                disabled={isEditMode && formData.role === "admin" || (!isEditMode && role !== undefined)}
               >
-                <SelectTrigger className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white">
+                <SelectTrigger className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-black border-[#FE8A0F]">
@@ -307,6 +337,11 @@ export default function AdminUserModal({
                   </SelectItem>
                 </SelectContent>
               </Select>
+              {!isEditMode && role !== undefined && (
+                <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                  Role is pre-selected based on the page you're creating from
+                </p>
+              )}
             </div>
 
             {/* Address Autocomplete - Postcode, Address, Town/City */}
@@ -328,50 +363,59 @@ export default function AdminUserModal({
                 }}
                 label="Postcode"
                 required
-                showAddressField={true}
-                showTownCityField={true}
+                showAddressField={formData.role === "professional"}
+                showTownCityField={formData.role === "professional"}
               />
             </div>
 
-            {/* Travel Distance */}
-            <div>
-              <Label htmlFor="travelDistance" className="text-black dark:text-white">
-                Travel Distance
-              </Label>
-              <Input
-                id="travelDistance"
-                value={formData.travelDistance}
-                onChange={(e) => setFormData({ ...formData, travelDistance: e.target.value })}
-                placeholder="e.g., 15miles"
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
-              />
-            </div>
+            {/* Professional-only fields */}
+            {formData.role === "professional" && (
+              <>
+                {/* Trading Name */}
+                <div>
+                  <Label htmlFor="tradingName" className="text-black dark:text-white">
+                    Trading Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="tradingName"
+                    value={formData.tradingName}
+                    onChange={(e) => setFormData({ ...formData, tradingName: e.target.value })}
+                    required
+                    className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                    placeholder="Your business/trading name"
+                  />
+                </div>
 
-            {/* Sector */}
-            <div>
-              <Label htmlFor="sector" className="text-black dark:text-white">
-                Sector
-              </Label>
-              <Input
-                id="sector"
-                value={formData.sector}
-                onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-              />
-            </div>
+                {/* Travel Distance */}
+                <div>
+                  <Label htmlFor="travelDistance" className="text-black dark:text-white">
+                    Travel Distance <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="travelDistance"
+                    value={formData.travelDistance}
+                    onChange={(e) => setFormData({ ...formData, travelDistance: e.target.value })}
+                    required
+                    placeholder="e.g., 15 miles"
+                    className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+                  />
+                </div>
 
-            {/* Trading Name */}
-            <div>
-              <Label htmlFor="tradingName" className="text-black dark:text-white">
-                Trading Name
-              </Label>
-              <Input
-                id="tradingName"
-                value={formData.tradingName}
-                onChange={(e) => setFormData({ ...formData, tradingName: e.target.value })}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-              />
-            </div>
+                {/* Sector */}
+                <div>
+                  <Label htmlFor="sector" className="text-black dark:text-white">
+                    Sector
+                  </Label>
+                  <Input
+                    id="sector"
+                    value={formData.sector}
+                    onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                    className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                    placeholder="e.g., Home & Garden"
+                  />
+                </div>
+              </>
+            )}
 
             {/* Referral Code */}
             <div>

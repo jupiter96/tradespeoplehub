@@ -162,6 +162,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Track if admin has viewed this new user
+    viewedByAdmin: {
+      type: Boolean,
+      default: false,
+    },
     // Public profile fields
     publicProfile: {
       bio: String,

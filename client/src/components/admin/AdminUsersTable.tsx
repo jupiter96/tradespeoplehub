@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
-import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText } from "lucide-react";
+import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -47,6 +47,7 @@ interface User {
   isBlocked?: boolean;
   blockReviewInvitation?: boolean;
   adminNotes?: string;
+  viewedByAdmin?: boolean;
   [key: string]: any;
 }
 
@@ -318,6 +319,33 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     }
   };
 
+  const handleMarkAsViewed = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/viewed`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to mark user as viewed");
+      }
+
+      // Update the user in the local state
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === userId ? { ...user, viewedByAdmin: true } : user
+        )
+      );
+    } catch (error: any) {
+      console.error("Error marking user as viewed:", error);
+      toast.error(error.message || "Failed to mark user as viewed");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -444,6 +472,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   <TableHead className="text-[#FE8A0F] font-semibold">Email</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Phone</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Role</TableHead>
+                  <TableHead className="text-[#FE8A0F] font-semibold">Status</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Location</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Joined</TableHead>
                   {showVerification && role === "professional" && (
@@ -459,7 +488,22 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                     className="border-[#FE8A0F]/30 hover:bg-[#FE8A0F]/5"
                   >
                     <TableCell className="text-black dark:text-white font-medium">
-                      {user.name || `${user.firstName} ${user.lastName}`.trim()}
+                      <div className="flex items-center gap-2">
+                        <span>{user.name || `${user.firstName} ${user.lastName}`.trim()}</span>
+                        {!user.viewedByAdmin && (
+                          <Badge
+                            className="bg-blue-500 hover:bg-blue-600 text-white border-0 flex items-center gap-1 px-2 py-0.5 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsViewed(user.id);
+                            }}
+                            title="Click to mark as viewed"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            New
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-black dark:text-white">
                       {user.email}
@@ -471,6 +515,30 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                       <Badge className="bg-[#FE8A0F] text-white border-[#FE8A0F]">
                         {user.role}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const isBlocked = user.isBlocked || false;
+                        if (isBlocked) {
+                          return (
+                            <Badge 
+                              variant="destructive" 
+                              className="bg-red-500 hover:bg-red-600 text-white border-0 flex items-center gap-1.5 px-2.5 py-1 w-fit"
+                            >
+                              <Ban className="w-3 h-3" />
+                              Blocked
+                            </Badge>
+                          );
+                        }
+                        return (
+                          <Badge 
+                            className="bg-green-500 hover:bg-green-600 text-white border-0 flex items-center gap-1.5 px-2.5 py-1 w-fit"
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            Active
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-black dark:text-white">
                       {user.postcode || user.townCity || "-"}
