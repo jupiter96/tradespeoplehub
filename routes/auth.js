@@ -978,7 +978,19 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (user.role === 'professional') {
       user.tradingName = tradingName?.trim() || undefined;
       user.travelDistance = travelDistance || undefined;
-      user.sector = sector?.trim() || undefined;
+      
+      // Sector can only be set once during registration, cannot be changed afterwards
+      if (sector !== undefined && sector !== null) {
+        if (user.sector && user.sector !== sector.trim()) {
+          return res.status(400).json({ 
+            error: 'Sector cannot be changed after registration. You can only select one sector during registration.' 
+          });
+        }
+        // Only set sector if it doesn't exist yet
+        if (!user.sector) {
+          user.sector = sector.trim() || undefined;
+        }
+      }
       if (Array.isArray(services)) {
         user.services = services.map((service) => service?.toString().trim()).filter(Boolean);
       }
@@ -1011,7 +1023,13 @@ router.put('/profile', requireAuth, async (req, res) => {
     } else {
       user.tradingName = undefined;
       user.travelDistance = undefined;
-      user.sector = undefined;
+      // Prevent clearing sector once it's been set
+      // Sector is permanent after registration
+      if (user.sector) {
+        return res.status(400).json({ 
+          error: 'Sector cannot be removed or changed after registration.' 
+        });
+      }
       user.services = [];
       user.aboutService = undefined;
       user.hasTradeQualification = 'no';

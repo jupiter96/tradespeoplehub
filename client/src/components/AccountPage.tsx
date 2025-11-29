@@ -1836,7 +1836,8 @@ function DetailsSection() {
     if (userRole === "professional") {
       payload.tradingName = formData.tradingName.trim() || undefined;
       payload.travelDistance = formData.travelDistance || undefined;
-      payload.sector = formData.sector || undefined;
+      // Sector cannot be changed after registration - don't include it in the update
+      // payload.sector = formData.sector || undefined; // Removed - sector is permanent
       // Combine category and subcategories into services array
       const allServices = formData.category 
         ? [formData.category, ...formData.subcategories]
@@ -2292,23 +2293,14 @@ function DetailsSection() {
               
               <div className="mb-5">
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-                  Sector
+                  Sector <span className="text-xs text-gray-500 font-normal">(Cannot be changed after registration)</span>
                 </Label>
-                <Select 
-                  value={formData.sector} 
-                  onValueChange={(value) => setFormData({...formData, sector: value, category: "", subcategories: []})}
-                >
-                  <SelectTrigger className="h-11 border-2 border-[#3B82F6] focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(sectors).map((sector) => (
-                      <SelectItem key={sector} value={sector}>
-                        {sector}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="h-11 border-2 border-gray-300 rounded-xl font-['Poppins',sans-serif] text-[14px] px-3 flex items-center bg-gray-50 text-gray-700">
+                  {formData.sector || "Not selected"}
+                </div>
+                <p className="mt-1 text-xs text-gray-500 font-['Poppins',sans-serif]">
+                  Your sector was selected during registration and cannot be modified.
+                </p>
               </div>
 
               {/* Category Selection */}

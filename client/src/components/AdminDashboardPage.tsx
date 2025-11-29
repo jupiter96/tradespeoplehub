@@ -44,7 +44,6 @@ import AdminReferralsClientPage from "./admin/AdminReferralsProfessionalPage";
 import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
-import { useEffect } from "react";
 
 export default function AdminDashboardPage() {
   const location = useLocation();

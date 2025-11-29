@@ -49,7 +49,7 @@ export default function HomePage() {
                 allow="fullscreen;autoplay"
                 allowFullScreen
                 height="100%"
-                src="https://streamable.com/e/n5bibx?autoplay=1&muted=1&nocontrols=1"
+                src="https://streamable.com/e/udoifu?autoplay=1&muted=1&nocontrols=1"
                 width="100%"
               style={{
                 border: 'none',

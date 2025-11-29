@@ -96,6 +96,26 @@ export default function ProfessionalRegistrationSteps() {
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Initialize form data from userInfo if available
+  useEffect(() => {
+    if (userInfo?.sector) {
+      setSector(userInfo.sector);
+    }
+    if (userInfo?.services && userInfo.services.length > 0) {
+      const firstService = userInfo.services[0];
+      const isCategory = CATEGORIES.includes(firstService);
+      if (isCategory) {
+        setCategory(firstService);
+        setSubcategories(userInfo.services.slice(1));
+      } else {
+        setSubcategories(userInfo.services);
+      }
+    }
+    if (userInfo?.hasPublicLiability !== undefined) {
+      setInsurance(userInfo.hasPublicLiability === true || userInfo.hasPublicLiability === "yes" ? "yes" : "no");
+    }
+  }, [userInfo]);
+
   // Redirect if not logged in or not professional
   useEffect(() => {
     if (!isLoggedIn) {
@@ -147,7 +167,10 @@ export default function ProfessionalRegistrationSteps() {
           postcode: userInfo?.postcode || "",
         };
 
-        if (currentStep >= 1) updateData.sector = sector;
+        // Only update sector if it doesn't already exist
+        if (currentStep >= 1 && !userInfo?.sector) {
+          updateData.sector = sector;
+        }
         if (currentStep >= 2) {
           const allServices = category ? [category, ...subcategories] : subcategories;
           updateData.services = allServices;
@@ -181,16 +204,22 @@ export default function ProfessionalRegistrationSteps() {
     try {
       const allServices = category ? [category, ...subcategories] : subcategories;
       
-      await updateProfile({
+      const updateData: any = {
         firstName: userInfo?.firstName || "",
         lastName: userInfo?.lastName || "",
         email: userInfo?.email || "",
         phone: userInfo?.phone || "",
         postcode: userInfo?.postcode || "",
-        sector: sector,
         services: allServices,
         hasPublicLiability: insurance,
-      });
+      };
+
+      // Only update sector if it doesn't already exist
+      if (!userInfo?.sector) {
+        updateData.sector = sector;
+      }
+      
+      await updateProfile(updateData);
 
       toast.success("Profile setup completed!");
       navigate("/account");
@@ -307,30 +336,51 @@ export default function ProfessionalRegistrationSteps() {
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
                     Select Your Sector <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={sector} onValueChange={(value) => {
-                    setSector(value);
-                    if (errors.sector) {
-                      setErrors(prev => {
-                        const newErrors = { ...prev };
-                        delete newErrors.sector;
-                        return newErrors;
-                      });
-                    }
-                  }}>
-                    <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl">
-                      <SelectValue placeholder="Choose your main sector" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SECTORS.map((sec) => (
-                        <SelectItem key={sec} value={sec}>
-                          {sec}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {userInfo?.sector ? (
+                    // If sector already exists, show it as read-only
+                    <div className="space-y-2">
+                      <div className="h-12 border-2 border-gray-300 rounded-xl px-4 flex items-center bg-gray-50 text-gray-700 font-['Poppins',sans-serif]">
+                        {userInfo.sector}
+                      </div>
+                      <p className="text-xs text-gray-500 font-['Poppins',sans-serif]">
+                        Your sector was selected during registration and cannot be changed. You can only select one sector, but you can choose multiple categories within that sector.
+                      </p>
+                    </div>
+                  ) : (
+                    // If no sector exists, allow selection
+                    <Select 
+                      value={sector} 
+                      onValueChange={(value) => {
+                        setSector(value);
+                        if (errors.sector) {
+                          setErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.sector;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl">
+                        <SelectValue placeholder="Choose your main sector (you can only select one)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SECTORS.map((sec) => (
+                          <SelectItem key={sec} value={sec}>
+                            {sec}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   {errors.sector && (
                     <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
                       {errors.sector}
+                    </p>
+                  )}
+                  {!userInfo?.sector && (
+                    <p className="mt-2 text-xs text-gray-500 font-['Poppins',sans-serif]">
+                      Note: You can only select one sector. Once selected, it cannot be changed. However, you can select multiple categories within your chosen sector.
                     </p>
                   )}
                 </div>
