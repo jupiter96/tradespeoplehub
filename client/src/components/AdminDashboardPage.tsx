@@ -38,17 +38,19 @@ import {
 import AdminGenericPage from "./admin/AdminGenericPage";
 import AdminClientsPage from "./admin/AdminClientsPage";
 import AdminProfessionalsPage from "./admin/AdminProfessionalsPage";
-import AdminAdminsPage from "./admin/AdminAdminsPage";
 import AdminSubAdminsPage from "./admin/AdminSubAdminsPage";
 import AdminDeleteAccountPage from "./admin/AdminDeleteAccountPage";
-import AdminReferralsClientPage from "./admin/AdminReferralsClientPage";
+import AdminReferralsClientPage from "./admin/AdminReferralsProfessionalPage";
 import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPage";
 import API_BASE_URL from "../config/api";
+import { useAdminPermissions } from "../hooks/useAdminPermissions";
+import { useEffect } from "react";
 
 export default function AdminDashboardPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ section?: string }>();
+  const { hasRouteAccess, loading: permissionsLoading } = useAdminPermissions();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -58,6 +60,17 @@ export default function AdminDashboardPage() {
   // Get active section from URL, default to "dashboard"
   // URL section is already in the correct format (clients, professionals, etc.)
   const activeSection = params.section || "dashboard";
+  
+  // Check route access and redirect if unauthorized
+  useEffect(() => {
+    if (!permissionsLoading) {
+      const currentPath = location.pathname;
+      // Dashboard is always accessible
+      if (currentPath !== "/admin/dashboard" && !hasRouteAccess(currentPath)) {
+        navigate("/admin/dashboard", { replace: true });
+      }
+    }
+  }, [location.pathname, hasRouteAccess, permissionsLoading, navigate]);
   
   // Calculate sidebar width based on collapsed state
   const sidebarWidth = sidebarCollapsed ? 96 : 320;
@@ -574,12 +587,26 @@ function StatCard({
 
 // Section Router Component
 function SectionRouter({ activeSection }: { activeSection: string }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { hasRouteAccess, loading: permissionsLoading } = useAdminPermissions();
+  
+  // Check route access and redirect if unauthorized
+  useEffect(() => {
+    if (!permissionsLoading) {
+      const currentPath = location.pathname;
+      // Dashboard is always accessible
+      if (currentPath !== "/admin/dashboard" && !hasRouteAccess(currentPath)) {
+        navigate("/admin/dashboard", { replace: true });
+      }
+    }
+  }, [location.pathname, hasRouteAccess, permissionsLoading, navigate]);
+  
   // Get section label from URL
   const getSectionLabel = (section: string): string => {
     const labels: Record<string, string> = {
       clients: "Clients",
       professionals: "Professionals",
-      admins: "Admins",
       "sub-admins": "Sub Admins",
       "delete-account": "Delete Account",
       "category-manage": "Category Manage",
@@ -660,8 +687,6 @@ function SectionRouter({ activeSection }: { activeSection: string }) {
         return <AdminClientsPage />;
       case "professionals":
         return <AdminProfessionalsPage />;
-      case "admins":
-        return <AdminAdminsPage />;
       case "sub-admins":
         return <AdminSubAdminsPage />;
       case "delete-account":

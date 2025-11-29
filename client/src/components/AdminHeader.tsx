@@ -1,9 +1,25 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon } from "lucide-react";
+import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon, Key, ChevronDown } from "lucide-react";
 import logoImage from "figma:asset/71632be70905a17fd389a8d053249645c4e8a4df.png";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { toast } from "sonner";
 import API_BASE_URL from "../config/api";
 
 interface Admin {
@@ -27,6 +43,13 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [messageCount] = useState(3); // Example: message count
   const [notificationCount] = useState(5); // Example: notification count
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Sync with sidebarOpen prop
   useEffect(() => {
@@ -122,6 +145,56 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!passwordData.newPassword || !passwordData.confirmPassword || !passwordData.currentPassword) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const response = await fetch(`${API_BASE_URL}/api/admin/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || "Failed to change password");
+        return;
+      }
+
+      toast.success("Password changed successfully");
+      setShowChangePassword(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      toast.error("Failed to change password");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const handleMenuToggle = () => {
     const newState = !sidebarOpen;
     if (onMenuToggle) {
@@ -202,27 +275,118 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             )}
           </Button>
 
-          {/* Admin Name */}
-          <span
-            className={`font-['Poppins',sans-serif] text-[14px] px-2 transition-colors ${
-              isDarkMode ? "text-white" : "text-gray-600"
-            }`}
-          >
-            {currentAdmin?.name || "Admin"}
-          </span>
+          {/* Admin Name Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={`font-['Poppins',sans-serif] text-[14px] px-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                  isDarkMode ? "text-white" : "text-gray-600"
+                }`}
+              >
+                {currentAdmin?.name || "Admin"}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+              <DropdownMenuItem
+                onClick={() => setShowChangePassword(true)}
+                className="cursor-pointer text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <Key className="mr-2 h-4 w-4" />
+                Change Password
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          {/* Logout Button - Hidden on mobile */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleLogout}
-            className={`hidden lg:flex hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
-              isDarkMode ? "text-red-300 hover:text-red-200" : "text-red-600 hover:text-red-700"
-            }`}
-            title="Logout"
-          >
-            <LogOut className="w-5 h-5" />
-          </Button>
+          {/* Change Password Dialog */}
+          <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+            <DialogContent className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+              <DialogHeader>
+                <DialogTitle className="text-black dark:text-white">Change Password</DialogTitle>
+                <DialogDescription className="text-gray-600 dark:text-gray-400">
+                  Enter your current password and choose a new password.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="currentPassword" className="text-black dark:text-white">
+                    Current Password
+                  </Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                    }
+                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    placeholder="Enter current password"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newPassword" className="text-black dark:text-white">
+                    New Password
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, newPassword: e.target.value })
+                    }
+                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword" className="text-black dark:text-white">
+                    Confirm New Password
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                    }
+                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowChangePassword(false);
+                      setPasswordData({
+                        currentPassword: "",
+                        newPassword: "",
+                        confirmPassword: "",
+                      });
+                    }}
+                    className="border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={isChangingPassword}
+                    className="bg-[#FE8A0F] hover:bg-[#FE8A0F]/90 text-white"
+                  >
+                    {isChangingPassword ? "Changing..." : "Change Password"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </header>

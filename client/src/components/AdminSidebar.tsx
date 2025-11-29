@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import API_BASE_URL from "../config/api";
+import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import {
   Users,
   UserRound,
@@ -81,7 +82,6 @@ const menuItems: MenuItem[] = [
     children: [
       { key: "client", label: "Client", icon: UserRound, path: "/admin/clients" },
       { key: "professional", label: "Professional", icon: BriefcaseBusiness, path: "/admin/professionals" },
-      { key: "admin", label: "Admin", icon: ShieldCheck, path: "/admin/admins" },
       { key: "sub-admin", label: "Sub Admin", icon: KeyRound, path: "/admin/sub-admins" },
       { key: "delete-account", label: "Delete Account", icon: UserX, path: "/admin/delete-account" },
     ],
@@ -293,6 +293,7 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isSuperAdmin, hasRouteAccess } = useAdminPermissions();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -571,23 +572,69 @@ export default function AdminSidebar({
         className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sidebar-scroll" 
         style={{ minHeight: 0 }}
       >
-        {menuItems.map((menu) => {
-          const Icon = menu.icon;
-          const isExpanded = expandedMenus.has(menu.key);
-          const isMainActive = activeMenuKey === menu.key && activeChildKey === null;
-          const hasActiveChild = activeMenuKey === menu.key && activeChildKey !== null;
+        {menuItems
+          .filter((menu) => {
+            // Dashboard is always accessible
+            if (menu.key === "dashboard") return true;
+            
+            // Sub Admin menu is only for super admin
+            if (menu.key === "user-manage") {
+              // Filter children - sub-admin is only for super admin
+              const filteredChildren = menu.children.filter((child) => {
+                if (child.key === "sub-admin") {
+                  return isSuperAdmin;
+                }
+                // Check route access for other children
+                return hasRouteAccess(child.path);
+              });
+              
+              // Only show menu if it has accessible children
+              return filteredChildren.length > 0;
+            }
+            
+            // Check if main menu path is accessible
+            if (menu.path && !hasRouteAccess(menu.path)) {
+              return false;
+            }
+            
+            // For menus with children, check if any child is accessible
+            if (menu.children.length > 0) {
+              return menu.children.some((child) => hasRouteAccess(child.path));
+            }
+            
+            return true;
+          })
+          .map((menu) => {
+            // Filter children based on permissions
+            const accessibleChildren = menu.children.filter((child) => {
+              if (child.key === "sub-admin") {
+                return isSuperAdmin;
+              }
+              return hasRouteAccess(child.path);
+            });
+            
+            // Use filtered children for rendering
+            const menuToRender = {
+              ...menu,
+              children: accessibleChildren,
+            };
+            
+            const Icon = menuToRender.icon;
+            const isExpanded = expandedMenus.has(menuToRender.key);
+            const isMainActive = activeMenuKey === menuToRender.key && activeChildKey === null;
+            const hasActiveChild = activeMenuKey === menuToRender.key && activeChildKey !== null;
 
           return (
-            <div key={menu.key} className="mb-4">
+            <div key={menuToRender.key} className="mb-4">
               {/* Main Menu Item */}
               <div
                 role="button"
                 tabIndex={0}
-                onClick={(e) => handleMainMenuClick(menu, e)}
+                onClick={(e) => handleMainMenuClick(menuToRender, e)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    handleMainMenuClick(menu);
+                    handleMainMenuClick(menuToRender);
                   }
                 }}
                 className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-3.5 transition-all duration-200 ${
@@ -612,16 +659,16 @@ export default function AdminSidebar({
                         isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
                       }`}
                     >
-                      {menu.label}
+                      {menuToRender.label}
                     </span>
                   )}
                 </div>
-                {(!collapsed || isMobile) && menu.children.length > 0 && (
+                {(!collapsed || isMobile) && menuToRender.children.length > 0 && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleMenu(menu.key);
+                      toggleMenu(menuToRender.key);
                     }}
                     className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
                     title={isExpanded ? "Collapse submenu" : "Expand submenu"}
@@ -636,7 +683,7 @@ export default function AdminSidebar({
               </div>
 
               {/* Submenu Items */}
-              {isExpanded && menu.children.length > 0 && (
+              {isExpanded && menuToRender.children.length > 0 && (
                 <div
                   className={`${
                     collapsed && !isMobile
@@ -644,7 +691,7 @@ export default function AdminSidebar({
                       : "mt-2 space-y-2 pl-4"
                   }`}
                 >
-                  {menu.children.map((child) => {
+                  {menuToRender.children.map((child) => {
                     const ChildIcon = child.icon;
                     const isChildActive = activeChildKey === child.key;
 

@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema(
       enum: ['client', 'professional', 'admin'],
       required: true,
     },
+    permissions: {
+      type: [String],
+      default: [],
+    },
     phone: {
       type: String,
       required: true,
@@ -183,6 +187,10 @@ userSchema.methods.toSafeObject = function toSafeObject() {
   delete userObject.passwordHash;
   userObject.id = userObject._id.toString();
   userObject.name = `${userObject.firstName} ${userObject.lastName}`.trim();
+  // Include permissions for admin users
+  if (userObject.role === 'admin' && this.permissions) {
+    userObject.permissions = this.permissions;
+  }
   return userObject;
 };
 

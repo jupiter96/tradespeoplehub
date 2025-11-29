@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import AdminPageLayout from "./AdminPageLayout";
 import AdminUsersTable from "./AdminUsersTable";
-import AdminUserModal from "./AdminUserModal";
+import AdminSubAdminModal from "./AdminSubAdminModal";
 
 export default function AdminSubAdminsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,11 +44,10 @@ export default function AdminSubAdminsPage() {
         />
       </AdminPageLayout>
 
-      <AdminUserModal
+      <AdminSubAdminModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        user={selectedUser}
-        role="admin"
+        subAdmin={selectedUser}
         onSuccess={handleSuccess}
       />
     </>

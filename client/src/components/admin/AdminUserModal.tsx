@@ -305,11 +305,6 @@ export default function AdminUserModal({
                   <SelectItem value="professional" className="text-black dark:text-white hover:bg-[#FE8A0F]/10">
                     Professional
                   </SelectItem>
-                  {role === "admin" && (
-                    <SelectItem value="admin" className="text-black dark:text-white hover:bg-[#FE8A0F]/10">
-                      Admin
-                    </SelectItem>
-                  )}
                 </SelectContent>
               </Select>
             </div>

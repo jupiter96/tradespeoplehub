@@ -30,6 +30,32 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
+// Permission check middleware for sub-admins
+const requirePermission = (permission) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.adminUser) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      // Super admin (no permissions array or empty) has access to everything
+      if (!req.adminUser.permissions || req.adminUser.permissions.length === 0) {
+        return next();
+      }
+
+      // Check if user has the required permission
+      if (!req.adminUser.permissions.includes(permission)) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Permission check error', error);
+      return res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+};
+
 // Admin login
 router.post('/login', async (req, res) => {
   try {
@@ -96,6 +122,17 @@ router.get('/users', requireAdmin, async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const role = req.query.role; // 'client', 'professional', or undefined for all
     const search = req.query.search; // Search by name or email
+
+    // Check permissions for sub-admins
+    const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
+    if (!isSuperAdmin) {
+      if (role === 'client' && !req.adminUser.permissions.includes('homeowners-management')) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+      if (role === 'professional' && !req.adminUser.permissions.includes('tradesmen-management')) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+    }
 
     const query = {};
     if (role) {
@@ -258,10 +295,17 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
-    const user = await User.findByIdAndDelete(userId);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Prevent deleting admin users (super admin cannot be deleted)
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Admin users cannot be deleted' });
+    }
+
+    await User.findByIdAndDelete(userId);
 
     return res.json({ message: 'User deleted successfully' });
   } catch (error) {
@@ -470,9 +514,54 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
   }
 });
 
-// Get all admin users
+// Change admin password
+router.put('/change-password', requireAdmin, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const admin = await User.findById(req.session.userId);
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password
+    admin.passwordHash = newPasswordHash;
+    await admin.save();
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error', error);
+    return res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Get all admin users (sub-admins)
 router.get('/admins', requireAdmin, async (req, res) => {
   try {
+    // Only super admin can view sub-admins
+    const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can view sub-admins' });
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const search = req.query.search;
@@ -518,17 +607,27 @@ router.get('/admins', requireAdmin, async (req, res) => {
   }
 });
 
-// Create admin user
+// Create admin user (sub-admin)
 router.post('/admins', requireAdmin, async (req, res) => {
   try {
-    const { firstName, lastName, email, password, phone, postcode } = req.body || {};
+    // Only super admin can create sub-admins
+    const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can create sub-admins' });
+    }
 
-    if (!firstName || !lastName || !email || !password || !phone || !postcode) {
-      return res.status(400).json({ error: 'All fields are required' });
+    const { firstName, lastName, email, password, permissions } = req.body || {};
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    if (!permissions || !Array.isArray(permissions) || permissions.length === 0) {
+      return res.status(400).json({ error: 'At least one permission is required' });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -545,12 +644,9 @@ router.post('/admins', requireAdmin, async (req, res) => {
       email: normalizedEmail,
       passwordHash,
       role: 'admin',
-      phone,
-      postcode,
-      referralCode: `ADMIN-${Date.now()}`,
-      townCity: 'London',
-      address: 'Admin Address',
-      travelDistance: '0miles',
+      permissions: permissions || [],
+      phone: '',
+      postcode: '',
     });
 
     return res.status(201).json({ admin: admin.toSafeObject() });
@@ -560,9 +656,15 @@ router.post('/admins', requireAdmin, async (req, res) => {
   }
 });
 
-// Update admin user
+// Update admin user (sub-admin)
 router.put('/admins/:id', requireAdmin, async (req, res) => {
   try {
+    // Only super admin can update sub-admins
+    const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can update sub-admins' });
+    }
+
     const adminId = req.params.id;
     const updates = req.body || {};
 
@@ -579,6 +681,13 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
       delete updates.password;
     }
 
+    // Validate permissions if provided
+    if (updates.permissions !== undefined) {
+      if (!Array.isArray(updates.permissions) || updates.permissions.length === 0) {
+        return res.status(400).json({ error: 'At least one permission is required' });
+      }
+    }
+
     const admin = await User.findByIdAndUpdate(adminId, updates, { new: true, runValidators: true });
     if (!admin || admin.role !== 'admin') {
       return res.status(404).json({ error: 'Admin not found' });
@@ -591,9 +700,15 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Delete admin user
+// Delete admin user (sub-admin)
 router.delete('/admins/:id', requireAdmin, async (req, res) => {
   try {
+    // Only super admin can delete sub-admins
+    const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can delete sub-admins' });
+    }
+
     const adminId = req.params.id;
 
     // Prevent deleting yourself
