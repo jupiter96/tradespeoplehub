@@ -219,7 +219,20 @@ export default function AccountPage() {
                   <Avatar className="w-16 h-16 border-4 border-white/20">
                     <AvatarImage src={userInfo?.avatar} />
                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[20px]">
-                      {userInfo?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                      {(() => {
+                        if (userInfo?.firstName && userInfo?.lastName) {
+                          return (userInfo.firstName[0] + userInfo.lastName[0]).toUpperCase();
+                        }
+                        const name = userInfo?.name || "";
+                        if (name) {
+                          const parts = name.trim().split(/\s+/);
+                          if (parts.length >= 2) {
+                            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                          }
+                          return parts[0][0]?.toUpperCase() || "U";
+                        }
+                        return "U";
+                      })()}
                     </AvatarFallback>
                   </Avatar>
                   <div>

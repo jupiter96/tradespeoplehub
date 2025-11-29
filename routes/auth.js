@@ -1175,6 +1175,58 @@ router.delete('/profile', requireAuth, async (req, res) => {
   }
 });
 
+// Upload portfolio image
+router.post('/profile/portfolio/upload', requireAuth, multer({ storage: multer.memoryStorage() }).single('portfolioImage'), async (req, res) => {
+  try {
+    // Check if Cloudinary is configured
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ 
+        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+      });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid file type. Only PNG, JPG, GIF, and WEBP are allowed.' });
+    }
+
+    // Validate file size (5MB)
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'File size must be less than 5MB' });
+    }
+
+    // Upload to Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: `portfolio/${user._id}`,
+          resource_type: 'image',
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(req.file.buffer);
+    });
+
+    return res.json({ imageUrl: uploadResult.secure_url });
+  } catch (error) {
+    console.error('Portfolio image upload error', error);
+    return res.status(500).json({ error: 'Failed to upload portfolio image' });
+  }
+});
+
 router.delete('/profile/avatar', requireAuth, async (req, res) => {
   try {
     // Check if Cloudinary is configured

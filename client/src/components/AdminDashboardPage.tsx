@@ -1,6 +1,27 @@
 import React, { useMemo, useState, useEffect, Suspense } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Users, UserCheck, BriefcaseBusiness, Wallet } from "lucide-react";
+import { 
+  Users, 
+  UserCheck, 
+  BriefcaseBusiness, 
+  Wallet,
+  FileText,
+  Link2,
+  Trash2,
+  ShoppingCart,
+  MessageCircle,
+  Banknote,
+  Gavel,
+  Server,
+  Package,
+  Mail,
+  UserPlus,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Image as ImageIcon,
+} from "lucide-react";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
 import {
@@ -22,6 +43,7 @@ import AdminSubAdminsPage from "./admin/AdminSubAdminsPage";
 import AdminDeleteAccountPage from "./admin/AdminDeleteAccountPage";
 import AdminReferralsClientPage from "./admin/AdminReferralsClientPage";
 import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPage";
+import API_BASE_URL from "../config/api";
 
 export default function AdminDashboardPage() {
   const location = useLocation();
@@ -30,6 +52,8 @@ export default function AdminDashboardPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [statistics, setStatistics] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
   
   // Get active section from URL, default to "dashboard"
   // URL section is already in the correct format (clients, professionals, etc.)
@@ -64,6 +88,30 @@ export default function AdminDashboardPage() {
       navigate("/admin/dashboard", { replace: true });
     }
   }, [location.pathname, navigate]);
+
+  // Fetch dashboard statistics
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        setLoadingStats(true);
+        const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/statistics`, {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setStatistics(data.statistics);
+        }
+      } catch (error) {
+        console.error("Error fetching statistics:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    if (activeSection === "dashboard") {
+      fetchStatistics();
+    }
+  }, [activeSection]);
 
   const cards = useMemo(
     () => [
@@ -146,43 +194,204 @@ export default function AdminDashboardPage() {
 
           {activeSection === "dashboard" ? (
             <div className="space-y-8">
-              <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                {cards.map((card) => {
-                  const Icon = card.icon;
-                  return (
-                    <div
-                      key={card.title}
-                      className="group rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-5 
-                                 shadow-[0_0_20px_rgba(254,138,15,0.2)]
-                                 hover:shadow-[0_0_30px_rgba(254,138,15,0.3)]
-                                 transition-all duration-300 transform hover:-translate-y-1"
-                      style={{
-                        boxShadow: '0 0 20px rgba(254, 138, 15, 0.2), inset 0 0 10px rgba(254, 138, 15, 0.05)',
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.3em] text-black dark:text-white">
-                            {card.title}
-                          </p>
-                          <p className="mt-3 text-3xl font-semibold text-[#FE8A0F]">
-                            {card.value}
-                          </p>
-                        </div>
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FE8A0F] to-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                      </div>
-                      <p className="mt-4 text-xs font-semibold text-[#FE8A0F]">
-                        {card.delta}
-                      </p>
-                      <p className="mt-1 text-xs text-black dark:text-white">
-                        {card.description}
-                      </p>
-                    </div>
-                  );
-                })}
-              </section>
+              {/* Statistics Cards - 3 Columns */}
+              {loadingStats ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
+                    <p className="text-black dark:text-white">Loading statistics...</p>
+                  </div>
+                </div>
+              ) : (
+                <section className="grid gap-4 md:grid-cols-3">
+                  {/* Column 1 - Orange Cards */}
+                  <div className="space-y-4">
+                    <StatCard
+                      icon={Users}
+                      title="TRADESMEN"
+                      value={statistics?.tradesmen || 0}
+                      color="orange"
+                      dailyChange={statistics?.tradesmenDailyChange}
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={ImageIcon}
+                      title="TOTAL JOB"
+                      value={statistics?.totalJob || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalJobDailyChange}
+                      onClick={() => navigate("/admin/job-manage")}
+                    />
+                    <StatCard
+                      icon={Banknote}
+                      title="TOTAL CATEGORY"
+                      value={statistics?.totalCategory || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalCategoryDailyChange}
+                      onClick={() => navigate("/admin/category-manage")}
+                    />
+                    <StatCard
+                      icon={FileText}
+                      title="ACCOUNT VERIFICATION DOCUMENT"
+                      value={statistics?.accountVerificationDocument || 0}
+                      badge={statistics?.accountVerificationDocumentNew || 0}
+                      color="orange"
+                      dailyChange={statistics?.accountVerificationDocumentDailyChange}
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={Users}
+                      title="TRADESMEN REFERRALS"
+                      value={statistics?.tradesmenReferrals || 0}
+                      color="orange"
+                      dailyChange={statistics?.tradesmenReferralsDailyChange}
+                      onClick={() => navigate("/admin/referrals-professional")}
+                    />
+                    <StatCard
+                      icon={Link2}
+                      title="FLAGGED"
+                      value={statistics?.flagged || 0}
+                      color="orange"
+                      dailyChange={statistics?.flaggedDailyChange}
+                      onClick={() => navigate("/admin/flagged")}
+                    />
+                    <StatCard
+                      icon={FileText}
+                      title="APPROVAL PENDING SERVICE"
+                      value={statistics?.approvalPendingService || 0}
+                      color="orange"
+                      dailyChange={statistics?.approvalPendingServiceDailyChange}
+                      onClick={() => navigate("/admin/approval-pending-service")}
+                    />
+                  </div>
+
+                  {/* Column 2 - Red Cards */}
+                  <div className="space-y-4">
+                    <StatCard
+                      icon={Users}
+                      title="HOMEOWNERS"
+                      value={statistics?.homeowners || 0}
+                      color="red"
+                      dailyChange={statistics?.homeownersDailyChange}
+                      onClick={() => navigate("/admin/clients")}
+                    />
+                    <StatCard
+                      icon={Banknote}
+                      title="TOTAL JOB IN DISPUTE"
+                      value={statistics?.totalJobInDispute || 0}
+                      color="red"
+                      dailyChange={statistics?.totalJobInDisputeDailyChange}
+                      onClick={() => navigate("/admin/dispute-list")}
+                    />
+                    <StatCard
+                      icon={Banknote}
+                      title="PENDING WITHDRAWAL REQUEST"
+                      value={statistics?.pendingWithdrawalRequest || 0}
+                      color="red"
+                      dailyChange={statistics?.pendingWithdrawalRequestDailyChange}
+                      onClick={() => navigate("/admin/withdrawal-request")}
+                    />
+                    <StatCard
+                      icon={Mail}
+                      title="MESSAGE CENTER"
+                      value={statistics?.messageCenter || 0}
+                      badge={statistics?.messageCenterNew || 0}
+                      color="red"
+                      dailyChange={statistics?.messageCenterDailyChange}
+                      onClick={() => navigate("/admin/message-center")}
+                    />
+                    <StatCard
+                      icon={Users}
+                      title="HOMEOWNER REFERRALS"
+                      value={statistics?.homeownerReferrals || 0}
+                      color="red"
+                      dailyChange={statistics?.homeownerReferralsDailyChange}
+                      onClick={() => navigate("/admin/referrals-client")}
+                    />
+                    <StatCard
+                      icon={Trash2}
+                      title="DELETED ACCOUNT"
+                      value={statistics?.deletedAccount || 0}
+                      badge={statistics?.deletedAccountNew || 0}
+                      color="red"
+                      dailyChange={statistics?.deletedAccountDailyChange}
+                      onClick={() => navigate("/admin/delete-account")}
+                    />
+                    <StatCard
+                      icon={ShoppingCart}
+                      title="ORDERS"
+                      value={statistics?.orders || 0}
+                      badge={statistics?.ordersNew || 0}
+                      color="red"
+                      dailyChange={statistics?.ordersDailyChange}
+                      onClick={() => navigate("/admin/service-order")}
+                    />
+                  </div>
+
+                  {/* Column 3 - Green Cards */}
+                  <div className="space-y-4">
+                    <StatCard
+                      icon={Users}
+                      title="SUBADMIN"
+                      value={statistics?.subadmin || 0}
+                      color="green"
+                      dailyChange={statistics?.subadminDailyChange}
+                      onClick={() => navigate("/admin/sub-admins")}
+                    />
+                    <StatCard
+                      icon={Banknote}
+                      title="TOTAL PLANS & PACKAGES"
+                      value={statistics?.totalPlansPackages || 0}
+                      color="green"
+                      dailyChange={statistics?.totalPlansPackagesDailyChange}
+                      onClick={() => navigate("/admin/packages")}
+                    />
+                    <StatCard
+                      icon={Banknote}
+                      title="NEW CONTACT REQUEST"
+                      value={statistics?.newContactRequest || 0}
+                      badge={statistics?.newContactRequestNew || 0}
+                      color="green"
+                      dailyChange={statistics?.newContactRequestDailyChange}
+                      onClick={() => navigate("/admin/contact-requests")}
+                    />
+                    <StatCard
+                      icon={Users}
+                      title="AFFILIATE"
+                      value={statistics?.affiliate || 0}
+                      badge={statistics?.affiliateNew || 0}
+                      color="green"
+                      dailyChange={statistics?.affiliateDailyChange}
+                      onClick={() => navigate("/admin/affiliate")}
+                    />
+                    <StatCard
+                      icon={Gavel}
+                      title="ASK TO STEP IN"
+                      value={statistics?.askToStepIn || 0}
+                      color="green"
+                      dailyChange={statistics?.askToStepInDailyChange}
+                      onClick={() => navigate("/admin/ask-step-in")}
+                    />
+                    <StatCard
+                      icon={Server}
+                      title="SERVICE LISTING"
+                      value={statistics?.serviceListing || 0}
+                      color="green"
+                      dailyChange={statistics?.serviceListingDailyChange}
+                      onClick={() => navigate("/admin/service")}
+                    />
+                    <StatCard
+                      icon={ShoppingCart}
+                      title="CUSTOM ORDERS"
+                      value={statistics?.customOrders || 0}
+                      badge={statistics?.customOrdersNew || 0}
+                      color="green"
+                      dailyChange={statistics?.customOrdersDailyChange}
+                      onClick={() => navigate("/admin/custom-order")}
+                    />
+                  </div>
+                </section>
+              )}
 
               <section className="grid gap-6 lg:grid-cols-2">
                 <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 
@@ -299,6 +508,66 @@ export default function AdminDashboardPage() {
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+// Statistics Card Component
+function StatCard({ 
+  icon: Icon, 
+  title, 
+  value, 
+  badge, 
+  color,
+  onClick,
+  dailyChange
+}: { 
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  value: number;
+  badge?: number;
+  color: "orange" | "red" | "green";
+  onClick?: () => void;
+  dailyChange?: number;
+}) {
+  const colorClasses = {
+    orange: "bg-orange-500 border-orange-500",
+    red: "bg-red-500 border-red-500",
+    green: "bg-green-500 border-green-500",
+  };
+
+  const bgGradient = {
+    orange: "from-orange-50 to-white dark:from-orange-950 dark:to-black",
+    red: "from-red-50 to-white dark:from-red-950 dark:to-black",
+    green: "from-green-50 to-white dark:from-green-950 dark:to-black",
+  };
+
+  return (
+    <div 
+      className={`relative rounded-xl border-2 ${colorClasses[color]} bg-gradient-to-br ${bgGradient[color]} p-4 shadow-md hover:shadow-lg transition-all ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Icon className={`w-5 h-5 ${color === "orange" ? "text-orange-600" : color === "red" ? "text-red-600" : "text-green-600"}`} />
+          <p className="text-xs font-semibold uppercase tracking-wide text-black dark:text-white">
+            {title}
+          </p>
+        </div>
+        {badge !== undefined && badge > 0 && (
+          <div className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+            {badge}
+          </div>
+        )}
+      </div>
+      <p className={`text-2xl font-bold ${color === "orange" ? "text-orange-600" : color === "red" ? "text-red-600" : "text-green-600"}`}>
+        {value.toLocaleString()}
+      </p>
+      {dailyChange !== undefined && dailyChange !== 0 && (
+        <p className={`text-xs mt-1 ${dailyChange > 0 ? "text-green-600" : "text-red-600"}`}>
+          {dailyChange > 0 ? "+" : ""}{dailyChange} today
+        </p>
+      )}
     </div>
   );
 }

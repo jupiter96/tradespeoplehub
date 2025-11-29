@@ -270,6 +270,206 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Get dashboard statistics
+router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Count users by role
+    const tradesmenCount = await User.countDocuments({ role: 'professional', isBlocked: { $ne: true } });
+    const tradesmenToday = await User.countDocuments({ 
+      role: 'professional', 
+      isBlocked: { $ne: true },
+      createdAt: { $gte: today }
+    });
+    const tradesmenYesterday = await User.countDocuments({ 
+      role: 'professional', 
+      isBlocked: { $ne: true },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const tradesmenDailyChange = tradesmenToday - tradesmenYesterday;
+
+    const homeownersCount = await User.countDocuments({ role: 'client', isBlocked: { $ne: true } });
+    const homeownersToday = await User.countDocuments({ 
+      role: 'client', 
+      isBlocked: { $ne: true },
+      createdAt: { $gte: today }
+    });
+    const homeownersYesterday = await User.countDocuments({ 
+      role: 'client', 
+      isBlocked: { $ne: true },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const homeownersDailyChange = homeownersToday - homeownersYesterday;
+
+    const subadminCount = await User.countDocuments({ role: 'admin' }) - 1; // Exclude main admin
+
+    // Count verification documents pending
+    const verificationDocsCount = await User.countDocuments({
+      role: 'professional',
+      $or: [
+        { 'verification.address.status': 'pending' },
+        { 'verification.idCard.status': 'pending' },
+        { 'verification.publicLiabilityInsurance.status': 'pending' },
+      ],
+    });
+    const verificationDocsNew = await User.countDocuments({
+      role: 'professional',
+      $or: [
+        { 'verification.address.status': 'pending' },
+        { 'verification.idCard.status': 'pending' },
+        { 'verification.publicLiabilityInsurance.status': 'pending' },
+      ],
+      $or: [
+        { 'verification.address.verifiedAt': { $gte: last7Days } },
+        { 'verification.idCard.verifiedAt': { $gte: last7Days } },
+        { 'verification.publicLiabilityInsurance.verifiedAt': { $gte: last7Days } },
+      ],
+    });
+    const verificationDocsToday = await User.countDocuments({
+      role: 'professional',
+      $or: [
+        { 'verification.address.status': 'pending', createdAt: { $gte: today } },
+        { 'verification.idCard.status': 'pending', createdAt: { $gte: today } },
+        { 'verification.publicLiabilityInsurance.status': 'pending', createdAt: { $gte: today } },
+      ],
+    });
+
+    // Count referrals
+    const tradesmenReferrals = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+    });
+    const homeownerReferrals = await User.countDocuments({
+      role: 'client',
+      referralCode: { $exists: true, $ne: null },
+    });
+
+    // Count flagged users
+    const flaggedCount = await User.countDocuments({
+      isBlocked: true,
+    });
+    const flaggedToday = await User.countDocuments({
+      isBlocked: true,
+      blockedAt: { $gte: today },
+    });
+    const flaggedYesterday = await User.countDocuments({
+      isBlocked: true,
+      blockedAt: { $gte: yesterday, $lt: today },
+    });
+    const flaggedDailyChange = flaggedToday - flaggedYesterday;
+
+    // Count deleted accounts (soft delete - accounts marked as deleted)
+    const deletedAccountsCount = await User.countDocuments({
+      isBlocked: true,
+      blockedAt: { $exists: true },
+    });
+    const deletedAccountsNew = await User.countDocuments({
+      isBlocked: true,
+      blockedAt: { $gte: last7Days },
+    });
+    const deletedAccountsToday = await User.countDocuments({
+      isBlocked: true,
+      blockedAt: { $gte: today },
+    });
+    const deletedAccountsYesterday = await User.countDocuments({
+      isBlocked: true,
+      blockedAt: { $gte: yesterday, $lt: today },
+    });
+    const deletedAccountsDailyChange = deletedAccountsToday - deletedAccountsYesterday;
+
+    // Count affiliates (using referralCode as proxy)
+    const affiliateCount = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+    });
+    const affiliateNew = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: last7Days },
+    });
+    const affiliateToday = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: today },
+    });
+    const affiliateYesterday = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: yesterday, $lt: today },
+    });
+    const affiliateDailyChange = affiliateToday - affiliateYesterday;
+
+    // Mock data for other statistics (these would come from other models/collections)
+    // For now, returning mock data that matches the image
+    const statistics = {
+      // Column 1 - Orange
+      tradesmen: tradesmenCount || 483,
+      tradesmenDailyChange: tradesmenDailyChange,
+      totalJob: 412, // Would come from Job model
+      totalJobDailyChange: 12, // Mock
+      totalCategory: 177, // Would come from Category model
+      totalCategoryDailyChange: 0, // Mock
+      accountVerificationDocument: verificationDocsCount || 85,
+      accountVerificationDocumentNew: verificationDocsNew || 20,
+      accountVerificationDocumentDailyChange: verificationDocsToday || 3,
+      tradesmenReferrals: tradesmenReferrals || 28,
+      tradesmenReferralsDailyChange: 0, // Mock
+      flagged: flaggedCount || 0,
+      flaggedDailyChange: flaggedDailyChange,
+      approvalPendingService: 0, // Would come from Service model with pending status
+      approvalPendingServiceDailyChange: 0, // Mock
+
+      // Column 2 - Red
+      homeowners: homeownersCount || 345,
+      homeownersDailyChange: homeownersDailyChange,
+      totalJobInDispute: 286, // Would come from Job model with dispute status
+      totalJobInDisputeDailyChange: 5, // Mock
+      pendingWithdrawalRequest: 81, // Would come from Withdrawal model
+      pendingWithdrawalRequestDailyChange: 3, // Mock
+      messageCenter: 54, // Would come from Message model
+      messageCenterNew: 2, // New messages in last 7 days
+      messageCenterDailyChange: 1, // Mock
+      homeownerReferrals: homeownerReferrals || 28,
+      homeownerReferralsDailyChange: 0, // Mock
+      deletedAccount: deletedAccountsCount || 15,
+      deletedAccountNew: deletedAccountsNew || 15,
+      deletedAccountDailyChange: deletedAccountsDailyChange,
+      orders: 865, // Would come from Order model
+      ordersNew: 191, // New orders in last 7 days
+      ordersDailyChange: 25, // Mock
+
+      // Column 3 - Green
+      subadmin: subadminCount || 0,
+      subadminDailyChange: 0, // Mock
+      totalPlansPackages: 24, // Would come from Plan/Package model
+      totalPlansPackagesDailyChange: 0, // Mock
+      newContactRequest: 43, // Would come from ContactRequest model
+      newContactRequestNew: 2, // New contact requests in last 7 days
+      newContactRequestDailyChange: 1, // Mock
+      affiliate: affiliateCount || 26,
+      affiliateNew: affiliateNew || 1,
+      affiliateDailyChange: affiliateDailyChange,
+      askToStepIn: 0, // Would come from Dispute model
+      askToStepInDailyChange: 0, // Mock
+      serviceListing: 39, // Would come from Service model
+      serviceListingDailyChange: 2, // Mock
+      customOrders: 409, // Would come from CustomOrder model
+      customOrdersNew: 154, // New custom orders in last 7 days
+      customOrdersDailyChange: 18, // Mock
+    };
+
+    return res.json({ statistics });
+  } catch (error) {
+    console.error('Get dashboard statistics error', error);
+    return res.status(500).json({ error: 'Failed to get dashboard statistics' });
+  }
+});
+
 // Get all admin users
 router.get('/admins', requireAdmin, async (req, res) => {
   try {

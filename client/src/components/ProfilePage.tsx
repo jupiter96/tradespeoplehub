@@ -24,6 +24,7 @@ import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent } from "./ui/card";
 import { Separator } from "./ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { allServices } from "./servicesData";
 import InviteToQuoteModal from "./InviteToQuoteModal";
@@ -233,13 +234,28 @@ export default function ProfilePage() {
           <div className="flex md:hidden gap-3 items-start">
             {/* First Column: Avatar - 30% */}
             <div className="w-[30%] flex-shrink-0 relative">
-              <ImageWithFallback
-                src={profile.avatar}
-                alt={displayName}
-                className="w-full aspect-square rounded-xl object-cover"
-              />
+              <Avatar className="w-full aspect-square rounded-xl">
+                <AvatarImage 
+                  src={profile.avatar} 
+                  alt={displayName}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[24px] rounded-xl">
+                  {(() => {
+                    const name = displayName || "";
+                    if (name) {
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length >= 2) {
+                        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                      }
+                      return parts[0][0]?.toUpperCase() || "U";
+                    }
+                    return "U";
+                  })()}
+                </AvatarFallback>
+              </Avatar>
               {/* Online Status */}
-              <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 translate-y-1/2"></div>
             </div>
 
             {/* Second Column: Info - 40% */}
@@ -294,13 +310,28 @@ export default function ProfilePage() {
           <div className="hidden md:flex gap-6">
             {/* Profile Image */}
             <div className="flex-shrink-0 relative">
-              <ImageWithFallback
-                src={profile.avatar}
-                alt={displayName}
-                className="w-40 h-40 rounded-2xl object-cover border-4 border-gray-100"
-              />
+              <Avatar className="w-40 h-40 rounded-2xl border-4 border-gray-100">
+                <AvatarImage 
+                  src={profile.avatar} 
+                  alt={displayName}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[48px] rounded-2xl">
+                  {(() => {
+                    const name = displayName || "";
+                    if (name) {
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length >= 2) {
+                        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                      }
+                      return parts[0][0]?.toUpperCase() || "U";
+                    }
+                    return "U";
+                  })()}
+                </AvatarFallback>
+              </Avatar>
               {/* Online Status */}
-              <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 translate-y-1/2"></div>
             </div>
 
             {/* Profile Info */}

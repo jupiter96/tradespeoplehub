@@ -28,10 +28,13 @@ import {
   CheckCircle2,
   ExternalLink,
   Calendar,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Separator } from "./ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import API_BASE_URL from "../config/api";
 
 interface PortfolioItem {
@@ -56,6 +59,10 @@ export default function ProfileSection() {
   });
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
+  const [portfolioImageFile, setPortfolioImageFile] = useState<File | null>(null);
+  const [portfolioImagePreview, setPortfolioImagePreview] = useState<string | null>(null);
+  const [portfolioInputType, setPortfolioInputType] = useState<"file" | "link">("file");
+  const [isUploadingPortfolioImage, setIsUploadingPortfolioImage] = useState(false);
 
   useEffect(() => {
     if (userInfo) {
@@ -96,19 +103,83 @@ export default function ProfileSection() {
     }
   };
 
-  const handleAddPortfolioItem = () => {
-    if (!newPortfolioItem.image || !newPortfolioItem.title) {
-      toast.error("Please fill in image URL and title");
+  const handlePortfolioImageUpload = async (file: File) => {
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Unsupported file type. Please upload JPG, PNG, GIF, or WEBP image.");
+      return null;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return null;
+    }
+
+    setIsUploadingPortfolioImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("portfolioImage", file);
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile/portfolio/upload`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload image");
+      }
+
+      const data = await response.json();
+      return data.imageUrl;
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload image");
+      return null;
+    } finally {
+      setIsUploadingPortfolioImage(false);
+    }
+  };
+
+  const handleAddPortfolioItem = async () => {
+    if (!newPortfolioItem.title) {
+      toast.error("Please fill in the title");
+      return;
+    }
+
+    let imageUrl = newPortfolioItem.image;
+
+    // If file is selected, upload it first
+    if (portfolioInputType === "file" && portfolioImageFile) {
+      const uploadedUrl = await handlePortfolioImageUpload(portfolioImageFile);
+      if (!uploadedUrl) {
+        return; // Error already shown in handlePortfolioImageUpload
+      }
+      imageUrl = uploadedUrl;
+    } else if (portfolioInputType === "link" && !newPortfolioItem.image) {
+      toast.error("Please provide an image URL or upload a file");
+      return;
+    }
+
+    if (!imageUrl) {
+      toast.error("Please provide an image URL or upload a file");
       return;
     }
 
     const newItem: PortfolioItem = {
       id: `portfolio-${Date.now()}`,
-      ...newPortfolioItem,
+      image: imageUrl,
+      title: newPortfolioItem.title,
+      description: newPortfolioItem.description,
     };
 
     setPortfolio([...portfolio, newItem]);
     setNewPortfolioItem({ image: "", title: "", description: "" });
+    setPortfolioImageFile(null);
+    setPortfolioImagePreview(null);
     setIsAddingPortfolio(false);
     toast.success("Portfolio item added");
   };
@@ -125,20 +196,44 @@ export default function ProfileSection() {
       title: item.title,
       description: item.description,
     });
+    setPortfolioImageFile(null);
+    setPortfolioImagePreview(null);
+    setPortfolioInputType(item.image.startsWith("http") ? "link" : "file");
     setIsAddingPortfolio(true);
   };
 
-  const handleUpdatePortfolioItem = () => {
+  const handleUpdatePortfolioItem = async () => {
     if (!editingPortfolioId) return;
+
+    let imageUrl = newPortfolioItem.image;
+
+    // If file is selected, upload it first
+    if (portfolioInputType === "file" && portfolioImageFile) {
+      const uploadedUrl = await handlePortfolioImageUpload(portfolioImageFile);
+      if (!uploadedUrl) {
+        return; // Error already shown in handlePortfolioImageUpload
+      }
+      imageUrl = uploadedUrl;
+    } else if (portfolioInputType === "link" && !newPortfolioItem.image) {
+      toast.error("Please provide an image URL or upload a file");
+      return;
+    }
+
+    if (!imageUrl) {
+      toast.error("Please provide an image URL or upload a file");
+      return;
+    }
 
     setPortfolio(portfolio.map(item =>
       item.id === editingPortfolioId
-        ? { ...item, ...newPortfolioItem }
+        ? { ...item, image: imageUrl, title: newPortfolioItem.title, description: newPortfolioItem.description }
         : item
     ));
 
     setEditingPortfolioId(null);
     setNewPortfolioItem({ image: "", title: "", description: "" });
+    setPortfolioImageFile(null);
+    setPortfolioImagePreview(null);
     setIsAddingPortfolio(false);
     toast.success("Portfolio item updated");
   };
@@ -313,17 +408,122 @@ export default function ProfileSection() {
         {isAddingPortfolio && (
           <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="space-y-4">
+              {/* Image Source Tabs */}
               <div>
-                <Label className="text-black dark:text-white">Image URL</Label>
-                <Input
-                  value={newPortfolioItem.image}
-                  onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, image: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                  className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-                />
+                <Label className="text-black dark:text-white mb-2 block">Image Source</Label>
+                <Tabs value={portfolioInputType} onValueChange={(value) => {
+                  setPortfolioInputType(value as "file" | "link");
+                  setNewPortfolioItem({ ...newPortfolioItem, image: "" });
+                  setPortfolioImageFile(null);
+                  setPortfolioImagePreview(null);
+                }}>
+                  <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
+                    <TabsTrigger 
+                      value="file" 
+                      className="data-[state=active]:bg-[#FE8A0F] data-[state=active]:text-white"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload File
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="link" 
+                      className="data-[state=active]:bg-[#FE8A0F] data-[state=active]:text-white"
+                    >
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      Image URL
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* File Upload Tab */}
+                  <TabsContent value="file" className="mt-4">
+                    <div>
+                      <Label className="text-black dark:text-white">Upload Image</Label>
+                      <div className="mt-1">
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          className="hidden"
+                          id="portfolio-image-upload"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setPortfolioImageFile(file);
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setPortfolioImagePreview(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor="portfolio-image-upload"
+                          className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#FE8A0F] rounded-lg cursor-pointer hover:bg-[#FE8A0F]/5 transition-colors"
+                        >
+                          {portfolioImagePreview ? (
+                            <div className="relative w-full h-full">
+                              <img
+                                src={portfolioImagePreview}
+                                alt="Preview"
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPortfolioImageFile(null);
+                                  setPortfolioImagePreview(null);
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-[#FE8A0F] mb-2" />
+                              <span className="text-sm text-black dark:text-white">
+                                Click to upload image
+                              </span>
+                              <span className="text-xs text-gray-500 mt-1">
+                                PNG, JPG, GIF, WEBP (max 5MB)
+                              </span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Image URL Tab */}
+                  <TabsContent value="link" className="mt-4">
+                    <div>
+                      <Label className="text-black dark:text-white">Image URL</Label>
+                      <Input
+                        value={newPortfolioItem.image}
+                        onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, image: e.target.value })}
+                        placeholder="https://example.com/image.jpg"
+                        className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                      />
+                      {newPortfolioItem.image && (
+                        <div className="mt-2">
+                          <img
+                            src={newPortfolioItem.image}
+                            alt="Preview"
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
+
               <div>
-                <Label className="text-black dark:text-white">Title</Label>
+                <Label className="text-black dark:text-white">Title *</Label>
                 <Input
                   value={newPortfolioItem.title}
                   onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, title: e.target.value })}
@@ -343,9 +543,17 @@ export default function ProfileSection() {
               <div className="flex gap-2">
                 <Button
                   onClick={editingPortfolioId ? handleUpdatePortfolioItem : handleAddPortfolioItem}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                  disabled={isUploadingPortfolioImage}
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white disabled:opacity-50"
                 >
-                  {editingPortfolioId ? "Update" : "Add"} Item
+                  {isUploadingPortfolioImage ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Uploading...
+                    </span>
+                  ) : (
+                    `${editingPortfolioId ? "Update" : "Add"} Item`
+                  )}
                 </Button>
                 <Button
                   variant="outline"
@@ -353,6 +561,8 @@ export default function ProfileSection() {
                     setIsAddingPortfolio(false);
                     setEditingPortfolioId(null);
                     setNewPortfolioItem({ image: "", title: "", description: "" });
+                    setPortfolioImageFile(null);
+                    setPortfolioImagePreview(null);
                   }}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
@@ -448,12 +658,27 @@ export default function ProfileSection() {
             <div className="bg-white dark:bg-black rounded-2xl shadow-sm p-4 md:p-8">
               <div className="flex gap-6">
                 <div className="flex-shrink-0 relative">
-                  <ImageWithFallback
-                    src={userInfo?.avatar}
-                    alt={userInfo?.tradingName || userInfo?.name || "Professional"}
-                    className="w-40 h-40 rounded-2xl object-cover border-4 border-gray-100"
-                  />
-                  <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                  <Avatar className="w-40 h-40 rounded-2xl border-4 border-gray-100">
+                    <AvatarImage 
+                      src={userInfo?.avatar} 
+                      alt={userInfo?.tradingName || userInfo?.name || "Professional"}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[48px] rounded-2xl">
+                      {(() => {
+                        const name = userInfo?.tradingName || userInfo?.name || "";
+                        if (name) {
+                          const parts = name.trim().split(/\s+/);
+                          if (parts.length >= 2) {
+                            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                          }
+                          return parts[0][0]?.toUpperCase() || "U";
+                        }
+                        return "U";
+                      })()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 translate-y-1/2"></div>
                 </div>
                 <div className="flex-1">
                   <h1 className="text-[#003D82] text-[32px] font-['Poppins',sans-serif] mb-2">
