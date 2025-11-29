@@ -16,9 +16,10 @@ import {
   SelectValue,
 } from "../ui/select";
 import { toast } from "sonner";
+import AddressAutocomplete from "../AddressAutocomplete";
 
-// const API_BASE_URL = "https://tradespeoplehub.vercel.app";
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://tradespeoplehub.vercel.app";
+// const API_BASE_URL = "http://localhost:5000";
 
 interface User {
   id?: string;
@@ -314,43 +315,27 @@ export default function AdminUserModal({
               </Select>
             </div>
 
-            {/* Postcode */}
-            <div>
-              <Label htmlFor="postcode" className="text-black dark:text-white">
-                Postcode <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="postcode"
-                value={formData.postcode}
-                onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
+            {/* Address Autocomplete - Postcode, Address, Town/City */}
+            <div className="md:col-span-2">
+              <AddressAutocomplete
+                postcode={formData.postcode}
+                onPostcodeChange={(value) => setFormData({ ...formData, postcode: value })}
+                address={formData.address}
+                onAddressChange={(value) => setFormData({ ...formData, address: value })}
+                townCity={formData.townCity}
+                onTownCityChange={(value) => setFormData({ ...formData, townCity: value })}
+                onAddressSelect={(address) => {
+                  setFormData({
+                    ...formData,
+                    postcode: address.postcode,
+                    address: address.address,
+                    townCity: address.townCity,
+                  });
+                }}
+                label="Postcode"
                 required
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-              />
-            </div>
-
-            {/* Town/City */}
-            <div>
-              <Label htmlFor="townCity" className="text-black dark:text-white">
-                Town/City
-              </Label>
-              <Input
-                id="townCity"
-                value={formData.townCity}
-                onChange={(e) => setFormData({ ...formData, townCity: e.target.value })}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-              />
-            </div>
-
-            {/* Address */}
-            <div>
-              <Label htmlFor="address" className="text-black dark:text-white">
-                Address
-              </Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                showAddressField={true}
+                showTownCityField={true}
               />
             </div>
 

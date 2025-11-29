@@ -12,7 +12,12 @@ import {
   Check,
   MapPin,
   Building2,
-  Home
+  Home,
+  Briefcase,
+  FolderTree,
+  Shield,
+  FileText,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -24,6 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
+import AddressAutocomplete from "./AddressAutocomplete";
+import { Textarea } from "./ui/textarea";
 
 // const API_BASE_URL = "http://localhost:5000";
 const API_BASE_URL = "https://tradespeoplehub.vercel.app";
@@ -36,27 +43,50 @@ export default function LoginPage() {
     completeRegistration,
     requestPasswordReset,
     isLoggedIn,
+    updateProfile,
+    userInfo,
   } = useAccount();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userType, setUserType] = useState<"client" | "professional">("client");
-
-  // Redirect to account page if already logged in
-  useEffect(() => {
-    if (isLoggedIn) {
-      navigate("/account");
-    }
-  }, [isLoggedIn, navigate]);
+  const [isCompletingRegistration, setIsCompletingRegistration] = useState(false);
   
   // Email & Phone Verification states (after registration)
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationStep, setVerificationStep] = useState(1); // 1: email, 2: phone
+
+  // Redirect to account page if already logged in (but not during registration)
+  useEffect(() => {
+    // Don't redirect if user is in the middle of registration process
+    if (isLoggedIn && !showEmailVerification && !isCompletingRegistration) {
+      if (userInfo?.role === "professional" && !userInfo?.sector) {
+        // Professional user without sector should go to registration steps
+        navigate("/professional-registration-steps", { replace: true });
+      } else if (userInfo?.role !== "professional" || userInfo?.sector) {
+        navigate("/account", { replace: true });
+      }
+    }
+  }, [isLoggedIn, navigate, showEmailVerification, userInfo, isCompletingRegistration]);
   const [emailVerificationCode, setEmailVerificationCode] = useState("");
   const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationPhone, setVerificationPhone] = useState("");
   const [emailCodeHint, setEmailCodeHint] = useState<string | null>(null);
   const [phoneCodeHint, setPhoneCodeHint] = useState<string | null>(null);
+
+  // Redirect to account page if already logged in (but not during registration)
+  useEffect(() => {
+    // Don't redirect if user is in the middle of registration process
+    if (isLoggedIn && !showEmailVerification && !isCompletingRegistration) {
+      if (userInfo?.role === "professional" && !userInfo?.sector) {
+        // Professional user without sector should go to registration steps
+        navigate("/professional-registration-steps", { replace: true });
+      } else if (userInfo?.role !== "professional" || userInfo?.sector) {
+        navigate("/account", { replace: true });
+      }
+    }
+  }, [isLoggedIn, navigate, showEmailVerification, userInfo, isCompletingRegistration]);
+  
   
   // Forgot Password states
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -257,26 +287,36 @@ export default function LoginPage() {
     }
     setRegisterError(null);
     setIsRegistering(true);
+    setIsCompletingRegistration(true);
     try {
       const user = await completeRegistration(phoneVerificationCode);
-
+      
+      // Close verification modal first
       setShowEmailVerification(false);
       setVerificationStep(1);
       setEmailVerificationCode("");
       setPhoneVerificationCode("");
 
-      navigate(user.role === "professional" ? "/professional-setup" : "/account");
+      // Navigate immediately based on user role
+      if (user.role === "professional") {
+        // Redirect to professional registration steps page
+        navigate("/professional-registration-steps", { replace: true });
+      } else {
+        // Client: go directly to account
+        navigate("/account", { replace: true });
+      }
     } catch (error) {
       setRegisterError(error instanceof Error ? error.message : "Registration failed");
+      setIsCompletingRegistration(false);
     } finally {
       setIsRegistering(false);
     }
   };
 
   const handleBackFromVerification = () => {
-    if (verificationStep === 2) {
-      // Go back to email verification
-      setVerificationStep(1);
+    if (verificationStep > 1) {
+      // Go back to previous step
+      setVerificationStep(verificationStep - 1);
     } else {
       // Close verification modal
       setShowEmailVerification(false);
@@ -285,6 +325,115 @@ export default function LoginPage() {
       setPhoneVerificationCode("");
       setRegisterError(null);
       setIsRegistering(false);
+      setNewlyRegisteredUser(null);
+      // Reset professional fields
+      setProfessionalSector("");
+      setProfessionalCategory("");
+      setProfessionalSubcategories([]);
+      setProfessionalInsurance("no");
+      setProfessionalAboutMe("");
+    }
+  };
+
+  const handleNextStep = async () => {
+    if (verificationStep === 7) {
+      // Final step: Save all and redirect
+      setIsUpdatingProfile(true);
+      setRegisterError(null);
+      try {
+        // Combine category and subcategories for final save
+        const allServices = professionalCategory 
+          ? [professionalCategory, ...professionalSubcategories]
+          : professionalSubcategories;
+
+        await updateProfile({
+          firstName: newlyRegisteredUser?.firstName || "",
+          lastName: newlyRegisteredUser?.lastName || "",
+          email: newlyRegisteredUser?.email || "",
+          phone: newlyRegisteredUser?.phone || "",
+          postcode: newlyRegisteredUser?.postcode || "",
+          sector: professionalSector,
+          services: allServices,
+          aboutService: professionalAboutMe,
+          hasPublicLiability: professionalInsurance,
+        });
+
+        setShowEmailVerification(false);
+        setVerificationStep(1);
+        navigate("/account");
+      } catch (error) {
+        setRegisterError(error instanceof Error ? error.message : "Failed to save profile");
+      } finally {
+        setIsUpdatingProfile(false);
+      }
+    } else {
+      // Move to next step
+      setVerificationStep(verificationStep + 1);
+    }
+  };
+
+  const handleStepSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate current step
+    let isValid = true;
+    
+    if (verificationStep === 3 && !professionalSector.trim()) {
+      setRegisterError("Please select a sector");
+      isValid = false;
+    } else if (verificationStep === 4 && !professionalCategory.trim()) {
+      setRegisterError("Please select a category");
+      isValid = false;
+    } else if (verificationStep === 5 && professionalSubcategories.length === 0) {
+      setRegisterError("Please select at least one subcategory");
+      isValid = false;
+    } else if (verificationStep === 6 && !professionalInsurance) {
+      setRegisterError("Please select insurance status");
+      isValid = false;
+    } else if (verificationStep === 7 && !professionalAboutMe.trim()) {
+      setRegisterError("Please write about yourself");
+      isValid = false;
+    }
+
+    if (!isValid) return;
+
+    // Save current step data
+    if (verificationStep >= 3 && verificationStep < 7) {
+      setIsUpdatingProfile(true);
+      setRegisterError(null);
+      try {
+        const updateData: any = {
+          firstName: newlyRegisteredUser?.firstName || "",
+          lastName: newlyRegisteredUser?.lastName || "",
+          email: newlyRegisteredUser?.email || "",
+          phone: newlyRegisteredUser?.phone || "",
+          postcode: newlyRegisteredUser?.postcode || "",
+        };
+
+        if (verificationStep >= 3) updateData.sector = professionalSector;
+        if (verificationStep >= 4) {
+          // Save category as first service
+          updateData.services = professionalCategory ? [professionalCategory] : [];
+        }
+        if (verificationStep >= 5) {
+          // Combine category and subcategories
+          const allServices = professionalCategory 
+            ? [professionalCategory, ...professionalSubcategories]
+            : professionalSubcategories;
+          updateData.services = allServices;
+        }
+        if (verificationStep >= 6) updateData.hasPublicLiability = professionalInsurance;
+        if (verificationStep >= 7) updateData.aboutService = professionalAboutMe;
+
+        await updateProfile(updateData);
+        handleNextStep();
+      } catch (error) {
+        setRegisterError(error instanceof Error ? error.message : "Failed to save");
+      } finally {
+        setIsUpdatingProfile(false);
+      }
+    } else {
+      handleNextStep();
     }
   };
 
@@ -639,149 +788,92 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {/* Postcode & Town/City - Professional has 2 columns, Client has 1 */}
-                  {userType === "professional" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="register-postcode" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                          Postcode *
-                        </Label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                          <Input
-                            id="register-postcode"
-                            type="text"
-                            placeholder="SW1A 1AA"
-                            value={registerPostcode}
-                            onChange={(e) => {
-                              setRegisterPostcode(e.target.value);
-                              if (fieldErrors.postcode) {
-                                setFieldErrors(prev => {
-                                  const newErrors = { ...prev };
-                                  delete newErrors.postcode;
-                                  return newErrors;
-                                });
-                              }
-                            }}
-                            className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                              fieldErrors.postcode ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                            }`}
-                            required
-                          />
-                        </div>
-                        {fieldErrors.postcode && (
-                          <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                            {fieldErrors.postcode}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="register-town-city" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                          Town/City *
-                        </Label>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                          <Input
-                            id="register-town-city"
-                            type="text"
-                            placeholder="London"
-                            value={registerTownCity}
-                            onChange={(e) => {
-                              setRegisterTownCity(e.target.value);
-                              if (fieldErrors.townCity) {
-                                setFieldErrors(prev => {
-                                  const newErrors = { ...prev };
-                                  delete newErrors.townCity;
-                                  return newErrors;
-                                });
-                              }
-                            }}
-                            className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                              fieldErrors.townCity ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                            }`}
-                            required
-                          />
-                        </div>
-                        {fieldErrors.townCity && (
-                          <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                            {fieldErrors.townCity}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <Label htmlFor="register-postcode" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                        Postcode *
-                      </Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          id="register-postcode"
-                          type="text"
-                          placeholder="SW1A 1AA"
-                          value={registerPostcode}
-                          onChange={(e) => {
-                            setRegisterPostcode(e.target.value);
-                            if (fieldErrors.postcode) {
-                              setFieldErrors(prev => {
-                                const newErrors = { ...prev };
-                                delete newErrors.postcode;
-                                return newErrors;
-                              });
-                            }
-                          }}
-                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                            fieldErrors.postcode ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                          }`}
-                          required
-                        />
-                      </div>
-                      {fieldErrors.postcode && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                          {fieldErrors.postcode}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Address (Professional only) */}
-                  {userType === "professional" && (
-                    <div>
-                      <Label htmlFor="register-address" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                        Address *
-                      </Label>
-                      <div className="relative">
-                        <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          id="register-address"
-                          type="text"
-                          placeholder="123 High Street"
-                          value={registerAddress}
-                          onChange={(e) => {
-                            setRegisterAddress(e.target.value);
-                            if (fieldErrors.address) {
-                              setFieldErrors(prev => {
-                                const newErrors = { ...prev };
-                                delete newErrors.address;
-                                return newErrors;
-                              });
-                            }
-                          }}
-                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                            fieldErrors.address ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                          }`}
-                          required
-                        />
-                      </div>
-                      {fieldErrors.address && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                          {fieldErrors.address}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {/* Postcode & Address Autocomplete */}
+                  <div className={userType === "professional" ? "md:col-span-2" : ""}>
+                    <AddressAutocomplete
+                      postcode={registerPostcode}
+                      onPostcodeChange={(value) => {
+                        setRegisterPostcode(value);
+                        if (fieldErrors.postcode) {
+                          setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.postcode;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      address={userType === "professional" 
+                        ? `${registerAddress}${registerTownCity ? `, ${registerTownCity}` : ''}`.trim() 
+                        : registerAddress}
+                      onAddressChange={(value) => {
+                        if (userType === "professional") {
+                          // For professional, parse combined address field
+                          // Try to split by last comma (assuming format: "address, town/city")
+                          const lastCommaIndex = value.lastIndexOf(',');
+                          if (lastCommaIndex > 0) {
+                            const addrPart = value.substring(0, lastCommaIndex).trim();
+                            const cityPart = value.substring(lastCommaIndex + 1).trim();
+                            setRegisterAddress(addrPart);
+                            setRegisterTownCity(cityPart);
+                          } else {
+                            setRegisterAddress(value);
+                            setRegisterTownCity("");
+                          }
+                        } else {
+                          setRegisterAddress(value);
+                        }
+                        if (fieldErrors.address || fieldErrors.townCity) {
+                          setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.address;
+                            delete newErrors.townCity;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      townCity={userType === "professional" ? undefined : registerTownCity}
+                      onTownCityChange={userType === "professional" ? undefined : (value) => {
+                        setRegisterTownCity(value);
+                        if (fieldErrors.townCity) {
+                          setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.townCity;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      onAddressSelect={(address) => {
+                        setRegisterPostcode(address.postcode);
+                        setRegisterAddress(address.address);
+                        setRegisterTownCity(address.townCity);
+                        // Clear any related errors
+                        setFieldErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.postcode;
+                          delete newErrors.address;
+                          delete newErrors.townCity;
+                          return newErrors;
+                        });
+                      }}
+                      label="Postcode"
+                      required
+                      showAddressField={userType === "professional"}
+                      showTownCityField={userType !== "professional"}
+                      combinedAddressMode={userType === "professional"}
+                      addressLabel={userType === "professional" ? "Address (Street, Town/City)" : "Address"}
+                      className="font-['Poppins',sans-serif]"
+                    />
+                    {fieldErrors.postcode && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.postcode}
+                      </p>
+                    )}
+                    {(fieldErrors.address || fieldErrors.townCity) && userType === "professional" && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.address || fieldErrors.townCity}
+                      </p>
+                    )}
+                  </div>
 
                   {/* Travel Distance (Professional only) */}
                   {userType === "professional" && (
@@ -1228,6 +1320,344 @@ export default function LoginPage() {
                         </p>
                       </div>
                     </form>
+                  </>
+                )}
+
+                {/* Professional Profile Setup Steps - Removed, now handled by separate page */}
+                {false && userType === "professional" && verificationStep >= 3 && (
+                  <>
+                    {/* Step 3: Sector */}
+                    {verificationStep === 3 && (
+                      <form onSubmit={handleStepSubmit} className="space-y-4">
+                        <div className="text-center mb-5">
+                          <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Briefcase className="w-7 h-7 text-[#FE8A0F]" />
+                          </div>
+                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                            Select Your Sector
+                          </h2>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            Choose the main sector you work in
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            Sector <span className="text-red-500">*</span>
+                          </Label>
+                          <Select value={professionalSector} onValueChange={setProfessionalSector}>
+                            <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl">
+                              <SelectValue placeholder="Select your sector" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Home & Garden">Home & Garden</SelectItem>
+                              <SelectItem value="Plumbing">Plumbing</SelectItem>
+                              <SelectItem value="Electrical">Electrical</SelectItem>
+                              <SelectItem value="Heating & Cooling">Heating & Cooling</SelectItem>
+                              <SelectItem value="Building & Construction">Building & Construction</SelectItem>
+                              <SelectItem value="Painting & Decorating">Painting & Decorating</SelectItem>
+                              <SelectItem value="Carpentry & Joinery">Carpentry & Joinery</SelectItem>
+                              <SelectItem value="Roofing">Roofing</SelectItem>
+                              <SelectItem value="Flooring">Flooring</SelectItem>
+                              <SelectItem value="Landscaping">Landscaping</SelectItem>
+                              <SelectItem value="Cleaning">Cleaning</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {registerError && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                            {registerError}
+                          </p>
+                        )}
+
+                        <Button
+                          type="submit"
+                          disabled={isUpdatingProfile || !professionalSector}
+                          className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                        >
+                          {isUpdatingProfile ? "Saving..." : "Next"}
+                        </Button>
+                      </form>
+                    )}
+
+                    {/* Step 4: Category */}
+                    {verificationStep === 4 && (
+                      <form onSubmit={handleStepSubmit} className="space-y-4">
+                        <div className="text-center mb-5">
+                          <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                            <FolderTree className="w-7 h-7 text-[#FE8A0F]" />
+                          </div>
+                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                            Select Category
+                          </h2>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            Choose your main service category
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            Category <span className="text-red-500">*</span>
+                          </Label>
+                          <Select value={professionalCategory} onValueChange={setProfessionalCategory}>
+                            <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Emergency Repairs">Emergency Repairs</SelectItem>
+                              <SelectItem value="Installation">Installation</SelectItem>
+                              <SelectItem value="Maintenance">Maintenance</SelectItem>
+                              <SelectItem value="Renovation">Renovation</SelectItem>
+                              <SelectItem value="Consultation">Consultation</SelectItem>
+                              <SelectItem value="Inspection">Inspection</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {registerError && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                            {registerError}
+                          </p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleBackFromVerification}
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          >
+                            Back
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={isUpdatingProfile || !professionalCategory}
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                          >
+                            {isUpdatingProfile ? "Saving..." : "Next"}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Step 5: Subcategories */}
+                    {verificationStep === 5 && (
+                      <form onSubmit={handleStepSubmit} className="space-y-4">
+                        <div className="text-center mb-5">
+                          <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                            <FolderTree className="w-7 h-7 text-[#FE8A0F]" />
+                          </div>
+                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                            Select Subcategories
+                          </h2>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            Choose all services you offer (select multiple)
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            Subcategories <span className="text-red-500">*</span>
+                          </Label>
+                          <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-200 rounded-xl p-4">
+                            {[
+                              "Pipe Repair", "Drain Cleaning", "Boiler Installation", "Radiator Repair",
+                              "Wiring", "Fuse Box", "Lighting Installation", "Socket Installation",
+                              "Wall Painting", "Ceiling Painting", "Exterior Painting", "Wallpapering",
+                              "Kitchen Fitting", "Bathroom Fitting", "Flooring Installation", "Tiling",
+                              "Roof Repair", "Gutter Cleaning", "Chimney Repair", "Flat Roofing",
+                              "Garden Design", "Lawn Care", "Tree Surgery", "Fencing",
+                              "Window Cleaning", "Carpet Cleaning", "Deep Cleaning", "End of Tenancy"
+                            ].map((subcat) => (
+                              <label
+                                key={subcat}
+                                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                              >
+                                <Checkbox
+                                  checked={professionalSubcategories.includes(subcat)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setProfessionalSubcategories([...professionalSubcategories, subcat]);
+                                    } else {
+                                      setProfessionalSubcategories(professionalSubcategories.filter(s => s !== subcat));
+                                    }
+                                  }}
+                                />
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  {subcat}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {registerError && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                            {registerError}
+                          </p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleBackFromVerification}
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          >
+                            Back
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={isUpdatingProfile || professionalSubcategories.length === 0}
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                          >
+                            {isUpdatingProfile ? "Saving..." : "Next"}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Step 6: Insurance */}
+                    {verificationStep === 6 && (
+                      <form onSubmit={handleStepSubmit} className="space-y-4">
+                        <div className="text-center mb-5">
+                          <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Shield className="w-7 h-7 text-[#FE8A0F]" />
+                          </div>
+                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                            Public Liability Insurance
+                          </h2>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            Do you have public liability insurance?
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-[#FE8A0F] cursor-pointer transition-colors">
+                            <input
+                              type="radio"
+                              name="insurance"
+                              value="yes"
+                              checked={professionalInsurance === "yes"}
+                              onChange={(e) => setProfessionalInsurance(e.target.value as "yes" | "no")}
+                              className="w-4 h-4 text-[#FE8A0F]"
+                            />
+                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              Yes, I have public liability insurance
+                            </span>
+                          </label>
+                          <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-[#FE8A0F] cursor-pointer transition-colors">
+                            <input
+                              type="radio"
+                              name="insurance"
+                              value="no"
+                              checked={professionalInsurance === "no"}
+                              onChange={(e) => setProfessionalInsurance(e.target.value as "yes" | "no")}
+                              className="w-4 h-4 text-[#FE8A0F]"
+                            />
+                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              No, I don't have insurance yet
+                            </span>
+                          </label>
+                        </div>
+
+                        {registerError && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                            {registerError}
+                          </p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleBackFromVerification}
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          >
+                            Back
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={isUpdatingProfile}
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                          >
+                            {isUpdatingProfile ? "Saving..." : "Next"}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Step 7: About Me */}
+                    {verificationStep === 7 && (
+                      <form onSubmit={handleStepSubmit} className="space-y-4">
+                        <div className="text-center mb-5">
+                          <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                            <FileText className="w-7 h-7 text-[#FE8A0F]" />
+                          </div>
+                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                            Tell Us About Yourself
+                          </h2>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            Describe your experience and what makes you unique
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            About Me <span className="text-red-500">*</span>
+                          </Label>
+                          <Textarea
+                            value={professionalAboutMe}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value.length <= 500) {
+                                setProfessionalAboutMe(value);
+                              }
+                            }}
+                            placeholder="Tell clients about your experience, qualifications, and what you can offer..."
+                            className="min-h-[120px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                            maxLength={500}
+                            required
+                          />
+                          <p className={`mt-1 text-[11px] font-['Poppins',sans-serif] ${
+                            professionalAboutMe.length >= 450 
+                              ? "text-orange-600" 
+                              : professionalAboutMe.length >= 500 
+                              ? "text-red-600" 
+                              : "text-[#6b6b6b]"
+                          }`}>
+                            {professionalAboutMe.length}/500 characters
+                          </p>
+                        </div>
+
+                        {registerError && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                            {registerError}
+                          </p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleBackFromVerification}
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          >
+                            Back
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={isUpdatingProfile || !professionalAboutMe.trim() || professionalAboutMe.length > 500}
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                          >
+                            {isUpdatingProfile ? "Completing..." : "Complete Setup"}
+                          </Button>
+                        </div>
+                      </form>
+                    )}
                   </>
                 )}
               </div>

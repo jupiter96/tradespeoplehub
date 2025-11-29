@@ -41,6 +41,7 @@ export default function AdminProfessionalsPage() {
           onCreateNew={handleCreateNew}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          showVerification={true}
         />
       </AdminPageLayout>
 

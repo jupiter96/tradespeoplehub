@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount } from "./AccountContext";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -32,6 +32,8 @@ import {
 } from "./ui/dialog";
 import { toast } from "sonner@2.0.3";
 
+const API_BASE_URL = "http://localhost:5000";
+
 interface VerificationItem {
   id: string;
   title: string;
@@ -46,10 +48,11 @@ interface VerificationItem {
 }
 
 export default function AccountVerificationSection() {
-  const { userInfo } = useAccount();
+  const { userInfo, refreshUserInfo } = useAccount();
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [loadingVerification, setLoadingVerification] = useState(true);
   
   // Verification code states
   const [verificationStep, setVerificationStep] = useState<"input" | "code">("input");
@@ -57,13 +60,51 @@ export default function AccountVerificationSection() {
   const [sentCode, setSentCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
 
-  const [verificationItems, setVerificationItems] = useState<VerificationItem[]>([
+  const [verificationData, setVerificationData] = useState<any>(null);
+
+  // Map verification type IDs to database field names
+  const verificationTypeMap: Record<string, string> = {
+    "email": "email",
+    "phone": "phone",
+    "address": "address",
+    "payment": "paymentMethod",
+    "id-card": "idCard",
+    "public-liability": "publicLiabilityInsurance",
+  };
+
+  // Fetch verification status from API
+  useEffect(() => {
+    const fetchVerificationStatus = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch verification status");
+        }
+
+        const data = await response.json();
+        setVerificationData(data.verification);
+      } catch (error) {
+        console.error("Error fetching verification status:", error);
+        toast.error("Failed to load verification status");
+      } finally {
+        setLoadingVerification(false);
+      }
+    };
+
+    fetchVerificationStatus();
+  }, []);
+
+  // Build verification items from API data
+  const verificationItems: VerificationItem[] = [
     {
       id: "email",
       title: "Email Address",
       description: "Verify your email address to receive important notifications",
       icon: Mail,
-      status: userInfo?.email ? "verified" : "not-started",
+      status: (verificationData?.email?.status as VerificationItem["status"]) || (userInfo?.email ? "verified" : "not-started"),
       type: "input",
       value: userInfo?.email,
     },
@@ -72,7 +113,7 @@ export default function AccountVerificationSection() {
       title: "Phone Number",
       description: "Add and verify your phone number for account security",
       icon: Phone,
-      status: userInfo?.phone ? "verified" : "not-started",
+      status: (verificationData?.phone?.status as VerificationItem["status"]) || (userInfo?.phone ? "verified" : "not-started"),
       type: "input",
       value: userInfo?.phone,
     },
@@ -81,34 +122,44 @@ export default function AccountVerificationSection() {
       title: "Address Verification",
       description: "Upload a bill statement or bank statement to verify your address",
       icon: MapPin,
-      status: "not-started",
+      status: (verificationData?.address?.status as VerificationItem["status"]) || "not-started",
       type: "upload",
+      documentUrl: verificationData?.address?.documentUrl,
+      documentName: verificationData?.address?.documentName,
+      rejectionReason: verificationData?.address?.rejectionReason,
     },
     {
       id: "payment",
       title: "Payment Method",
       description: "Add a payment method to receive earnings",
       icon: CreditCard,
-      status: "not-started",
+      status: (verificationData?.paymentMethod?.status as VerificationItem["status"]) || "not-started",
       type: "input",
+      value: verificationData?.paymentMethod?.maskedCard,
     },
     {
       id: "id-card",
       title: "ID Verification",
       description: "Upload a government-issued ID card or passport",
       icon: FileText,
-      status: "not-started",
+      status: (verificationData?.idCard?.status as VerificationItem["status"]) || "not-started",
       type: "upload",
+      documentUrl: verificationData?.idCard?.documentUrl,
+      documentName: verificationData?.idCard?.documentName,
+      rejectionReason: verificationData?.idCard?.rejectionReason,
     },
     {
       id: "public-liability",
       title: "Public Liability Insurance",
       description: "Upload proof of public liability insurance coverage",
       icon: Shield,
-      status: userInfo?.hasPublicLiability === "yes" ? "verified" : "not-started",
+      status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || (userInfo?.hasPublicLiability === "yes" ? "pending" : "not-started"),
       type: "upload",
+      documentUrl: verificationData?.publicLiabilityInsurance?.documentUrl,
+      documentName: verificationData?.publicLiabilityInsurance?.documentName,
+      rejectionReason: verificationData?.publicLiabilityInsurance?.rejectionReason,
     },
-  ]);
+  ];
 
   const [formData, setFormData] = useState({
     email: userInfo?.email || "",
@@ -164,9 +215,9 @@ export default function AccountVerificationSection() {
     setIsDialogOpen(true);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !selectedItem) return;
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
@@ -181,41 +232,48 @@ export default function AccountVerificationSection() {
       return;
     }
 
-    // Simulate file upload
+    const verificationType = verificationTypeMap[selectedItem];
+    if (!verificationType) {
+      toast.error("Invalid verification type");
+      return;
+    }
+
     setUploadingFile(true);
-    setTimeout(() => {
-      // Set to pending status
-      setVerificationItems((prev) =>
-        prev.map((item) =>
-          item.id === selectedItem
-            ? {
-                ...item,
-                status: "pending",
-                documentName: file.name,
-                documentUrl: URL.createObjectURL(file),
-              }
-            : item
-        )
-      );
-      setUploadingFile(false);
+    try {
+      const formData = new FormData();
+      formData.append("document", file);
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/verification/${verificationType}/upload`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload document");
+      }
+
+      const data = await response.json();
+      
+      // Refresh verification status
+      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+        credentials: "include",
+      });
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        setVerificationData(statusData.verification);
+      }
+
       toast.success("Document uploaded successfully! Under review...");
       setIsDialogOpen(false);
       setVerificationStep("input");
-      
-      // Auto-verify after 10 seconds
-      setTimeout(() => {
-        setVerificationItems((prev) =>
-          prev.map((item) =>
-            item.id === selectedItem && item.status === "pending"
-              ? { ...item, status: "verified" }
-              : item
-          )
-        );
-        toast.success("Document verified successfully!", {
-          description: "Your document has been approved.",
-        });
-      }, 10000);
-    }, 1500);
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload document");
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   const handleSendVerificationCode = () => {
@@ -235,34 +293,57 @@ export default function AccountVerificationSection() {
     toast.success(`Verification code sent! (Test code: ${code})`);
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     if (verificationCode !== sentCode) {
       toast.error("Invalid verification code. Please try again.");
       return;
     }
 
-    const value = formData[selectedItem as keyof typeof formData];
-    setVerificationItems((prev) =>
-      prev.map((item) =>
-        item.id === selectedItem
-          ? {
-              ...item,
-              status: "verified",
-              value: value,
-            }
-          : item
-      )
-    );
+    if (!selectedItem) return;
 
-    toast.success("Verification successful!");
-    setIsDialogOpen(false);
-    setVerificationStep("input");
-    setVerificationCode("");
-    setSentCode("");
-    setCodeSent(false);
+    const verificationType = verificationTypeMap[selectedItem];
+    if (!verificationType) {
+      toast.error("Invalid verification type");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verification/${verificationType}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to verify");
+      }
+
+      // Refresh verification status
+      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+        credentials: "include",
+      });
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        setVerificationData(statusData.verification);
+      }
+
+      toast.success("Verification successful!");
+      setIsDialogOpen(false);
+      setVerificationStep("input");
+      setVerificationCode("");
+      setSentCode("");
+      setCodeSent(false);
+    } catch (error) {
+      console.error("Verification error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to verify");
+    }
   };
 
-  const handleSubmitPayment = () => {
+  const handleSubmitPayment = async () => {
     // Validate card number (basic validation)
     const cardNumber = formData.cardNumber.replace(/\s/g, "");
     if (cardNumber.length !== 16 || !/^\d+$/.test(cardNumber)) {
@@ -289,47 +370,98 @@ export default function AccountVerificationSection() {
     }
 
     const maskedCard = `**** **** **** ${cardNumber.slice(-4)}`;
-    setVerificationItems((prev) =>
-      prev.map((item) =>
-        item.id === "payment"
-          ? {
-              ...item,
-              status: "verified",
-              value: maskedCard,
-            }
-          : item
-      )
-    );
 
-    toast.success("Payment method verified successfully!");
-    setIsDialogOpen(false);
-    
-    // Reset payment form
-    setFormData(prev => ({
-      ...prev,
-      cardNumber: "",
-      cardExpiry: "",
-      cardCVV: "",
-      cardName: "",
-    }));
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verification/paymentMethod`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ maskedCard }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to verify payment method");
+      }
+
+      // Refresh verification status
+      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+        credentials: "include",
+      });
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        setVerificationData(statusData.verification);
+      }
+
+      toast.success("Payment method verified successfully!");
+      setIsDialogOpen(false);
+      
+      // Reset payment form
+      setFormData(prev => ({
+        ...prev,
+        cardNumber: "",
+        cardExpiry: "",
+        cardCVV: "",
+        cardName: "",
+      }));
+    } catch (error) {
+      console.error("Payment verification error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to verify payment method");
+    }
   };
 
 
 
-  const handleDeleteDocument = (itemId: string) => {
-    setVerificationItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? { ...item, status: "not-started", documentName: undefined, documentUrl: undefined }
-          : item
-      )
-    );
-    toast.success("Document removed");
+  const handleDeleteDocument = async (itemId: string) => {
+    const verificationType = verificationTypeMap[itemId];
+    if (!verificationType) {
+      toast.error("Invalid verification type");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verification/${verificationType}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete document");
+      }
+
+      // Refresh verification status
+      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+        credentials: "include",
+      });
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        setVerificationData(statusData.verification);
+      }
+
+      toast.success("Document removed");
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete document");
+    }
   };
 
   const progress = calculateProgress();
   const verifiedCount = verificationItems.filter((item) => item.status === "verified").length;
   const pendingCount = verificationItems.filter((item) => item.status === "pending").length;
+
+  if (loadingVerification) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading verification status...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

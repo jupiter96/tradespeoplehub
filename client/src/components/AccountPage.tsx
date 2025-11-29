@@ -88,6 +88,7 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import AddressAutocomplete from "./AddressAutocomplete";
 import {
   Select,
   SelectContent,
@@ -1493,31 +1494,104 @@ function JobsSection() {
 function DetailsSection() {
   const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
   const [isEditing, setIsEditing] = useState(false);
+  // Categories and subcategories from ProfessionalRegistrationSteps
+  const CATEGORIES = [
+    "Emergency Repairs",
+    "Installation",
+    "Maintenance",
+    "Renovation",
+    "Consultation",
+    "Inspection",
+    "Other",
+  ];
+
+  const SUBCATEGORIES = [
+    "Pipe Repair",
+    "Drain Cleaning",
+    "Boiler Installation",
+    "Radiator Repair",
+    "Wiring",
+    "Fuse Box",
+    "Lighting Installation",
+    "Socket Installation",
+    "Wall Painting",
+    "Ceiling Painting",
+    "Exterior Painting",
+    "Wallpapering",
+    "Kitchen Fitting",
+    "Bathroom Fitting",
+    "Flooring Installation",
+    "Tiling",
+    "Roof Repair",
+    "Gutter Cleaning",
+    "Chimney Repair",
+    "Flat Roofing",
+    "Garden Design",
+    "Lawn Care",
+    "Tree Surgery",
+    "Fencing",
+    "Window Cleaning",
+    "Carpet Cleaning",
+    "Deep Cleaning",
+    "End of Tenancy",
+  ];
+
+  // Extract category and subcategories from services array
+  const extractCategoryAndSubcategories = useCallback((services: string[]) => {
+    if (!services || services.length === 0) {
+      return { category: "", subcategories: [] };
+    }
+    
+    // Check if first service is a category
+    const firstService = services[0];
+    const isCategory = CATEGORIES.includes(firstService);
+    
+    if (isCategory) {
+      return {
+        category: firstService,
+        subcategories: services.slice(1),
+      };
+    } else {
+      // If no category found, treat all as subcategories
+      return {
+        category: "",
+        subcategories: services,
+      };
+    }
+  }, []);
+
   const initialFormState = useMemo(
-    () => ({
-      name:
-        userInfo?.name ||
-        [userInfo?.firstName, userInfo?.lastName].filter(Boolean).join(" ").trim() ||
-        "",
-      email: userInfo?.email || "",
-      phone: userInfo?.phone || "",
-      tradingName: userInfo?.tradingName || "",
-      address: userInfo?.address || "",
-      townCity: userInfo?.townCity || "",
-      postcode: userInfo?.postcode || "",
-      travelDistance: userInfo?.travelDistance || "10 miles",
-      sector: userInfo?.sector || "Home & Garden",
-      services: userInfo?.services || [],
-      aboutService: userInfo?.aboutService || "",
-      hasTradeQualification: userInfo?.hasTradeQualification || "no",
-      hasPublicLiability: userInfo?.hasPublicLiability || "no",
-    }),
-    [userInfo]
+    () => {
+      const { category, subcategories } = extractCategoryAndSubcategories(userInfo?.services || []);
+      return {
+        name:
+          userInfo?.name ||
+          [userInfo?.firstName, userInfo?.lastName].filter(Boolean).join(" ").trim() ||
+          "",
+        email: userInfo?.email || "",
+        phone: userInfo?.phone || "",
+        tradingName: userInfo?.tradingName || "",
+        address: userInfo?.address || "",
+        townCity: userInfo?.townCity || "",
+        postcode: userInfo?.postcode || "",
+        travelDistance: userInfo?.travelDistance || "10 miles",
+        sector: userInfo?.sector || "Home & Garden",
+        category: category || "",
+        subcategories: subcategories || [],
+        services: userInfo?.services || [],
+        aboutService: userInfo?.aboutService || "",
+        hasTradeQualification: userInfo?.hasTradeQualification || "no",
+        hasPublicLiability: userInfo?.hasPublicLiability || "no",
+      };
+    },
+    [userInfo, extractCategoryAndSubcategories]
   );
 
   const buildFormState = useCallback(
     (state: typeof initialFormState) => ({
       ...state,
+      category: state.category || "",
+      subcategories: [...(state.subcategories || [])],
       services: [...(state.services || [])],
     }),
     []
@@ -1739,7 +1813,11 @@ function DetailsSection() {
       payload.tradingName = formData.tradingName.trim() || undefined;
       payload.travelDistance = formData.travelDistance || undefined;
       payload.sector = formData.sector || undefined;
-      payload.services = formData.services;
+      // Combine category and subcategories into services array
+      const allServices = formData.category 
+        ? [formData.category, ...formData.subcategories]
+        : formData.subcategories;
+      payload.services = allServices;
       payload.aboutService = formData.aboutService.trim() || undefined;
       payload.hasTradeQualification =
         (formData.hasTradeQualification as "yes" | "no") || "no";
@@ -1834,6 +1912,7 @@ function DetailsSection() {
   };
 
   const handleServiceToggle = (service: string) => {
+    // This function is kept for backward compatibility but may not be used
     setFormData(prev => ({
       ...prev,
       services: prev.services.includes(service)
@@ -2132,36 +2211,26 @@ function DetailsSection() {
             </>
           )}
           <div className={userRole === "professional" ? "md:col-span-2" : ""}>
-            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-              Address
-            </Label>
-            <Input
-              type="text"
-              value={formData.address}
-              onChange={(e) => setFormData({...formData, address: e.target.value})}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
-            />
-          </div>
-          <div>
-            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-              {userRole === "professional" ? "Town/City" : "City"}
-            </Label>
-            <Input
-              type="text"
-              value={formData.townCity}
-              onChange={(e) => setFormData({...formData, townCity: e.target.value})}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
-            />
-          </div>
-          <div>
-            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-              Postcode
-            </Label>
-            <Input
-              type="text"
-              value={formData.postcode}
-              onChange={(e) => setFormData({...formData, postcode: e.target.value})}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
+            <AddressAutocomplete
+              postcode={formData.postcode}
+              onPostcodeChange={(value) => setFormData({...formData, postcode: value})}
+              address={formData.address}
+              onAddressChange={(value) => setFormData({...formData, address: value})}
+              townCity={formData.townCity}
+              onTownCityChange={(value) => setFormData({...formData, townCity: value})}
+              onAddressSelect={(address) => {
+                setFormData({
+                  ...formData,
+                  postcode: address.postcode,
+                  address: address.address,
+                  townCity: address.townCity,
+                });
+              }}
+              label="Postcode"
+              required
+              showAddressField={true}
+              showTownCityField={true}
+              className="font-['Poppins',sans-serif]"
             />
           </div>
           {userRole === "professional" && (
@@ -2203,7 +2272,7 @@ function DetailsSection() {
                 </Label>
                 <Select 
                   value={formData.sector} 
-                  onValueChange={(value) => setFormData({...formData, sector: value, services: []})}
+                  onValueChange={(value) => setFormData({...formData, sector: value, category: "", subcategories: []})}
                 >
                   <SelectTrigger className="h-11 border-2 border-[#3B82F6] focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
                     <SelectValue />
@@ -2218,36 +2287,69 @@ function DetailsSection() {
                 </Select>
               </div>
 
+              {/* Category Selection */}
+              <div className="mb-5">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Category <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData({...formData, category: value})}
+                >
+                  <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Subcategories Selection */}
               <div>
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                  Services You Offer
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  Subcategories <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 font-normal ml-2">
+                    (Select all that apply)
+                  </span>
                 </Label>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 border-2 border-gray-200 rounded-xl p-4">
-                  {sectors[formData.sector as keyof typeof sectors]?.map((service) => (
-                    <div key={service} className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors">
+                  {SUBCATEGORIES.map((subcat) => (
+                    <div key={subcat} className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors">
                       <input
                         type="checkbox"
-                        id={`service-${service}`}
-                        checked={formData.services.includes(service)}
-                        onChange={() => handleServiceToggle(service)}
+                        id={`subcat-${subcat}`}
+                        checked={formData.subcategories.includes(subcat)}
+                        onChange={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            subcategories: prev.subcategories.includes(subcat)
+                              ? prev.subcategories.filter(s => s !== subcat)
+                              : [...prev.subcategories, subcat]
+                          }));
+                        }}
                         className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                       />
                       <Label
-                        htmlFor={`service-${service}`}
+                        htmlFor={`subcat-${subcat}`}
                         className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
                       >
-                        {service}
+                        {subcat}
                       </Label>
-                      {formData.services.includes(service) && (
+                      {formData.subcategories.includes(subcat) && (
                         <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                       )}
                     </div>
                   ))}
                 </div>
-                {formData.services.length > 0 && (
+                {formData.subcategories.length > 0 && (
                   <div className="mt-3 p-2.5 bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      <span className="text-[#FE8A0F]">{formData.services.length}</span> service{formData.services.length !== 1 ? 's' : ''} selected
+                      <span className="text-[#FE8A0F]">{formData.subcategories.length}</span> subcategor{formData.subcategories.length !== 1 ? 'ies' : 'y'} selected
                     </p>
                   </div>
                 )}
@@ -4528,6 +4630,12 @@ function ServicesSection() {
   };
 
   const handleAddService = (serviceData: any) => {
+    // Check if user is blocked
+    if (userInfo?.isBlocked) {
+      toast.error("Your account has been blocked. You cannot add services. Please contact support.");
+      setIsAddServiceOpen(false);
+      return;
+    }
     console.log("Adding service:", serviceData);
     // Here you would typically save to your backend/context
     // For now, just log it
@@ -4535,6 +4643,11 @@ function ServicesSection() {
   };
 
   const handleEditService = (service: any) => {
+    // Check if user is blocked
+    if (userInfo?.isBlocked) {
+      toast.error("Your account has been blocked. You cannot edit services. Please contact support.");
+      return;
+    }
     setSelectedService(service);
     setIsEditServiceOpen(true);
   };
@@ -4642,8 +4755,15 @@ function ServicesSection() {
               </SelectContent>
             </Select>
             <Button 
-              onClick={() => setIsAddServiceOpen(true)}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+              onClick={() => {
+                if (userInfo?.isBlocked) {
+                  toast.error("Your account has been blocked. You cannot add services. Please contact support.");
+                  return;
+                }
+                setIsAddServiceOpen(true);
+              }}
+              disabled={userInfo?.isBlocked}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
               Add Service

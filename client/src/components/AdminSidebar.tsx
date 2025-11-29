@@ -461,6 +461,7 @@ export default function AdminSidebar({
     try {
       const API_BASE_URL = "https://tradespeoplehub.vercel.app";
       // const API_BASE_URL = "http://localhost:5000";
+
       await fetch(`${API_BASE_URL}/api/admin/logout`, {
         method: "POST",
         credentials: "include",

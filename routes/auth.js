@@ -87,6 +87,22 @@ const avatarUpload = multer({
 
 const avatarUploadMiddleware = avatarUpload.single('avatar');
 
+// Configure multer for verification documents
+const verificationUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Please upload PDF, JPG, or PNG.'));
+    }
+  },
+});
+
+const verificationUploadMiddleware = verificationUpload.single('document');
+
 const generateCode = () =>
   Math.floor(10 ** (CODE_LENGTH - 1) + Math.random() * 9 * 10 ** (CODE_LENGTH - 1)).toString();
 const codeExpiryDate = () => new Date(Date.now() + CODE_EXPIRATION_MINUTES * 60 * 1000);
@@ -338,8 +354,8 @@ router.post('/register/initiate', async (req, res) => {
       if (isProduction) {
         console.warn('Continuing registration flow despite email send failure (production mode)');
       } else {
-        await pendingRegistration.deleteOne();
-        return res.status(502).json({ error: 'Failed to send verification email' });
+      await pendingRegistration.deleteOne();
+      return res.status(502).json({ error: 'Failed to send verification email' });
       }
     }
 
@@ -397,7 +413,7 @@ router.post('/register/verify-email', async (req, res) => {
       if (isProduction) {
         console.warn('Continuing registration flow despite SMS send failure (production mode)');
       } else {
-        return res.status(502).json({ error: 'Failed to send SMS code' });
+      return res.status(502).json({ error: 'Failed to send SMS code' });
       }
     }
 
@@ -456,6 +472,30 @@ router.post('/register/verify-phone', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
+    // Initialize verification object with email and phone as verified
+    const verification = {
+      email: {
+        status: 'verified',
+        verifiedAt: new Date(),
+      },
+      phone: {
+        status: 'verified',
+        verifiedAt: new Date(),
+      },
+      address: {
+        status: 'not-started',
+      },
+      idCard: {
+        status: 'not-started',
+      },
+      paymentMethod: {
+        status: 'not-started',
+      },
+      publicLiabilityInsurance: {
+        status: 'not-started',
+      },
+    };
+
     const user = await User.create({
       firstName: pendingRegistration.firstName,
       lastName: pendingRegistration.lastName,
@@ -470,6 +510,7 @@ router.post('/register/verify-phone', async (req, res) => {
       address: pendingRegistration.role === 'professional' ? pendingRegistration.address : undefined,
       travelDistance:
         pendingRegistration.role === 'professional' ? pendingRegistration.travelDistance : undefined,
+      verification: verification,
     });
 
     req.session.userId = user.id;
@@ -614,7 +655,7 @@ router.post('/password/forgot', async (req, res) => {
     console.log(`[PASSWORD-RESET] Reset link for ${user.email}: ${resetLink}`);
     
     try {
-      await sendPasswordResetEmail(user.email, resetLink);
+    await sendPasswordResetEmail(user.email, resetLink);
     } catch (notificationError) {
       console.error('Failed to send password reset email', notificationError);
       // In production, continue even if email sending fails (SMTP may not be configured yet)
@@ -880,6 +921,60 @@ router.put('/profile', requireAuth, async (req, res) => {
     user.address = address?.trim() || undefined;
     user.townCity = townCity?.trim() || undefined;
 
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {
+        email: { status: 'not-started' },
+        phone: { status: 'not-started' },
+        address: { status: 'not-started' },
+        idCard: { status: 'not-started' },
+        paymentMethod: { status: 'not-started' },
+        publicLiabilityInsurance: { status: 'not-started' },
+      };
+    }
+
+    // Update email verification status if email was changed and verified
+    if (normalizedEmail !== user.email) {
+      // Email was changed and verified via OTP
+      if (!user.verification.email) {
+        user.verification.email = { status: 'verified', verifiedAt: new Date() };
+      } else {
+        user.verification.email.status = 'verified';
+        user.verification.email.verifiedAt = new Date();
+      }
+    } else if (user.email && (!user.verification.email || user.verification.email.status === 'not-started')) {
+      // Email exists but not verified in verification object, mark as verified
+      if (!user.verification.email) {
+        user.verification.email = { status: 'verified', verifiedAt: new Date() };
+      } else {
+        user.verification.email.status = 'verified';
+        if (!user.verification.email.verifiedAt) {
+          user.verification.email.verifiedAt = new Date();
+        }
+      }
+    }
+
+    // Update phone verification status if phone was changed and verified
+    if (trimmedPhone !== user.phone) {
+      // Phone was changed and verified via OTP
+      if (!user.verification.phone) {
+        user.verification.phone = { status: 'verified', verifiedAt: new Date() };
+      } else {
+        user.verification.phone.status = 'verified';
+        user.verification.phone.verifiedAt = new Date();
+      }
+    } else if (user.phone && (!user.verification.phone || user.verification.phone.status === 'not-started')) {
+      // Phone exists but not verified in verification object, mark as verified
+      if (!user.verification.phone) {
+        user.verification.phone = { status: 'verified', verifiedAt: new Date() };
+      } else {
+        user.verification.phone.status = 'verified';
+        if (!user.verification.phone.verifiedAt) {
+          user.verification.phone.verifiedAt = new Date();
+        }
+      }
+    }
+
     if (user.role === 'professional') {
       user.tradingName = tradingName?.trim() || undefined;
       user.travelDistance = travelDistance || undefined;
@@ -949,7 +1044,7 @@ router.post(
             await cloudinary.uploader.destroy(oldPublicId);
           } catch (error) {
             console.warn('Failed to delete old avatar from Cloudinary:', error);
-          }
+      }
         }
       }
 
@@ -1051,7 +1146,7 @@ router.delete('/profile', requireAuth, async (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         console.error('Session destroy error:', err);
-      }
+    }
     });
 
     return res.json({ message: 'Account deleted successfully' });
@@ -1154,6 +1249,252 @@ router.post('/logout', (req, res) => {
     res.clearCookie('connect.sid', cookieOptions);
     return res.status(204).end();
   });
+});
+
+// Get verification status
+router.get('/verification', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
+
+    // Check email verification status (if email is verified via OTP)
+    if (!user.verification.email) {
+      user.verification.email = { status: 'not-started' };
+    }
+    // Email is considered verified if user has email (from registration)
+    if (user.email && user.verification.email.status === 'not-started') {
+      user.verification.email.status = 'verified';
+      if (!user.verification.email.verifiedAt) {
+        user.verification.email.verifiedAt = user.createdAt || new Date();
+      }
+    }
+
+    // Check phone verification status
+    if (!user.verification.phone) {
+      user.verification.phone = { status: 'not-started' };
+    }
+    // Phone is considered verified if user has phone (from registration)
+    if (user.phone && user.verification.phone.status === 'not-started') {
+      user.verification.phone.status = 'verified';
+      if (!user.verification.phone.verifiedAt) {
+        user.verification.phone.verifiedAt = user.createdAt || new Date();
+      }
+    }
+
+    // Initialize other verification fields if they don't exist
+    const verificationFields = ['address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
+    verificationFields.forEach(field => {
+      if (!user.verification[field]) {
+        user.verification[field] = { status: 'not-started' };
+      }
+    });
+
+    // Check public liability insurance status
+    if (user.hasPublicLiability === 'yes' && user.verification.publicLiabilityInsurance.status === 'not-started') {
+      user.verification.publicLiabilityInsurance.status = 'pending';
+    }
+
+    await user.save();
+
+    return res.json({ verification: user.verification });
+  } catch (error) {
+    console.error('Verification status error', error);
+    return res.status(500).json({ error: 'Failed to get verification status' });
+  }
+});
+
+// Upload verification document
+router.post(
+  '/verification/:type/upload',
+  requireAuth,
+  (req, res, next) => {
+    verificationUploadMiddleware(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+      return next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const { type } = req.params;
+      const allowedTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+      
+      if (!allowedTypes.includes(type)) {
+        return res.status(400).json({ error: 'Invalid verification type' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'Document file is required' });
+      }
+
+      // Check if Cloudinary is configured
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+        return res.status(500).json({ 
+          error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+        });
+      }
+
+      const user = await User.findById(req.session.userId);
+      if (!user) {
+        return res.status(401).json({ error: 'Session expired. Please login again.' });
+      }
+
+      // Initialize verification object if it doesn't exist
+      if (!user.verification) {
+        user.verification = {};
+      }
+      if (!user.verification[type]) {
+        user.verification[type] = { status: 'not-started' };
+      }
+
+      // Delete old document from Cloudinary if exists
+      if (user.verification[type].documentUrl) {
+        const oldPublicId = extractPublicId(user.verification[type].documentUrl);
+        if (oldPublicId) {
+          try {
+            await cloudinary.uploader.destroy(oldPublicId);
+          } catch (error) {
+            console.warn('Failed to delete old document from Cloudinary:', error);
+          }
+        }
+      }
+
+      // Upload to Cloudinary
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: `verification/${type}`,
+            public_id: `verification-${user._id}-${type}-${Date.now()}`,
+            resource_type: 'auto',
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(req.file.buffer);
+      });
+
+      // Update user verification status
+      user.verification[type].status = 'pending';
+      user.verification[type].documentUrl = uploadResult.secure_url;
+      user.verification[type].documentName = req.file.originalname;
+      user.verification[type].rejectionReason = undefined;
+
+      await user.save();
+
+      return res.json({ 
+        verification: user.verification[type],
+        message: 'Document uploaded successfully. Under review...'
+      });
+    } catch (error) {
+      console.error('Verification upload error', error);
+      return res.status(500).json({ 
+        error: error.message || 'Failed to upload document' 
+      });
+    }
+  }
+);
+
+// Update verification status (for email/phone verification)
+router.put('/verification/:type', requireAuth, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const allowedTypes = ['email', 'phone', 'paymentMethod'];
+    
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid verification type' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
+    if (!user.verification[type]) {
+      user.verification[type] = { status: 'not-started' };
+    }
+
+    // For payment method, save masked card
+    if (type === 'paymentMethod') {
+      const { maskedCard } = req.body;
+      if (!maskedCard) {
+        return res.status(400).json({ error: 'Masked card is required' });
+      }
+      user.verification[type].maskedCard = maskedCard;
+    }
+
+    // Update status to verified
+    user.verification[type].status = 'verified';
+    user.verification[type].verifiedAt = new Date();
+
+    await user.save();
+
+    return res.json({ 
+      verification: user.verification[type],
+      message: 'Verification updated successfully'
+    });
+  } catch (error) {
+    console.error('Verification update error', error);
+    return res.status(500).json({ error: 'Failed to update verification' });
+  }
+});
+
+// Delete verification document
+router.delete('/verification/:type', requireAuth, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const allowedTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+    
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid verification type' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    if (!user.verification || !user.verification[type]) {
+      return res.status(404).json({ error: 'Verification document not found' });
+    }
+
+    // Delete document from Cloudinary if exists
+    if (user.verification[type].documentUrl) {
+      const publicId = extractPublicId(user.verification[type].documentUrl);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.warn('Failed to delete document from Cloudinary:', error);
+        }
+      }
+    }
+
+    // Reset verification status
+    user.verification[type] = {
+      status: 'not-started',
+    };
+
+    await user.save();
+
+    return res.json({ message: 'Verification document deleted successfully' });
+  } catch (error) {
+    console.error('Verification delete error', error);
+    return res.status(500).json({ error: 'Failed to delete verification document' });
+  }
 });
 
 router.get('/me', async (req, res) => {

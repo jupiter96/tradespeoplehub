@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
-import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -18,6 +18,9 @@ import {
 } from "../ui/dropdown-menu";
 import { toast } from "sonner";
 import { Badge } from "../ui/badge";
+import AdminVerificationModal from "./AdminVerificationModal";
+import { useMessenger } from "../MessengerContext";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = "https://tradespeoplehub.vercel.app";
 // const API_BASE_URL = "http://localhost:5000";
@@ -31,6 +34,11 @@ interface User {
   postcode?: string;
   townCity?: string;
   createdAt: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  isBlocked?: boolean;
+  blockReviewInvitation?: boolean;
   [key: string]: any;
 }
 
@@ -40,6 +48,7 @@ interface AdminUsersTableProps {
   onCreateNew?: () => void;
   onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
+  showVerification?: boolean;
 }
 
 export interface AdminUsersTableRef {
@@ -52,13 +61,18 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   onCreateNew,
   onEdit,
   onDelete,
+  showVerification = false,
 }, ref) => {
+  const navigate = useNavigate();
+  const { startConversation } = useMessenger();
+  const [selectedUserForVerification, setSelectedUserForVerification] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [verificationStatuses, setVerificationStatuses] = useState<Record<string, any>>({});
   const limit = 20;
 
   const fetchUsers = async () => {
@@ -85,6 +99,31 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       setUsers(usersData || []);
       setTotalPages(data.pagination?.totalPages || 1);
       setTotal(data.pagination?.total || 0);
+
+      // Fetch verification statuses for professionals
+      if (showVerification && role === "professional" && usersData.length > 0) {
+        const verificationPromises = usersData.map(async (user: User) => {
+          try {
+            const verResponse = await fetch(`${API_BASE_URL}/api/admin/users/${user.id}/verification`, {
+              credentials: "include",
+            });
+            if (verResponse.ok) {
+              const verData = await verResponse.json();
+              return { userId: user.id, verification: verData.verification };
+            }
+          } catch (error) {
+            console.error(`Error fetching verification for user ${user.id}:`, error);
+          }
+          return { userId: user.id, verification: null };
+        });
+
+        const verificationResults = await Promise.all(verificationPromises);
+        const statusMap: Record<string, any> = {};
+        verificationResults.forEach((result) => {
+          statusMap[result.userId] = result.verification;
+        });
+        setVerificationStatuses(statusMap);
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to load users");
@@ -140,6 +179,85 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     }
   };
 
+  const handleSendMessage = (user: User) => {
+    try {
+      startConversation({
+        id: user.id,
+        name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+        avatar: user.avatar,
+        role: user.role,
+      });
+      toast.success(`Opening conversation with ${user.name || `${user.firstName} ${user.lastName}`.trim()}`);
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+      toast.error("Failed to open conversation");
+    }
+  };
+
+  const handleBlock = async (user: User) => {
+    const isCurrentlyBlocked = user.isBlocked || false;
+    if (!confirm(`Are you sure you want to ${isCurrentlyBlocked ? 'unblock' : 'block'} ${user.name}?`)) {
+      return;
+    }
+
+    try {
+      const endpoint = `/api/admin/users/${user.id}/block`;
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          isBlocked: !isCurrentlyBlocked,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update block status");
+      }
+
+      toast.success(`User ${isCurrentlyBlocked ? 'unblocked' : 'blocked'} successfully`);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update block status");
+    }
+  };
+
+  const handleBlockReviewInvitation = async (user: User) => {
+    const isCurrentlyBlocked = user.blockReviewInvitation || false;
+    if (!confirm(`Are you sure you want to ${isCurrentlyBlocked ? 'allow' : 'block'} review invitations for ${user.name}?`)) {
+      return;
+    }
+
+    try {
+      const endpoint = `/api/admin/users/${user.id}/block-review-invitation`;
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          blockReviewInvitation: !isCurrentlyBlocked,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update review invitation block status");
+      }
+
+      toast.success(`Review invitation ${isCurrentlyBlocked ? 'allowed' : 'blocked'} successfully`);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error blocking review invitation:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update review invitation block status");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -158,6 +276,59 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         return "bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20";
       default:
         return "bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-500/20";
+    }
+  };
+
+  const getVerificationStatus = (userId: string) => {
+    const verification = verificationStatuses[userId];
+    if (!verification) return null;
+
+    // Calculate overall verification status
+    const verificationTypes = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
+    const statuses = verificationTypes.map(type => verification[type]?.status || 'not-started');
+    
+    // Priority: verified > pending > rejected > not-started
+    if (statuses.some(s => s === 'verified' || s === 'completed')) {
+      return 'verified';
+    } else if (statuses.some(s => s === 'pending')) {
+      return 'pending';
+    } else if (statuses.some(s => s === 'rejected')) {
+      return 'rejected';
+    }
+    return 'not-started';
+  };
+
+  const getVerificationIcon = (status: string | null) => {
+    if (!status) {
+      return <AlertCircle className="h-4 w-4 text-gray-400" />;
+    }
+    
+    switch (status) {
+      case 'verified':
+      case 'completed':
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getVerificationTooltip = (status: string | null) => {
+    if (!status) return "Verification status not available";
+    
+    switch (status) {
+      case 'verified':
+      case 'completed':
+        return "Verified";
+      case 'pending':
+        return "Pending Review";
+      case 'rejected':
+        return "Rejected";
+      default:
+        return "Not Started";
     }
   };
 
@@ -215,6 +386,9 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   <TableHead className="text-[#FE8A0F] font-semibold">Role</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Location</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Joined</TableHead>
+                  {showVerification && role === "professional" && (
+                    <TableHead className="text-[#FE8A0F] font-semibold text-center">Verification</TableHead>
+                  )}
                   <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -244,6 +418,19 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                     <TableCell className="text-black dark:text-white">
                       {formatDate(user.createdAt)}
                     </TableCell>
+                    {showVerification && role === "professional" && (
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedUserForVerification(user)}
+                          className="h-8 w-8 hover:bg-[#FE8A0F]/10"
+                          title={getVerificationTooltip(getVerificationStatus(user.id))}
+                        >
+                          {getVerificationIcon(getVerificationStatus(user.id))}
+                        </Button>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -265,6 +452,46 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               Edit
                             </DropdownMenuItem>
                           )}
+                          {showVerification && role === "professional" && (
+                            <DropdownMenuItem
+                              onClick={() => setSelectedUserForVerification(user)}
+                              className="text-[#FE8A0F] dark:text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
+                            >
+                              <Shield className="h-4 w-4 mr-2" />
+                              View Verification
+                            </DropdownMenuItem>
+                          )}
+                          {role === "professional" && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleSendMessage(user)}
+                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                              >
+                                <MessageCircle className="h-4 w-4 mr-2" />
+                                Send Message
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleBlock(user)}
+                                className={(user.isBlocked || false)
+                                  ? "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
+                                  : "text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 cursor-pointer"
+                                }
+                              >
+                                <Ban className="h-4 w-4 mr-2" />
+                                {(user.isBlocked || false) ? "Unblock" : "Block"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleBlockReviewInvitation(user)}
+                                className={(user.blockReviewInvitation || false)
+                                  ? "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
+                                  : "text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 cursor-pointer"
+                                }
+                              >
+                                <StarOff className="h-4 w-4 mr-2" />
+                                {(user.blockReviewInvitation || false) ? "Allow Review Invitation" : "Block Review Invitation"}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           {onDelete && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(user)}
@@ -282,6 +509,22 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
               </TableBody>
             </Table>
           </div>
+        )}
+
+        {/* Verification Modal */}
+        {selectedUserForVerification && (
+          <AdminVerificationModal
+            open={!!selectedUserForVerification}
+            onClose={() => {
+              setSelectedUserForVerification(null);
+              // Refresh verification statuses after modal closes
+              if (showVerification && role === "professional") {
+                fetchUsers();
+              }
+            }}
+            userId={selectedUserForVerification.id}
+            userName={selectedUserForVerification.name || `${selectedUserForVerification.firstName} ${selectedUserForVerification.lastName}`.trim()}
+          />
         )}
 
         {/* Pagination */}

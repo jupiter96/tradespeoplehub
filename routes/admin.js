@@ -2,6 +2,8 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 
+const sanitizeUser = (user) => user.toSafeObject();
+
 const router = express.Router();
 
 // Admin authentication middleware
@@ -106,6 +108,7 @@ router.get('/users', requireAdmin, async (req, res) => {
         { email: { $regex: search, $options: 'i' } },
       ];
     }
+    // Note: Admin can see all users including blocked ones, but for public APIs, filter out blocked users
 
     const skip = (page - 1) * limit;
     const users = await User.find(query)
@@ -407,6 +410,151 @@ router.delete('/admins/:id', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Delete admin error', error);
     return res.status(500).json({ error: 'Failed to delete admin' });
+  }
+});
+
+// Update user verification status (Admin only)
+router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
+  try {
+    const { id, type } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    const allowedTypes = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
+    const allowedStatuses = ['not-started', 'pending', 'verified', 'rejected', 'completed'];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid verification type' });
+    }
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be one of: not-started, pending, verified, rejected, completed' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
+    if (!user.verification[type]) {
+      user.verification[type] = { status: 'not-started' };
+    }
+
+    // Update verification status
+    // 'completed' is treated as 'verified'
+    const finalStatus = status === 'completed' ? 'verified' : status;
+    user.verification[type].status = finalStatus;
+
+    if (finalStatus === 'verified') {
+      user.verification[type].verifiedAt = new Date();
+    }
+
+    if (finalStatus === 'rejected' && rejectionReason) {
+      user.verification[type].rejectionReason = rejectionReason;
+    } else if (finalStatus !== 'rejected') {
+      user.verification[type].rejectionReason = undefined;
+    }
+
+    await user.save();
+
+    return res.json({ 
+      verification: user.verification[type],
+      message: `Verification status updated to ${finalStatus}`
+    });
+  } catch (error) {
+    console.error('Update verification status error', error);
+    return res.status(500).json({ error: 'Failed to update verification status' });
+  }
+});
+
+// Get user verification details (Admin only)
+router.get('/users/:id/verification', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
+
+    return res.json({ verification: user.verification });
+  } catch (error) {
+    console.error('Get verification error', error);
+    return res.status(500).json({ error: 'Failed to get verification details' });
+  }
+});
+
+// Block/Unblock user (Admin only)
+router.put('/users/:id/block', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isBlocked, blockReason } = req.body;
+
+    if (typeof isBlocked !== 'boolean') {
+      return res.status(400).json({ error: 'isBlocked must be a boolean' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.isBlocked = isBlocked;
+    if (isBlocked) {
+      user.blockedAt = new Date();
+      user.blockedBy = req.session.userId;
+      user.blockReason = blockReason || undefined;
+    } else {
+      user.blockedAt = undefined;
+      user.blockedBy = undefined;
+      user.blockReason = undefined;
+    }
+
+    await user.save();
+
+    return res.json({ 
+      user: sanitizeUser(user),
+      message: `User ${isBlocked ? 'blocked' : 'unblocked'} successfully`
+    });
+  } catch (error) {
+    console.error('Block user error', error);
+    return res.status(500).json({ error: 'Failed to update block status' });
+  }
+});
+
+// Block/Unblock review invitation (Admin only)
+router.put('/users/:id/block-review-invitation', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { blockReviewInvitation } = req.body;
+
+    if (typeof blockReviewInvitation !== 'boolean') {
+      return res.status(400).json({ error: 'blockReviewInvitation must be a boolean' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.blockReviewInvitation = blockReviewInvitation;
+    await user.save();
+
+    return res.json({ 
+      user: sanitizeUser(user),
+      message: `Review invitation ${blockReviewInvitation ? 'blocked' : 'allowed'} successfully`
+    });
+  } catch (error) {
+    console.error('Block review invitation error', error);
+    return res.status(500).json({ error: 'Failed to update review invitation block status' });
   }
 });
 

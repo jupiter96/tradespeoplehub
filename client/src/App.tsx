@@ -10,6 +10,7 @@ import LoginPage from "./components/LoginPage";
 import AccountPage from "./components/AccountPage";
 import ProfessionalProfileSetup from "./components/ProfessionalProfileSetup";
 import ProfessionalAboutService from "./components/ProfessionalAboutService";
+import ProfessionalRegistrationSteps from "./components/ProfessionalRegistrationSteps";
 import PostJobPage from "./components/PostJobPage";
 import JobDetailPage from "./components/JobDetailPage";
 import AllCategoriesPage from "./components/AllCategoriesPage";
@@ -45,6 +46,7 @@ function AppContent() {
         <Route path="/account" element={<AccountPage />} />
         <Route path="/professional-setup" element={<ProfessionalProfileSetup />} />
         <Route path="/professional-about" element={<ProfessionalAboutService />} />
+        <Route path="/professional-registration-steps" element={<ProfessionalRegistrationSteps />} />
         <Route path="/how-it-work" element={<HowItWorkPage />} />
         <Route path="/how-it-work-pro" element={<HowItWorkProPage />} />
         <Route path="/post-job" element={<PostJobPage />} />

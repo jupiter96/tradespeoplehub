@@ -65,6 +65,67 @@ const userSchema = new mongoose.Schema(
       enum: ['yes', 'no'],
       default: 'no',
     },
+    // KYC Verification fields
+    verification: {
+      email: {
+        status: {
+          type: String,
+          enum: ['not-started', 'pending', 'verified', 'rejected'],
+          default: 'not-started',
+        },
+        verifiedAt: Date,
+      },
+      phone: {
+        status: {
+          type: String,
+          enum: ['not-started', 'pending', 'verified', 'rejected'],
+          default: 'not-started',
+        },
+        verifiedAt: Date,
+      },
+      address: {
+        status: {
+          type: String,
+          enum: ['not-started', 'pending', 'verified', 'rejected'],
+          default: 'not-started',
+        },
+        documentUrl: String,
+        documentName: String,
+        rejectionReason: String,
+        verifiedAt: Date,
+      },
+      idCard: {
+        status: {
+          type: String,
+          enum: ['not-started', 'pending', 'verified', 'rejected'],
+          default: 'not-started',
+        },
+        documentUrl: String,
+        documentName: String,
+        rejectionReason: String,
+        verifiedAt: Date,
+      },
+      paymentMethod: {
+        status: {
+          type: String,
+          enum: ['not-started', 'pending', 'verified', 'rejected'],
+          default: 'not-started',
+        },
+        maskedCard: String,
+        verifiedAt: Date,
+      },
+      publicLiabilityInsurance: {
+        status: {
+          type: String,
+          enum: ['not-started', 'pending', 'verified', 'rejected'],
+          default: 'not-started',
+        },
+        documentUrl: String,
+        documentName: String,
+        rejectionReason: String,
+        verifiedAt: Date,
+      },
+    },
     passwordResetToken: String,
     passwordResetExpires: Date,
     googleId: {
@@ -76,6 +137,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       index: true,
       sparse: true,
+    },
+    // Block and moderation fields
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    blockedAt: Date,
+    blockedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    blockReason: String,
+    blockReviewInvitation: {
+      type: Boolean,
+      default: false,
     },
   },
   {

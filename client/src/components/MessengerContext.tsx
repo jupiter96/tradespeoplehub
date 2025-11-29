@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
+import { useAccount } from "./AccountContext";
+import { toast } from "sonner";
 
 export interface Contact {
   id: string;
@@ -54,6 +56,7 @@ interface MessengerContextType {
 const MessengerContext = createContext<MessengerContextType | undefined>(undefined);
 
 export function MessengerProvider({ children }: { children: ReactNode }) {
+  const { userInfo } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -463,6 +466,11 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
       return existing;
     }
 
+    // If user is blocked, prevent creating new contacts
+    if (userInfo?.isBlocked) {
+      throw new Error("Your account has been blocked. You can only message users already in your chat list.");
+    }
+
     const newContact: Contact = {
       ...contactData,
       lastMessage: "Start a conversation",
@@ -479,6 +487,15 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
   };
 
   const addMessage = (contactId: string, messageData: Omit<Message, "id" | "timestamp">) => {
+    // If user is blocked, only allow messaging existing contacts
+    if (userInfo?.isBlocked) {
+      const contactExists = contacts.find(c => c.id === contactId);
+      if (!contactExists) {
+        toast.error("Your account has been blocked. You can only message users already in your chat list.");
+        return;
+      }
+    }
+
     const newMessage: Message = {
       ...messageData,
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -517,9 +534,17 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
   };
 
   const startConversation = (contactData: Omit<Contact, "lastMessage" | "timestamp" | "unread">) => {
-    const contact = getOrCreateContact(contactData);
-    setSelectedContactId(contact.id);
-    openMessenger();
+    try {
+      const contact = getOrCreateContact(contactData);
+      setSelectedContactId(contact.id);
+      openMessenger();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Unable to start conversation. Your account may be blocked.");
+      }
+    }
   };
 
   return (

@@ -114,6 +114,12 @@ export default function AvailableJobsSection() {
   };
 
   const handleSubmitQuote = () => {
+    // Check if user is blocked
+    if (userInfo?.isBlocked) {
+      toast.error("Your account has been blocked. You cannot submit quotes. Please contact support.");
+      return;
+    }
+
     if (!currentJob || !quotePrice || !quoteDeliveryTime || !quoteMessage) {
       toast.error("Please fill in all fields");
       return;
@@ -500,7 +506,8 @@ export default function AvailableJobsSection() {
                 </Button>
                 <Button
                   onClick={handleSubmitQuote}
-                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 text-[15px]"
+                  disabled={userInfo?.isBlocked}
+                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Send Quote
