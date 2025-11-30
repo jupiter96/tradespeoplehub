@@ -425,8 +425,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[#FE8A0F]">{title}</h2>
-          <p className="text-sm text-black dark:text-white mt-1">
+          <p className="text-sm text-black dark:text-white">
             Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> {title.toLowerCase()}
           </p>
         </div>

@@ -77,6 +77,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
   }, [navigate]);
 
   // Initialize theme from localStorage or system preference
+  // For admin pages, default to light theme if no saved preference
   useEffect(() => {
     try {
       const savedTheme = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
@@ -86,8 +87,10 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
         window.matchMedia("(prefers-color-scheme: dark)").matches;
 
       const htmlHasDark = document.documentElement.classList.contains("dark");
-      const shouldBeDark =
-        savedTheme === "dark" || (!savedTheme && prefersDark) || htmlHasDark;
+      
+      // For admin pages, default to light theme if no saved preference
+      // Only use dark theme if explicitly saved as "dark"
+      const shouldBeDark = savedTheme === "dark" || (savedTheme === null && htmlHasDark);
 
       if (shouldBeDark) {
         document.documentElement.classList.add("dark");
@@ -95,9 +98,19 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
       } else {
         document.documentElement.classList.remove("dark");
         setIsDarkMode(false);
+        // Ensure light theme is set in localStorage for admin pages
+        if (!savedTheme) {
+          try {
+            localStorage.setItem("theme", "light");
+          } catch {
+            // ignore storage errors
+          }
+        }
       }
     } catch {
       // Fallback: keep default light mode
+      document.documentElement.classList.remove("dark");
+      setIsDarkMode(false);
     }
   }, []);
 

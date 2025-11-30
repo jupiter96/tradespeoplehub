@@ -801,26 +801,9 @@ export default function LoginPage() {
                           });
                         }
                       }}
-                      address={userType === "professional" 
-                        ? `${registerAddress}${registerTownCity ? `, ${registerTownCity}` : ''}`.trim() 
-                        : registerAddress}
+                      address={registerAddress}
                       onAddressChange={(value) => {
-                        if (userType === "professional") {
-                          // For professional, parse combined address field
-                          // Try to split by last comma (assuming format: "address, town/city")
-                          const lastCommaIndex = value.lastIndexOf(',');
-                          if (lastCommaIndex > 0) {
-                            const addrPart = value.substring(0, lastCommaIndex).trim();
-                            const cityPart = value.substring(lastCommaIndex + 1).trim();
-                            setRegisterAddress(addrPart);
-                            setRegisterTownCity(cityPart);
-                          } else {
-                            setRegisterAddress(value);
-                            setRegisterTownCity("");
-                          }
-                        } else {
-                          setRegisterAddress(value);
-                        }
+                        setRegisterAddress(value);
                         if (fieldErrors.address || fieldErrors.townCity) {
                           setFieldErrors(prev => {
                             const newErrors = { ...prev };
@@ -830,21 +813,9 @@ export default function LoginPage() {
                           });
                         }
                       }}
-                      townCity={userType === "professional" ? undefined : registerTownCity}
-                      onTownCityChange={userType === "professional" ? undefined : (value) => {
-                        setRegisterTownCity(value);
-                        if (fieldErrors.townCity) {
-                          setFieldErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.townCity;
-                            return newErrors;
-                          });
-                        }
-                      }}
                       onAddressSelect={(address) => {
                         setRegisterPostcode(address.postcode);
                         setRegisterAddress(address.address);
-                        setRegisterTownCity(address.townCity);
                         // Clear any related errors
                         setFieldErrors(prev => {
                           const newErrors = { ...prev };
@@ -856,10 +827,9 @@ export default function LoginPage() {
                       }}
                       label="Postcode"
                       required
-                      showAddressField={userType === "professional"}
-                      showTownCityField={userType !== "professional"}
-                      combinedAddressMode={userType === "professional"}
-                      addressLabel={userType === "professional" ? "Address (Street, Town/City)" : "Address"}
+                      showAddressField={true}
+                      showTownCityField={false}
+                      addressLabel="Full Address"
                       className="font-['Poppins',sans-serif]"
                     />
                     {fieldErrors.postcode && (

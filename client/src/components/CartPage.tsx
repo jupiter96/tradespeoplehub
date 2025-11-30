@@ -37,6 +37,7 @@ import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { toast } from "sonner@2.0.3";
 import CartPageMobileMinimalist from "./CartPageMobileMinimalist";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 interface Address {
   id: string;
@@ -44,7 +45,8 @@ interface Address {
   name: string;
   addressLine1: string;
   addressLine2?: string;
-  city: string;
+  address?: string;
+  city?: string;
   postcode: string;
   phone: string;
   isDefault?: boolean;
@@ -161,7 +163,7 @@ export default function CartPage() {
     name: "",
     addressLine1: "",
     addressLine2: "",
-    city: "",
+    address: "",
     postcode: "",
     phone: ""
   });
@@ -200,7 +202,7 @@ export default function CartPage() {
   };
 
   const handleAddAddress = () => {
-    if (!newAddress.name || !newAddress.addressLine1 || !newAddress.city || !newAddress.postcode || !newAddress.phone) {
+    if (!newAddress.name || !newAddress.addressLine1 || !newAddress.address || !newAddress.postcode || !newAddress.phone) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -211,7 +213,7 @@ export default function CartPage() {
       name: newAddress.name,
       addressLine1: newAddress.addressLine1,
       addressLine2: newAddress.addressLine2,
-      city: newAddress.city,
+      address: newAddress.address,
       postcode: newAddress.postcode,
       phone: newAddress.phone
     };
@@ -224,7 +226,7 @@ export default function CartPage() {
       name: "",
       addressLine1: "",
       addressLine2: "",
-      city: "",
+      address: "",
       postcode: "",
       phone: ""
     });
@@ -560,25 +562,26 @@ export default function CartPage() {
                                   placeholder="Flat 4B (optional)"
                                 />
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">City *</Label>
-                                  <Input
-                                    value={newAddress.city}
-                                    onChange={(e) => setNewAddress({...newAddress, city: e.target.value})}
-                                    className="mt-1 font-['Poppins',sans-serif]"
-                                    placeholder="London"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Postcode *</Label>
-                                  <Input
-                                    value={newAddress.postcode}
-                                    onChange={(e) => setNewAddress({...newAddress, postcode: e.target.value})}
-                                    className="mt-1 font-['Poppins',sans-serif]"
-                                    placeholder="SW1A 1AA"
-                                  />
-                                </div>
+                              <div>
+                                <AddressAutocomplete
+                                  postcode={newAddress.postcode || ""}
+                                  onPostcodeChange={(value) => setNewAddress({...newAddress, postcode: value})}
+                                  address={newAddress.address || ""}
+                                  onAddressChange={(value) => setNewAddress({...newAddress, address: value})}
+                                  onAddressSelect={(address) => {
+                                    setNewAddress({
+                                      ...newAddress,
+                                      postcode: address.postcode,
+                                      address: address.address,
+                                    });
+                                  }}
+                                  label="Postcode"
+                                  required
+                                  showAddressField={true}
+                                  showTownCityField={false}
+                                  addressLabel="Full Address"
+                                  className="font-['Poppins',sans-serif]"
+                                />
                               </div>
                               <div>
                                 <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Phone Number *</Label>

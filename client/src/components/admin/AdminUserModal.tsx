@@ -344,27 +344,25 @@ export default function AdminUserModal({
               )}
             </div>
 
-            {/* Address Autocomplete - Postcode, Address, Town/City */}
+            {/* Address Autocomplete - Postcode, Full Address */}
             <div className="md:col-span-2">
               <AddressAutocomplete
                 postcode={formData.postcode}
                 onPostcodeChange={(value) => setFormData({ ...formData, postcode: value })}
                 address={formData.address}
                 onAddressChange={(value) => setFormData({ ...formData, address: value })}
-                townCity={formData.townCity}
-                onTownCityChange={(value) => setFormData({ ...formData, townCity: value })}
                 onAddressSelect={(address) => {
                   setFormData({
                     ...formData,
                     postcode: address.postcode,
                     address: address.address,
-                    townCity: address.townCity,
                   });
                 }}
                 label="Postcode"
                 required
                 showAddressField={formData.role === "professional"}
-                showTownCityField={formData.role === "professional"}
+                showTownCityField={false}
+                addressLabel="Full Address"
               />
             </div>
 

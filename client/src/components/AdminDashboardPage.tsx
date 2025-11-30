@@ -556,7 +556,7 @@ function StatCard({
 
   return (
     <div 
-      className={`relative rounded-xl border-2 ${colorClasses[color]} bg-gradient-to-br ${bgGradient[color]} p-4 shadow-md hover:shadow-lg transition-all ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
+      className={`relative rounded-xl border-2 ${colorClasses[color]} bg-gradient-to-br ${bgGradient[color]} p-4 shadow-md hover:shadow-lg transition-all h-32 flex flex-col justify-between ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-2">
@@ -572,14 +572,16 @@ function StatCard({
           </div>
         )}
       </div>
-      <p className={`text-2xl font-bold ${color === "orange" ? "text-orange-600" : color === "red" ? "text-red-600" : "text-green-600"}`}>
-        {value.toLocaleString()}
-      </p>
-      {dailyChange !== undefined && dailyChange !== 0 && (
-        <p className={`text-xs mt-1 ${dailyChange > 0 ? "text-green-600" : "text-red-600"}`}>
-          {dailyChange > 0 ? "+" : ""}{dailyChange} today
+      <div>
+        <p className={`text-2xl font-bold ${color === "orange" ? "text-orange-600" : color === "red" ? "text-red-600" : "text-green-600"}`}>
+          {value.toLocaleString()}
         </p>
-      )}
+        {dailyChange !== undefined && dailyChange !== 0 && (
+          <p className={`text-xs mt-1 ${dailyChange > 0 ? "text-green-600" : "text-red-600"}`}>
+            {dailyChange > 0 ? "+" : ""}{dailyChange} today
+          </p>
+        )}
+      </div>
     </div>
   );
 }

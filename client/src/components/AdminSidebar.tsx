@@ -298,14 +298,40 @@ export default function AdminSidebar({
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Detect dark mode
+  // Detect dark mode and initialize theme for admin pages
   useEffect(() => {
+    // Initialize theme to light for admin pages if no saved preference
+    try {
+      const savedTheme = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+      const htmlHasDark = document.documentElement.classList.contains("dark");
+      
+      // For admin pages, default to light theme if no saved preference
+      const shouldBeDark = savedTheme === "dark" || (savedTheme === null && htmlHasDark);
+
+      if (shouldBeDark) {
+        document.documentElement.classList.add("dark");
+        setIsDarkMode(true);
+      } else {
+        document.documentElement.classList.remove("dark");
+        setIsDarkMode(false);
+        // Ensure light theme is set in localStorage for admin pages
+        if (!savedTheme) {
+          try {
+            localStorage.setItem("theme", "light");
+          } catch {
+            // ignore storage errors
+          }
+        }
+      }
+    } catch {
+      // Fallback: keep default light mode
+      document.documentElement.classList.remove("dark");
+      setIsDarkMode(false);
+    }
+
     const checkDarkMode = () => {
       setIsDarkMode(document.documentElement.classList.contains("dark"));
     };
-
-    // Initial check
-    checkDarkMode();
 
     // Watch for theme changes
     const observer = new MutationObserver(checkDarkMode);

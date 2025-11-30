@@ -2241,20 +2241,18 @@ function DetailsSection() {
               onPostcodeChange={(value) => setFormData({...formData, postcode: value})}
               address={formData.address}
               onAddressChange={(value) => setFormData({...formData, address: value})}
-              townCity={formData.townCity}
-              onTownCityChange={(value) => setFormData({...formData, townCity: value})}
               onAddressSelect={(address) => {
                 setFormData({
                   ...formData,
                   postcode: address.postcode,
                   address: address.address,
-                  townCity: address.townCity,
                 });
               }}
               label="Postcode"
               required
               showAddressField={true}
-              showTownCityField={true}
+              showTownCityField={false}
+              addressLabel="Full Address"
               className="font-['Poppins',sans-serif]"
             />
           </div>
