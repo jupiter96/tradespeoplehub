@@ -197,6 +197,14 @@ export default function AddressAutocomplete({
 
     const cleanPostcode = postcodeValue.replace(/\s+/g, "").toUpperCase();
     const formattedPostcode = postcodeValue.trim().toUpperCase();
+    
+    // Only fetch addresses if at least 5 characters are entered
+    if (cleanPostcode.length < 5) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setPostcodeAddresses([]);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
