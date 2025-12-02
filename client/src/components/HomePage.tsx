@@ -49,7 +49,7 @@ export default function HomePage() {
                 allow="fullscreen;autoplay"
                 allowFullScreen
                 height="100%"
-                src="https://streamable.com/e/udoifu?autoplay=1&muted=1&nocontrols=1"
+                src="https://streamable.com/e/8z1zzq?autoplay=1&muted=1&nocontrols=1"
                 width="100%"
               style={{
                 border: 'none',
@@ -60,14 +60,6 @@ export default function HomePage() {
                   top: 0,
                   overflow: 'hidden'
                 }}
-            />
-            
-            {/* Dark overlay */}
-            <div 
-              className="absolute inset-0 z-10"
-              style={{
-                background: 'linear-gradient(90deg, rgba(0,30,60,0.75) 0%, rgba(0,40,80,0.65) 50%, rgba(0,50,100,0.5) 100%)',
-              }}
             />
           
               <div className="absolute inset-0 z-40 px-6 md:px-12 lg:px-20 xl:px-24 w-full h-full flex flex-col justify-start pt-[3%] md:pt-[2%] lg:pt-[3%] xl:pt-[4%]">

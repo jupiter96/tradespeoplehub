@@ -168,9 +168,9 @@ export default function AddressAutocomplete({
 
       // For full postcodes (5-8 chars), fetch all addresses for that postcode
       if (isFullPostcode(postcodeValue)) {
-        // Use query search to get all addresses matching this postcode
+        // Use query search to get all addresses matching this postcode (increase limit to get more results)
         const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=100`
+          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=200`
         );
 
         if (searchResponse.ok) {
@@ -201,15 +201,18 @@ export default function AddressAutocomplete({
                   country: item.country || "England",
                 }));
             
-            setSuggestions(addresses);
-            setShowSuggestions(addresses.length > 0);
-            // Also update postcodeAddresses for address field suggestions
-            setPostcodeAddresses(addresses);
-            // Automatically show address suggestions in address field when postcode is entered
-            if (addresses.length > 0 && showAddressField) {
-              setAddressSuggestions(addresses.slice(0, 10));
-              setShowAddressSuggestions(true);
-            }
+            // Sort addresses by house number for better display
+            const sortedAddresses = addresses.sort((a, b) => {
+              const numA = parseInt(a.line_1?.match(/^\d+/)?.[0] || "0") || 0;
+              const numB = parseInt(b.line_1?.match(/^\d+/)?.[0] || "0") || 0;
+              if (numA !== numB) return numA - numB;
+              return (a.line_1 || "").localeCompare(b.line_1 || "");
+            });
+            
+            setSuggestions(sortedAddresses);
+            setShowSuggestions(sortedAddresses.length > 0);
+            // Store postcodeAddresses for address field filtering (but don't auto-populate)
+            setPostcodeAddresses(sortedAddresses);
             setIsLoading(false);
             return;
           }
@@ -351,7 +354,7 @@ export default function AddressAutocomplete({
       }
     } catch (err) {
       console.error("Address lookup error:", err);
-      setError("Unable to find addresses for this postcode");
+      setError("Unable to find addresses for this postcode. Please enter manually.");
       setSuggestions([]);
       setShowSuggestions(false);
     } finally {
@@ -374,7 +377,7 @@ export default function AddressAutocomplete({
       // For full postcodes, fetch all addresses directly
       if (isFullPostcode(postcodeValue)) {
         const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=100`
+          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=200`
         );
 
         if (searchResponse.ok) {
@@ -405,12 +408,16 @@ export default function AddressAutocomplete({
                   country: item.country || "England",
                 }));
             
-            setPostcodeAddresses(addresses);
-            // Automatically show address suggestions when postcode is entered
-            if (addresses.length > 0 && showAddressField) {
-              setAddressSuggestions(addresses.slice(0, 10));
-              setShowAddressSuggestions(true);
-            }
+            // Sort addresses by house number for better display
+            const sortedAddresses = addresses.sort((a, b) => {
+              const numA = parseInt(a.line_1?.match(/^\d+/)?.[0] || "0") || 0;
+              const numB = parseInt(b.line_1?.match(/^\d+/)?.[0] || "0") || 0;
+              if (numA !== numB) return numA - numB;
+              return (a.line_1 || "").localeCompare(b.line_1 || "");
+            });
+            
+            setPostcodeAddresses(sortedAddresses);
+            // Don't auto-populate address field - keep postcode and address independent
             return;
           }
         }
@@ -450,12 +457,16 @@ export default function AddressAutocomplete({
             }
           }
           
-          setPostcodeAddresses(addresses);
-          // Automatically show address suggestions when postcode addresses are fetched
-          if (addresses.length > 0 && showAddressField) {
-            setAddressSuggestions(addresses.slice(0, 10));
-            setShowAddressSuggestions(true);
-          }
+          // Sort addresses by house number for better display
+          const sortedAddresses = addresses.sort((a, b) => {
+            const numA = parseInt(a.line_1?.match(/^\d+/)?.[0] || "0") || 0;
+            const numB = parseInt(b.line_1?.match(/^\d+/)?.[0] || "0") || 0;
+            if (numA !== numB) return numA - numB;
+            return (a.line_1 || "").localeCompare(b.line_1 || "");
+          });
+          
+          setPostcodeAddresses(sortedAddresses);
+          // Don't auto-populate address field - keep postcode and address independent
         }
       }
     } catch (err) {
@@ -569,13 +580,14 @@ export default function AddressAutocomplete({
 
     addressDebounceTimerRef.current = setTimeout(() => {
       if (address) {
-        if (postcode && postcodeAddresses.length === 0) {
-          // Fetch addresses if we have postcode but no addresses yet
-          fetchPostcodeAddresses(postcode).then(() => {
-            filterAddressSuggestions(address);
-          });
-        } else {
+        // Only filter if postcode addresses are already loaded
+        // Don't auto-fetch - keep postcode and address independent
+        if (postcodeAddresses.length > 0) {
           filterAddressSuggestions(address);
+        } else {
+          // If no postcode addresses loaded, clear suggestions
+          setAddressSuggestions([]);
+          setShowAddressSuggestions(false);
         }
       } else {
         setAddressSuggestions([]);
@@ -619,9 +631,21 @@ export default function AddressAutocomplete({
     setSelectedIndex(-1);
   };
 
-  const handleSelectAddress = (suggestion: AddressSuggestion) => {
-    // Format full address: street, city, province, country, postal code
-    const fullAddress = formatAddressDisplay(suggestion);
+  // Handle selection from postcode suggestions - only update postcode
+  const handleSelectPostcodeSuggestion = (suggestion: AddressSuggestion) => {
+    // Only update postcode, don't auto-populate address field
+    onPostcodeChange(suggestion.postcode);
+    
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setSelectedIndex(-1);
+  };
+
+  // Handle selection from address suggestions - only update address field
+  const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
+    // Format full address based on whether it's a full postcode result
+    const isFullPostcodeResult = isFullPostcode(postcode);
+    const fullAddress = formatAddressDisplay(suggestion, isFullPostcodeResult);
 
     if (onAddressSelect) {
       onAddressSelect({
@@ -637,12 +661,11 @@ export default function AddressAutocomplete({
       if (onTownCityChange) {
         onTownCityChange(suggestion.town_or_city);
       }
-      onPostcodeChange(suggestion.postcode);
     }
 
-    setShowSuggestions(false);
-    setSuggestions([]);
-    setSelectedIndex(-1);
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    setSelectedAddressIndex(-1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -659,40 +682,46 @@ export default function AddressAutocomplete({
         e.preventDefault();
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
-      case "Enter":
-        e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-          handleSelectAddress(suggestions[selectedIndex]);
-        }
-        break;
+                  case "Enter":
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+                      handleSelectPostcodeSuggestion(suggestions[selectedIndex]);
+                    }
+                    break;
       case "Escape":
         setShowSuggestions(false);
         break;
     }
   };
 
-  const formatAddressDisplay = (suggestion: AddressSuggestion): string => {
-    // Format: street, city, province, country, postal code
-    // Street: combine line_1, line_2, line_3
+  const formatAddressDisplay = (suggestion: AddressSuggestion, isFullPostcode: boolean = false): string => {
+    // For full postcode results, use simple format: house_number street city postcode (no spaces in postcode)
+    if (isFullPostcode) {
+      const houseNumber = suggestion.line_1 || "";
+      const city = suggestion.town_or_city || "";
+      const postcodeNoSpaces = (suggestion.postcode || "").replace(/\s+/g, "").toUpperCase();
+      
+      const parts = [
+        houseNumber,
+        city,
+        postcodeNoSpaces,
+      ].filter(Boolean);
+
+      return parts.join(" ");
+    }
+    
+    // For other cases, use the detailed format: street, city, province, country, postal code
     const street = [
       suggestion.line_1,
       suggestion.line_2,
       suggestion.line_3,
     ].filter(Boolean).join(", ");
     
-    // City: use town_or_city
     const city = suggestion.town_or_city || "";
-    
-    // Province: use county
     const province = suggestion.county || "";
-    
-    // Country
     const country = suggestion.country || "";
-    
-    // Postal code
     const postalCode = suggestion.postcode || "";
     
-    // Combine in the required format: street, city, province, country, postal code
     const parts = [
       street,
       city,
@@ -742,7 +771,7 @@ export default function AddressAutocomplete({
         )}
         {!error && postcode && postcode.trim().length >= 3 && !isLoading && suggestions.length === 0 && (
           <p className="mt-1 text-xs text-black/60 dark:text-white/60">
-            No addresses found. Please check the postcode or enter manually.
+            No addresses found. Please enter manually.
           </p>
         )}
       </div>
@@ -754,7 +783,7 @@ export default function AddressAutocomplete({
             <button
               key={`${suggestion.postcode}-${index}`}
               type="button"
-              onClick={() => handleSelectAddress(suggestion)}
+              onClick={() => handleSelectPostcodeSuggestion(suggestion)}
               className={`w-full px-4 py-3 text-left hover:bg-[#FE8A0F]/10 transition-colors border-b border-[#FE8A0F]/20 last:border-b-0 ${
                 selectedIndex === index
                   ? "bg-[#FE8A0F]/20"
@@ -765,7 +794,7 @@ export default function AddressAutocomplete({
                 <MapPin className="h-4 w-4 text-[#FE8A0F] mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-black dark:text-white">
-                    {formatAddressDisplay(suggestion)}
+                    {formatAddressDisplay(suggestion, isFullPostcode(postcode))}
                   </p>
                 </div>
               </div>
@@ -795,10 +824,6 @@ export default function AddressAutocomplete({
               onFocus={() => {
                 if (addressSuggestions.length > 0) {
                   setShowAddressSuggestions(true);
-                } else if (postcode && postcodeAddresses.length > 0) {
-                  // Show all addresses for the postcode when focusing on empty field
-                  setAddressSuggestions(postcodeAddresses.slice(0, 10));
-                  setShowAddressSuggestions(true);
                 } else if (address && address.trim().length >= 1) {
                   // Trigger search on focus if we have input
                   filterAddressSuggestions(address);
@@ -820,7 +845,7 @@ export default function AddressAutocomplete({
                   case "Enter":
                     e.preventDefault();
                     if (selectedAddressIndex >= 0 && selectedAddressIndex < addressSuggestions.length) {
-                      handleSelectAddress(addressSuggestions[selectedAddressIndex]);
+                      handleSelectAddressSuggestion(addressSuggestions[selectedAddressIndex]);
                     }
                     break;
                   case "Escape":
@@ -841,6 +866,13 @@ export default function AddressAutocomplete({
             </p>
           )}
           
+          {/* Message when no address suggestions found */}
+          {postcode && postcode.trim().length >= 3 && !isAddressLoading && address && address.trim().length >= 1 && showAddressSuggestions && addressSuggestions.length === 0 && (
+            <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+              No addresses found. Please enter manually.
+            </p>
+          )}
+          
           {/* Address Suggestions Dropdown */}
           {showAddressSuggestions && addressSuggestions.length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-60 overflow-y-auto">
@@ -848,7 +880,7 @@ export default function AddressAutocomplete({
                 <button
                   key={`${suggestion.postcode}-${suggestion.line_1}-${index}`}
                   type="button"
-                  onClick={() => handleSelectAddress(suggestion)}
+                  onClick={() => handleSelectPostcodeSuggestion(suggestion)}
                   className={`w-full px-4 py-3 text-left hover:bg-[#FE8A0F]/10 transition-colors border-b border-[#FE8A0F]/20 last:border-b-0 ${
                     selectedAddressIndex === index
                       ? "bg-[#FE8A0F]/20"
@@ -859,7 +891,7 @@ export default function AddressAutocomplete({
                     <MapPin className="h-4 w-4 text-[#FE8A0F] mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-black dark:text-white">
-                        {formatAddressDisplay(suggestion)}
+                        {formatAddressDisplay(suggestion, isFullPostcode(postcode))}
                       </p>
                     </div>
                   </div>
