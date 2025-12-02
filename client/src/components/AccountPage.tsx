@@ -90,6 +90,7 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
 import AddressAutocomplete from "./AddressAutocomplete";
 import {
   Select,
