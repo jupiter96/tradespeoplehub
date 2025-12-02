@@ -10,6 +10,7 @@ import passport from './services/passport.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
+import addressRoutes from './routes/address.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 
@@ -141,6 +142,7 @@ if (MONGODB_URI) {
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/address', addressRoutes);
 
 // API catch-all handler
 app.get('/api/*', (req, res) => {

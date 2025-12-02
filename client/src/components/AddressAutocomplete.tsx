@@ -11,6 +11,13 @@ interface AddressSuggestion {
   town_or_city: string;
   county?: string;
   country: string;
+  // Additional fields for Royal Mail API formatting
+  buildingNumber?: string;
+  buildingName?: string;
+  streetName?: string;
+  cityName?: string;
+  provinceName?: string;
+  countryName?: string;
 }
 
 interface AddressAutocompleteProps {
@@ -35,7 +42,7 @@ interface AddressAutocompleteProps {
   addressLabel?: string; // Custom label for address field
 }
 
-const POSTCODES_API_BASE = "https://api.postcodes.io";
+import { resolveApiUrl } from "../config/api";
 
 export default function AddressAutocomplete({
   postcode,
@@ -67,6 +74,79 @@ export default function AddressAutocomplete({
   const [selectedCityIndex, setSelectedCityIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [postcodeAddresses, setPostcodeAddresses] = useState<AddressSuggestion[]>([]);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualAddress, setManualAddress] = useState({
+    line1: '',
+    line2: '',
+    townCity: '',
+    county: '',
+    postcode: '',
+    country: 'United Kingdom',
+  });
+  
+  // Update manual address when external values change
+  useEffect(() => {
+    if (address && !showManualEntry) {
+      // If address is set externally and we're not in manual mode, hide manual entry
+      setShowManualEntry(false);
+    }
+  }, [address, showManualEntry]);
+  
+  // Handle manual address changes
+  const handleManualAddressChange = (field: string, value: string) => {
+    const updated = { ...manualAddress, [field]: value };
+    setManualAddress(updated);
+    
+    // Update parent components immediately
+    if (field === 'line1' || field === 'line2') {
+      const fullAddress = [updated.line1, updated.line2].filter(Boolean).join(', ');
+      onAddressChange?.(fullAddress);
+    }
+    if (field === 'townCity') {
+      onTownCityChange?.(value);
+    }
+    if (field === 'postcode') {
+      onPostcodeChange(value);
+    }
+    
+    // Call onAddressSelect when all required fields are filled
+    if (updated.line1 && updated.townCity && updated.postcode) {
+      const fullAddress = [updated.line1, updated.line2].filter(Boolean).join(', ');
+      onAddressSelect?.({
+        postcode: updated.postcode,
+        address: fullAddress,
+        townCity: updated.townCity,
+        county: updated.county,
+      });
+    }
+  };
+  
+  // Sync manual address with external values when they change
+  useEffect(() => {
+    if (showManualEntry && address) {
+      // If address is set externally, try to parse it
+      const parts = address.split(',').map(p => p.trim());
+      if (parts.length >= 1) {
+        setManualAddress(prev => ({
+          ...prev,
+          line1: parts[0] || prev.line1,
+          line2: parts[1] || prev.line2,
+        }));
+      }
+    }
+  }, [address, showManualEntry]);
+  
+  // Sync townCity and postcode when they change externally
+  useEffect(() => {
+    if (showManualEntry) {
+      if (townCity) {
+        setManualAddress(prev => ({ ...prev, townCity }));
+      }
+      if (postcode) {
+        setManualAddress(prev => ({ ...prev, postcode }));
+      }
+    }
+  }, [townCity, postcode, showManualEntry]);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const addressWrapperRef = useRef<HTMLDivElement>(null);
   const cityWrapperRef = useRef<HTMLDivElement>(null);
@@ -106,371 +186,85 @@ export default function AddressAutocomplete({
     };
   }, []);
 
-  // Check if postcode looks like a full UK postcode (typically 5-8 chars with optional space)
-  const isFullPostcode = (postcode: string): boolean => {
-    const clean = postcode.replace(/\s+/g, "").toUpperCase();
-    // UK postcodes are typically 5-8 characters (e.g., SW1A1AA, BR53AZ, M11AA)
-    // Pattern: 1-2 letters, 1-2 digits, optional space, 1 digit, 2 letters
-    return clean.length >= 5 && clean.length <= 8 && /^[A-Z]{1,2}\d{1,2}\d[A-Z]{2}$/.test(clean);
-  };
-
-  // Fetch address suggestions
+  // Fetch address suggestions using Addressy API
   const fetchSuggestions = async (postcodeValue: string) => {
     if (!postcodeValue || postcodeValue.trim().length < 1) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setPostcodeAddresses([]);
       return;
     }
 
-    // Clean postcode (remove spaces, uppercase)
     const cleanPostcode = postcodeValue.replace(/\s+/g, "").toUpperCase();
-    const formattedPostcode = postcodeValue.trim().toUpperCase(); // Keep original format with space
-
-    if (cleanPostcode.length < 1) {
-      return;
-    }
+    const formattedPostcode = postcodeValue.trim().toUpperCase();
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // For very short inputs (1-2 chars), use query search for faster results
-      if (cleanPostcode.length <= 2) {
-        const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=20`
-        );
-
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.status === 200 && searchData.result && searchData.result.length > 0) {
-            const addresses = searchData.result.map((item: any) => ({
-              postcode: item.postcode,
-              line_1: item.line_1 || item.admin_ward || "",
-              line_2: item.line_2,
-              line_3: item.line_3,
-              town_or_city: item.post_town || item.admin_district || item.ward || "",
-              county: item.county || item.admin_county || "",
-              country: item.country || "England",
-            }));
-            setSuggestions(addresses);
-            setShowSuggestions(addresses.length > 0);
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-          }
-        } else {
-          setSuggestions([]);
-          setShowSuggestions(false);
+      const searchResponse = await fetch(
+        resolveApiUrl(`/api/address/search?postcode=${encodeURIComponent(cleanPostcode)}`),
+        {
+          credentials: 'include',
         }
-        setIsLoading(false);
-        return;
-      }
+      );
 
-      // For full postcodes (5-8 chars), fetch all addresses for that postcode
-      if (isFullPostcode(postcodeValue)) {
-        // Use query search to get all addresses matching this postcode (increase limit to get more results)
-        const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=200`
-        );
-
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.status === 200 && searchData.result && searchData.result.length > 0) {
-            // Filter to only exact postcode matches
-            const exactMatches = searchData.result.filter((item: any) => 
-              item.postcode && item.postcode.replace(/\s+/g, "").toUpperCase() === cleanPostcode
-            );
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json();
+        if (searchData.status === 200 && searchData.result && searchData.result.length > 0) {
+          const addresses = searchData.result.map((item: any) => ({
+            postcode: item.postcode || formattedPostcode,
+            line_1: item.line_1 || "",
+            line_2: item.line_2,
+            line_3: item.line_3,
+            town_or_city: item.town_or_city || "",
+            county: item.county || "",
+            country: item.country || "United Kingdom",
+            buildingNumber: item.buildingNumber,
+            buildingName: item.buildingName,
+            streetName: item.streetName,
+            cityName: item.cityName,
+            provinceName: item.provinceName,
+            countryName: item.countryName,
+          }));
+          
+          // Sort addresses: building numbers first, then numerically, then alphabetically
+          const sortedAddresses = addresses.sort((a, b) => {
+            const startsWithNumberA = /^\d/.test(a.line_1 || "");
+            const startsWithNumberB = /^\d/.test(b.line_1 || "");
             
-            const addresses = exactMatches.length > 0 
-              ? exactMatches.map((item: any) => ({
-                  postcode: item.postcode || formattedPostcode,
-                  line_1: item.line_1 || item.admin_ward || "",
-                  line_2: item.line_2,
-                  line_3: item.line_3,
-                  town_or_city: item.post_town || item.admin_district || item.ward || "",
-                  county: item.county || item.admin_county || "",
-                  country: item.country || "England",
-                }))
-              : searchData.result.map((item: any) => ({
-                  postcode: item.postcode || formattedPostcode,
-                  line_1: item.line_1 || item.admin_ward || "",
-                  line_2: item.line_2,
-                  line_3: item.line_3,
-                  town_or_city: item.post_town || item.admin_district || item.ward || "",
-                  county: item.county || item.admin_county || "",
-                  country: item.country || "England",
-                }));
+            if (startsWithNumberA && !startsWithNumberB) return -1;
+            if (!startsWithNumberA && startsWithNumberB) return 1;
             
-            // Sort addresses by house number for better display
-            const sortedAddresses = addresses.sort((a, b) => {
+            if (startsWithNumberA && startsWithNumberB) {
               const numA = parseInt(a.line_1?.match(/^\d+/)?.[0] || "0") || 0;
               const numB = parseInt(b.line_1?.match(/^\d+/)?.[0] || "0") || 0;
               if (numA !== numB) return numA - numB;
-              return (a.line_1 || "").localeCompare(b.line_1 || "");
-            });
-            
-            setSuggestions(sortedAddresses);
-            setShowSuggestions(sortedAddresses.length > 0);
-            // Store postcodeAddresses for address field filtering (but don't auto-populate)
-            setPostcodeAddresses(sortedAddresses);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        // Fallback: try to get postcode details (single address)
-        const detailResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes/${encodeURIComponent(cleanPostcode)}`
-        );
-
-        if (detailResponse.ok) {
-          const detailData = await detailResponse.json();
-          if (detailData.status === 200 && detailData.result) {
-            const result = detailData.result;
-            const address = {
-              postcode: result.postcode || formattedPostcode,
-              line_1: result.line_1 || result.admin_ward || "",
-              line_2: result.line_2,
-              line_3: result.line_3,
-              town_or_city: result.post_town || result.admin_district || result.ward || "",
-              county: result.county || result.admin_county || "",
-              country: result.country || "England",
-            };
-            setSuggestions([address]);
-            setShowSuggestions(true);
-            setIsLoading(false);
-            return;
-          }
-        }
-      }
-
-      // For partial postcodes (3-4 chars), use autocomplete API
-      const response = await fetch(
-        `${POSTCODES_API_BASE}/postcodes/${encodeURIComponent(cleanPostcode)}/autocomplete`
-      );
-
-      if (!response.ok) {
-        // Fallback to query search
-        const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=20`
-        );
-
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.status === 200 && searchData.result && searchData.result.length > 0) {
-            const addresses = searchData.result.map((item: any) => ({
-              postcode: item.postcode,
-              line_1: item.line_1 || item.admin_ward || "",
-              line_2: item.line_2,
-              line_3: item.line_3,
-              town_or_city: item.post_town || item.admin_district || item.ward || "",
-              county: item.county || item.admin_county || "",
-              country: item.country || "England",
-            }));
-            setSuggestions(addresses);
-            setShowSuggestions(addresses.length > 0);
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-          }
-        } else {
-          setSuggestions([]);
-          setShowSuggestions(false);
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.status === 200 && data.result && data.result.length > 0) {
-        // Fetch detailed addresses for each postcode suggestion
-        const detailedAddresses: AddressSuggestion[] = [];
-
-        // Limit to 10 for performance
-        const postcodesToFetch = data.result.slice(0, 10);
-        
-        // Fetch in parallel for better performance
-        const fetchPromises = postcodesToFetch.map(async (postcodeSuggestion: string) => {
-          try {
-            const detailResponse = await fetch(
-              `${POSTCODES_API_BASE}/postcodes/${encodeURIComponent(postcodeSuggestion)}`
-            );
-
-            if (detailResponse.ok) {
-              const detailData = await detailResponse.json();
-              if (detailData.status === 200 && detailData.result) {
-                const result = detailData.result;
-                return {
-                  postcode: result.postcode,
-                  line_1: result.line_1 || result.admin_ward || "",
-                  line_2: result.line_2,
-                  line_3: result.line_3,
-                  town_or_city: result.post_town || result.admin_district || result.ward || "",
-                  county: result.county || result.admin_county || "",
-                  country: result.country || "England",
-                };
-              }
             }
-          } catch (err) {
-            return null;
-          }
-          return null;
-        });
-
-        const results = await Promise.all(fetchPromises);
-        const validAddresses = results.filter((addr): addr is AddressSuggestion => addr !== null);
-
-        setSuggestions(validAddresses);
-        setShowSuggestions(validAddresses.length > 0);
-      } else {
-        // Try alternative search if autocomplete doesn't work
-        const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=20`
-        );
-
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.status === 200 && searchData.result && searchData.result.length > 0) {
-            const addresses = searchData.result.map((item: any) => ({
-              postcode: item.postcode,
-              line_1: item.line_1 || item.admin_ward || "",
-              line_2: item.line_2,
-              line_3: item.line_3,
-              town_or_city: item.post_town || item.admin_district || item.ward || "",
-              county: item.county || item.admin_county || "",
-              country: item.country || "England",
-            }));
-            setSuggestions(addresses);
-            setShowSuggestions(addresses.length > 0);
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-          }
+            
+            return (a.line_1 || "").localeCompare(b.line_1 || "");
+          });
+          
+          setSuggestions(sortedAddresses);
+          setShowSuggestions(sortedAddresses.length > 0);
+          setPostcodeAddresses(sortedAddresses);
         } else {
           setSuggestions([]);
           setShowSuggestions(false);
+          setPostcodeAddresses([]);
         }
+      } else {
+        const errorData = await searchResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch addresses');
       }
     } catch (err) {
       console.error("Address lookup error:", err);
       setError("Unable to find addresses for this postcode. Please enter manually.");
       setSuggestions([]);
       setShowSuggestions(false);
+      setPostcodeAddresses([]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Fetch addresses for a postcode (used for address line filtering)
-  const fetchPostcodeAddresses = async (postcodeValue: string) => {
-    if (!postcodeValue || postcodeValue.trim().length < 1) {
-      setPostcodeAddresses([]);
-      setAddressSuggestions([]);
-      setShowAddressSuggestions(false);
-      return;
-    }
-
-    const cleanPostcode = postcodeValue.replace(/\s+/g, "").toUpperCase();
-    
-    try {
-      // For full postcodes, fetch all addresses directly
-      if (isFullPostcode(postcodeValue)) {
-        const searchResponse = await fetch(
-          `${POSTCODES_API_BASE}/postcodes?q=${encodeURIComponent(cleanPostcode)}&limit=200`
-        );
-
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.status === 200 && searchData.result && searchData.result.length > 0) {
-            // Filter to only exact postcode matches
-            const exactMatches = searchData.result.filter((item: any) => 
-              item.postcode && item.postcode.replace(/\s+/g, "").toUpperCase() === cleanPostcode
-            );
-            
-            const addresses = exactMatches.length > 0 
-              ? exactMatches.map((item: any) => ({
-                  postcode: item.postcode,
-                  line_1: item.line_1 || item.admin_ward || "",
-                  line_2: item.line_2,
-                  line_3: item.line_3,
-                  town_or_city: item.post_town || item.admin_district || item.ward || "",
-                  county: item.county || item.admin_county || "",
-                  country: item.country || "England",
-                }))
-              : searchData.result.map((item: any) => ({
-                  postcode: item.postcode,
-                  line_1: item.line_1 || item.admin_ward || "",
-                  line_2: item.line_2,
-                  line_3: item.line_3,
-                  town_or_city: item.post_town || item.admin_district || item.ward || "",
-                  county: item.county || item.admin_county || "",
-                  country: item.country || "England",
-                }));
-            
-            // Sort addresses by house number for better display
-            const sortedAddresses = addresses.sort((a, b) => {
-              const numA = parseInt(a.line_1?.match(/^\d+/)?.[0] || "0") || 0;
-              const numB = parseInt(b.line_1?.match(/^\d+/)?.[0] || "0") || 0;
-              if (numA !== numB) return numA - numB;
-              return (a.line_1 || "").localeCompare(b.line_1 || "");
-            });
-            
-            setPostcodeAddresses(sortedAddresses);
-            // Don't auto-populate address field - keep postcode and address independent
-            return;
-          }
-        }
-      }
-
-      // For partial postcodes, use autocomplete
-      const response = await fetch(
-        `${POSTCODES_API_BASE}/postcodes/${encodeURIComponent(cleanPostcode)}/autocomplete`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 200 && data.result && data.result.length > 0) {
-          const addresses: AddressSuggestion[] = [];
-          
-          for (const pc of data.result.slice(0, 20)) {
-            try {
-              const detailResponse = await fetch(
-                `${POSTCODES_API_BASE}/postcodes/${encodeURIComponent(pc)}`
-              );
-              if (detailResponse.ok) {
-                const detailData = await detailResponse.json();
-                if (detailData.status === 200 && detailData.result) {
-                  addresses.push({
-                    postcode: detailData.result.postcode,
-                    line_1: detailData.result.line_1 || detailData.result.admin_ward || "",
-                    line_2: detailData.result.line_2,
-                    line_3: detailData.result.line_3,
-                    town_or_city: detailData.result.post_town || detailData.result.admin_district || detailData.result.ward || "",
-                    county: detailData.result.county || detailData.result.admin_county || "",
-                    country: detailData.result.country || "England",
-                  });
-                }
-              }
-            } catch (err) {
-              continue;
-            }
-          }
-          
-          // Sort addresses by house number for better display
-          const sortedAddresses = addresses.sort((a, b) => {
-            const numA = parseInt(a.line_1?.match(/^\d+/)?.[0] || "0") || 0;
-            const numB = parseInt(b.line_1?.match(/^\d+/)?.[0] || "0") || 0;
-            if (numA !== numB) return numA - numB;
-            return (a.line_1 || "").localeCompare(b.line_1 || "");
-          });
-          
-          setPostcodeAddresses(sortedAddresses);
-          // Don't auto-populate address field - keep postcode and address independent
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching postcode addresses:", err);
     }
   };
 
@@ -555,15 +349,12 @@ export default function AddressAutocomplete({
     debounceTimerRef.current = setTimeout(() => {
       if (postcode && postcode.trim().length >= 1) {
         fetchSuggestions(postcode);
-        if (postcode.trim().length >= 3) {
-          fetchPostcodeAddresses(postcode);
-        }
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
         setPostcodeAddresses([]);
       }
-    }, 300); // 300ms debounce for faster response
+    }, 300);
 
     return () => {
       if (debounceTimerRef.current) {
@@ -631,10 +422,24 @@ export default function AddressAutocomplete({
     setSelectedIndex(-1);
   };
 
-  // Handle selection from postcode suggestions - only update postcode
+  // Handle selection from postcode suggestions - update postcode and address field
   const handleSelectPostcodeSuggestion = (suggestion: AddressSuggestion) => {
-    // Only update postcode, don't auto-populate address field
+    const fullAddress = formatAddressDisplay(suggestion);
+    
     onPostcodeChange(suggestion.postcode);
+    
+    if (onAddressChange) {
+      onAddressChange(fullAddress);
+    }
+    
+    if (onAddressSelect) {
+      onAddressSelect({
+        postcode: suggestion.postcode,
+        address: fullAddress,
+        townCity: suggestion.town_or_city,
+        county: suggestion.county,
+      });
+    }
     
     setShowSuggestions(false);
     setSuggestions([]);
@@ -643,9 +448,7 @@ export default function AddressAutocomplete({
 
   // Handle selection from address suggestions - only update address field
   const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
-    // Format full address based on whether it's a full postcode result
-    const isFullPostcodeResult = isFullPostcode(postcode);
-    const fullAddress = formatAddressDisplay(suggestion, isFullPostcodeResult);
+    const fullAddress = formatAddressDisplay(suggestion);
 
     if (onAddressSelect) {
       onAddressSelect({
@@ -694,43 +497,19 @@ export default function AddressAutocomplete({
     }
   };
 
-  const formatAddressDisplay = (suggestion: AddressSuggestion, isFullPostcode: boolean = false): string => {
-    // For full postcode results, use simple format: house_number street city postcode (no spaces in postcode)
-    if (isFullPostcode) {
-      const houseNumber = suggestion.line_1 || "";
-      const city = suggestion.town_or_city || "";
-      const postcodeNoSpaces = (suggestion.postcode || "").replace(/\s+/g, "").toUpperCase();
-      
-      const parts = [
-        houseNumber,
-        city,
-        postcodeNoSpaces,
-      ].filter(Boolean);
-
-      return parts.join(" ");
-    }
-    
-    // For other cases, use the detailed format: street, city, province, country, postal code
-    const street = [
-      suggestion.line_1,
-      suggestion.line_2,
-      suggestion.line_3,
-    ].filter(Boolean).join(", ");
-    
-    const city = suggestion.town_or_city || "";
-    const province = suggestion.county || "";
-    const country = suggestion.country || "";
-    const postalCode = suggestion.postcode || "";
+  const formatAddressDisplay = (suggestion: AddressSuggestion): string => {
+    // Format: address line, city, postcode
+    const addressLine = suggestion.line_1 || "";
+    const cityName = suggestion.town_or_city || "";
+    const postalCode = (suggestion.postcode || "").replace(/\s+/g, "").toUpperCase();
     
     const parts = [
-      street,
-      city,
-      province,
-      country,
+      addressLine,
+      cityName,
       postalCode,
     ].filter(Boolean);
 
-    return parts.join(", ");
+    return parts.join(" ");
   };
 
   return (
@@ -769,9 +548,22 @@ export default function AddressAutocomplete({
         {error && (
           <p className="mt-1 text-xs text-red-500">{error}</p>
         )}
-        {!error && postcode && postcode.trim().length >= 3 && !isLoading && suggestions.length === 0 && (
-          <p className="mt-1 text-xs text-black/60 dark:text-white/60">
-            No addresses found. Please enter manually.
+        {!error && !isLoading && !address?.trim() && !showManualEntry && (
+          <p className="mt-1 text-[10px] text-black/60 dark:text-white/60">
+            No addresses found.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setShowManualEntry(true);
+                // Pre-fill postcode if available
+                if (postcode) {
+                  setManualAddress(prev => ({ ...prev, postcode }));
+                }
+              }}
+              className="text-[10px] text-[#FE8A0F] hover:underline cursor-pointer"
+            >
+              Please enter manually.
+            </button>
           </p>
         )}
       </div>
@@ -794,7 +586,7 @@ export default function AddressAutocomplete({
                 <MapPin className="h-4 w-4 text-[#FE8A0F] mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-black dark:text-white">
-                    {formatAddressDisplay(suggestion, isFullPostcode(postcode))}
+                    {formatAddressDisplay(suggestion)}
                   </p>
                 </div>
               </div>
@@ -804,7 +596,7 @@ export default function AddressAutocomplete({
       )}
 
       {/* Address and Town/City Fields (if enabled) */}
-      {showAddressField && (
+      {showAddressField && !showManualEntry && (
         <div ref={addressWrapperRef} className="mt-4 relative">
           <Label htmlFor="address" className="text-black dark:text-white">
             {addressLabel} {required && <span className="text-red-500">*</span>}
@@ -891,7 +683,7 @@ export default function AddressAutocomplete({
                     <MapPin className="h-4 w-4 text-[#FE8A0F] mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-black dark:text-white">
-                        {formatAddressDisplay(suggestion, isFullPostcode(postcode))}
+                        {formatAddressDisplay(suggestion)}
                       </p>
                     </div>
                   </div>
@@ -902,7 +694,7 @@ export default function AddressAutocomplete({
         </div>
       )}
 
-      {showTownCityField && (
+      {showTownCityField && !showManualEntry && (
         <div ref={cityWrapperRef} className="mt-4 relative">
           <Label htmlFor="townCity" className="text-black dark:text-white">
             Town/City
@@ -982,6 +774,119 @@ export default function AddressAutocomplete({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Manual Address Entry Form */}
+      {showManualEntry && (
+        <div className="mt-4 space-y-4 p-4 border-2 border-[#FE8A0F] rounded-lg bg-white/50 dark:bg-black/50">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-black dark:text-white">Enter Address Manually</h3>
+            <button
+              type="button"
+              onClick={() => {
+                setShowManualEntry(false);
+                setManualAddress({
+                  line1: '',
+                  line2: '',
+                  townCity: '',
+                  county: '',
+                  postcode: '',
+                  country: 'United Kingdom',
+                });
+              }}
+              className="text-xs text-black/60 dark:text-white/60 hover:text-[#FE8A0F]"
+            >
+              Close
+            </button>
+          </div>
+          
+          <div>
+            <Label htmlFor="manual-line1" className="text-black dark:text-white">
+              Address line 1 <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="manual-line1"
+              type="text"
+              value={manualAddress.line1}
+              onChange={(e) => handleManualAddressChange('line1', e.target.value)}
+              placeholder="Street address"
+              required
+              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="manual-line2" className="text-black dark:text-white">
+              Address line 2
+            </Label>
+            <Input
+              id="manual-line2"
+              type="text"
+              value={manualAddress.line2}
+              onChange={(e) => handleManualAddressChange('line2', e.target.value)}
+              placeholder="Apartment, suite, etc. (optional)"
+              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="manual-townCity" className="text-black dark:text-white">
+              Town / City <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="manual-townCity"
+              type="text"
+              value={manualAddress.townCity}
+              onChange={(e) => handleManualAddressChange('townCity', e.target.value)}
+              placeholder="Town or city"
+              required
+              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="manual-county" className="text-black dark:text-white">
+              County
+            </Label>
+            <Input
+              id="manual-county"
+              type="text"
+              value={manualAddress.county}
+              onChange={(e) => handleManualAddressChange('county', e.target.value)}
+              placeholder="County (optional)"
+              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="manual-postcode" className="text-black dark:text-white">
+              Postcode <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="manual-postcode"
+              type="text"
+              value={manualAddress.postcode}
+              onChange={(e) => handleManualAddressChange('postcode', e.target.value)}
+              placeholder="e.g., SW1A 1AA"
+              required
+              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="manual-country" className="text-black dark:text-white">
+              Country
+            </Label>
+            <Input
+              id="manual-country"
+              type="text"
+              value={manualAddress.country}
+              onChange={(e) => handleManualAddressChange('country', e.target.value)}
+              placeholder="Country"
+              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
         </div>
       )}
     </div>
