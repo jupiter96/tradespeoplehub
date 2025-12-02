@@ -77,9 +77,52 @@ router.get('/search', async (req, res) => {
       types: items.map(item => item.Type),
     });
     
-    const addresses = items
-      .filter(item => item.Type === 'Address') // Only include actual addresses, not postcodes
-      .map((item, index) => {
+    // First, find the postcode item to get its Container ID
+    const postcodeItem = items.find(item => item.Type === 'Postcode');
+    let allAddresses = items.filter(item => item.Type === 'Address');
+    
+    // If we found a postcode item, fetch all addresses using Container parameter
+    if (postcodeItem && postcodeItem.Id) {
+      console.log('📦 Found postcode item, fetching all addresses with Container:', {
+        postcodeId: postcodeItem.Id,
+        postcodeText: postcodeItem.Text,
+      });
+      
+      try {
+        const containerUrl = `${ADDRESSY_BASE_URL}?Key=${encodeURIComponent(ADDRESSY_API_KEY)}&Text=${encodeURIComponent(cleanPostcode)}&Countries=GB&Language=en&Limit=100&Container=${encodeURIComponent(postcodeItem.Id)}`;
+        
+        console.log('📡 Calling Addressy API with Container:', {
+          url: containerUrl.replace(ADDRESSY_API_KEY, '***'),
+          container: postcodeItem.Id,
+        });
+        
+        const containerResponse = await fetch(containerUrl);
+        
+        if (containerResponse.ok) {
+          const containerData = await containerResponse.json();
+          console.log('📦 Container API response:', {
+            hasItems: !!containerData.Items,
+            itemCount: containerData.Items?.length || 0,
+          });
+          
+          // Get all addresses from container response
+          const containerAddresses = (containerData.Items || []).filter(item => item.Type === 'Address');
+          if (containerAddresses.length > 0) {
+            allAddresses = containerAddresses;
+            console.log('✅ Using container addresses:', {
+              count: allAddresses.length,
+            });
+          }
+        } else {
+          console.log('⚠️ Container API failed, using initial addresses');
+        }
+      } catch (containerError) {
+        console.error('⚠️ Error fetching container addresses:', containerError.message);
+        // Continue with initial addresses
+      }
+    }
+    
+    const addresses = allAddresses.map((item, index) => {
         console.log(`📍 Processing address ${index + 1}:`, {
           id: item.Id,
           text: item.Text,
