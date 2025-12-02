@@ -54,6 +54,10 @@ const userSchema = new mongoose.Schema(
     address: String,
     travelDistance: String,
     sector: String,
+    sectors: {
+      type: [String],
+      default: [],
+    },
     services: {
       type: [String],
       default: [],
@@ -68,6 +72,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['yes', 'no'],
       default: 'no',
+    },
+    professionalIndemnityAmount: {
+      type: Number,
+      default: null,
+    },
+    insuranceExpiryDate: {
+      type: Date,
+      default: null,
     },
     // KYC Verification fields
     verification: {

@@ -27,6 +27,8 @@ interface UserInfo {
   aboutService?: string;
   hasTradeQualification?: string;
   hasPublicLiability?: string;
+  professionalIndemnityAmount?: number;
+  insuranceExpiryDate?: string | Date;
   publicProfile?: {
     bio?: string;
     portfolio?: Array<{
@@ -84,7 +86,10 @@ interface ProfileUpdatePayload {
   tradingName?: string;
   travelDistance?: string;
   sector?: string;
+  sectors?: string[];
   services?: string[];
+  professionalIndemnityAmount?: number;
+  insuranceExpiryDate?: string;
   aboutService?: string;
   hasTradeQualification?: "yes" | "no";
   hasPublicLiability?: "yes" | "no";

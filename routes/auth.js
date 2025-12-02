@@ -282,7 +282,8 @@ const validateRegistrationPayload = (payload, { requirePassword } = { requirePas
     return 'Invalid user type';
   }
 
-  if (userType === 'professional' && (!tradingName || !townCity || !address || !travelDistance)) {
+  // For professionals: address is required, townCity is optional if address is provided
+  if (userType === 'professional' && (!tradingName || (!townCity && !address) || !address || !travelDistance)) {
     return 'Professional registration requires business details';
   }
 
@@ -994,12 +995,35 @@ router.put('/profile', requireAuth, async (req, res) => {
       if (Array.isArray(services)) {
         user.services = services.map((service) => service?.toString().trim()).filter(Boolean);
       }
+      
+      // Update sectors (allow multiple sectors)
+      if (req.body.sectors !== undefined && Array.isArray(req.body.sectors)) {
+        user.sectors = req.body.sectors.map((s) => s?.toString().trim()).filter(Boolean);
+        // Also update single sector field for backward compatibility
+        if (user.sectors.length > 0) {
+          user.sector = user.sectors[0];
+        }
+      }
+      
       user.aboutService = aboutService?.trim() || undefined;
       if (['yes', 'no'].includes(hasTradeQualification)) {
         user.hasTradeQualification = hasTradeQualification;
       }
       if (['yes', 'no'].includes(hasPublicLiability)) {
         user.hasPublicLiability = hasPublicLiability;
+      }
+      
+      // Professional indemnity insurance details
+      if (req.body.professionalIndemnityAmount !== undefined) {
+        const amount = parseFloat(req.body.professionalIndemnityAmount);
+        user.professionalIndemnityAmount = isNaN(amount) ? null : amount;
+      }
+      if (req.body.insuranceExpiryDate !== undefined) {
+        if (req.body.insuranceExpiryDate) {
+          user.insuranceExpiryDate = new Date(req.body.insuranceExpiryDate);
+        } else {
+          user.insuranceExpiryDate = null;
+        }
       }
 
       // Update public profile if provided
@@ -1672,6 +1696,8 @@ router.get('/profile/:identifier', async (req, res) => {
       aboutService: user.aboutService,
       hasTradeQualification: user.hasTradeQualification,
       hasPublicLiability: user.hasPublicLiability,
+      professionalIndemnityAmount: user.professionalIndemnityAmount,
+      insuranceExpiryDate: user.insuranceExpiryDate,
       townCity: user.townCity,
       postcode: user.postcode,
       address: user.address,

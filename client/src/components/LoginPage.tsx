@@ -187,7 +187,8 @@ export default function LoginPage() {
     if (!registerPostcode.trim()) {
       errors.postcode = "Postcode is required";
     }
-    if (userType === "professional" && !registerTownCity.trim()) {
+    // Town/City is only required if address is not provided
+    if (userType === "professional" && !registerAddress.trim() && !registerTownCity.trim()) {
       errors.townCity = "Town/City is required";
     }
     if (userType === "professional" && !registerAddress.trim()) {

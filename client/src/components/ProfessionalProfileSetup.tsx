@@ -157,7 +157,7 @@ const sectors = {
 export default function ProfessionalProfileSetup() {
   const navigate = useNavigate();
   const { updateUserInfo, isLoggedIn, userRole } = useAccount();
-  const [selectedSectors, setSelectedSectors] = useState<string[]>(["Home & Garden"]);
+  const [selectedSector, setSelectedSector] = useState<string>("");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   // Redirect to login if not logged in or not a professional
@@ -177,44 +177,28 @@ export default function ProfessionalProfileSetup() {
     );
   };
 
-  const handleSectorToggle = (sector: string) => {
-    setSelectedSectors(prev => {
-      if (prev.includes(sector)) {
-        // Must have at least 1 sector
-        if (prev.length === 1) {
-          alert("You must select at least one sector");
-          return prev;
-        }
-        return prev.filter(s => s !== sector);
-      } else {
-        // Maximum 3 sectors
-        if (prev.length >= 3) {
-          alert("You can select a maximum of 3 sectors");
-          return prev;
-        }
-        return [...prev, sector];
-      }
-    });
-    // Reset services when sectors change
+  const handleSectorChange = (sector: string) => {
+    // Only allow one sector selection
+    setSelectedSector(sector);
+    // Reset services when sector changes
     setSelectedServices([]);
   };
 
   const handleSaveAndContinue = () => {
-    if (selectedSectors.length === 0) {
-      alert("Please select at least one sector");
+    if (!selectedSector) {
+      alert("Please select a sector");
       return;
     }
     if (selectedServices.length === 0) {
       alert("Please select at least one service");
       return;
     }
-    // Save sectors and services to AccountContext
+    // Save sector and services to AccountContext
     updateUserInfo({
-      sectors: selectedSectors,
-      sector: selectedSectors[0], // For backward compatibility
+      sector: selectedSector,
       services: selectedServices
     });
-    console.log("Selected Sectors:", selectedSectors);
+    console.log("Selected Sector:", selectedSector);
     console.log("Selected Services:", selectedServices);
     // Navigate to about service page
     navigate("/professional-about");
@@ -249,76 +233,78 @@ export default function ProfessionalProfileSetup() {
             {/* Sector Selection */}
             <div className="mb-6">
               <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                Select Sectors (1-3 sectors)
+                Select Sector <span className="text-xs text-gray-500 font-normal">(You can only select one sector)</span>
               </Label>
               <div className="space-y-2 mb-4 p-4 border border-gray-200 rounded-xl max-h-[250px] overflow-y-auto">
                 {Object.keys(sectors).map((sector) => (
-                  <div key={sector} className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors">
-                    <Checkbox
+                  <label
+                    key={sector}
+                    htmlFor={`sector-${sector}`}
+                    className={`flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors cursor-pointer ${
+                      selectedSector === sector ? 'bg-[#FFF5EB] border border-[#FE8A0F]' : ''
+                    }`}
+                  >
+                    <input
+                      type="radio"
                       id={`sector-${sector}`}
-                      checked={selectedSectors.includes(sector)}
-                      onCheckedChange={() => handleSectorToggle(sector)}
-                      className="mt-0.5"
+                      name="sector"
+                      value={sector}
+                      checked={selectedSector === sector}
+                      onChange={() => handleSectorChange(sector)}
+                      className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 focus:ring-[#FE8A0F] focus:ring-2 cursor-pointer"
                     />
-                    <Label
-                      htmlFor={`sector-${sector}`}
-                      className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
-                    >
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed flex-1">
                       {sector}
-                    </Label>
-                    {selectedSectors.includes(sector) && (
+                    </span>
+                    {selectedSector === sector && (
                       <CheckCircle2 className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                     )}
-                  </div>
+                  </label>
                 ))}
               </div>
               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                Selected: {selectedSectors.length}/3 sectors
+                Note: You can only select one sector. Once selected, it cannot be changed. However, you can select multiple categories within your chosen sector.
               </p>
             </div>
 
             {/* Services Checkboxes */}
-            <div className="mb-5">
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                Select Services You Offer
-              </Label>
-              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2">
-                {selectedSectors.flatMap(sector => 
-                  sectors[sector as keyof typeof sectors].map((service) => ({
-                    service,
-                    sector
-                  })
-                )).map(({ service, sector }, index) => (
-                  <div key={`${sector}-${service}-${index}`} className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors">
-                    <Checkbox
-                      id={`service-${sector}-${service}-${index}`}
-                      checked={selectedServices.includes(service)}
-                      onCheckedChange={() => handleServiceToggle(service)}
-                      className="mt-0.5"
-                    />
-                    <Label
-                      htmlFor={`service-${sector}-${service}-${index}`}
-                      className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
-                    >
-                      {service}
-                      <span className="text-[11px] text-[#8d8d8d] ml-2">({sector})</span>
-                    </Label>
-                    {selectedServices.includes(service) && (
-                      <CheckCircle2 className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Selected Count */}
-              {selectedServices.length > 0 && (
-                <div className="mt-3 p-2.5 bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl">
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    <span className="text-[#FE8A0F]">{selectedServices.length}</span> service{selectedServices.length !== 1 ? 's' : ''} selected
-                  </p>
+            {selectedSector && (
+              <div className="mb-5">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  Select Categories/Services You Offer <span className="text-xs text-gray-500 font-normal">(You can select multiple)</span>
+                </Label>
+                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2">
+                  {sectors[selectedSector as keyof typeof sectors]?.map((service, index) => (
+                    <div key={`${selectedSector}-${service}-${index}`} className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors">
+                      <Checkbox
+                        id={`service-${selectedSector}-${service}-${index}`}
+                        checked={selectedServices.includes(service)}
+                        onCheckedChange={() => handleServiceToggle(service)}
+                        className="mt-0.5"
+                      />
+                      <Label
+                        htmlFor={`service-${selectedSector}-${service}-${index}`}
+                        className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
+                      >
+                        {service}
+                      </Label>
+                      {selectedServices.includes(service) && (
+                        <CheckCircle2 className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+
+                {/* Selected Count */}
+                {selectedServices.length > 0 && (
+                  <div className="mt-3 p-2.5 bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      <span className="text-[#FE8A0F]">{selectedServices.length}</span> service{selectedServices.length !== 1 ? 's' : ''} selected
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Save and Continue Button */}
             <div className="flex justify-center pt-2">

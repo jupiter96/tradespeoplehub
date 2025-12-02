@@ -11,8 +11,10 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
+import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
+import { PoundSterling, Calendar } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
@@ -88,10 +90,12 @@ export default function ProfessionalRegistrationSteps() {
   const [isSaving, setIsSaving] = useState(false);
   
   // Form data
-  const [sector, setSector] = useState("");
-  const [category, setCategory] = useState("");
+  const [sectors, setSectors] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
   const [insurance, setInsurance] = useState<"yes" | "no">("no");
+  const [professionalIndemnityAmount, setProfessionalIndemnityAmount] = useState<string>("");
+  const [insuranceExpiryDate, setInsuranceExpiryDate] = useState<string>("");
   
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -99,20 +103,26 @@ export default function ProfessionalRegistrationSteps() {
   // Initialize form data from userInfo if available
   useEffect(() => {
     if (userInfo?.sector) {
-      setSector(userInfo.sector);
+      // If user has a single sector, convert to array
+      setSectors([userInfo.sector]);
     }
     if (userInfo?.services && userInfo.services.length > 0) {
-      const firstService = userInfo.services[0];
-      const isCategory = CATEGORIES.includes(firstService);
-      if (isCategory) {
-        setCategory(firstService);
-        setSubcategories(userInfo.services.slice(1));
-      } else {
-        setSubcategories(userInfo.services);
-      }
+      // Separate categories and subcategories
+      const userCategories = userInfo.services.filter(s => CATEGORIES.includes(s));
+      const userSubcategories = userInfo.services.filter(s => !CATEGORIES.includes(s));
+      setCategories(userCategories);
+      setSubcategories(userSubcategories);
     }
     if (userInfo?.hasPublicLiability !== undefined) {
       setInsurance(userInfo.hasPublicLiability === true || userInfo.hasPublicLiability === "yes" ? "yes" : "no");
+    }
+    if (userInfo?.professionalIndemnityAmount) {
+      setProfessionalIndemnityAmount(userInfo.professionalIndemnityAmount.toString());
+    }
+    if (userInfo?.insuranceExpiryDate) {
+      // Format date for input (YYYY-MM-DD)
+      const date = new Date(userInfo.insuranceExpiryDate);
+      setInsuranceExpiryDate(date.toISOString().split('T')[0]);
     }
   }, [userInfo]);
 
@@ -133,11 +143,11 @@ export default function ProfessionalRegistrationSteps() {
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (step === 1 && !sector.trim()) {
-      newErrors.sector = "Please select a sector";
+    if (step === 1 && sectors.length === 0) {
+      newErrors.sectors = "Please select at least one sector";
     }
-    if (step === 2 && !category.trim()) {
-      newErrors.category = "Please select a category";
+    if (step === 2 && categories.length === 0) {
+      newErrors.categories = "Please select at least one category";
     }
     if (step === 3 && subcategories.length === 0) {
       newErrors.subcategories = "Please select at least one subcategory";
@@ -167,15 +177,35 @@ export default function ProfessionalRegistrationSteps() {
           postcode: userInfo?.postcode || "",
         };
 
-        // Only update sector if it doesn't already exist
-        if (currentStep >= 1 && !userInfo?.sector) {
-          updateData.sector = sector;
+        // Only update sectors if they don't already exist
+        if (currentStep >= 1 && sectors.length > 0) {
+          // If user already has a sector, don't overwrite it
+          if (!userInfo?.sector) {
+            // Store first sector for backward compatibility
+            updateData.sector = sectors[0];
+            // Store all sectors in services or a new field
+            updateData.sectors = sectors;
+          }
         }
         if (currentStep >= 2) {
-          const allServices = category ? [category, ...subcategories] : subcategories;
+          const allServices = [...categories, ...subcategories];
           updateData.services = allServices;
         }
-        if (currentStep >= 4) updateData.hasPublicLiability = insurance;
+        if (currentStep >= 4) {
+          updateData.hasPublicLiability = insurance;
+          if (insurance === "yes") {
+            if (professionalIndemnityAmount) {
+              updateData.professionalIndemnityAmount = parseFloat(professionalIndemnityAmount) || null;
+            }
+            if (insuranceExpiryDate) {
+              updateData.insuranceExpiryDate = new Date(insuranceExpiryDate);
+            }
+          } else {
+            // Clear insurance details if no insurance
+            updateData.professionalIndemnityAmount = null;
+            updateData.insuranceExpiryDate = null;
+          }
+        }
 
         await updateProfile(updateData);
         setCurrentStep(currentStep + 1);
@@ -202,7 +232,7 @@ export default function ProfessionalRegistrationSteps() {
 
     setIsSaving(true);
     try {
-      const allServices = category ? [category, ...subcategories] : subcategories;
+      const allServices = [...categories, ...subcategories];
       
       const updateData: any = {
         firstName: userInfo?.firstName || "",
@@ -214,9 +244,25 @@ export default function ProfessionalRegistrationSteps() {
         hasPublicLiability: insurance,
       };
 
-      // Only update sector if it doesn't already exist
-      if (!userInfo?.sector) {
-        updateData.sector = sector;
+      if (insurance === "yes") {
+        if (professionalIndemnityAmount) {
+          updateData.professionalIndemnityAmount = parseFloat(professionalIndemnityAmount) || null;
+        }
+        if (insuranceExpiryDate) {
+          updateData.insuranceExpiryDate = new Date(insuranceExpiryDate);
+        }
+      } else {
+        // Clear insurance details if no insurance
+        updateData.professionalIndemnityAmount = null;
+        updateData.insuranceExpiryDate = null;
+      }
+
+      // Only update sectors if they don't already exist
+      if (sectors.length > 0 && !userInfo?.sector) {
+        // Store first sector for backward compatibility
+        updateData.sector = sectors[0];
+        // Store all sectors
+        updateData.sectors = sectors;
       }
       
       await updateProfile(updateData);
@@ -227,6 +273,36 @@ export default function ProfessionalRegistrationSteps() {
       toast.error(error instanceof Error ? error.message : "Failed to complete setup");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const toggleSector = (sector: string) => {
+    setSectors(prev => 
+      prev.includes(sector) 
+        ? prev.filter(s => s !== sector)
+        : [...prev, sector]
+    );
+    if (errors.sectors) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.sectors;
+        return newErrors;
+      });
+    }
+  };
+
+  const toggleCategory = (category: string) => {
+    setCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+    if (errors.categories) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.categories;
+        return newErrors;
+      });
     }
   };
 
@@ -334,53 +410,87 @@ export default function ProfessionalRegistrationSteps() {
               <div className="space-y-4">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
-                    Select Your Sector <span className="text-red-500">*</span>
+                    Select Your Sectors <span className="text-red-500">*</span>
+                    <span className="text-xs text-gray-500 font-normal ml-2">
+                      (Select all that apply)
+                    </span>
                   </Label>
                   {userInfo?.sector ? (
-                    // If sector already exists, show it as read-only
+                    // If sector already exists, show it as read-only but allow adding more
                     <div className="space-y-2">
-                      <div className="h-12 border-2 border-gray-300 rounded-xl px-4 flex items-center bg-gray-50 text-gray-700 font-['Poppins',sans-serif]">
-                        {userInfo.sector}
+                      <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {SECTORS.map((sec) => {
+                            const isSelected = sectors.includes(sec);
+                            const isExisting = sec === userInfo.sector;
+                            return (
+                              <label
+                                key={sec}
+                                className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                                  isExisting 
+                                    ? 'border-[#FE8A0F] bg-[#FFF5EB]' 
+                                    : isSelected
+                                    ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                                    : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                                } cursor-pointer transition-all`}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => {
+                                    if (!isExisting) {
+                                      toggleSector(sec);
+                                    }
+                                  }}
+                                  disabled={isExisting}
+                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                                />
+                                <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                                  {sec}
+                                  {isExisting && <span className="text-xs text-[#FE8A0F] ml-2">(Selected during registration)</span>}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
                       <p className="text-xs text-gray-500 font-['Poppins',sans-serif]">
-                        Your sector was selected during registration and cannot be changed. You can only select one sector, but you can choose multiple categories within that sector.
+                        Your original sector was selected during registration. You can add more sectors.
                       </p>
                     </div>
                   ) : (
-                    // If no sector exists, allow selection
-                    <Select 
-                      value={sector} 
-                      onValueChange={(value) => {
-                        setSector(value);
-                        if (errors.sector) {
-                          setErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.sector;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl">
-                        <SelectValue placeholder="Choose your main sector (you can only select one)" />
-                      </SelectTrigger>
-                      <SelectContent>
+                    // If no sector exists, allow multiple selection
+                    <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {SECTORS.map((sec) => (
-                          <SelectItem key={sec} value={sec}>
-                            {sec}
-                          </SelectItem>
+                          <label
+                            key={sec}
+                            className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                              sectors.includes(sec)
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                                : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                            } cursor-pointer transition-all`}
+                          >
+                            <Checkbox
+                              checked={sectors.includes(sec)}
+                              onCheckedChange={() => toggleSector(sec)}
+                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                            />
+                            <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                              {sec}
+                            </span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    </div>
                   )}
-                  {errors.sector && (
+                  {errors.sectors && (
                     <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
-                      {errors.sector}
+                      {errors.sectors}
                     </p>
                   )}
-                  {!userInfo?.sector && (
-                    <p className="mt-2 text-xs text-gray-500 font-['Poppins',sans-serif]">
-                      Note: You can only select one sector. Once selected, it cannot be changed. However, you can select multiple categories within your chosen sector.
+                  {sectors.length > 0 && (
+                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                      {sectors.length} sector{sectors.length === 1 ? '' : 's'} selected
                     </p>
                   )}
                 </div>
@@ -392,32 +502,42 @@ export default function ProfessionalRegistrationSteps() {
               <div className="space-y-4">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
-                    Select Category <span className="text-red-500">*</span>
+                    Select Categories <span className="text-red-500">*</span>
+                    <span className="text-xs text-gray-500 font-normal ml-2">
+                      (Select all that apply)
+                    </span>
                   </Label>
-                  <Select value={category} onValueChange={(value) => {
-                    setCategory(value);
-                    if (errors.category) {
-                      setErrors(prev => {
-                        const newErrors = { ...prev };
-                        delete newErrors.category;
-                        return newErrors;
-                      });
-                    }
-                  }}>
-                    <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl">
-                      <SelectValue placeholder="Choose your main service category" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
+                        <label
+                          key={cat}
+                          className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                            categories.includes(cat)
+                              ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                              : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                          } cursor-pointer transition-all`}
+                        >
+                          <Checkbox
+                            checked={categories.includes(cat)}
+                            onCheckedChange={() => toggleCategory(cat)}
+                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                          />
+                          <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                            {cat}
+                          </span>
+                        </label>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.category && (
+                    </div>
+                  </div>
+                  {errors.categories && (
                     <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
-                      {errors.category}
+                      {errors.categories}
+                    </p>
+                  )}
+                  {categories.length > 0 && (
+                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                      {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} selected
                     </p>
                   )}
                 </div>
@@ -469,7 +589,7 @@ export default function ProfessionalRegistrationSteps() {
 
             {/* Step 4: Insurance */}
             {currentStep === 4 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
                     Public Liability Insurance <span className="text-red-500">*</span>
@@ -536,6 +656,75 @@ export default function ProfessionalRegistrationSteps() {
                     </p>
                   )}
                 </div>
+
+                {/* Additional Insurance Details - Only show if insurance is "yes" */}
+                {insurance === "yes" && (
+                  <div className="space-y-4 pt-4 border-t border-gray-200">
+                    <div>
+                      <Label htmlFor="indemnityAmount" className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-2 block">
+                        How much professional indemnity insurance do you have?
+                      </Label>
+                      <div className="relative">
+                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          id="indemnityAmount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={professionalIndemnityAmount}
+                          onChange={(e) => {
+                            setProfessionalIndemnityAmount(e.target.value);
+                            if (errors.professionalIndemnityAmount) {
+                              setErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.professionalIndemnityAmount;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          placeholder="Enter amount"
+                          className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif]"
+                        />
+                      </div>
+                      {errors.professionalIndemnityAmount && (
+                        <p className="mt-1 text-sm text-red-600 font-['Poppins',sans-serif]">
+                          {errors.professionalIndemnityAmount}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="expiryDate" className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-2 block">
+                        When is the insurance expiring?
+                      </Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          id="expiryDate"
+                          type="date"
+                          value={insuranceExpiryDate}
+                          onChange={(e) => {
+                            setInsuranceExpiryDate(e.target.value);
+                            if (errors.insuranceExpiryDate) {
+                              setErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.insuranceExpiryDate;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif]"
+                        />
+                      </div>
+                      {errors.insuranceExpiryDate && (
+                        <p className="mt-1 text-sm text-red-600 font-['Poppins',sans-serif]">
+                          {errors.insuranceExpiryDate}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

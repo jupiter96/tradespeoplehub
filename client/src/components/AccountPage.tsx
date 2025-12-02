@@ -54,6 +54,7 @@ import {
   Copy,
   Ticket,
   Package,
+  PoundSterling,
 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
@@ -1560,38 +1561,39 @@ function DetailsSection() {
     "End of Tenancy",
   ];
 
-  // Extract category and subcategories from services array
-  const extractCategoryAndSubcategories = useCallback((services: string[]) => {
-    if (!services || services.length === 0) {
-      return { category: "", subcategories: [] };
-    }
-    
-    // Check if first service is a category
-    const firstService = services[0];
-    const isCategory = CATEGORIES.includes(firstService);
-    
-    if (isCategory) {
-      return {
-        category: firstService,
-        subcategories: services.slice(1),
-      };
-    } else {
-      // If no category found, treat all as subcategories
-      return {
-        category: "",
-        subcategories: services,
-      };
-    }
-  }, []);
+  // Sectors list (same as ProfessionalRegistrationSteps)
+  const SECTORS = [
+    "Home & Garden",
+    "Plumbing",
+    "Electrical",
+    "Heating & Cooling",
+    "Building & Construction",
+    "Painting & Decorating",
+    "Carpentry & Joinery",
+    "Roofing",
+    "Flooring",
+    "Landscaping",
+    "Cleaning",
+    "Other",
+  ];
 
   const initialFormState = useMemo(
     () => {
-      const { category, subcategories } = extractCategoryAndSubcategories(userInfo?.services || []);
+      // Extract categories and subcategories from services
+      const services = userInfo?.services || [];
+      const categories = services.filter(s => CATEGORIES.includes(s));
+      const subcategories = services.filter(s => !CATEGORIES.includes(s));
+      
+      // Format insurance expiry date for input
+      let insuranceExpiryDateFormatted = "";
+      if (userInfo?.insuranceExpiryDate) {
+        const date = new Date(userInfo.insuranceExpiryDate);
+        insuranceExpiryDateFormatted = date.toISOString().split('T')[0];
+      }
+      
       return {
-        name:
-          userInfo?.name ||
-          [userInfo?.firstName, userInfo?.lastName].filter(Boolean).join(" ").trim() ||
-          "",
+        firstName: userInfo?.firstName || "",
+        lastName: userInfo?.lastName || "",
         email: userInfo?.email || "",
         phone: userInfo?.phone || "",
         tradingName: userInfo?.tradingName || "",
@@ -1599,24 +1601,25 @@ function DetailsSection() {
         townCity: userInfo?.townCity || "",
         postcode: userInfo?.postcode || "",
         travelDistance: userInfo?.travelDistance || "10 miles",
-        sector: userInfo?.sector || "Home & Garden",
-        category: category || "",
+        sectors: userInfo?.sectors || (userInfo?.sector ? [userInfo.sector] : []),
+        categories: categories || [],
         subcategories: subcategories || [],
-        services: userInfo?.services || [],
         aboutService: userInfo?.aboutService || "",
         hasTradeQualification: userInfo?.hasTradeQualification || "no",
         hasPublicLiability: userInfo?.hasPublicLiability || "no",
+        professionalIndemnityAmount: userInfo?.professionalIndemnityAmount?.toString() || "",
+        insuranceExpiryDate: insuranceExpiryDateFormatted,
       };
     },
-    [userInfo, extractCategoryAndSubcategories]
+    [userInfo]
   );
 
   const buildFormState = useCallback(
     (state: typeof initialFormState) => ({
       ...state,
-      category: state.category || "",
+      sectors: [...(state.sectors || [])],
+      categories: [...(state.categories || [])],
       subcategories: [...(state.subcategories || [])],
-      services: [...(state.services || [])],
     }),
     []
   );
@@ -1799,11 +1802,7 @@ function DetailsSection() {
       return;
     }
 
-    const trimmedName = formData.name.trim();
-    const [firstName, ...rest] = trimmedName.split(/\s+/);
-    const lastName = rest.join(" ") || firstName;
-
-    if (!firstName || !lastName || !formData.email || !formData.phone || !formData.postcode) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.postcode) {
       toast.error("Please complete the required fields.");
       return;
     }
@@ -1824,8 +1823,8 @@ function DetailsSection() {
     setIsSaving(true);
 
     const payload: ProfileUpdatePayload = {
-      firstName,
-      lastName,
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       postcode: formData.postcode.trim(),
@@ -1836,18 +1835,37 @@ function DetailsSection() {
     if (userRole === "professional") {
       payload.tradingName = formData.tradingName.trim() || undefined;
       payload.travelDistance = formData.travelDistance || undefined;
-      // Sector cannot be changed after registration - don't include it in the update
-      // payload.sector = formData.sector || undefined; // Removed - sector is permanent
-      // Combine category and subcategories into services array
-      const allServices = formData.category 
-        ? [formData.category, ...formData.subcategories]
-        : formData.subcategories;
+      
+      // Update sectors (allow multiple sectors)
+      if (formData.sectors && formData.sectors.length > 0) {
+        // Store first sector for backward compatibility
+        payload.sector = formData.sectors[0];
+        // Store all sectors
+        payload.sectors = formData.sectors;
+      }
+      
+      // Combine categories and subcategories into services array
+      const allServices = [...formData.categories, ...formData.subcategories];
       payload.services = allServices;
+      
       payload.aboutService = formData.aboutService.trim() || undefined;
       payload.hasTradeQualification =
         (formData.hasTradeQualification as "yes" | "no") || "no";
       payload.hasPublicLiability =
         (formData.hasPublicLiability as "yes" | "no") || "no";
+      
+      // Insurance details
+      if (formData.hasPublicLiability === "yes") {
+        if (formData.professionalIndemnityAmount) {
+          payload.professionalIndemnityAmount = parseFloat(formData.professionalIndemnityAmount) || undefined;
+        }
+        if (formData.insuranceExpiryDate) {
+          payload.insuranceExpiryDate = new Date(formData.insuranceExpiryDate).toISOString();
+        }
+      } else {
+        payload.professionalIndemnityAmount = undefined;
+        payload.insuranceExpiryDate = undefined;
+      }
     }
 
     try {
@@ -2031,12 +2049,23 @@ function DetailsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-              Full Name
+              First Name <span className="text-red-500">*</span>
             </Label>
             <Input
               type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
+            />
+          </div>
+          <div>
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
+              Last Name <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
               className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
           </div>
@@ -2289,38 +2318,94 @@ function DetailsSection() {
                 Professional Services
               </h3>
               
+              {/* Sectors Selection */}
               <div className="mb-5">
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-                  Sector <span className="text-xs text-gray-500 font-normal">(Cannot be changed after registration)</span>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  Sectors <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 font-normal ml-2">
+                    (Select all that apply)
+                  </span>
                 </Label>
-                <div className="h-11 border-2 border-gray-300 rounded-xl font-['Poppins',sans-serif] text-[14px] px-3 flex items-center bg-gray-50 text-gray-700">
-                  {formData.sector || "Not selected"}
+                <div className="border-2 border-gray-200 rounded-xl p-4 max-h-[250px] overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {SECTORS.map((sector) => (
+                      <label
+                        key={sector}
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                          formData.sectors.includes(sector)
+                            ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                            : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                        } cursor-pointer transition-all`}
+                      >
+                        <Checkbox
+                          checked={formData.sectors.includes(sector)}
+                          onCheckedChange={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              sectors: prev.sectors.includes(sector)
+                                ? prev.sectors.filter(s => s !== sector)
+                                : [...prev.sectors, sector]
+                            }));
+                          }}
+                          className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                        />
+                        <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                          {sector}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-gray-500 font-['Poppins',sans-serif]">
-                  Your sector was selected during registration and cannot be modified.
-                </p>
+                {formData.sectors.length > 0 && (
+                  <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    {formData.sectors.length} sector{formData.sectors.length !== 1 ? 's' : ''} selected
+                  </p>
+                )}
               </div>
 
-              {/* Category Selection */}
+              {/* Categories Selection */}
               <div className="mb-5">
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Category <span className="text-red-500">*</span>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  Categories <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 font-normal ml-2">
+                    (Select all that apply)
+                  </span>
                 </Label>
-                <Select 
-                  value={formData.category} 
-                  onValueChange={(value) => setFormData({...formData, category: value})}
-                >
-                  <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
+                <div className="border-2 border-gray-200 rounded-xl p-4 max-h-[250px] overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
+                      <label
+                        key={cat}
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                          formData.categories.includes(cat)
+                            ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                            : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                        } cursor-pointer transition-all`}
+                      >
+                        <Checkbox
+                          checked={formData.categories.includes(cat)}
+                          onCheckedChange={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              categories: prev.categories.includes(cat)
+                                ? prev.categories.filter(c => c !== cat)
+                                : [...prev.categories, cat]
+                            }));
+                          }}
+                          className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                        />
+                        <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                          {cat}
+                        </span>
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
+                {formData.categories.length > 0 && (
+                  <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    {formData.categories.length} categor{formData.categories.length !== 1 ? 'ies' : 'y'} selected
+                  </p>
+                )}
               </div>
 
               {/* Subcategories Selection */}
@@ -2393,7 +2478,7 @@ function DetailsSection() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                     Trade Qualification or Accreditation
@@ -2414,11 +2499,21 @@ function DetailsSection() {
 
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                    Public Liability Insurance
+                    Public Liability Insurance <span className="text-red-500">*</span>
                   </Label>
                   <Select 
                     value={formData.hasPublicLiability} 
-                    onValueChange={(value) => setFormData({...formData, hasPublicLiability: value})}
+                    onValueChange={(value) => {
+                      setFormData({...formData, hasPublicLiability: value});
+                      // Clear insurance details if set to "no"
+                      if (value === "no") {
+                        setFormData(prev => ({
+                          ...prev,
+                          professionalIndemnityAmount: "",
+                          insuranceExpiryDate: "",
+                        }));
+                      }
+                    }}
                   >
                     <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
                       <SelectValue />
@@ -2430,6 +2525,54 @@ function DetailsSection() {
                   </Select>
                 </div>
               </div>
+
+              {/* Insurance Details - Only show if hasPublicLiability is "yes" */}
+              {formData.hasPublicLiability === "yes" && (
+                <div className="space-y-4 p-6 bg-gradient-to-br from-[#FFF5EB] to-white border-2 border-[#FE8A0F]/20 rounded-xl">
+                  <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-4 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-[#FE8A0F]" />
+                    Insurance Details
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="indemnityAmount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Professional Indemnity Insurance Amount
+                      </Label>
+                      <div className="relative">
+                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          id="indemnityAmount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.professionalIndemnityAmount}
+                          onChange={(e) => setFormData({...formData, professionalIndemnityAmount: e.target.value})}
+                          placeholder="Enter amount in GBP"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="expiryDate" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Insurance Expiry Date
+                      </Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          id="expiryDate"
+                          type="date"
+                          value={formData.insuranceExpiryDate}
+                          onChange={(e) => setFormData({...formData, insuranceExpiryDate: e.target.value})}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

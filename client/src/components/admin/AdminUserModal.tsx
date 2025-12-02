@@ -125,8 +125,9 @@ export default function AdminUserModal({
           setLoading(false);
           return;
         }
-        if (!formData.townCity?.trim()) {
-          toast.error("Town/City is required for professionals");
+        // Town/City is only required if address is not provided
+        if (!formData.address?.trim() && !formData.townCity?.trim()) {
+          toast.error("Address or Town/City is required for professionals");
           setLoading(false);
           return;
         }
