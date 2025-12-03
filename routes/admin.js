@@ -356,8 +356,8 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
 
     const subadminCount = await User.countDocuments({ role: 'admin' }) - 1; // Exclude main admin
 
-    // Count verification documents pending
-    const verificationDocsCount = await User.countDocuments({
+    // Count verification documents pending (total document count, not user count)
+    const professionalsWithPendingDocs = await User.find({
       role: 'professional',
       $or: [
         { 'verification.address.status': 'pending' },
@@ -365,6 +365,38 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
         { 'verification.publicLiabilityInsurance.status': 'pending' },
       ],
     });
+    
+    // Count total pending documents (not users)
+    let verificationDocsPendingCount = 0;
+    professionalsWithPendingDocs.forEach(user => {
+      if (user.verification?.address?.status === 'pending') verificationDocsPendingCount++;
+      if (user.verification?.idCard?.status === 'pending') verificationDocsPendingCount++;
+      if (user.verification?.publicLiabilityInsurance?.status === 'pending') verificationDocsPendingCount++;
+    });
+
+    // Count total users who have submitted verification documents (any document with documentUrl)
+    const totalVerificationUsers = await User.countDocuments({
+      role: 'professional',
+      $or: [
+        { 'verification.address.documentUrl': { $exists: true, $ne: null } },
+        { 'verification.idCard.documentUrl': { $exists: true, $ne: null } },
+        { 'verification.publicLiabilityInsurance.documentUrl': { $exists: true, $ne: null } },
+      ],
+    });
+
+    // Count users who submitted verification documents today
+    // We'll check users created today who have verification documents
+    // Note: This is approximate since we don't track when documents were uploaded
+    const verificationUsersToday = await User.countDocuments({
+      role: 'professional',
+      createdAt: { $gte: today },
+      $or: [
+        { 'verification.address.documentUrl': { $exists: true, $ne: null } },
+        { 'verification.idCard.documentUrl': { $exists: true, $ne: null } },
+        { 'verification.publicLiabilityInsurance.documentUrl': { $exists: true, $ne: null } },
+      ],
+    });
+
     const verificationDocsNew = await User.countDocuments({
       role: 'professional',
       $or: [
@@ -380,10 +412,11 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const verificationDocsToday = await User.countDocuments({
       role: 'professional',
+      createdAt: { $gte: today },
       $or: [
-        { 'verification.address.status': 'pending', createdAt: { $gte: today } },
-        { 'verification.idCard.status': 'pending', createdAt: { $gte: today } },
-        { 'verification.publicLiabilityInsurance.status': 'pending', createdAt: { $gte: today } },
+        { 'verification.address.status': 'pending' },
+        { 'verification.idCard.status': 'pending' },
+        { 'verification.publicLiabilityInsurance.status': 'pending' },
       ],
     });
 
@@ -462,9 +495,12 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       totalJobDailyChange: 12, // Mock
       totalCategory: 177, // Would come from Category model
       totalCategoryDailyChange: 0, // Mock
-      accountVerificationDocument: verificationDocsCount || 85,
+      accountVerificationDocument: verificationDocsPendingCount || 0,
       accountVerificationDocumentNew: verificationDocsNew || 20,
       accountVerificationDocumentDailyChange: verificationDocsToday || 3,
+      // New verification statistics
+      totalVerificationUsers: totalVerificationUsers || 0,
+      verificationUsersToday: verificationUsersToday || 0,
       tradesmenReferrals: tradesmenReferrals || 28,
       tradesmenReferralsDailyChange: 0, // Mock
       flagged: flaggedCount || 0,
@@ -771,9 +807,14 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
       user.verification[type].verifiedAt = new Date();
     }
 
-    if (finalStatus === 'rejected' && rejectionReason) {
-      user.verification[type].rejectionReason = rejectionReason;
+    // Handle rejection reason
+    if (finalStatus === 'rejected') {
+      if (!rejectionReason || !rejectionReason.trim()) {
+        return res.status(400).json({ error: 'Rejection reason is required when rejecting verification' });
+      }
+      user.verification[type].rejectionReason = rejectionReason.trim();
     } else if (finalStatus !== 'rejected') {
+      // Clear rejection reason if status is changed from rejected to something else
       user.verification[type].rejectionReason = undefined;
     }
 

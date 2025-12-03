@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
-import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles } from "lucide-react";
+import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles, User } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -40,6 +40,8 @@ interface User {
   role: string;
   postcode?: string;
   townCity?: string;
+  address?: string;
+  tradingName?: string;
   createdAt: string;
   firstName?: string;
   lastName?: string;
@@ -367,6 +369,20 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     }
   };
 
+  const getPendingVerificationCount = (userId: string) => {
+    const verification = verificationStatuses[userId];
+    if (!verification) return 0;
+
+    let count = 0;
+    const documentTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+    documentTypes.forEach(type => {
+      if (verification[type]?.status === 'pending') {
+        count++;
+      }
+    });
+    return count;
+  };
+
   const getVerificationStatus = (userId: string) => {
     const verification = verificationStatuses[userId];
     if (!verification) return null;
@@ -469,8 +485,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                 <TableRow className="border-[#FE8A0F]/30 hover:bg-transparent">
                   <TableHead className="text-[#FE8A0F] font-semibold">Name</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Email</TableHead>
+                  {role === "professional" && (
+                    <TableHead className="text-[#FE8A0F] font-semibold">Trading Name</TableHead>
+                  )}
                   <TableHead className="text-[#FE8A0F] font-semibold">Phone</TableHead>
-                  <TableHead className="text-[#FE8A0F] font-semibold">Role</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Status</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Location</TableHead>
                   <TableHead className="text-[#FE8A0F] font-semibold">Joined</TableHead>
@@ -507,13 +525,13 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                     <TableCell className="text-black dark:text-white">
                       {user.email}
                     </TableCell>
+                    {role === "professional" && (
+                      <TableCell className="text-black dark:text-white">
+                        {user.tradingName || "-"}
+                      </TableCell>
+                    )}
                     <TableCell className="text-black dark:text-white">
                       {user.phone}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-[#FE8A0F] text-white border-[#FE8A0F]">
-                        {user.role}
-                      </Badge>
                     </TableCell>
                     <TableCell>
                       {(() => {
@@ -539,23 +557,47 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="text-black dark:text-white">
-                      {user.postcode || user.townCity || "-"}
+                    <TableCell className="text-black dark:text-white max-w-[22px]">
+                      {(() => {
+                        const addressParts = [];
+                        if (user.address) addressParts.push(user.address);
+                        if (user.townCity) addressParts.push(user.townCity);
+                        if (user.postcode) addressParts.push(user.postcode);
+                        if (addressParts.length > 0) {
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              {addressParts.map((part, index) => (
+                                <span key={index} className="text-xs leading-tight break-words whitespace-normal">
+                                  {part}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return "-";
+                      })()}
                     </TableCell>
                     <TableCell className="text-black dark:text-white">
                       {formatDate(user.createdAt)}
                     </TableCell>
                     {showVerification && role === "professional" && (
                       <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedUserForVerification(user)}
-                          className="h-8 w-8 hover:bg-[#FE8A0F]/10"
-                          title={getVerificationTooltip(getVerificationStatus(user.id))}
-                        >
-                          {getVerificationIcon(getVerificationStatus(user.id))}
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedUserForVerification(user)}
+                            className="h-8 w-8 hover:bg-[#FE8A0F]/10 relative"
+                            title={getVerificationTooltip(getVerificationStatus(user.id))}
+                          >
+                            {getVerificationIcon(getVerificationStatus(user.id))}
+                            {getPendingVerificationCount(user.id) > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                                {getPendingVerificationCount(user.id)}
+                              </span>
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     )}
                     <TableCell className="text-right">
@@ -585,7 +627,12 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               className="text-[#FE8A0F] dark:text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
                             >
                               <Shield className="h-4 w-4 mr-2" />
-                              View Verification
+                              <span className="flex-1">View Verification</span>
+                              {getPendingVerificationCount(user.id) > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-5 flex items-center justify-center px-1.5">
+                                  {getPendingVerificationCount(user.id)}
+                                </span>
+                              )}
                             </DropdownMenuItem>
                           )}
                           {role === "client" && (
@@ -618,6 +665,16 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           )}
                           {role === "professional" && (
                             <>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const profileUrl = `${window.location.origin}/profile/${user.id}`;
+                                  window.open(profileUrl, '_blank');
+                                }}
+                                className="text-[#FE8A0F] dark:text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
+                              >
+                                <User className="h-4 w-4 mr-2" />
+                                View Profile
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleSendMessage(user)}
                                 className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"

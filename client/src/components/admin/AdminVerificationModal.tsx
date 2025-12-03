@@ -60,8 +60,8 @@ export default function AdminVerificationModal({
   const [loading, setLoading] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [newStatus, setNewStatus] = useState<string>("");
-  const [rejectionReason, setRejectionReason] = useState<string>("");
+  const [newStatus, setNewStatus] = useState<Record<string, string>>({});
+  const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
   const [viewingDocument, setViewingDocument] = useState<{ url: string; name: string; type: string } | null>(null);
 
   useEffect(() => {
@@ -91,13 +91,14 @@ export default function AdminVerificationModal({
     }
   };
 
-  const handleStatusChange = async () => {
-    if (!selectedType || !newStatus) {
-      toast.error("Please select a verification type and status");
+  const handleStatusChange = async (type: string) => {
+    const status = newStatus[type];
+    if (!status) {
+      toast.error("Please select a status");
       return;
     }
 
-    if (newStatus === "rejected" && !rejectionReason.trim()) {
+    if (status === "rejected" && !rejectionReason[type]?.trim()) {
       toast.error("Please provide a rejection reason");
       return;
     }
@@ -105,7 +106,7 @@ export default function AdminVerificationModal({
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/admin/users/${userId}/verification/${selectedType}`,
+        `${API_BASE_URL}/api/admin/users/${userId}/verification/${type}`,
         {
           method: "PUT",
           credentials: "include",
@@ -113,8 +114,8 @@ export default function AdminVerificationModal({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            status: newStatus,
-            rejectionReason: newStatus === "rejected" ? rejectionReason : undefined,
+            status: status,
+            rejectionReason: status === "rejected" ? rejectionReason[type] : undefined,
           }),
         }
       );
@@ -126,9 +127,16 @@ export default function AdminVerificationModal({
 
       toast.success("Verification status updated successfully");
       await fetchVerificationData();
-      setSelectedType(null);
-      setNewStatus("");
-      setRejectionReason("");
+      setNewStatus(prev => {
+        const updated = { ...prev };
+        delete updated[type];
+        return updated;
+      });
+      setRejectionReason(prev => {
+        const updated = { ...prev };
+        delete updated[type];
+        return updated;
+      });
     } catch (error) {
       console.error("Error updating verification:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update verification status");
@@ -142,29 +150,29 @@ export default function AdminVerificationModal({
       case "verified":
       case "completed":
         return (
-          <Badge className="bg-green-50 text-green-700 border-green-200">
-            <CheckCircle2 className="w-3 h-3 mr-1" />
+          <Badge className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-0.5 h-5">
+            <CheckCircle2 className="w-3 h-3 mr-0.5" />
             Verified
           </Badge>
         );
       case "pending":
         return (
-          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            <Clock className="w-3 h-3 mr-1" />
+          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs px-2 py-0.5 h-5">
+            <Clock className="w-3 h-3 mr-0.5" />
             Pending
           </Badge>
         );
       case "rejected":
         return (
-          <Badge className="bg-red-50 text-red-700 border-red-200">
-            <XCircle className="w-3 h-3 mr-1" />
+          <Badge className="bg-red-50 text-red-700 border-red-200 text-xs px-2 py-0.5 h-5">
+            <XCircle className="w-3 h-3 mr-0.5" />
             Rejected
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-gray-50 text-gray-700 border-gray-200">
-            <AlertCircle className="w-3 h-3 mr-1" />
+          <Badge className="bg-gray-50 text-gray-700 border-gray-200 text-xs px-2 py-0.5 h-5">
+            <AlertCircle className="w-3 h-3 mr-0.5" />
             Not Started
           </Badge>
         );
@@ -207,161 +215,161 @@ export default function AdminVerificationModal({
   return (
     <>
     <Dialog open={open && !viewingDocument} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-white dark:bg-black">
-        <DialogHeader>
-          <DialogTitle className="text-black dark:text-white">
-            Verification Management - {userName}
+      <DialogContent className="w-[90%] sm:w-[35%] max-w-[500px] max-h-[90vh] overflow-y-auto bg-white dark:bg-black p-4">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-base font-semibold text-black dark:text-white">
+            Verification - {userName}
           </DialogTitle>
         </DialogHeader>
 
         {loading && !verificationData ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
-              <p className="text-black dark:text-white">Loading verification data...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-2"></div>
+              <p className="text-sm text-black dark:text-white">Loading...</p>
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Verification Status List */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-black dark:text-white">Current Status</h3>
+            <div className="space-y-2">
               {verificationTypes.map((type) => {
                 const info = getVerificationInfo(type.id);
                 const Icon = type.icon;
+                const currentStatus = newStatus[type.id] || "";
+                const currentRejectionReason = rejectionReason[type.id] || "";
                 return (
                   <div
                     key={type.id}
-                    className="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-5 h-5 text-[#FE8A0F]" />
-                        <span className="font-medium text-black dark:text-white">{type.label}</span>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 text-[#FE8A0F]" />
+                        <span className="text-sm font-medium text-black dark:text-white">{type.label}</span>
                       </div>
                       {getStatusBadge(info.status)}
                     </div>
+                    
                     {info.documentName && info.documentUrl && (
-                      <div className="mt-3 space-y-2">
-                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                          <FileText className="w-4 h-4 text-[#FE8A0F]" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">
+                      <div className="mt-2 mb-2 space-y-1.5">
+                        <div className="flex items-center gap-1.5 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-xs">
+                          <FileText className="w-3 h-3 text-[#FE8A0F] flex-shrink-0" />
+                          <span className="text-gray-700 dark:text-gray-300 flex-1 truncate">
                             {info.documentName}
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleViewDocument(info.documentUrl, info.documentName)}
-                            className="flex-1 text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                            className="h-7 px-2 text-xs text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
                           >
-                            <Eye className="w-4 h-4 mr-2" />
+                            <Eye className="w-3 h-3 mr-1" />
                             View
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleDownloadDocument(info.documentUrl, info.documentName)}
-                            className="flex-1 text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                            className="h-7 px-2 text-xs text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
                           >
-                            <Download className="w-4 h-4 mr-2" />
+                            <Download className="w-3 h-3 mr-1" />
                             Download
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => window.open(info.documentUrl, "_blank")}
-                            className="text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                            className="h-7 px-2 text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <ExternalLink className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
                     )}
+                    
                     {info.rejectionReason && (
-                      <p className="text-sm text-red-600 dark:text-red-400 mt-2">
-                        Rejection Reason: {info.rejectionReason}
+                      <p className="text-xs text-red-600 dark:text-red-400 mb-2 mt-1">
+                        <span className="font-medium">Rejection:</span> {info.rejectionReason}
                       </p>
                     )}
+
+                    {/* Status Changer Box - Aligned to each section */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2 space-y-2">
+                      <div>
+                        <Label className="text-black dark:text-white text-xs font-medium">Status</Label>
+                        <Select 
+                          value={currentStatus} 
+                          onValueChange={(value) => {
+                            setNewStatus(prev => ({ ...prev, [type.id]: value }));
+                            // Clear rejection reason if status is changed from rejected
+                            if (value !== "rejected") {
+                              setRejectionReason(prev => {
+                                const updated = { ...prev };
+                                delete updated[type.id];
+                                return updated;
+                              });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="bg-white dark:bg-black text-black dark:text-white h-8 text-xs mt-0.5">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-black">
+                            <SelectItem value="verified" className="text-black dark:text-white text-xs">
+                              Verified
+                            </SelectItem>
+                            <SelectItem value="completed" className="text-black dark:text-white text-xs">
+                              Completed
+                            </SelectItem>
+                            <SelectItem value="pending" className="text-black dark:text-white text-xs">
+                              Pending
+                            </SelectItem>
+                            <SelectItem value="rejected" className="text-black dark:text-white text-xs">
+                              Rejected
+                            </SelectItem>
+                            <SelectItem value="not-started" className="text-black dark:text-white text-xs">
+                              Not Started
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {currentStatus === "rejected" && (
+                        <div>
+                          <Label className="text-black dark:text-white text-xs font-medium">
+                            Reason <span className="text-red-500">*</span>
+                          </Label>
+                          <Textarea
+                            value={currentRejectionReason}
+                            onChange={(e) => setRejectionReason(prev => ({ ...prev, [type.id]: e.target.value }))}
+                            placeholder="Enter rejection reason..."
+                            className="bg-white dark:bg-black text-black dark:text-white mt-0.5 border-red-300 focus:border-red-500 text-xs h-16"
+                            rows={2}
+                            required
+                          />
+                          {currentStatus === "rejected" && !currentRejectionReason.trim() && (
+                            <p className="text-xs text-red-500 mt-0.5">Required</p>
+                          )}
+                        </div>
+                      )}
+
+                      {currentStatus && (
+                        <Button
+                          onClick={() => handleStatusChange(type.id)}
+                          disabled={loading || !currentStatus || (currentStatus === "rejected" && !currentRejectionReason.trim())}
+                          className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white disabled:opacity-50 disabled:cursor-not-allowed h-7 text-xs"
+                          size="sm"
+                        >
+                          {loading ? "Updating..." : currentStatus === "rejected" ? "Reject" : "Update"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
-            </div>
-
-            {/* Update Status Section */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
-                Update Verification Status
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-black dark:text-white">Verification Type</Label>
-                  <Select value={selectedType || ""} onValueChange={setSelectedType}>
-                    <SelectTrigger className="bg-white dark:bg-black text-black dark:text-white">
-                      <SelectValue placeholder="Select verification type" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-black">
-                      {verificationTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id} className="text-black dark:text-white">
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedType && (
-                  <>
-                    <div>
-                      <Label className="text-black dark:text-white">New Status</Label>
-                      <Select value={newStatus} onValueChange={setNewStatus}>
-                        <SelectTrigger className="bg-white dark:bg-black text-black dark:text-white">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-black">
-                          <SelectItem value="verified" className="text-black dark:text-white">
-                            Verified
-                          </SelectItem>
-                          <SelectItem value="completed" className="text-black dark:text-white">
-                            Completed
-                          </SelectItem>
-                          <SelectItem value="pending" className="text-black dark:text-white">
-                            Pending
-                          </SelectItem>
-                          <SelectItem value="rejected" className="text-black dark:text-white">
-                            Rejected
-                          </SelectItem>
-                          <SelectItem value="not-started" className="text-black dark:text-white">
-                            Not Started
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {newStatus === "rejected" && (
-                      <div>
-                        <Label className="text-black dark:text-white">Rejection Reason</Label>
-                        <Textarea
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="Enter reason for rejection..."
-                          className="bg-white dark:bg-black text-black dark:text-white"
-                          rows={3}
-                        />
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={handleStatusChange}
-                      disabled={loading || !newStatus}
-                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-                    >
-                      {loading ? "Updating..." : "Update Status"}
-                    </Button>
-                  </>
-                )}
-              </div>
             </div>
           </div>
         )}

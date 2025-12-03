@@ -21,6 +21,20 @@ import {
   XCircle,
   Clock,
   Image as ImageIcon,
+  Hammer,
+  FolderTree,
+  Shield,
+  ShieldCheck,
+  Calendar,
+  TrendingUp,
+  CreditCard,
+  Archive,
+  Send,
+  UserCog,
+  Gift,
+  Handshake,
+  List,
+  Box,
 } from "lucide-react";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
@@ -227,7 +241,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
-                      icon={ImageIcon}
+                      icon={Hammer}
                       title="TOTAL JOB"
                       value={statistics?.totalJob || 0}
                       color="orange"
@@ -235,7 +249,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/job-manage")}
                     />
                     <StatCard
-                      icon={Banknote}
+                      icon={FolderTree}
                       title="TOTAL CATEGORY"
                       value={statistics?.totalCategory || 0}
                       color="orange"
@@ -243,7 +257,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/category-manage")}
                     />
                     <StatCard
-                      icon={FileText}
+                      icon={ShieldCheck}
                       title="ACCOUNT VERIFICATION DOCUMENT"
                       value={statistics?.accountVerificationDocument || 0}
                       badge={statistics?.accountVerificationDocumentNew || 0}
@@ -252,7 +266,21 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
-                      icon={Users}
+                      icon={UserCheck}
+                      title="TOTAL VERIFICATION USERS"
+                      value={statistics?.totalVerificationUsers || 0}
+                      color="orange"
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={Calendar}
+                      title="VERIFICATION USERS TODAY"
+                      value={statistics?.verificationUsersToday || 0}
+                      color="orange"
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={TrendingUp}
                       title="TRADESMEN REFERRALS"
                       value={statistics?.tradesmenReferrals || 0}
                       color="orange"
@@ -260,7 +288,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/referrals-professional")}
                     />
                     <StatCard
-                      icon={Link2}
+                      icon={AlertCircle}
                       title="FLAGGED"
                       value={statistics?.flagged || 0}
                       color="orange"
@@ -268,7 +296,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/flagged")}
                     />
                     <StatCard
-                      icon={FileText}
+                      icon={Clock}
                       title="APPROVAL PENDING SERVICE"
                       value={statistics?.approvalPendingService || 0}
                       color="orange"
@@ -288,7 +316,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/clients")}
                     />
                     <StatCard
-                      icon={Banknote}
+                      icon={Gavel}
                       title="TOTAL JOB IN DISPUTE"
                       value={statistics?.totalJobInDispute || 0}
                       color="red"
@@ -296,7 +324,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/dispute-list")}
                     />
                     <StatCard
-                      icon={Banknote}
+                      icon={CreditCard}
                       title="PENDING WITHDRAWAL REQUEST"
                       value={statistics?.pendingWithdrawalRequest || 0}
                       color="red"
@@ -304,7 +332,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/withdrawal-request")}
                     />
                     <StatCard
-                      icon={Mail}
+                      icon={MessageCircle}
                       title="MESSAGE CENTER"
                       value={statistics?.messageCenter || 0}
                       badge={statistics?.messageCenterNew || 0}
@@ -313,7 +341,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/message-center")}
                     />
                     <StatCard
-                      icon={Users}
+                      icon={TrendingUp}
                       title="HOMEOWNER REFERRALS"
                       value={statistics?.homeownerReferrals || 0}
                       color="red"
@@ -321,7 +349,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/referrals-client")}
                     />
                     <StatCard
-                      icon={Trash2}
+                      icon={Archive}
                       title="DELETED ACCOUNT"
                       value={statistics?.deletedAccount || 0}
                       badge={statistics?.deletedAccountNew || 0}
@@ -330,7 +358,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/delete-account")}
                     />
                     <StatCard
-                      icon={ShoppingCart}
+                      icon={Package}
                       title="ORDERS"
                       value={statistics?.orders || 0}
                       badge={statistics?.ordersNew || 0}
@@ -351,7 +379,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/sub-admins")}
                     />
                     <StatCard
-                      icon={Banknote}
+                      icon={Package}
                       title="TOTAL PLANS & PACKAGES"
                       value={statistics?.totalPlansPackages || 0}
                       color="green"
@@ -359,7 +387,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/packages")}
                     />
                     <StatCard
-                      icon={Banknote}
+                      icon={Send}
                       title="NEW CONTACT REQUEST"
                       value={statistics?.newContactRequest || 0}
                       badge={statistics?.newContactRequestNew || 0}
@@ -368,7 +396,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/contact-requests")}
                     />
                     <StatCard
-                      icon={Users}
+                      icon={Gift}
                       title="AFFILIATE"
                       value={statistics?.affiliate || 0}
                       badge={statistics?.affiliateNew || 0}
@@ -377,7 +405,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/affiliate")}
                     />
                     <StatCard
-                      icon={Gavel}
+                      icon={Handshake}
                       title="ASK TO STEP IN"
                       value={statistics?.askToStepIn || 0}
                       color="green"
@@ -385,7 +413,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/ask-step-in")}
                     />
                     <StatCard
-                      icon={Server}
+                      icon={List}
                       title="SERVICE LISTING"
                       value={statistics?.serviceListing || 0}
                       color="green"
@@ -393,7 +421,7 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/service")}
                     />
                     <StatCard
-                      icon={ShoppingCart}
+                      icon={Box}
                       title="CUSTOM ORDERS"
                       value={statistics?.customOrders || 0}
                       badge={statistics?.customOrdersNew || 0}
@@ -542,12 +570,6 @@ function StatCard({
   onClick?: () => void;
   dailyChange?: number;
 }) {
-  const colorClasses = {
-    orange: "bg-orange-500 border-orange-500",
-    red: "bg-red-500 border-red-500",
-    green: "bg-green-500 border-green-500",
-  };
-
   const bgGradient = {
     orange: "from-orange-50 to-white dark:from-orange-950 dark:to-black",
     red: "from-red-50 to-white dark:from-red-950 dark:to-black",
@@ -556,24 +578,28 @@ function StatCard({
 
   return (
     <div 
-      className={`relative rounded-xl border-2 ${colorClasses[color]} bg-gradient-to-br ${bgGradient[color]} p-4 shadow-md hover:shadow-lg transition-all h-32 flex flex-col justify-between ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
+      className={`relative rounded-xl bg-gradient-to-br ${bgGradient[color]} p-4 shadow-lg hover:shadow-xl transition-all h-32 flex flex-col justify-between overflow-hidden ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Icon className={`w-5 h-5 ${color === "orange" ? "text-orange-600" : color === "red" ? "text-red-600" : "text-green-600"}`} />
-          <p className="text-xs font-semibold uppercase tracking-wide text-black dark:text-white">
+      {/* Background Icon - Right Side */}
+      <div className="absolute right-2 top-2 opacity-10 text-orange-600">
+        <Icon className="w-20 h-20" />
+      </div>
+
+      <div className="flex items-start justify-between mb-2 relative z-10">
+        <div className="flex flex-col gap-1 flex-1 pr-20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-black">
             {title}
           </p>
         </div>
         {badge !== undefined && badge > 0 && (
-          <div className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg ring-2 ring-white">
             {badge}
           </div>
         )}
       </div>
-      <div>
-        <p className={`text-2xl font-bold ${color === "orange" ? "text-orange-600" : color === "red" ? "text-red-600" : "text-green-600"}`}>
+      <div className="relative z-10">
+        <p className="text-2xl font-bold text-orange-600">
           {value.toLocaleString()}
         </p>
         {dailyChange !== undefined && dailyChange !== 0 && (

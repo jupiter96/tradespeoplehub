@@ -7,10 +7,12 @@ import {
   CheckCircle2, 
   ChevronRight,
   ChevronLeft,
-  Loader2
+  Loader2,
+  User
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
@@ -21,10 +23,11 @@ import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
 
 const STEPS = [
-  { id: 1, title: "Sector", icon: Briefcase, description: "Choose your main sector" },
-  { id: 2, title: "Category", icon: FolderTree, description: "Select your service category" },
-  { id: 3, title: "Subcategories", icon: FolderTree, description: "Choose all services you offer" },
-  { id: 4, title: "Insurance", icon: Shield, description: "Public liability insurance status" },
+  { id: 1, title: "About Me", icon: User, description: "Tell us about yourself" },
+  { id: 2, title: "Sector", icon: Briefcase, description: "Choose your main sector" },
+  { id: 3, title: "Category", icon: FolderTree, description: "Select your service category" },
+  { id: 4, title: "Subcategories", icon: FolderTree, description: "Choose all services you offer" },
+  { id: 5, title: "Insurance", icon: Shield, description: "Public liability insurance status" },
 ];
 
 const SECTORS = [
@@ -90,6 +93,8 @@ export default function ProfessionalRegistrationSteps() {
   const [isSaving, setIsSaving] = useState(false);
   
   // Form data
+  const [aboutService, setAboutService] = useState<string>("");
+  const [skipAboutMe, setSkipAboutMe] = useState<boolean>(false);
   const [sectors, setSectors] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
@@ -102,6 +107,12 @@ export default function ProfessionalRegistrationSteps() {
 
   // Initialize form data from userInfo if available
   useEffect(() => {
+    if (userInfo?.aboutService) {
+      setAboutService(userInfo.aboutService);
+      setSkipAboutMe(false);
+    } else {
+      setSkipAboutMe(true);
+    }
     if (userInfo?.sector) {
       // If user has a single sector, convert to array
       setSectors([userInfo.sector]);
@@ -143,16 +154,21 @@ export default function ProfessionalRegistrationSteps() {
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (step === 1 && sectors.length === 0) {
+    if (step === 1) {
+      if (!skipAboutMe && !aboutService.trim()) {
+        newErrors.aboutService = "Please write about yourself or click 'Do this later'";
+      }
+    }
+    if (step === 2 && sectors.length === 0) {
       newErrors.sectors = "Please select at least one sector";
     }
-    if (step === 2 && categories.length === 0) {
+    if (step === 3 && categories.length === 0) {
       newErrors.categories = "Please select at least one category";
     }
-    if (step === 3 && subcategories.length === 0) {
+    if (step === 4 && subcategories.length === 0) {
       newErrors.subcategories = "Please select at least one subcategory";
     }
-    if (step === 4 && !insurance) {
+    if (step === 5 && !insurance) {
       newErrors.insurance = "Please select insurance status";
     }
     
@@ -177,8 +193,14 @@ export default function ProfessionalRegistrationSteps() {
           postcode: userInfo?.postcode || "",
         };
 
+        // Update about service
+        if (currentStep >= 1) {
+          if (!skipAboutMe && aboutService.trim()) {
+            updateData.aboutService = aboutService.trim();
+          }
+        }
         // Only update sectors if they don't already exist
-        if (currentStep >= 1 && sectors.length > 0) {
+        if (currentStep >= 2 && sectors.length > 0) {
           // If user already has a sector, don't overwrite it
           if (!userInfo?.sector) {
             // Store first sector for backward compatibility
@@ -187,11 +209,11 @@ export default function ProfessionalRegistrationSteps() {
             updateData.sectors = sectors;
           }
         }
-        if (currentStep >= 2) {
+        if (currentStep >= 3) {
           const allServices = [...categories, ...subcategories];
           updateData.services = allServices;
         }
-        if (currentStep >= 4) {
+        if (currentStep >= 5) {
           updateData.hasPublicLiability = insurance;
           if (insurance === "yes") {
             if (professionalIndemnityAmount) {
@@ -243,6 +265,11 @@ export default function ProfessionalRegistrationSteps() {
         services: allServices,
         hasPublicLiability: insurance,
       };
+
+      // Update about service if not skipped
+      if (!skipAboutMe && aboutService.trim()) {
+        updateData.aboutService = aboutService.trim();
+      }
 
       if (insurance === "yes") {
         if (professionalIndemnityAmount) {
@@ -405,8 +432,88 @@ export default function ProfessionalRegistrationSteps() {
               </p>
             </div>
 
-            {/* Step 1: Sector */}
+            {/* Step 1: About Me */}
             {currentStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                    Tell us about yourself <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    value={aboutService}
+                    onChange={(e) => {
+                      setAboutService(e.target.value);
+                      setSkipAboutMe(false);
+                      if (errors.aboutService) {
+                        setErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.aboutService;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    placeholder="Describe your experience, skills, and what makes your service special. Minimum 100 characters recommended."
+                    className="min-h-[200px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                      {aboutService.length} characters {aboutService.length < 100 && !skipAboutMe && "(minimum 100 recommended)"}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        setSkipAboutMe(true);
+                        setAboutService("");
+                        if (errors.aboutService) {
+                          setErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.aboutService;
+                            return newErrors;
+                          });
+                        }
+                        // Save current step data and move to next step
+                        setIsSaving(true);
+                        try {
+                          const updateData: any = {
+                            firstName: userInfo?.firstName || "",
+                            lastName: userInfo?.lastName || "",
+                            email: userInfo?.email || "",
+                            phone: userInfo?.phone || "",
+                            postcode: userInfo?.postcode || "",
+                          };
+                          // Don't save aboutService when skipping
+                          await updateProfile(updateData);
+                          setCurrentStep(2);
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Failed to save");
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }}
+                      className="text-xs h-8 px-4 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif]"
+                    >
+                      Do this later
+                    </Button>
+                  </div>
+                  {errors.aboutService && (
+                    <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
+                      {errors.aboutService}
+                    </p>
+                  )}
+                  {skipAboutMe && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                      <p className="text-xs text-yellow-800 font-['Poppins',sans-serif]">
+                        You can add this information later in your profile settings.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Sector */}
+            {currentStep === 2 && (
               <div className="space-y-4">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
@@ -497,8 +604,8 @@ export default function ProfessionalRegistrationSteps() {
               </div>
             )}
 
-            {/* Step 2: Category */}
-            {currentStep === 2 && (
+            {/* Step 3: Category */}
+            {currentStep === 3 && (
               <div className="space-y-4">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
@@ -544,8 +651,8 @@ export default function ProfessionalRegistrationSteps() {
               </div>
             )}
 
-            {/* Step 3: Subcategories */}
-            {currentStep === 3 && (
+            {/* Step 4: Subcategories */}
+            {currentStep === 4 && (
               <div className="space-y-4">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
@@ -587,8 +694,8 @@ export default function ProfessionalRegistrationSteps() {
               </div>
             )}
 
-            {/* Step 4: Insurance */}
-            {currentStep === 4 && (
+            {/* Step 5: Insurance */}
+            {currentStep === 5 && (
               <div className="space-y-6">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
