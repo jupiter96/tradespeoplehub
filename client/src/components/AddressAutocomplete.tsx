@@ -81,7 +81,6 @@ export default function AddressAutocomplete({
     townCity: '',
     county: '',
     postcode: '',
-    country: 'United Kingdom',
   });
   
   // Update manual address when external values change
@@ -578,7 +577,7 @@ export default function AddressAutocomplete({
 
       {/* Address Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg h-[400px] overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.postcode}-${index}`}
@@ -675,7 +674,7 @@ export default function AddressAutocomplete({
           
           {/* Address Suggestions Dropdown */}
           {showAddressSuggestions && addressSuggestions.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg h-[400px] overflow-y-auto">
               {addressSuggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.postcode}-${suggestion.line_1}-${index}`}
@@ -757,7 +756,7 @@ export default function AddressAutocomplete({
           
           {/* City Suggestions Dropdown */}
           {showCitySuggestions && citySuggestions.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg h-[400px] overflow-y-auto">
               {citySuggestions.map((city, index) => (
                 <button
                   key={`city-${city}-${index}`}
@@ -800,7 +799,6 @@ export default function AddressAutocomplete({
                   townCity: '',
                   county: '',
                   postcode: '',
-                  country: 'United Kingdom',
                 });
               }}
               className="text-xs text-black/60 dark:text-white/60 hover:text-[#FE8A0F]"
@@ -878,20 +876,6 @@ export default function AddressAutocomplete({
               onChange={(e) => handleManualAddressChange('postcode', e.target.value)}
               placeholder="e.g., SW1A 1AA"
               required
-              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="manual-country" className="text-black dark:text-white">
-              Country
-            </Label>
-            <Input
-              id="manual-country"
-              type="text"
-              value={manualAddress.country}
-              onChange={(e) => handleManualAddressChange('country', e.target.value)}
-              placeholder="Country"
               className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
             />
           </div>
