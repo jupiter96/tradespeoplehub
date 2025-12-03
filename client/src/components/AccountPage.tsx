@@ -2231,10 +2231,13 @@ function DetailsSection() {
                         }
                         setIsVerifyingPhoneOTP(true);
                         try {
+                          console.log('[Phone Verification] AccountPage - Verifying phone OTP');
                           await verifyOTP(phoneOTPCode, 'phone');
+                          console.log('[Phone Verification] AccountPage - Phone OTP verified successfully');
                           setPhoneOTPVerified(true);
                           toast.success("Phone verified successfully");
                         } catch (error) {
+                          console.error('[Phone Verification] AccountPage - Phone OTP verification failed:', error);
                           toast.error(error instanceof Error ? error.message : "Invalid verification code");
                         } finally {
                           setIsVerifyingPhoneOTP(false);

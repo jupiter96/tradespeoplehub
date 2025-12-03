@@ -44,8 +44,8 @@ export default function HomePage() {
           className="relative flex items-center justify-center w-full"
         >
           {/* Desktop Video Container - Original design preserved */}
-          <div className="hidden md:block relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
-            <div style={{ position: 'relative', width: '100%', height: 0, paddingBottom: '56.250%' }}>
+          <div className="hidden md:block relative w-full overflow-hidden" style={{ aspectRatio: '16/11.25' }}>
+            <div style={{ position: 'relative', width: '100%', height: 0, paddingBottom: '45%' }}>
             <video
                 autoPlay
                 muted
@@ -65,7 +65,7 @@ export default function HomePage() {
                 Your browser does not support the video tag.
               </video>
           
-              <div className="absolute inset-0 z-40 px-6 md:px-12 lg:px-20 xl:px-24 w-full h-full flex flex-col justify-start pt-[3%] md:pt-[2%] lg:pt-[3%] xl:pt-[4%]">
+              <div className="absolute inset-0 z-40 px-6 md:px-12 lg:px-20 xl:px-24 w-full h-full flex flex-col justify-center items-center">
               <div className="max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] 2xl:max-w-[1200px] mx-auto w-full flex flex-col items-center">
                 {/* Modern Badge */}
                 <div className="inline-flex items-center gap-2 px-3 md:px-3.5 py-1.5 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-3 md:mb-4 lg:mb-5">

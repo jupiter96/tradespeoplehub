@@ -439,16 +439,23 @@ router.post('/register/verify-email', async (req, res) => {
 router.post('/register/verify-phone', async (req, res) => {
   try {
     const { code } = req.body || {};
+    console.log('[Phone Verification] Registration - Received code:', code ? '****' : 'missing');
+    
     if (!isValidCode(code)) {
+      console.log('[Phone Verification] Registration - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
     const pendingRegistration = await loadPendingRegistration(req);
     if (!pendingRegistration) {
+      console.log('[Phone Verification] Registration - No pending registration found');
       return res.status(400).json({ error: 'No pending registration found' });
     }
 
+    console.log('[Phone Verification] Registration - Pending registration found for:', pendingRegistration.email);
+
     if (!pendingRegistration.emailVerified) {
+      console.log('[Phone Verification] Registration - Email not verified yet');
       return res.status(400).json({ error: 'Email must be verified first' });
     }
 
@@ -456,13 +463,16 @@ router.post('/register/verify-phone', async (req, res) => {
       pendingRegistration.phoneCodeExpiresAt &&
       pendingRegistration.phoneCodeExpiresAt < new Date()
     ) {
+      console.log('[Phone Verification] Registration - Code expired');
       await pendingRegistration.deleteOne();
       clearPendingRegistrationSession(req);
       return res.status(410).json({ error: 'SMS code expired. Please restart registration.' });
     }
 
     const phoneMatch = await bcrypt.compare(code, pendingRegistration.phoneCodeHash || '');
+    console.log('[Phone Verification] Registration - Code match result:', phoneMatch);
     if (!phoneMatch) {
+      console.log('[Phone Verification] Registration - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 
@@ -514,14 +524,23 @@ router.post('/register/verify-phone', async (req, res) => {
       verification: verification,
     });
 
+    console.log('[Phone Verification] Registration - User created successfully:', {
+      userId: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      phoneVerificationStatus: user.verification.phone.status
+    });
+
     req.session.userId = user.id;
     req.session.role = user.role;
     await pendingRegistration.deleteOne();
     clearPendingRegistrationSession(req);
 
+    console.log('[Phone Verification] Registration - Verification completed successfully');
     return res.status(201).json({ user: sanitizeUser(user) });
   } catch (err) {
-    console.error('Phone verification error', err);
+    console.error('[Phone Verification] Registration - Error:', err);
     return res.status(500).json({ error: 'Failed to verify phone' });
   }
 });
@@ -776,17 +795,24 @@ router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
 router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
   try {
     const { phone } = req.body || {};
+    console.log('[Phone Verification] Profile Change - Request received for phone:', phone);
+    
     if (!phone) {
+      console.log('[Phone Verification] Profile Change - Phone missing');
       return res.status(400).json({ error: 'Phone is required' });
     }
 
     const user = await User.findById(req.session.userId);
     if (!user) {
+      console.log('[Phone Verification] Profile Change - User not found in session');
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
     const trimmedPhone = phone.trim();
+    console.log('[Phone Verification] Profile Change - Current phone:', user.phone, 'New phone:', trimmedPhone);
+    
     if (trimmedPhone === user.phone) {
+      console.log('[Phone Verification] Profile Change - New phone same as current phone');
       return res.status(400).json({ error: 'New phone must be different from current phone' });
     }
 
@@ -798,24 +824,28 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       expiresAt: codeExpiryDate(),
     };
 
+    console.log('[Phone Verification] Profile Change - OTP generated and stored in session');
+
     try {
       await sendSmsVerificationCode(trimmedPhone, otpCode);
+      console.log('[Phone Verification] Profile Change - SMS sent successfully to:', trimmedPhone);
     } catch (notificationError) {
-      console.error('Failed to send SMS OTP', notificationError);
+      console.error('[Phone Verification] Profile Change - Failed to send SMS OTP:', notificationError);
       if (isProduction) {
-        console.warn('Continuing despite SMS send failure (production mode)');
+        console.warn('[Phone Verification] Profile Change - Continuing despite SMS send failure (production mode)');
       } else {
         delete req.session[phoneChangeOTPKey];
         return res.status(502).json({ error: 'Failed to send verification SMS' });
       }
     }
 
+    console.log('[Phone Verification] Profile Change - OTP request completed successfully');
     return res.json({ 
       message: 'Verification code sent to new phone',
       phoneCode: otpCode
     });
   } catch (error) {
-    console.error('Phone change OTP error', error);
+    console.error('[Phone Verification] Profile Change - Error:', error);
     return res.status(500).json({ error: 'Failed to send verification code' });
   }
 });
@@ -823,11 +853,15 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
 router.post('/profile/verify-otp', requireAuth, async (req, res) => {
   try {
     const { code, type } = req.body || {}; // type: 'email' or 'phone'
+    console.log('[Phone Verification] Profile OTP Verify - Received:', { type, code: code ? '****' : 'missing' });
+    
     if (!code || !type) {
+      console.log('[Phone Verification] Profile OTP Verify - Missing code or type');
       return res.status(400).json({ error: 'Code and type are required' });
     }
 
     if (!isValidCode(code)) {
+      console.log('[Phone Verification] Profile OTP Verify - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
@@ -835,16 +869,23 @@ router.post('/profile/verify-otp', requireAuth, async (req, res) => {
     const otpData = req.session[sessionKey];
 
     if (!otpData) {
+      console.log('[Phone Verification] Profile OTP Verify - No pending verification found for type:', type);
       return res.status(400).json({ error: 'No pending verification found' });
     }
 
+    console.log('[Phone Verification] Profile OTP Verify - OTP data found, phone:', otpData.phone);
+
     if (otpData.expiresAt && otpData.expiresAt < new Date()) {
+      console.log('[Phone Verification] Profile OTP Verify - Code expired');
       delete req.session[sessionKey];
       return res.status(410).json({ error: 'Verification code expired' });
     }
 
     const match = await bcrypt.compare(code, otpData.otpHash);
+    console.log('[Phone Verification] Profile OTP Verify - Code match result:', match);
+    
     if (!match) {
+      console.log('[Phone Verification] Profile OTP Verify - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 
@@ -852,9 +893,10 @@ router.post('/profile/verify-otp', requireAuth, async (req, res) => {
     otpData.verified = true;
     req.session[sessionKey] = otpData;
 
+    console.log('[Phone Verification] Profile OTP Verify - Verification successful for phone:', otpData.phone);
     return res.json({ message: 'Verification successful' });
   } catch (error) {
-    console.error('OTP verification error', error);
+    console.error('[Phone Verification] Profile OTP Verify - Error:', error);
     return res.status(500).json({ error: 'Failed to verify code' });
   }
 });
@@ -957,6 +999,7 @@ router.put('/profile', requireAuth, async (req, res) => {
 
     // Update phone verification status if phone was changed and verified
     if (trimmedPhone !== user.phone) {
+      console.log('[Phone Verification] Profile Update - Phone changed, updating verification status');
       // Phone was changed and verified via OTP
       if (!user.verification.phone) {
         user.verification.phone = { status: 'verified', verifiedAt: new Date() };
@@ -964,7 +1007,9 @@ router.put('/profile', requireAuth, async (req, res) => {
         user.verification.phone.status = 'verified';
         user.verification.phone.verifiedAt = new Date();
       }
+      console.log('[Phone Verification] Profile Update - Phone verification status updated:', user.verification.phone);
     } else if (user.phone && (!user.verification.phone || user.verification.phone.status === 'not-started')) {
+      console.log('[Phone Verification] Profile Update - Phone exists but not verified, marking as verified');
       // Phone exists but not verified in verification object, mark as verified
       if (!user.verification.phone) {
         user.verification.phone = { status: 'verified', verifiedAt: new Date() };
@@ -974,6 +1019,7 @@ router.put('/profile', requireAuth, async (req, res) => {
           user.verification.phone.verifiedAt = new Date();
         }
       }
+      console.log('[Phone Verification] Profile Update - Phone verification status initialized:', user.verification.phone);
     }
 
     if (user.role === 'professional') {

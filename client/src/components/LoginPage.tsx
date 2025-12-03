@@ -281,7 +281,10 @@ export default function LoginPage() {
 
   const handleVerifyPhoneCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[Phone Verification] Frontend - Starting phone verification, code length:', phoneVerificationCode.length);
+    
     if (phoneVerificationCode.length !== 4) {
+      console.log('[Phone Verification] Frontend - Invalid code length');
       alert("Please enter a 4-digit code");
       return;
     }
@@ -289,7 +292,14 @@ export default function LoginPage() {
     setIsRegistering(true);
     setIsCompletingRegistration(true);
     try {
+      console.log('[Phone Verification] Frontend - Calling completeRegistration API');
       const user = await completeRegistration(phoneVerificationCode);
+      console.log('[Phone Verification] Frontend - Registration completed successfully:', {
+        userId: user.id,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+      });
       
       // Close verification modal first
       setShowEmailVerification(false);
@@ -299,13 +309,16 @@ export default function LoginPage() {
 
       // Navigate immediately based on user role
       if (user.role === "professional") {
+        console.log('[Phone Verification] Frontend - Navigating to professional registration steps');
         // Redirect to professional registration steps page
         navigate("/professional-registration-steps", { replace: true });
       } else {
+        console.log('[Phone Verification] Frontend - Navigating to account page');
         // Client: go directly to account
         navigate("/account", { replace: true });
       }
     } catch (error) {
+      console.error('[Phone Verification] Frontend - Registration failed:', error);
       setRegisterError(error instanceof Error ? error.message : "Registration failed");
       setIsCompletingRegistration(false);
     } finally {

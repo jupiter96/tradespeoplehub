@@ -220,13 +220,26 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const completeRegistration = useCallback(
     async (code: string) => {
-      const data = await requestJson("/api/auth/register/verify-phone", {
-        method: "POST",
-        body: JSON.stringify({ code }),
-      });
+      console.log('[Phone Verification] AccountContext - completeRegistration called with code');
+      try {
+        const data = await requestJson("/api/auth/register/verify-phone", {
+          method: "POST",
+          body: JSON.stringify({ code }),
+        });
 
-      applyUserSession(data.user);
-      return data.user;
+        console.log('[Phone Verification] AccountContext - Registration API response received:', {
+          userId: data.user?.id,
+          email: data.user?.email,
+          phone: data.user?.phone,
+          role: data.user?.role
+        });
+
+        applyUserSession(data.user);
+        return data.user;
+      } catch (error) {
+        console.error('[Phone Verification] AccountContext - completeRegistration error:', error);
+        throw error;
+      }
     },
     [applyUserSession, requestJson]
   );
@@ -273,11 +286,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifyOTP = useCallback(
     async (code: string, type: 'email' | 'phone') => {
-      const data = await requestJson("/api/auth/profile/verify-otp", {
-        method: "POST",
-        body: JSON.stringify({ code, type }),
-      });
-      return data;
+      console.log('[Phone Verification] AccountContext - verifyOTP called:', { type, code: code ? '****' : 'missing' });
+      try {
+        const data = await requestJson("/api/auth/profile/verify-otp", {
+          method: "POST",
+          body: JSON.stringify({ code, type }),
+        });
+        console.log('[Phone Verification] AccountContext - verifyOTP response:', data);
+        return data;
+      } catch (error) {
+        console.error('[Phone Verification] AccountContext - verifyOTP error:', error);
+        throw error;
+      }
     },
     [requestJson]
   );
