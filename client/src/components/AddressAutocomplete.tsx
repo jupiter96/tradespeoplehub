@@ -83,13 +83,7 @@ export default function AddressAutocomplete({
     postcode: '',
   });
   
-  // Update manual address when external values change
-  useEffect(() => {
-    if (address && !showManualEntry) {
-      // If address is set externally and we're not in manual mode, hide manual entry
-      setShowManualEntry(false);
-    }
-  }, [address, showManualEntry]);
+  // Manual form is completely independent - no syncing with autocomplete
   
   // Handle manual address changes
   const handleManualAddressChange = (field: string, value: string) => {
@@ -120,32 +114,7 @@ export default function AddressAutocomplete({
     }
   };
   
-  // Sync manual address with external values when they change
-  useEffect(() => {
-    if (showManualEntry && address) {
-      // If address is set externally, try to parse it
-      const parts = address.split(',').map(p => p.trim());
-      if (parts.length >= 1) {
-        setManualAddress(prev => ({
-          ...prev,
-          line1: parts[0] || prev.line1,
-          line2: parts[1] || prev.line2,
-        }));
-      }
-    }
-  }, [address, showManualEntry]);
-  
-  // Sync townCity and postcode when they change externally
-  useEffect(() => {
-    if (showManualEntry) {
-      if (townCity) {
-        setManualAddress(prev => ({ ...prev, townCity }));
-      }
-      if (postcode) {
-        setManualAddress(prev => ({ ...prev, postcode }));
-      }
-    }
-  }, [townCity, postcode, showManualEntry]);
+  // Manual form is completely independent - no syncing with autocomplete fields
   const wrapperRef = useRef<HTMLDivElement>(null);
   const addressWrapperRef = useRef<HTMLDivElement>(null);
   const cityWrapperRef = useRef<HTMLDivElement>(null);
@@ -816,6 +785,12 @@ export default function AddressAutocomplete({
               type="text"
               value={manualAddress.line1}
               onChange={(e) => handleManualAddressChange('line1', e.target.value)}
+              onKeyDown={(e) => {
+                // Allow all keys including spaces
+                if (e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
               placeholder="Street address"
               required
               className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
@@ -831,6 +806,12 @@ export default function AddressAutocomplete({
               type="text"
               value={manualAddress.line2}
               onChange={(e) => handleManualAddressChange('line2', e.target.value)}
+              onKeyDown={(e) => {
+                // Allow all keys including spaces
+                if (e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
               placeholder="Apartment, suite, etc. (optional)"
               className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
             />
@@ -845,6 +826,12 @@ export default function AddressAutocomplete({
               type="text"
               value={manualAddress.townCity}
               onChange={(e) => handleManualAddressChange('townCity', e.target.value)}
+              onKeyDown={(e) => {
+                // Allow all keys including spaces
+                if (e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
               placeholder="Town or city"
               required
               className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
@@ -860,6 +847,12 @@ export default function AddressAutocomplete({
               type="text"
               value={manualAddress.county}
               onChange={(e) => handleManualAddressChange('county', e.target.value)}
+              onKeyDown={(e) => {
+                // Allow all keys including spaces
+                if (e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
               placeholder="County (optional)"
               className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
             />
@@ -874,6 +867,12 @@ export default function AddressAutocomplete({
               type="text"
               value={manualAddress.postcode}
               onChange={(e) => handleManualAddressChange('postcode', e.target.value)}
+              onKeyDown={(e) => {
+                // Allow all keys including spaces
+                if (e.key === ' ') {
+                  e.stopPropagation();
+                }
+              }}
               placeholder="e.g., SW1A 1AA"
               required
               className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
