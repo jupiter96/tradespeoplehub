@@ -138,58 +138,6 @@ export default function LoginPage() {
   // Field validation errors
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Function to fill form with random UK data
-  const fillRandomUKData = () => {
-    // UK first names
-    const firstNames = ['James', 'Emma', 'Oliver', 'Sophia', 'William', 'Isabella', 'Henry', 'Charlotte', 'George', 'Amelia', 'Thomas', 'Mia', 'Arthur', 'Harper', 'Noah', 'Evelyn'];
-    // UK last names
-    const lastNames = ['Smith', 'Jones', 'Williams', 'Brown', 'Taylor', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Johnson', 'Roberts', 'Walker', 'Wright', 'Robinson', 'Thompson', 'White'];
-    // UK cities
-    const cities = ['London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Glasgow', 'Edinburgh', 'Bristol', 'Cardiff', 'Sheffield', 'Newcastle', 'Nottingham'];
-    // UK postcodes (sample)
-    const postcodes = ['SW1A 1AA', 'M1 1AA', 'B1 1AA', 'L1 1AA', 'LS1 1AA', 'G1 1AA', 'EH1 1AA', 'BS1 1AA', 'CF1 1AA', 'S1 1AA', 'NE1 1AA', 'NG1 1AA'];
-    // UK addresses
-    const addresses = [
-      '123 High Street', '45 Queen Street', '78 King\'s Road', '12 Victoria Avenue', '56 Church Lane', 
-      '89 Market Street', '34 Park Road', '67 Station Road', '23 Main Street', '90 Oxford Street'
-    ];
-    // Trading names
-    const tradingNames = ['Professional Services Ltd', 'Expert Solutions', 'Quality Services', 'Premier Services', 'Elite Professionals'];
-
-    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-    const randomCity = cities[Math.floor(Math.random() * cities.length)];
-    const randomPostcode = postcodes[Math.floor(Math.random() * postcodes.length)];
-    const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
-    const randomTradingName = tradingNames[Math.floor(Math.random() * tradingNames.length)];
-    
-    // Generate random email
-    const randomEmail = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 1000)}@test.co.uk`;
-    
-    // Generate UK phone number (+44 format)
-    const randomPhone = `+44 7${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)} ${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`;
-    
-    // Set form values
-    setRegisterFirstName(randomFirstName);
-    setRegisterLastName(randomLastName);
-    setRegisterEmail(randomEmail);
-    setRegisterPhone(randomPhone);
-    setRegisterPostcode(randomPostcode);
-    setRegisterPassword('Test123!');
-    setRegisterConfirmPassword('Test123!');
-    
-    if (userType === 'professional') {
-      setRegisterTradingName(randomTradingName);
-      setRegisterAddress(`${randomAddress}, ${randomCity}`);
-      setRegisterTownCity(randomCity);
-      setRegisterTravelDistance(['5miles', '10miles', '15miles', '20miles', '30miles'][Math.floor(Math.random() * 5)]);
-    }
-    
-    // Clear any errors
-    setFieldErrors({});
-    setAgreeTerms(true);
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -741,18 +689,6 @@ export default function LoginPage() {
                       Professional
                     </button>
                   </div>
-                </div>
-
-                {/* Fill Random Data Button - Development/Testing Only */}
-                <div className="mb-3">
-                  <Button
-                    type="button"
-                    onClick={fillRandomUKData}
-                    variant="outline"
-                    className="w-full text-xs bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
-                  >
-                    🧪 Fill with Random UK Data (Test)
-                  </Button>
                 </div>
 
                 {/* Register Form */}
