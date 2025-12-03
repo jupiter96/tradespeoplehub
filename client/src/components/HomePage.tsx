@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import mobileBannerImage from "figma:asset/618daa9a68ee59f7a6ae2af4cb4c10ea44a1211f.png";
-import heroVideo from "../assets/hero.mp4";
+import heroVideo from "../assets/hero.webm";
 
 export default function HomePage() {
   const navigate = useNavigate();
