@@ -1089,6 +1089,15 @@ router.put('/profile', requireAuth, async (req, res) => {
         if (req.body.publicProfile.isPublic !== undefined) {
           user.publicProfile.isPublic = req.body.publicProfile.isPublic;
         }
+        if (req.body.publicProfile.qualifications !== undefined) {
+          user.publicProfile.qualifications = req.body.publicProfile.qualifications?.trim() || undefined;
+        }
+        if (req.body.publicProfile.certifications !== undefined) {
+          user.publicProfile.certifications = req.body.publicProfile.certifications?.trim() || undefined;
+        }
+        if (req.body.publicProfile.companyDetails !== undefined) {
+          user.publicProfile.companyDetails = req.body.publicProfile.companyDetails?.trim() || undefined;
+        }
       }
     } else {
       user.tradingName = undefined;

@@ -192,6 +192,9 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      qualifications: String,
+      certifications: String,
+      companyDetails: String,
     },
   },
   {

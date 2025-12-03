@@ -39,6 +39,9 @@ interface UserInfo {
     }>;
     publicProfileUrl?: string;
     isPublic?: boolean;
+    qualifications?: string;
+    certifications?: string;
+    companyDetails?: string;
   };
 }
 

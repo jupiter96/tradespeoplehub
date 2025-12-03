@@ -58,6 +58,7 @@ import AdminReferralsClientPage from "./admin/AdminReferralsProfessionalPage";
 import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export default function AdminDashboardPage() {
   const location = useLocation();
@@ -69,6 +70,7 @@ export default function AdminDashboardPage() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [statistics, setStatistics] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [dashboardTab, setDashboardTab] = useState("state-cards");
   
   // Get active section from URL, default to "dashboard"
   // URL section is already in the correct format (clients, professionals, etc.)
@@ -220,16 +222,71 @@ export default function AdminDashboardPage() {
 
           {activeSection === "dashboard" ? (
             <div className="space-y-8">
-              {/* Statistics Cards - 3 Columns */}
-              {loadingStats ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
-                    <p className="text-black dark:text-white">Loading statistics...</p>
+              {/* Dashboard Tabs */}
+              <Tabs value={dashboardTab} onValueChange={setDashboardTab} className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 dark:bg-gray-800">
+                  <TabsTrigger 
+                    value="state-cards"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] text-gray-600 dark:text-gray-400"
+                  >
+                    State Cards
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="statistics"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] text-gray-600 dark:text-gray-400"
+                  >
+                    Statistics
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* State Cards Tab */}
+                <TabsContent value="state-cards" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {cards.map((card, index) => {
+                      const Icon = card.icon;
+                      return (
+                        <div
+                          key={index}
+                          className="bg-white dark:bg-black rounded-lg border border-[#FE8A0F] p-6 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-black dark:text-white text-xs font-semibold uppercase mb-3 tracking-wide">
+                                {card.title}
+                              </h3>
+                              <p className="text-[#FE8A0F] text-4xl font-bold mb-2 leading-tight">
+                                {card.value}
+                              </p>
+                              <p className="text-[#FE8A0F] text-sm font-semibold mb-1">
+                                {card.delta}
+                              </p>
+                              <p className="text-black dark:text-white text-xs text-gray-600 dark:text-gray-400">
+                                {card.description}
+                              </p>
+                            </div>
+                            {Icon && (
+                              <div className="ml-4 flex-shrink-0 p-2 bg-[#FE8A0F]/10 rounded border border-white/50">
+                                <Icon className="w-5 h-5 text-[#FE8A0F]" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              ) : (
-                <section className="grid gap-4 md:grid-cols-3">
+                </TabsContent>
+
+                {/* Statistics Cards Tab */}
+                <TabsContent value="statistics" className="mt-6">
+                  {loadingStats ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
+                        <p className="text-black dark:text-white">Loading statistics...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <section className="grid gap-4 md:grid-cols-3">
                   {/* Column 1 - Orange Cards */}
                   <div className="space-y-4">
                     <StatCard
@@ -430,8 +487,10 @@ export default function AdminDashboardPage() {
                       onClick={() => navigate("/admin/custom-order")}
                     />
                   </div>
-                </section>
-              )}
+                    </section>
+                  )}
+                </TabsContent>
+              </Tabs>
 
               <section className="grid gap-6 lg:grid-cols-2">
                 <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 
