@@ -296,16 +296,12 @@ export default function ProfessionalRegistrationSteps() {
     }
   };
 
-  const toggleSector = (sector: string) => {
-    setSectors(prev => 
-      prev.includes(sector) 
-        ? prev.filter(s => s !== sector)
-        : [...prev, sector]
-    );
-    if (errors.sectors) {
+  const handleSectorChange = (selectedSector: string) => {
+    setSector(selectedSector);
+    if (errors.sector) {
       setErrors(prev => {
         const newErrors = { ...prev };
-        delete newErrors.sectors;
+        delete newErrors.sector;
         return newErrors;
       });
     }
