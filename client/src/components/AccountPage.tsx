@@ -1602,7 +1602,7 @@ function DetailsSection() {
         townCity: userInfo?.townCity || "",
         postcode: userInfo?.postcode || "",
         travelDistance: userInfo?.travelDistance || "10 miles",
-        sectors: userInfo?.sectors || (userInfo?.sector ? [userInfo.sector] : []),
+        sector: userInfo?.sector || "",
         categories: categories || [],
         subcategories: subcategories || [],
         aboutService: userInfo?.aboutService || "",
@@ -1618,7 +1618,6 @@ function DetailsSection() {
   const buildFormState = useCallback(
     (state: typeof initialFormState) => ({
       ...state,
-      sectors: [...(state.sectors || [])],
       categories: [...(state.categories || [])],
       subcategories: [...(state.subcategories || [])],
     }),
@@ -1837,13 +1836,8 @@ function DetailsSection() {
       payload.tradingName = formData.tradingName.trim() || undefined;
       payload.travelDistance = formData.travelDistance || undefined;
       
-      // Update sectors (allow multiple sectors)
-      if (formData.sectors && formData.sectors.length > 0) {
-        // Store first sector for backward compatibility
-        payload.sector = formData.sectors[0];
-        // Store all sectors
-        payload.sectors = formData.sectors;
-      }
+      // Sector cannot be changed after registration - it's read-only
+      // Do not send sector in payload if it already exists
       
       // Combine categories and subcategories into services array
       const allServices = [...formData.categories, ...formData.subcategories];
@@ -2322,48 +2316,34 @@ function DetailsSection() {
                 Professional Services
               </h3>
               
-              {/* Sectors Selection */}
+              {/* Sector Display (Read-only) */}
               <div className="mb-5">
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                  Sectors <span className="text-red-500">*</span>
+                  Sector
                   <span className="text-xs text-gray-500 font-normal ml-2">
-                    (Select all that apply)
+                    (Cannot be changed after registration)
                   </span>
                 </Label>
-                <div className="border-2 border-gray-200 rounded-xl p-4 max-h-[250px] overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {SECTORS.map((sector) => (
-                      <label
-                        key={sector}
-                        className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                          formData.sectors.includes(sector)
-                            ? 'border-[#FE8A0F] bg-[#FFF5EB]'
-                            : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
-                        } cursor-pointer transition-all`}
-                      >
-                        <Checkbox
-                          checked={formData.sectors.includes(sector)}
-                          onCheckedChange={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              sectors: prev.sectors.includes(sector)
-                                ? prev.sectors.filter(s => s !== sector)
-                                : [...prev.sectors, sector]
-                            }));
-                          }}
-                          className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                        />
-                        <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
-                          {sector}
-                        </span>
-                      </label>
-                    ))}
+                {formData.sector ? (
+                  <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full bg-[#FE8A0F] flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-white"></div>
+                      </div>
+                      <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif] font-medium">
+                        {formData.sector}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 font-['Poppins',sans-serif]">
+                      Your sector was selected during registration and cannot be changed. However, you can select multiple categories within your chosen sector.
+                    </p>
                   </div>
-                </div>
-                {formData.sectors.length > 0 && (
-                  <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
-                    {formData.sectors.length} sector{formData.sectors.length !== 1 ? 's' : ''} selected
-                  </p>
+                ) : (
+                  <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
+                    <p className="text-sm text-gray-500 font-['Poppins',sans-serif]">
+                      No sector selected. Please complete your professional registration to select a sector.
+                    </p>
+                  </div>
                 )}
               </div>
 

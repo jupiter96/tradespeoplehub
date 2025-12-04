@@ -1061,12 +1061,19 @@ router.put('/profile', requireAuth, async (req, res) => {
         user.services = services.map((service) => service?.toString().trim()).filter(Boolean);
       }
       
-      // Update sectors (allow multiple sectors)
-      if (req.body.sectors !== undefined && Array.isArray(req.body.sectors)) {
-        user.sectors = req.body.sectors.map((s) => s?.toString().trim()).filter(Boolean);
-        // Also update single sector field for backward compatibility
-        if (user.sectors.length > 0) {
-          user.sector = user.sectors[0];
+      // Sector cannot be changed after registration
+      // If sectors array is provided, ignore it - sector is read-only after registration
+      // Only allow setting sector if it doesn't exist yet (during registration)
+      if (req.body.sectors !== undefined && Array.isArray(req.body.sectors) && req.body.sectors.length > 0) {
+        // If user already has a sector, prevent changing it
+        if (user.sector && user.sector !== req.body.sectors[0]?.toString().trim()) {
+          return res.status(400).json({ 
+            error: 'Sector cannot be changed after registration. You can only select one sector during registration.' 
+          });
+        }
+        // Only set sector if it doesn't exist yet
+        if (!user.sector) {
+          user.sector = req.body.sectors[0]?.toString().trim() || undefined;
         }
       }
       
