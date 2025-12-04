@@ -6,6 +6,7 @@ import Footer from "./Footer";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
 
 export default function ResetPasswordPage() {
   const { resetPassword } = useAccount();
@@ -32,8 +33,9 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors[0] || "Password does not meet requirements");
       return;
     }
 
@@ -91,13 +93,26 @@ export default function ResetPasswordPage() {
                   <Input
                     id="new-password"
                     type="password"
-                    placeholder="Enter new password"
+                    placeholder="Must include uppercase, lowercase, and numbers"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError(null);
+                    }}
                     className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                     disabled={!token || isSubmitting}
                     required
                   />
+                  {password && !error && (
+                    <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                      {getPasswordHint(password)}
+                    </p>
+                  )}
+                  {!password && (
+                    <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                      Password must include uppercase, lowercase, and numbers
+                    </p>
+                  )}
                 </div>
 
                 <div>

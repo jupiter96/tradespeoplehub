@@ -1,7 +1,9 @@
 import React from "react";
 import AdminPageLayout from "./AdminPageLayout";
+import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 
 export default function AdminReferralsProfessionalPage() {
+  useAdminRouteGuard();
   return (
     <AdminPageLayout
       title="Referrals - Professional"

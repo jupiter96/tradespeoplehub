@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon, Key, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon, Key, ChevronDown, User } from "lucide-react";
 import logoImage from "figma:asset/71632be70905a17fd389a8d053249645c4e8a4df.png";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -21,6 +21,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
 import API_BASE_URL from "../config/api";
+import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
 
 interface Admin {
   id: string;
@@ -50,6 +51,12 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
     confirmPassword: "",
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+  });
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Sync with sidebarOpen prop
   useEffect(() => {
@@ -169,8 +176,9 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    const passwordValidation = validatePassword(passwordData.newPassword);
+    if (!passwordValidation.isValid) {
+      toast.error(passwordValidation.errors[0] || "Password does not meet requirements");
       return;
     }
 
@@ -212,6 +220,50 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
     const newState = !sidebarOpen;
     if (onMenuToggle) {
       onMenuToggle(newState);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!profileData.name || !profileData.email) {
+      toast.error("Name and email are required");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(profileData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    try {
+      setIsUpdatingProfile(true);
+      const response = await fetch(`${API_BASE_URL}/api/admin/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name: profileData.name.trim(),
+          email: profileData.email.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update profile");
+        return;
+      }
+
+      const data = await response.json();
+      setCurrentAdmin(data.user);
+      toast.success("Profile updated successfully");
+      setShowEditProfile(false);
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -303,6 +355,21 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
               <DropdownMenuItem
+                onClick={() => {
+                  setShowEditProfile(true);
+                  if (currentAdmin) {
+                    setProfileData({
+                      name: currentAdmin.name || "",
+                      email: currentAdmin.email || "",
+                    });
+                  }
+                }}
+                className="cursor-pointer text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <User className="mr-2 h-4 w-4" />
+                Edit Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => setShowChangePassword(true)}
                 className="cursor-pointer text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               >
@@ -356,8 +423,18 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                       setPasswordData({ ...passwordData, newPassword: e.target.value })
                     }
                     className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
-                    placeholder="Enter new password"
+                    placeholder="Must include uppercase, lowercase, and numbers"
                   />
+                  {passwordData.newPassword && (
+                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      {getPasswordHint(passwordData.newPassword)}
+                    </p>
+                  )}
+                  {!passwordData.newPassword && (
+                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      Password must include uppercase, lowercase, and numbers
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="confirmPassword" className="text-black dark:text-white">
@@ -395,6 +472,74 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     className="bg-[#FE8A0F] hover:bg-[#FE8A0F]/90 text-white"
                   >
                     {isChangingPassword ? "Changing..." : "Change Password"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Profile Dialog */}
+          <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
+            <DialogContent className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+              <DialogHeader>
+                <DialogTitle className="text-black dark:text-white">Edit Profile</DialogTitle>
+                <DialogDescription className="text-gray-600 dark:text-gray-400">
+                  Update your name and email address.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="profileName" className="text-black dark:text-white">
+                    Name *
+                  </Label>
+                  <Input
+                    id="profileName"
+                    type="text"
+                    value={profileData.name}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, name: e.target.value })
+                    }
+                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    placeholder="Enter your name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="profileEmail" className="text-black dark:text-white">
+                    Email *
+                  </Label>
+                  <Input
+                    id="profileEmail"
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, email: e.target.value })
+                    }
+                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEditProfile(false);
+                      if (currentAdmin) {
+                        setProfileData({
+                          name: currentAdmin.name || "",
+                          email: currentAdmin.email || "",
+                        });
+                      }
+                    }}
+                    className="border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUpdateProfile}
+                    disabled={isUpdatingProfile}
+                    className="bg-[#FE8A0F] hover:bg-[#FE8A0F]/90 text-white"
+                  >
+                    {isUpdatingProfile ? "Updating..." : "Update Profile"}
                   </Button>
                 </div>
               </div>

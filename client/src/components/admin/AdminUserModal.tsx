@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import AddressAutocomplete from "../AddressAutocomplete";
 
 import API_BASE_URL from "../../config/api";
+import { validatePassword, getPasswordHint } from "../../utils/passwordValidation";
 
 interface User {
   id?: string;
@@ -149,10 +150,13 @@ export default function AdminUserModal({
         return;
       }
 
-      if (formData.password && formData.password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        setLoading(false);
-        return;
+      if (formData.password) {
+        const passwordValidation = validatePassword(formData.password);
+        if (!passwordValidation.isValid) {
+          toast.error(passwordValidation.errors[0] || "Password does not meet requirements");
+          setLoading(false);
+          return;
+        }
       }
 
       const payload: any = {
@@ -311,9 +315,19 @@ export default function AdminUserModal({
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required={!isEditMode}
-                minLength={6}
+                placeholder="Must include uppercase, lowercase, and numbers"
                 className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
               />
+              {formData.password && (
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  {getPasswordHint(formData.password)}
+                </p>
+              )}
+              {!formData.password && !isEditMode && (
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  Password must include uppercase, lowercase, and numbers
+                </p>
+              )}
             </div>
 
             {/* Role */}

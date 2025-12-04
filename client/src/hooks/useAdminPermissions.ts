@@ -69,7 +69,7 @@ export function useAdminPermissions() {
       "/admin/dashboard": "dashboard", // Dashboard is always accessible
       "/admin/clients": "homeowners-management",
       "/admin/professionals": "tradesmen-management",
-      "/admin/sub-admins": "sub-admin-management", // Only super admin
+      "/admin/sub-admins": "admin-management", // Only super admin or sub-admin with admin-management permission
       "/admin/delete-account": "user-management",
       "/admin/sectors": "category-management",
       "/admin/categories": "category-management",
@@ -143,6 +143,7 @@ export function useAdminPermissions() {
     loading,
   };
 }
+
 
 
 

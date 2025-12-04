@@ -678,7 +678,7 @@ export default function JobDetailPage() {
                 {userRole === "professional" && myAwardedQuote && (
                   <div className="bg-white rounded-xl shadow-sm p-6">
                     <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
-                      Awarded Tradesmen
+                      Awarded Professionals
                     </h2>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#f8f9fa] p-4 sm:p-5 rounded-lg">
                       <div className="flex items-start gap-4 flex-1">

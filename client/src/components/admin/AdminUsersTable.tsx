@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
-import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles, User } from "lucide-react";
+import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles, User, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -30,6 +30,7 @@ import {
 } from "../ui/dialog";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import API_BASE_URL from "../../config/api";
 
 interface User {
@@ -54,7 +55,7 @@ interface User {
 }
 
 interface AdminUsersTableProps {
-  role?: "client" | "professional" | "admin";
+  role?: "client" | "professional" | "admin" | "subadmin";
   title: string;
   onCreateNew?: () => void;
   onEdit?: (user: User) => void;
@@ -86,7 +87,9 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [verificationStatuses, setVerificationStatuses] = useState<Record<string, any>>({});
-  const limit = 20;
+  const [limit, setLimit] = useState(20);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -94,11 +97,13 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
+        sortBy: sortBy,
+        sortOrder: sortOrder,
         ...(role && { role }),
         ...(searchTerm && { search: searchTerm }),
       });
 
-      const endpoint = role === "admin" ? "/api/admin/admins" : "/api/admin/users";
+      const endpoint = role === "subadmin" ? "/api/admin/admins" : "/api/admin/users";
       const response = await fetch(`${API_BASE_URL}${endpoint}?${params}`, {
         credentials: "include",
       });
@@ -108,7 +113,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       }
 
       const data = await response.json();
-      const usersData = role === "admin" ? data.admins : data.users;
+      const usersData = role === "subadmin" ? data.admins : data.users;
       setUsers(usersData || []);
       setTotalPages(data.pagination?.totalPages || 1);
       setTotal(data.pagination?.total || 0);
@@ -153,7 +158,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
 
   useEffect(() => {
     fetchUsers();
-  }, [page, role]);
+  }, [page, role, limit, sortBy, sortOrder]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -167,13 +172,46 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  };
+
+  const SortableHeader = ({ column, label }: { column: string; label: string }) => {
+    const isActive = sortBy === column;
+    return (
+      <TableHead 
+        className="text-[#FE8A0F] font-semibold cursor-pointer hover:bg-[#FE8A0F]/5 select-none"
+        onClick={() => handleSort(column)}
+      >
+        <div className="flex items-center gap-2">
+          <span>{label}</span>
+          {isActive ? (
+            sortOrder === "asc" ? (
+              <ArrowUp className="w-4 h-4" />
+            ) : (
+              <ArrowDown className="w-4 h-4" />
+            )
+          ) : (
+            <ArrowUpDown className="w-4 h-4 opacity-50" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
+
   const handleDelete = async (user: User) => {
     if (!confirm(`Are you sure you want to delete ${user.name}?`)) {
       return;
     }
 
     try {
-      const endpoint = role === "admin" ? `/api/admin/admins/${user.id}` : `/api/admin/users/${user.id}`;
+      const endpoint = role === "subadmin" ? `/api/admin/admins/${user.id}` : `/api/admin/users/${user.id}`;
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "DELETE",
         credentials: "include",
@@ -456,16 +494,37 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
-        <Input
-          type="text"
-          placeholder="Search by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
-        />
+      {/* Search and Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="relative flex-1 w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+          <Input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="rows-per-page" className="text-sm text-black dark:text-white whitespace-nowrap">
+            Rows per page:
+          </Label>
+          <Select value={limit.toString()} onValueChange={(value) => {
+            setLimit(parseInt(value));
+            setPage(1);
+          }}>
+            <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-black border-[#FE8A0F]">
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
@@ -483,15 +542,19 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             <Table>
               <TableHeader>
                 <TableRow className="border-[#FE8A0F]/30 hover:bg-transparent">
-                  <TableHead className="text-[#FE8A0F] font-semibold">Name</TableHead>
-                  <TableHead className="text-[#FE8A0F] font-semibold">Email</TableHead>
+                  <SortableHeader column="name" label="Name" />
+                  <SortableHeader column="email" label="Email" />
                   {role === "professional" && (
-                    <TableHead className="text-[#FE8A0F] font-semibold">Trading Name</TableHead>
+                    <SortableHeader column="tradingName" label="Trading Name" />
                   )}
-                  <TableHead className="text-[#FE8A0F] font-semibold">Phone</TableHead>
+                  {role !== "subadmin" && (
+                    <SortableHeader column="phone" label="Phone" />
+                  )}
                   <TableHead className="text-[#FE8A0F] font-semibold">Status</TableHead>
-                  <TableHead className="text-[#FE8A0F] font-semibold">Location</TableHead>
-                  <TableHead className="text-[#FE8A0F] font-semibold">Joined</TableHead>
+                  {role !== "subadmin" && (
+                    <TableHead className="text-[#FE8A0F] font-semibold">Location</TableHead>
+                  )}
+                  <SortableHeader column="createdAt" label="Joined" />
                   {showVerification && role === "professional" && (
                     <TableHead className="text-[#FE8A0F] font-semibold text-center">Verification</TableHead>
                   )}
@@ -530,9 +593,11 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                         {user.tradingName || "-"}
                       </TableCell>
                     )}
-                    <TableCell className="text-black dark:text-white">
-                      {user.phone}
-                    </TableCell>
+                    {role !== "subadmin" && (
+                      <TableCell className="text-black dark:text-white">
+                        {user.phone}
+                      </TableCell>
+                    )}
                     <TableCell>
                       {(() => {
                         const isBlocked = user.isBlocked || false;
@@ -557,26 +622,28 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="text-black dark:text-white max-w-[22px]">
-                      {(() => {
-                        const addressParts = [];
-                        if (user.address) addressParts.push(user.address);
-                        if (user.townCity) addressParts.push(user.townCity);
-                        if (user.postcode) addressParts.push(user.postcode);
-                        if (addressParts.length > 0) {
-                          return (
-                            <div className="flex flex-col gap-0.5">
-                              {addressParts.map((part, index) => (
-                                <span key={index} className="text-xs leading-tight break-words whitespace-normal">
-                                  {part}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        }
-                        return "-";
-                      })()}
-                    </TableCell>
+                    {role !== "subadmin" && (
+                      <TableCell className="text-black dark:text-white max-w-[22px]">
+                        {(() => {
+                          const addressParts = [];
+                          if (user.address) addressParts.push(user.address);
+                          if (user.townCity) addressParts.push(user.townCity);
+                          if (user.postcode) addressParts.push(user.postcode);
+                          if (addressParts.length > 0) {
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                {addressParts.map((part, index) => (
+                                  <span key={index} className="text-xs leading-tight break-words whitespace-normal">
+                                    {part}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return "-";
+                        })()}
+                      </TableCell>
+                    )}
                     <TableCell className="text-black dark:text-white">
                       {formatDate(user.createdAt)}
                     </TableCell>

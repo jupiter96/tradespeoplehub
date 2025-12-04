@@ -603,12 +603,12 @@ export default function AdminSidebar({
             // Dashboard is always accessible
             if (menu.key === "dashboard") return true;
             
-            // Sub Admin menu is only for super admin
+            // Sub Admin menu is only for super admin or admin with admin-management permission
             if (menu.key === "user-manage") {
-              // Filter children - sub-admin is only for super admin
+              // Filter children - sub-admin is only for super admin or admin with admin-management permission
               const filteredChildren = menu.children.filter((child) => {
                 if (child.key === "sub-admin") {
-                  return isSuperAdmin;
+                  return isSuperAdmin || hasRouteAccess(child.path);
                 }
                 // Check route access for other children
                 return hasRouteAccess(child.path);

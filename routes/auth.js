@@ -117,7 +117,7 @@ const requireAuth = async (req, res, next) => {
   // Reject admin users - they should only access admin dashboard
   try {
     const user = await User.findById(req.session.userId);
-    if (user && user.role === 'admin') {
+    if (user && (user.role === 'admin' || user.role === 'subadmin')) {
       return res.status(403).json({ error: 'Admin users cannot access regular user features' });
     }
   } catch (error) {
@@ -203,7 +203,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
     }
 
     // Reject admin users - they must use admin login
-    if (result.role === 'admin') {
+    if (result.role === 'admin' || result.role === 'subadmin') {
       clearPendingSocialProfile(req);
       return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=admin_not_allowed');
     }
@@ -250,6 +250,26 @@ if (facebookAuthEnabled) {
 }
 
 const validateUserType = (userType) => ['client', 'professional'].includes(userType);
+
+// Password validation: must include uppercase, lowercase, and numbers, at least 6 characters
+const validatePasswordStrength = (password) => {
+  if (!password) {
+    return 'Password is required';
+  }
+  if (password.length < 6) {
+    return 'Password must be at least 6 characters long';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must include at least one uppercase letter';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must include at least one lowercase letter';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must include at least one number';
+  }
+  return null;
+};
 
 const validateRegistrationPayload = (payload, { requirePassword } = { requirePassword: true }) => {
   const {
@@ -703,10 +723,9 @@ router.post('/password/reset', async (req, res) => {
       return res.status(400).json({ error: 'Token and password are required' });
     }
 
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ error: 'Password must be at least 6 characters long' });
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -1206,8 +1225,9 @@ router.put('/profile/password', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const user = await User.findById(req.session.userId);
@@ -1374,9 +1394,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Reject admin users - they must use admin login
-    if (user.role === 'admin') {
-      return res.status(403).json({ error: 'Admin users must login through admin portal' });
+    // Reject admin and subadmin users - they must use admin panel login
+    if (user.role === 'admin' || user.role === 'subadmin') {
+      return res.status(403).json({ error: 'Admin users must login through admin panel' });
     }
 
     if (!user.passwordHash) {
@@ -1679,7 +1699,7 @@ router.get('/me', async (req, res) => {
     }
 
     // Return null for admin users - they should use /api/admin/me
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'subadmin') {
       return res.json({ user: null });
     }
 

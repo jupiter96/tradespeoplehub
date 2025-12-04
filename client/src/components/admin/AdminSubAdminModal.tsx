@@ -11,6 +11,7 @@ import {
 import { Checkbox } from "../ui/checkbox";
 import { toast } from "sonner";
 import API_BASE_URL from "../../config/api";
+import { validatePassword, getPasswordHint } from "../../utils/passwordValidation";
 
 interface SubAdmin {
   id?: string;
@@ -29,30 +30,32 @@ interface AdminSubAdminModalProps {
 }
 
 // Available permissions for sub-admins
+// Sub-admins can only manage admin panel pages, not client/professional user data
 const AVAILABLE_PERMISSIONS = [
-  { value: "tradesmen-management", label: "Tradesmen Management" },
-  { value: "homeowners-management", label: "Homeowners Management" },
-  { value: "category-management", label: "Category Management" },
-  { value: "package-management", label: "Package Management" },
-  { value: "contact-management", label: "Contact Management" },
-  { value: "region-management", label: "Region Management" },
-  { value: "content-management", label: "Content Management" },
-  { value: "user-plans-management", label: "User Plans Management" },
-  { value: "job-management", label: "Job Management" },
-  { value: "dispute-management", label: "Dispute Management" },
-  { value: "ratings-management", label: "Ratings Management" },
-  { value: "payment-settings", label: "Payment Settings" },
-  { value: "withdrawal-request", label: "Withdrawal Request" },
-  { value: "refunds", label: "Refunds" },
-  { value: "message-center", label: "Message Center" },
-  { value: "affiliate", label: "Affiliate" },
-  { value: "referrals", label: "Referrals" },
-  { value: "flagged", label: "Flagged" },
-  { value: "service", label: "Service" },
-  { value: "service-order", label: "Service Order" },
-  { value: "custom-order", label: "Custom Order" },
-  { value: "transaction-history", label: "Transaction History" },
-  { value: "coupon-manage", label: "Coupon Manage" },
+  { value: "admin-management", label: "Admin Management", description: "Manage sub-admin accounts" },
+  { value: "tradesmen-management", label: "Professional Management", description: "Manage professional users" },
+  { value: "homeowners-management", label: "Client Management", description: "Manage client users" },
+  { value: "category-management", label: "Category Management", description: "Manage categories and sectors" },
+  { value: "package-management", label: "Package Management", description: "Manage packages and addons" },
+  { value: "contact-management", label: "Contact Management", description: "Manage contact requests" },
+  { value: "region-management", label: "Region Management", description: "Manage countries and cities" },
+  { value: "content-management", label: "Content Management", description: "Manage website content" },
+  { value: "user-plans-management", label: "User Plans Management", description: "Manage user subscription plans" },
+  { value: "job-management", label: "Job Management", description: "Manage job posts and bids" },
+  { value: "dispute-management", label: "Dispute Management", description: "Manage disputes and interventions" },
+  { value: "ratings-management", label: "Ratings Management", description: "Manage user ratings" },
+  { value: "payment-settings", label: "Payment Settings", description: "Manage payment configurations" },
+  { value: "withdrawal-request", label: "Withdrawal Request", description: "Manage withdrawal requests" },
+  { value: "refunds", label: "Refunds", description: "Manage refunds" },
+  { value: "message-center", label: "Message Center", description: "Manage messages" },
+  { value: "affiliate", label: "Affiliate", description: "Manage affiliate programs" },
+  { value: "referrals", label: "Referrals", description: "Manage referral programs" },
+  { value: "flagged", label: "Flagged", description: "Manage flagged content" },
+  { value: "service", label: "Service", description: "Manage services" },
+  { value: "service-order", label: "Service Order", description: "Manage service orders" },
+  { value: "custom-order", label: "Custom Order", description: "Manage custom orders" },
+  { value: "transaction-history", label: "Transaction History", description: "View transaction history" },
+  { value: "coupon-manage", label: "Coupon Manage", description: "Manage coupons" },
 ];
 
 export default function AdminSubAdminModal({
@@ -120,10 +123,13 @@ export default function AdminSubAdminModal({
         return;
       }
 
-      if (formData.password && formData.password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        setLoading(false);
-        return;
+      if (formData.password) {
+        const passwordValidation = validatePassword(formData.password);
+        if (!passwordValidation.isValid) {
+          toast.error(passwordValidation.errors[0] || "Password does not meet requirements");
+          setLoading(false);
+          return;
+        }
       }
 
       if (!isEditMode && formData.password !== formData.confirmPassword) {
@@ -147,7 +153,7 @@ export default function AdminSubAdminModal({
         firstName,
         lastName,
         email: formData.email.trim().toLowerCase(),
-        role: "admin",
+        role: "subadmin",
         permissions: formData.permissions,
         ...(formData.password && { password: formData.password }),
       };
@@ -252,10 +258,19 @@ export default function AdminSubAdminModal({
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required={!isEditMode}
-              minLength={6}
+              placeholder="Must include uppercase, lowercase, and numbers"
               className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-              placeholder="Password"
             />
+            {formData.password && (
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                {getPasswordHint(formData.password)}
+              </p>
+            )}
+            {!formData.password && !isEditMode && (
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                Password must include uppercase, lowercase, and numbers
+              </p>
+            )}
           </div>
 
           {/* Confirm Password - Only for new sub-admins */}
@@ -285,19 +300,26 @@ export default function AdminSubAdminModal({
             <div className="border border-[#FE8A0F] rounded-md p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
               <div className="space-y-2">
                 {AVAILABLE_PERMISSIONS.map((permission) => (
-                  <div key={permission.value} className="flex items-center space-x-2">
+                  <div key={permission.value} className="flex items-start space-x-2 py-1">
                     <Checkbox
                       id={permission.value}
                       checked={formData.permissions.includes(permission.value)}
                       onCheckedChange={() => handlePermissionToggle(permission.value)}
-                      className="border-[#FE8A0F] data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                      className="border-[#FE8A0F] data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] mt-1"
                     />
-                    <Label
-                      htmlFor={permission.value}
-                      className="text-sm font-normal cursor-pointer text-black dark:text-white"
-                    >
-                      {permission.label}
-                    </Label>
+                    <div className="flex-1">
+                      <Label
+                        htmlFor={permission.value}
+                        className="text-sm font-medium cursor-pointer text-black dark:text-white"
+                      >
+                        {permission.label}
+                      </Label>
+                      {permission.description && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {permission.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -328,6 +350,7 @@ export default function AdminSubAdminModal({
     </Dialog>
   );
 }
+
 
 
 

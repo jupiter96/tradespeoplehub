@@ -1,5 +1,6 @@
 import React from "react";
 import AdminPageLayout from "./AdminPageLayout";
+import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 
 interface AdminGenericPageProps {
   title: string;
@@ -14,6 +15,8 @@ export default function AdminGenericPage({
   tabs,
   defaultTab,
 }: AdminGenericPageProps) {
+  useAdminRouteGuard();
+  
   return (
     <AdminPageLayout
       title={title}

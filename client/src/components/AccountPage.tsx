@@ -3415,8 +3415,9 @@ function SecuritySection() {
       return;
     }
     
-    if (newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters long");
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.errors[0] || "Password does not meet requirements");
       return;
     }
     
@@ -3510,11 +3511,26 @@ function SecuritySection() {
               <input
                 type="password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  const newPwd = e.target.value;
+                  setNewPassword(newPwd);
+                  setPasswordError(null);
+                }}
+                placeholder="Must include uppercase, lowercase, and numbers"
                 className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
                   passwordError ? 'border-red-500' : 'border-gray-200'
                 }`}
               />
+              {newPassword && !passwordError && (
+                <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                  {getPasswordHint(newPassword)}
+                </p>
+              )}
+              {!newPassword && (
+                <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                  Password must include uppercase, lowercase, and numbers
+                </p>
+              )}
             </div>
             <div>
               <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
@@ -4396,10 +4412,10 @@ function InviteSection() {
               Simply copy your referral link below and share it with friends, family, or your social network.
             </p>
 
-            {/* Homeowner Link */}
+            {/* Client Link */}
             <div className="mb-6">
               <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
-                Homeowner
+                Client
               </h4>
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                 <div className="flex-1 flex gap-2 w-full">

@@ -1476,7 +1476,7 @@ export default function ProfessionalOrdersSection() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="text-center">
                         <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                          Tradesman (you)<br />want to receive:
+                          Professional (you)<br />want to receive:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
                           £{dispute.respondentOffer?.amount.toFixed(2) || "0.00"}
@@ -1484,7 +1484,7 @@ export default function ProfessionalOrdersSection() {
                       </div>
                       <div className="text-center">
                         <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                          Homeowner ({dispute.claimantName})<br />wants to pay:
+                          Client ({dispute.claimantName})<br />wants to pay:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
                           £{dispute.claimantOffer?.amount.toFixed(2) || "0.00"}

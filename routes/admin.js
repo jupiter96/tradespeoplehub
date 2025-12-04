@@ -6,6 +6,26 @@ const sanitizeUser = (user) => user.toSafeObject();
 
 const router = express.Router();
 
+// Password validation: must include uppercase, lowercase, and numbers, at least 6 characters
+const validatePasswordStrength = (password) => {
+  if (!password) {
+    return 'Password is required';
+  }
+  if (password.length < 6) {
+    return 'Password must be at least 6 characters long';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must include at least one uppercase letter';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must include at least one lowercase letter';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must include at least one number';
+  }
+  return null;
+};
+
 // Admin authentication middleware
 const requireAdmin = async (req, res, next) => {
   try {
@@ -18,7 +38,8 @@ const requireAdmin = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    if (user.role !== 'admin') {
+    // Allow both admin and subadmin roles
+    if (user.role !== 'admin' && user.role !== 'subadmin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
@@ -66,7 +87,10 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail, role: 'admin' });
+    const user = await User.findOne({ 
+      email: normalizedEmail, 
+      role: { $in: ['admin', 'subadmin'] } 
+    });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -115,13 +139,57 @@ router.get('/me', requireAdmin, async (req, res) => {
   }
 });
 
+// Update current admin profile (email and name)
+router.put('/profile', requireAdmin, async (req, res) => {
+  try {
+    const { email, name } = req.body || {};
+    
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Email and name are required' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    // Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if email is being changed
+    if (normalizedEmail !== user.email) {
+      // Check if new email is already in use
+      const existingUser = await User.findOne({ email: normalizedEmail });
+      if (existingUser) {
+        return res.status(409).json({ error: 'Email is already in use' });
+      }
+      user.email = normalizedEmail;
+    }
+
+    // Update name
+    user.name = name.trim();
+
+    await user.save();
+
+    return res.json({ 
+      message: 'Profile updated successfully',
+      user: user.toSafeObject() 
+    });
+  } catch (error) {
+    console.error('Update admin profile error', error);
+    return res.status(500).json({ error: error.message || 'Failed to update profile' });
+  }
+});
+
 // Get all users (with pagination and filters)
 router.get('/users', requireAdmin, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Max 100 rows per page
     const role = req.query.role; // 'client', 'professional', or undefined for all
     const search = req.query.search; // Search by name or email
+    const sortBy = req.query.sortBy || 'createdAt'; // Default sort by createdAt
+    const sortOrder = req.query.sortOrder || 'desc'; // Default descending
 
     // Check permissions for sub-admins
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
@@ -148,8 +216,30 @@ router.get('/users', requireAdmin, async (req, res) => {
     // Note: Admin can see all users including blocked ones, but for public APIs, filter out blocked users
 
     const skip = (page - 1) * limit;
+    
+    // Build sort object
+    const sortObj = {};
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    
+    // Map frontend sort fields to database fields
+    const sortFieldMap = {
+      'name': 'firstName', // Sort by firstName for name
+      'email': 'email',
+      'tradingName': 'tradingName',
+      'phone': 'phone',
+      'createdAt': 'createdAt',
+    };
+    
+    const dbSortField = sortFieldMap[sortBy] || 'createdAt';
+    sortObj[dbSortField] = sortDirection;
+    
+    // If sorting by name, also sort by lastName
+    if (sortBy === 'name') {
+      sortObj['lastName'] = sortDirection;
+    }
+    
     const users = await User.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .lean();
@@ -212,8 +302,9 @@ router.post('/users', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'First name, last name, email, password, phone, and postcode are required' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     if (role && !['client', 'professional'].includes(role)) {
@@ -259,9 +350,9 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
     const userId = req.params.id;
     const updates = req.body || {};
 
-    // Prevent changing admin role or email
-    if (updates.role === 'admin' && userId !== req.session.userId) {
-      return res.status(403).json({ error: 'Cannot change user to admin role' });
+    // Prevent changing admin or subadmin role
+    if ((updates.role === 'admin' || updates.role === 'subadmin') && userId !== req.session.userId) {
+      return res.status(403).json({ error: 'Cannot change user to admin or subadmin role' });
     }
 
     // If password is provided, hash it
@@ -305,8 +396,8 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     }
 
     // Prevent deleting admin users (super admin cannot be deleted)
-    if (user.role === 'admin') {
-      return res.status(403).json({ error: 'Admin users cannot be deleted' });
+    if (user.role === 'admin' || user.role === 'subadmin') {
+      return res.status(403).json({ error: 'Admin and subadmin users cannot be deleted through this endpoint' });
     }
 
     await User.findByIdAndDelete(userId);
@@ -354,7 +445,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const homeownersDailyChange = homeownersToday - homeownersYesterday;
 
-    const subadminCount = await User.countDocuments({ role: 'admin' }) - 1; // Exclude main admin
+    const subadminCount = await User.countDocuments({ role: 'subadmin' });
 
     // Count verification documents pending (total document count, not user count)
     const professionalsWithPendingDocs = await User.find({
@@ -596,17 +687,20 @@ router.put('/change-password', requireAdmin, async (req, res) => {
 // Get all admin users (sub-admins)
 router.get('/admins', requireAdmin, async (req, res) => {
   try {
-    // Only super admin can view sub-admins
+    // Only super admin or admin with admin-management permission can view sub-admins
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    if (!isSuperAdmin) {
-      return res.status(403).json({ error: 'Only super admin can view sub-admins' });
+    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
+    if (!isSuperAdmin && !hasAdminManagement) {
+      return res.status(403).json({ error: 'Insufficient permissions to view sub-admins' });
     }
 
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Max 100 rows per page
     const search = req.query.search;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'desc';
 
-    const query = { role: 'admin' };
+    const query = { role: 'subadmin' };
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
@@ -616,8 +710,28 @@ router.get('/admins', requireAdmin, async (req, res) => {
     }
 
     const skip = (page - 1) * limit;
+    
+    // Build sort object
+    const sortObj = {};
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    
+    // Map frontend sort fields to database fields
+    const sortFieldMap = {
+      'name': 'firstName',
+      'email': 'email',
+      'createdAt': 'createdAt',
+    };
+    
+    const dbSortField = sortFieldMap[sortBy] || 'createdAt';
+    sortObj[dbSortField] = sortDirection;
+    
+    // If sorting by name, also sort by lastName
+    if (sortBy === 'name') {
+      sortObj['lastName'] = sortDirection;
+    }
+    
     const admins = await User.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .lean();
@@ -650,10 +764,11 @@ router.get('/admins', requireAdmin, async (req, res) => {
 // Create admin user (sub-admin)
 router.post('/admins', requireAdmin, async (req, res) => {
   try {
-    // Only super admin can create sub-admins
+    // Only super admin or admin with admin-management permission can create sub-admins
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    if (!isSuperAdmin) {
-      return res.status(403).json({ error: 'Only super admin can create sub-admins' });
+    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
+    if (!isSuperAdmin && !hasAdminManagement) {
+      return res.status(403).json({ error: 'Insufficient permissions to create sub-admins' });
     }
 
     const { firstName, lastName, email, password, permissions } = req.body || {};
@@ -662,8 +777,9 @@ router.post('/admins', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     if (!permissions || !Array.isArray(permissions) || permissions.length === 0) {
@@ -678,15 +794,17 @@ router.post('/admins', requireAdmin, async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // Create sub-admin with only admin-related fields
+    // Sub-admins are not related to client/professional roles
     const admin = await User.create({
       firstName,
       lastName,
       email: normalizedEmail,
       passwordHash,
-      role: 'admin',
+      role: 'subadmin',
       permissions: permissions || [],
-      phone: '',
-      postcode: '',
+      // Sub-admins don't need phone, postcode, or other client/professional fields
+      // These fields are optional for admin role
     });
 
     return res.status(201).json({ admin: admin.toSafeObject() });
@@ -699,10 +817,11 @@ router.post('/admins', requireAdmin, async (req, res) => {
 // Update admin user (sub-admin)
 router.put('/admins/:id', requireAdmin, async (req, res) => {
   try {
-    // Only super admin can update sub-admins
+    // Only super admin or admin with admin-management permission can update sub-admins
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    if (!isSuperAdmin) {
-      return res.status(403).json({ error: 'Only super admin can update sub-admins' });
+    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
+    if (!isSuperAdmin && !hasAdminManagement) {
+      return res.status(403).json({ error: 'Insufficient permissions to update sub-admins' });
     }
 
     const adminId = req.params.id;
@@ -711,6 +830,27 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
     // Don't allow changing role or email
     delete updates.role;
     delete updates.email;
+
+    // Remove any client/professional related fields from updates
+    // Sub-admins should not have these fields - they are only for admin panel management
+    delete updates.phone;
+    delete updates.postcode;
+    delete updates.address;
+    delete updates.townCity;
+    delete updates.tradingName;
+    delete updates.sector;
+    delete updates.sectors;
+    delete updates.services;
+    delete updates.aboutService;
+    delete updates.hasTradeQualification;
+    delete updates.hasPublicLiability;
+    delete updates.professionalIndemnityAmount;
+    delete updates.insuranceExpiryDate;
+    delete updates.travelDistance;
+    delete updates.referralCode;
+    delete updates.avatar;
+    delete updates.verification;
+    delete updates.publicProfile;
 
     // If password is provided, hash it
     if (updates.password) {
@@ -729,8 +869,8 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
     }
 
     const admin = await User.findByIdAndUpdate(adminId, updates, { new: true, runValidators: true });
-    if (!admin || admin.role !== 'admin') {
-      return res.status(404).json({ error: 'Admin not found' });
+    if (!admin || admin.role !== 'subadmin') {
+      return res.status(404).json({ error: 'Sub admin not found' });
     }
 
     return res.json({ admin: admin.toSafeObject() });
@@ -743,10 +883,11 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
 // Delete admin user (sub-admin)
 router.delete('/admins/:id', requireAdmin, async (req, res) => {
   try {
-    // Only super admin can delete sub-admins
+    // Only super admin or admin with admin-management permission can delete sub-admins
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    if (!isSuperAdmin) {
-      return res.status(403).json({ error: 'Only super admin can delete sub-admins' });
+    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
+    if (!isSuperAdmin && !hasAdminManagement) {
+      return res.status(403).json({ error: 'Insufficient permissions to delete sub-admins' });
     }
 
     const adminId = req.params.id;
@@ -757,8 +898,8 @@ router.delete('/admins/:id', requireAdmin, async (req, res) => {
     }
 
     const admin = await User.findByIdAndDelete(adminId);
-    if (!admin || admin.role !== 'admin') {
-      return res.status(404).json({ error: 'Admin not found' });
+    if (!admin || admin.role !== 'subadmin') {
+      return res.status(404).json({ error: 'Sub admin not found' });
     }
 
     return res.json({ message: 'Admin deleted successfully' });

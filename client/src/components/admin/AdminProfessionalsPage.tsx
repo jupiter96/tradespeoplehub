@@ -2,8 +2,10 @@ import React, { useState, useRef } from "react";
 import AdminPageLayout from "./AdminPageLayout";
 import AdminUsersTable from "./AdminUsersTable";
 import AdminUserModal from "./AdminUserModal";
+import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 
 export default function AdminProfessionalsPage() {
+  useAdminRouteGuard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const tableRef = useRef<{ refresh: () => void }>(null);

@@ -33,6 +33,7 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import { Textarea } from "./ui/textarea";
 
 import API_BASE_URL from "../config/api";
+import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
 export default function LoginPage() {
   const navigate = useNavigate();
   const {
@@ -207,8 +208,11 @@ export default function LoginPage() {
     }
     if (!registerPassword) {
       errors.password = "Password is required";
-    } else if (registerPassword.length < 6) {
-      errors.password = "Password must be at least 6 characters";
+    } else {
+      const passwordValidation = validatePassword(registerPassword);
+      if (!passwordValidation.isValid) {
+        errors.password = passwordValidation.errors[0] || "Password does not meet requirements";
+      }
     }
     if (!registerConfirmPassword) {
       errors.confirmPassword = "Please confirm your password";
@@ -984,16 +988,34 @@ export default function LoginPage() {
                         placeholder="Create a strong password"
                         value={registerPassword}
                         onChange={(e) => {
-                          setRegisterPassword(e.target.value);
-                          if (fieldErrors.password) {
+                          const newPassword = e.target.value;
+                          setRegisterPassword(newPassword);
+                          
+                          // Validate password in real-time
+                          if (newPassword) {
+                            const passwordValidation = validatePassword(newPassword);
+                            if (!passwordValidation.isValid) {
+                              setFieldErrors(prev => ({
+                                ...prev,
+                                password: passwordValidation.errors[0] || "Password does not meet requirements"
+                              }));
+                            } else {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.password;
+                                return newErrors;
+                              });
+                            }
+                          } else {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
                               delete newErrors.password;
                               return newErrors;
                             });
                           }
+                          
                           // Clear confirmPassword error if passwords match
-                          if (fieldErrors.confirmPassword && e.target.value === registerConfirmPassword) {
+                          if (fieldErrors.confirmPassword && newPassword === registerConfirmPassword) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
                               delete newErrors.confirmPassword;
@@ -1017,6 +1039,16 @@ export default function LoginPage() {
                     {fieldErrors.password && (
                       <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                         {fieldErrors.password}
+                      </p>
+                    )}
+                    {registerPassword && !fieldErrors.password && (
+                      <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                        {getPasswordHint(registerPassword)}
+                      </p>
+                    )}
+                    {!registerPassword && (
+                      <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                        Password must include uppercase, lowercase, and numbers
                       </p>
                     )}
                   </div>

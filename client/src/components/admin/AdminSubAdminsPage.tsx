@@ -2,8 +2,10 @@ import React, { useState, useRef } from "react";
 import AdminPageLayout from "./AdminPageLayout";
 import AdminUsersTable from "./AdminUsersTable";
 import AdminSubAdminModal from "./AdminSubAdminModal";
+import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 
 export default function AdminSubAdminsPage() {
+  useAdminRouteGuard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const tableRef = useRef<{ refresh: () => void }>(null);
@@ -36,7 +38,7 @@ export default function AdminSubAdminsPage() {
       >
         <AdminUsersTable
           ref={tableRef}
-          role="admin"
+          role="subadmin"
           title="Sub Admins"
           onCreateNew={handleCreateNew}
           onEdit={handleEdit}

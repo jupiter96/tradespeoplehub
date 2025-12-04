@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['client', 'professional', 'admin'],
+      enum: ['client', 'professional', 'admin', 'subadmin'],
       required: true,
     },
     permissions: {
@@ -36,12 +36,16 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
+      required() {
+        return this.role !== 'admin';
+      },
       trim: true,
     },
     postcode: {
       type: String,
-      required: true,
+      required() {
+        return this.role !== 'admin';
+      },
       trim: true,
     },
     referralCode: {

@@ -291,7 +291,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-4">
                     <StatCard
                       icon={Users}
-                      title="TRADESMEN"
+                      title="PROFESSIONALS"
                       value={statistics?.tradesmen || 0}
                       color="orange"
                       dailyChange={statistics?.tradesmenDailyChange}
@@ -338,7 +338,7 @@ export default function AdminDashboardPage() {
                     />
                     <StatCard
                       icon={TrendingUp}
-                      title="TRADESMEN REFERRALS"
+                      title="PROFESSIONAL REFERRALS"
                       value={statistics?.tradesmenReferrals || 0}
                       color="orange"
                       dailyChange={statistics?.tradesmenReferralsDailyChange}
@@ -366,7 +366,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-4">
                     <StatCard
                       icon={Users}
-                      title="HOMEOWNERS"
+                      title="CLIENTS"
                       value={statistics?.homeowners || 0}
                       color="red"
                       dailyChange={statistics?.homeownersDailyChange}
@@ -399,7 +399,7 @@ export default function AdminDashboardPage() {
                     />
                     <StatCard
                       icon={TrendingUp}
-                      title="HOMEOWNER REFERRALS"
+                      title="CLIENT REFERRALS"
                       value={statistics?.homeownerReferrals || 0}
                       color="red"
                       dailyChange={statistics?.homeownerReferralsDailyChange}

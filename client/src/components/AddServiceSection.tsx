@@ -1184,7 +1184,7 @@ const TITLE_SUGGESTIONS: { [key: string]: string[] } = {
 
 // Admin-defined "Ideal For" options
 const IDEAL_FOR_OPTIONS = [
-  { id: "ideal-1", label: "Homeowners" },
+  { id: "ideal-1", label: "Clients" },
   { id: "ideal-2", label: "Renters/Tenants" },
   { id: "ideal-3", label: "Landlords" },
   { id: "ideal-4", label: "Small businesses" },

@@ -1,7 +1,9 @@
 import React from "react";
 import AdminPageLayout from "./AdminPageLayout";
+import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 
 export default function AdminDeleteAccountPage() {
+  useAdminRouteGuard();
   return (
     <AdminPageLayout
       title="Delete Account"
