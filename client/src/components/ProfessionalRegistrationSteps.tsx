@@ -95,7 +95,7 @@ export default function ProfessionalRegistrationSteps() {
   // Form data
   const [aboutService, setAboutService] = useState<string>("");
   const [skipAboutMe, setSkipAboutMe] = useState<boolean>(false);
-  const [sectors, setSectors] = useState<string[]>([]);
+  const [sector, setSector] = useState<string>("");
   const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
   const [insurance, setInsurance] = useState<"yes" | "no">("no");
@@ -114,8 +114,7 @@ export default function ProfessionalRegistrationSteps() {
       setSkipAboutMe(true);
     }
     if (userInfo?.sector) {
-      // If user has a single sector, convert to array
-      setSectors([userInfo.sector]);
+      setSector(userInfo.sector);
     }
     if (userInfo?.services && userInfo.services.length > 0) {
       // Separate categories and subcategories
@@ -159,8 +158,8 @@ export default function ProfessionalRegistrationSteps() {
         newErrors.aboutService = "Please write about yourself or click 'Do this later'";
       }
     }
-    if (step === 2 && sectors.length === 0) {
-      newErrors.sectors = "Please select at least one sector";
+    if (step === 2 && !sector) {
+      newErrors.sector = "Please select a sector";
     }
     if (step === 3 && categories.length === 0) {
       newErrors.categories = "Please select at least one category";
@@ -199,14 +198,11 @@ export default function ProfessionalRegistrationSteps() {
             updateData.aboutService = aboutService.trim();
           }
         }
-        // Only update sectors if they don't already exist
-        if (currentStep >= 2 && sectors.length > 0) {
+        // Only update sector if it doesn't already exist
+        if (currentStep >= 2 && sector) {
           // If user already has a sector, don't overwrite it
           if (!userInfo?.sector) {
-            // Store first sector for backward compatibility
-            updateData.sector = sectors[0];
-            // Store all sectors in services or a new field
-            updateData.sectors = sectors;
+            updateData.sector = sector;
           }
         }
         if (currentStep >= 3) {
@@ -284,12 +280,9 @@ export default function ProfessionalRegistrationSteps() {
         updateData.insuranceExpiryDate = null;
       }
 
-      // Only update sectors if they don't already exist
-      if (sectors.length > 0 && !userInfo?.sector) {
-        // Store first sector for backward compatibility
-        updateData.sector = sectors[0];
-        // Store all sectors
-        updateData.sectors = sectors;
+      // Only update sector if it doesn't already exist
+      if (sector && !userInfo?.sector) {
+        updateData.sector = sector;
       }
       
       await updateProfile(updateData);
@@ -517,43 +510,38 @@ export default function ProfessionalRegistrationSteps() {
               <div className="space-y-4">
                 <div>
                   <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
-                    Select Your Sectors <span className="text-red-500">*</span>
+                    Select Your Sector <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 font-normal ml-2">
-                      (Select all that apply)
+                      (Select one sector only)
                     </span>
                   </Label>
                   {userInfo?.sector ? (
-                    // If sector already exists, show it as read-only but allow adding more
+                    // If sector already exists, show it as read-only
                     <div className="space-y-2">
                       <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {SECTORS.map((sec) => {
-                            const isSelected = sectors.includes(sec);
-                            const isExisting = sec === userInfo.sector;
+                            const isSelected = sec === userInfo.sector;
                             return (
                               <label
                                 key={sec}
                                 className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                                  isExisting 
+                                  isSelected 
                                     ? 'border-[#FE8A0F] bg-[#FFF5EB]' 
-                                    : isSelected
-                                    ? 'border-[#FE8A0F] bg-[#FFF5EB]'
-                                    : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
-                                } cursor-pointer transition-all`}
+                                    : 'border-gray-100 opacity-50'
+                                } cursor-not-allowed transition-all`}
                               >
-                                <Checkbox
+                                <input
+                                  type="radio"
+                                  name="sector"
+                                  value={sec}
                                   checked={isSelected}
-                                  onCheckedChange={() => {
-                                    if (!isExisting) {
-                                      toggleSector(sec);
-                                    }
-                                  }}
-                                  disabled={isExisting}
-                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                                  disabled
+                                  className="w-4 h-4 text-[#FE8A0F] border-gray-300 focus:ring-[#FE8A0F] cursor-not-allowed"
                                 />
                                 <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
                                   {sec}
-                                  {isExisting && <span className="text-xs text-[#FE8A0F] ml-2">(Selected during registration)</span>}
+                                  {isSelected && <span className="text-xs text-[#FE8A0F] ml-2">(Selected during registration)</span>}
                                 </span>
                               </label>
                             );
@@ -561,26 +549,29 @@ export default function ProfessionalRegistrationSteps() {
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 font-['Poppins',sans-serif]">
-                        Your original sector was selected during registration. You can add more sectors.
+                        Your sector was selected during registration and cannot be changed.
                       </p>
                     </div>
                   ) : (
-                    // If no sector exists, allow multiple selection
+                    // If no sector exists, allow single selection
                     <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {SECTORS.map((sec) => (
                           <label
                             key={sec}
                             className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                              sectors.includes(sec)
+                              sector === sec
                                 ? 'border-[#FE8A0F] bg-[#FFF5EB]'
                                 : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
                             } cursor-pointer transition-all`}
                           >
-                            <Checkbox
-                              checked={sectors.includes(sec)}
-                              onCheckedChange={() => toggleSector(sec)}
-                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                            <input
+                              type="radio"
+                              name="sector"
+                              value={sec}
+                              checked={sector === sec}
+                              onChange={() => handleSectorChange(sec)}
+                              className="w-4 h-4 text-[#FE8A0F] border-gray-300 focus:ring-[#FE8A0F] cursor-pointer"
                             />
                             <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
                               {sec}
@@ -590,14 +581,14 @@ export default function ProfessionalRegistrationSteps() {
                       </div>
                     </div>
                   )}
-                  {errors.sectors && (
+                  {errors.sector && (
                     <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
-                      {errors.sectors}
+                      {errors.sector}
                     </p>
                   )}
-                  {sectors.length > 0 && (
+                  {sector && (
                     <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
-                      {sectors.length} sector{sectors.length === 1 ? '' : 's'} selected
+                      {sector} selected
                     </p>
                   )}
                 </div>
