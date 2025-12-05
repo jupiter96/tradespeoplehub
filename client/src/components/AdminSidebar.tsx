@@ -464,22 +464,10 @@ export default function AdminSidebar({
     
     // If menu has no children, navigate directly
     if (menu.children.length === 0 && menu.path) {
-      // Save scroll position before navigation to prevent page scroll jump
-      const scrollPosition = scrollContainerRef.current?.scrollTop || 0;
-      
       const section = getSectionFromPath(menu.path);
       navigate(menu.path, { replace: false });
       onSelectSection?.(section);
       onMobileClose?.();
-      
-      // Restore sidebar scroll position after navigation
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollPosition;
-          }
-        });
-      });
       return;
     }
     
@@ -504,22 +492,10 @@ export default function AdminSidebar({
       }
     }
     
-    // Save scroll position before navigation
-    const scrollPosition = scrollContainerRef.current?.scrollTop || 0;
-    
     const section = getSectionFromPath(child.path);
     navigate(child.path, { replace: false });
     onSelectSection?.(section);
     onMobileClose?.();
-    
-    // Restore scroll position after navigation with multiple frames to ensure DOM is ready
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = scrollPosition;
-        }
-      });
-    });
   };
 
   // Theme toggle function
@@ -564,292 +540,6 @@ export default function AdminSidebar({
       navigate("/admin-login");
     }
   };
-
-  const SidebarPanel = ({ collapsed, isMobile }: { collapsed: boolean; isMobile: boolean }) => (
-    <div
-      className="flex h-full flex-col"
-      style={{
-        backgroundColor: palette.background,
-        color: palette.foreground,
-        borderRight: `1px solid ${palette.border}`,
-      }}
-    >
-      <div
-        className="flex items-center justify-between px-4 py-4 shrink-0"
-        style={{ borderBottom: `1px solid ${palette.border}` }}
-      >
-        {isMobile ? (
-          // Mobile: Show message, notification, and theme icons
-          <div className="flex items-center gap-3 w-full">
-            {/* Message Icon with Badge */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`relative hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
-                isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-slate-700 hover:text-[#3B82F6]"
-              }`}
-              title="Messages"
-            >
-              <MessageCircle className="w-5 h-5" />
-              {messageCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold border-0">
-                  {messageCount > 9 ? "9+" : messageCount}
-                </Badge>
-              )}
-            </Button>
-
-            {/* Notification Icon with Badge */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`relative hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
-                isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-slate-700 hover:text-[#3B82F6]"
-              }`}
-              title="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {notificationCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold border-0">
-                  {notificationCount > 9 ? "9+" : notificationCount}
-                </Badge>
-              )}
-            </Button>
-
-            {/* Theme Toggle Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
-                isDarkMode ? "text-white hover:text-[#FFB347]" : "text-slate-700 hover:text-[#FE8A0F]"
-              }`}
-              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {isDarkMode ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </Button>
-
-            {/* Logout Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
-                isDarkMode ? "text-red-300 hover:text-red-200" : "text-red-600 hover:text-red-700"
-              }`}
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
-        ) : (
-          // Desktop: Show collapse button
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden rounded-xl border border-slate-200 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 lg:flex"
-              onClick={() => setIsCollapsed((prev) => !prev)}
-              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div 
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sidebar-scroll" 
-        style={{ 
-          minHeight: 0,
-          // Prevent scroll chaining to parent
-          overscrollBehavior: 'contain'
-        }}
-        onScroll={(e) => {
-          // Prevent scroll event from bubbling up
-          e.stopPropagation();
-        }}
-      >
-        {menuItems
-          .filter((menu) => {
-            // Dashboard is always accessible
-            if (menu.key === "dashboard") return true;
-            
-            // Sub Admin menu is only for super admin or admin with admin-management permission
-            if (menu.key === "user-manage") {
-              // Filter children - sub-admin is only for super admin or admin with admin-management permission
-              const filteredChildren = menu.children.filter((child) => {
-                if (child.key === "sub-admin") {
-                  return isSuperAdmin || hasRouteAccess(child.path);
-                }
-                // Check route access for other children
-                return hasRouteAccess(child.path);
-              });
-              
-              // Only show menu if it has accessible children
-              return filteredChildren.length > 0;
-            }
-            
-            // Check if main menu path is accessible
-            if (menu.path && !hasRouteAccess(menu.path)) {
-              return false;
-            }
-            
-            // For menus with children, check if any child is accessible
-            if (menu.children.length > 0) {
-              return menu.children.some((child) => hasRouteAccess(child.path));
-            }
-            
-            return true;
-          })
-          .map((menu) => {
-            // Filter children based on permissions
-            const accessibleChildren = menu.children.filter((child) => {
-              if (child.key === "sub-admin") {
-                return isSuperAdmin;
-              }
-              return hasRouteAccess(child.path);
-            });
-            
-            // Use filtered children for rendering
-            const menuToRender = {
-              ...menu,
-              children: accessibleChildren,
-            };
-            
-            const Icon = menuToRender.icon;
-            const isExpanded = expandedMenus.has(menuToRender.key);
-            const isMainActive = activeMenuKey === menuToRender.key && activeChildKey === null;
-            const hasActiveChild = activeMenuKey === menuToRender.key && activeChildKey !== null;
-
-          return (
-            <div key={menuToRender.key} className="mb-4">
-              {/* Main Menu Item */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleMainMenuClick(menuToRender, e);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleMainMenuClick(menuToRender);
-                  }
-                }}
-                className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-3.5 transition-all duration-200 ${
-                  isMainActive
-                    ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30"
-                    : hasActiveChild
-                    ? "bg-white/10"
-                    : "hover:bg-white/5"
-                }`}
-              >
-                <div
-                  className={`flex items-center gap-3 ${collapsed && !isMobile ? "justify-center" : "justify-start w-full"}`}
-                >
-                  <Icon
-                    className={`h-5 w-5 transition-colors duration-200 ${
-                      isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
-                    }`}
-                  />
-                  {(!collapsed || isMobile) && (
-                    <span
-                      className={`text-sm font-semibold tracking-wide transition-colors duration-200 ${
-                        isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
-                      }`}
-                    >
-                      {menuToRender.label}
-                    </span>
-                  )}
-                </div>
-                {(!collapsed || isMobile) && menuToRender.children.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Save scroll position before toggling
-                      if (scrollContainerRef.current) {
-                        savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
-                      }
-                      toggleMenu(menuToRender.key);
-                    }}
-                    className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
-                    title={isExpanded ? "Collapse submenu" : "Expand submenu"}
-                  >
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform duration-200 ${
-                        isExpanded ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                )}
-              </div>
-
-              {/* Submenu Items */}
-              {isExpanded && menuToRender.children.length > 0 && (
-                <div
-                  className={`${
-                    collapsed && !isMobile
-                      ? "flex flex-col items-center gap-2 py-3"
-                      : "mt-2 space-y-2 pl-4"
-                  }`}
-                >
-                  {menuToRender.children.map((child) => {
-                    const ChildIcon = child.icon;
-                    const isChildActive = activeChildKey === child.key;
-
-                    return (
-                      <button
-                        key={child.key}
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleChildClick(child, e);
-                        }}
-                        title={collapsed && !isMobile ? child.label : undefined}
-                        className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                          isChildActive
-                            ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30 font-semibold"
-                            : "text-current hover:bg-white/5 hover:text-[#3B82F6]"
-                        } ${collapsed && !isMobile ? "justify-center" : "justify-start gap-3 w-full"}`}
-                      >
-                        <ChildIcon
-                          className={`h-4 w-4 transition-colors duration-200 ${
-                            isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
-                          }`}
-                        />
-                        {(!collapsed || isMobile) && (
-                          <span
-                            className={`transition-colors duration-200 ${
-                              isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
-                            }`}
-                          >
-                            {child.label}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-auto px-3 py-4 shrink-0" style={{ borderTop: `1px solid ${palette.border}` }} />
-    </div>
-  );
 
   // Scrollbar styles based on theme
   const scrollbarStyles = useMemo(() => {
@@ -903,7 +593,220 @@ export default function AdminSidebar({
           transition: "width 0.3s ease",
         }}
       >
-        <SidebarPanel collapsed={isCollapsed} isMobile={false} />
+        <div
+          className="flex h-full flex-col"
+          style={{
+            backgroundColor: palette.background,
+            color: palette.foreground,
+            borderRight: `1px solid ${palette.border}`,
+          }}
+        >
+          <div
+            className="flex items-center justify-between px-4 py-4 shrink-0"
+            style={{ borderBottom: `1px solid ${palette.border}` }}
+          >
+            {/* Desktop: Show collapse button */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden rounded-xl border border-slate-200 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 lg:flex"
+                onClick={() => setIsCollapsed((prev) => !prev)}
+                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sidebar-scroll" 
+            style={{ 
+              minHeight: 0,
+              // Prevent scroll chaining to parent
+              overscrollBehavior: 'contain'
+            }}
+            onScroll={(e) => {
+              // Prevent scroll event from bubbling up
+              e.stopPropagation();
+            }}
+          >
+            {menuItems
+              .filter((menu) => {
+                // Dashboard is always accessible
+                if (menu.key === "dashboard") return true;
+                
+                // Sub Admin menu is only for super admin or admin with admin-management permission
+                if (menu.key === "user-manage") {
+                  // Filter children - sub-admin is only for super admin or admin with admin-management permission
+                  const filteredChildren = menu.children.filter((child) => {
+                    if (child.key === "sub-admin") {
+                      return isSuperAdmin || hasRouteAccess(child.path);
+                    }
+                    // Check route access for other children
+                    return hasRouteAccess(child.path);
+                  });
+                  
+                  // Only show menu if it has accessible children
+                  return filteredChildren.length > 0;
+                }
+                
+                // Check if main menu path is accessible
+                if (menu.path && !hasRouteAccess(menu.path)) {
+                  return false;
+                }
+                
+                // For menus with children, check if any child is accessible
+                if (menu.children.length > 0) {
+                  return menu.children.some((child) => hasRouteAccess(child.path));
+                }
+                
+                return true;
+              })
+              .map((menu) => {
+                // Filter children based on permissions
+                const accessibleChildren = menu.children.filter((child) => {
+                  if (child.key === "sub-admin") {
+                    return isSuperAdmin;
+                  }
+                  return hasRouteAccess(child.path);
+                });
+                
+                // Use filtered children for rendering
+                const menuToRender = {
+                  ...menu,
+                  children: accessibleChildren,
+                };
+                
+                const Icon = menuToRender.icon;
+                const isExpanded = expandedMenus.has(menuToRender.key);
+                const isMainActive = activeMenuKey === menuToRender.key && activeChildKey === null;
+                const hasActiveChild = activeMenuKey === menuToRender.key && activeChildKey !== null;
+
+              return (
+                <div key={menuToRender.key} className="mb-4">
+                  {/* Main Menu Item */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleMainMenuClick(menuToRender, e);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleMainMenuClick(menuToRender);
+                      }
+                    }}
+                    className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-3.5 transition-all duration-200 ${
+                      isMainActive
+                        ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30"
+                        : hasActiveChild
+                        ? "bg-white/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : "justify-start w-full"}`}
+                    >
+                      <Icon
+                        className={`h-5 w-5 transition-colors duration-200 ${
+                          isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                        }`}
+                      />
+                      {!isCollapsed && (
+                        <span
+                          className={`text-sm font-semibold tracking-wide transition-colors duration-200 ${
+                            isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                          }`}
+                        >
+                          {menuToRender.label}
+                        </span>
+                      )}
+                    </div>
+                    {!isCollapsed && menuToRender.children.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Save scroll position before toggling
+                          if (scrollContainerRef.current) {
+                            savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
+                          }
+                          toggleMenu(menuToRender.key);
+                        }}
+                        className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
+                        title={isExpanded ? "Collapse submenu" : "Expand submenu"}
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-200 ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Submenu Items */}
+                  {isExpanded && menuToRender.children.length > 0 && (
+                    <div
+                      className={`${
+                        isCollapsed
+                          ? "flex flex-col items-center gap-2 py-3"
+                          : "mt-2 space-y-2 pl-4"
+                      }`}
+                    >
+                      {menuToRender.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = activeChildKey === child.key;
+
+                        return (
+                          <button
+                            key={child.key}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleChildClick(child, e);
+                            }}
+                            title={isCollapsed ? child.label : undefined}
+                            className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                              isChildActive
+                                ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30 font-semibold"
+                                : "text-current hover:bg-white/5 hover:text-[#3B82F6]"
+                            } ${isCollapsed ? "justify-center" : "justify-start gap-3 w-full"}`}
+                          >
+                            <ChildIcon
+                              className={`h-4 w-4 transition-colors duration-200 ${
+                                isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                              }`}
+                            />
+                            {!isCollapsed && (
+                              <span
+                                className={`transition-colors duration-200 ${
+                                  isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                                }`}
+                              >
+                                {child.label}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-auto px-3 py-4 shrink-0" style={{ borderTop: `1px solid ${palette.border}` }} />
+        </div>
       </div>
 
       {/* Mobile Sidebar */}
@@ -919,7 +822,265 @@ export default function AdminSidebar({
           visibility: mobileOpen ? "visible" : "hidden",
         }}
       >
-        <SidebarPanel collapsed={false} isMobile />
+        <div
+          className="flex h-full flex-col"
+          style={{
+            backgroundColor: palette.background,
+            color: palette.foreground,
+            borderRight: `1px solid ${palette.border}`,
+          }}
+        >
+          <div
+            className="flex items-center justify-between px-4 py-4 shrink-0"
+            style={{ borderBottom: `1px solid ${palette.border}` }}
+          >
+            {/* Mobile: Show message, notification, and theme icons */}
+            <div className="flex items-center gap-3 w-full">
+              {/* Message Icon with Badge */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`relative hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                  isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-slate-700 hover:text-[#3B82F6]"
+                }`}
+                title="Messages"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {messageCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold border-0">
+                    {messageCount > 9 ? "9+" : messageCount}
+                  </Badge>
+                )}
+              </Button>
+
+              {/* Notification Icon with Badge */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`relative hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                  isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-slate-700 hover:text-[#3B82F6]"
+                }`}
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {notificationCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold border-0">
+                    {notificationCount > 9 ? "9+" : notificationCount}
+                  </Badge>
+                )}
+              </Button>
+
+              {/* Theme Toggle Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                  isDarkMode ? "text-white hover:text-[#FFB347]" : "text-slate-700 hover:text-[#FE8A0F]"
+                }`}
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </Button>
+
+              {/* Logout Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                  isDarkMode ? "text-red-300 hover:text-red-200" : "text-red-600 hover:text-red-700"
+                }`}
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+
+          <div 
+            className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sidebar-scroll" 
+            style={{ 
+              minHeight: 0,
+              // Prevent scroll chaining to parent
+              overscrollBehavior: 'contain'
+            }}
+            onScroll={(e) => {
+              // Prevent scroll event from bubbling up
+              e.stopPropagation();
+            }}
+          >
+            {menuItems
+              .filter((menu) => {
+                // Dashboard is always accessible
+                if (menu.key === "dashboard") return true;
+                
+                // Sub Admin menu is only for super admin or admin with admin-management permission
+                if (menu.key === "user-manage") {
+                  // Filter children - sub-admin is only for super admin or admin with admin-management permission
+                  const filteredChildren = menu.children.filter((child) => {
+                    if (child.key === "sub-admin") {
+                      return isSuperAdmin || hasRouteAccess(child.path);
+                    }
+                    // Check route access for other children
+                    return hasRouteAccess(child.path);
+                  });
+                  
+                  // Only show menu if it has accessible children
+                  return filteredChildren.length > 0;
+                }
+                
+                // Check if main menu path is accessible
+                if (menu.path && !hasRouteAccess(menu.path)) {
+                  return false;
+                }
+                
+                // For menus with children, check if any child is accessible
+                if (menu.children.length > 0) {
+                  return menu.children.some((child) => hasRouteAccess(child.path));
+                }
+                
+                return true;
+              })
+              .map((menu) => {
+                // Filter children based on permissions
+                const accessibleChildren = menu.children.filter((child) => {
+                  if (child.key === "sub-admin") {
+                    return isSuperAdmin;
+                  }
+                  return hasRouteAccess(child.path);
+                });
+                
+                // Use filtered children for rendering
+                const menuToRender = {
+                  ...menu,
+                  children: accessibleChildren,
+                };
+                
+                const Icon = menuToRender.icon;
+                const isExpanded = expandedMenus.has(menuToRender.key);
+                const isMainActive = activeMenuKey === menuToRender.key && activeChildKey === null;
+                const hasActiveChild = activeMenuKey === menuToRender.key && activeChildKey !== null;
+
+              return (
+                <div key={menuToRender.key} className="mb-4">
+                  {/* Main Menu Item */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleMainMenuClick(menuToRender, e);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleMainMenuClick(menuToRender);
+                      }
+                    }}
+                    className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-3.5 transition-all duration-200 ${
+                      isMainActive
+                        ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30"
+                        : hasActiveChild
+                        ? "bg-white/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div
+                      className="flex items-center gap-3 justify-start w-full"
+                    >
+                      <Icon
+                        className={`h-5 w-5 transition-colors duration-200 ${
+                          isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                        }`}
+                      />
+                      <span
+                        className={`text-sm font-semibold tracking-wide transition-colors duration-200 ${
+                          isMainActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                        }`}
+                      >
+                        {menuToRender.label}
+                      </span>
+                    </div>
+                    {menuToRender.children.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Save scroll position before toggling
+                          if (scrollContainerRef.current) {
+                            savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
+                          }
+                          toggleMenu(menuToRender.key);
+                        }}
+                        className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
+                        title={isExpanded ? "Collapse submenu" : "Expand submenu"}
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-200 ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Submenu Items */}
+                  {isExpanded && menuToRender.children.length > 0 && (
+                    <div
+                      className="mt-2 space-y-2 pl-4"
+                    >
+                      {menuToRender.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = activeChildKey === child.key;
+
+                        return (
+                          <button
+                            key={child.key}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleChildClick(child, e);
+                            }}
+                            title={child.label}
+                            className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                              isChildActive
+                                ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30 font-semibold"
+                                : "text-current hover:bg-white/5 hover:text-[#3B82F6]"
+                            } justify-start gap-3 w-full`}
+                          >
+                            <ChildIcon
+                              className={`h-4 w-4 transition-colors duration-200 ${
+                                isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                              }`}
+                            />
+                            <span
+                              className={`transition-colors duration-200 ${
+                                isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                              }`}
+                            >
+                              {child.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-auto px-3 py-4 shrink-0" style={{ borderTop: `1px solid ${palette.border}` }} />
+        </div>
       </div>
     </>
   );

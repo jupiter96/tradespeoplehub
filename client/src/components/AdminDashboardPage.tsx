@@ -36,8 +36,6 @@ import {
   List,
   Box,
 } from "lucide-react";
-import AdminHeader from "./AdminHeader";
-import AdminSidebar from "./AdminSidebar";
 import {
   ResponsiveContainer,
   LineChart,
@@ -68,9 +66,6 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const params = useParams<{ section?: string }>();
   const { hasRouteAccess, loading: permissionsLoading } = useAdminPermissions();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [statistics, setStatistics] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [dashboardTab, setDashboardTab] = useState("state-cards");
@@ -89,36 +84,6 @@ export default function AdminDashboardPage() {
       }
     }
   }, [location.pathname, hasRouteAccess, permissionsLoading, navigate]);
-  
-  // Calculate sidebar width based on collapsed state
-  const sidebarWidth = sidebarCollapsed ? 96 : 320;
-  
-  // Check if desktop view
-  useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-    
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-  // Update URL when section changes
-  const handleSectionChange = (section: string) => {
-    if (section === "dashboard") {
-      navigate("/admin/dashboard");
-    } else {
-      navigate(`/admin/${section}`);
-    }
-  };
-
-  // Redirect /admin to /admin/dashboard
-  useEffect(() => {
-    if (location.pathname === "/admin") {
-      navigate("/admin/dashboard", { replace: true });
-    }
-  }, [location.pathname, navigate]);
 
   // Fetch dashboard statistics
   useEffect(() => {
@@ -143,6 +108,115 @@ export default function AdminDashboardPage() {
       fetchStatistics();
     }
   }, [activeSection]);
+
+  // Get section label from URL
+  const getSectionLabel = (section: string): string => {
+    const labels: Record<string, string> = {
+      clients: "Clients",
+      professionals: "Professionals",
+      "sub-admins": "Sub Admins",
+      "delete-account": "Delete Account",
+      "category-manage": "Category Manage",
+      sectors: "Sectors",
+      categories: "Categories",
+      "default-content": "Default Content",
+      "favourite-categories": "Favourite Categories",
+      packages: "Packages",
+      "package-addons": "Package Addons",
+      "coupon-manage": "Coupon Manage",
+      "contact-requests": "Contact Requests",
+      "client-requests": "Client Requests",
+      "professional-requests": "Professional Requests",
+      "region-manage": "Region Manage",
+      countries: "Countries",
+      cities: "Cities",
+      "content-manage": "Content Manage",
+      "homepage-content": "Homepage Content",
+      "blog-content": "Blog Content",
+      "banner-content": "Banner Content",
+      "cost-guide": "Cost Guide",
+      "transaction-history": "Transaction History",
+      "user-plans": "User Plans",
+      "job-manage": "Job Manage",
+      "post-a-job": "Post a Job",
+      "job-posts": "Job Posts",
+      "bids-on-posts": "Bids on Posts",
+      "send-emails": "Send Emails",
+      "generate-html": "Generate HTML",
+      "job-amount": "Job Amount",
+      "ratings-manage": "Ratings Manage",
+      "payment-finance": "Payment & Finance",
+      "payment-settings": "Payment Settings",
+      "bank-transfer-request": "Bank Transfer Request",
+      "withdrawal-request": "Withdrawal Request",
+      refunds: "Refunds",
+      "dispute-manage": "Dispute Manage",
+      "dispute-list": "Dispute List",
+      "ask-step-in": "Ask Step In",
+      rewards: "Rewards",
+      "message-center": "Message Center",
+      affiliate: "Affiliate",
+      affiliates: "Affiliates",
+      "sharable-links": "Sharable Links",
+      "pay-outs": "Pay Outs",
+      "affiliate-setting": "Affiliate Setting",
+      "affiliate-metadata": "Affiliate Metadata",
+      "affiliate-support": "Affiliate Support",
+      referrals: "Referrals",
+      "referrals-client": "Referrals - Client",
+      "referrals-professional": "Referrals - Professional",
+      flagged: "Flagged",
+      service: "Service",
+      "service-category": "Service Category",
+      "approval-pending-service": "Approval Pending Service",
+      "required-modification-service": "Required Modification Service",
+      "approved-service": "Approved Service",
+      "all-service": "All Service",
+      locations: "Locations",
+      "service-order": "Service Order",
+      "completed-order": "Completed Order",
+      "pending-order": "Pending Order",
+      "cancel-order": "Cancel Order",
+      "disputed-order": "Disputed Order",
+      "active-order": "Active Order",
+      "custom-order": "Custom Order",
+      "pending-orders": "Pending Orders",
+      "accepted-orders": "Accepted Orders",
+      "rejected-orders": "Rejected Orders",
+    };
+    return labels[section] || section.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  };
+
+  // Route to specific page components
+  const renderSection = () => {
+    switch (activeSection) {
+      case "clients":
+        return <AdminClientsPage />;
+      case "professionals":
+        return <AdminProfessionalsPage />;
+      case "sub-admins":
+        return <AdminSubAdminsPage />;
+      case "delete-account":
+        return <AdminDeleteAccountPage />;
+      case "referrals-client":
+        return <AdminReferralsClientPage />;
+      case "referrals-professional":
+        return <AdminReferralsProfessionalPage />;
+      case "homepage-content":
+        return <AdminHomepageContentPage />;
+      case "blog-content":
+        return <AdminBlogContentPage />;
+      case "cost-guide":
+        return <AdminCostGuidePage />;
+      default:
+        return (
+          <AdminGenericPage
+            title={getSectionLabel(activeSection)}
+            description={`Manage ${getSectionLabel(activeSection).toLowerCase()} settings and configurations`}
+          />
+        );
+    }
+  };
 
   const cards = useMemo(
     () => [
@@ -198,33 +272,10 @@ export default function AdminDashboardPage() {
     { name: "Jun", value: 35 },
   ];
 
-  return (
-    <div className="min-h-screen bg-background text-foreground transition-colors">
-      <AdminHeader onMenuToggle={setMobileSidebarOpen} sidebarOpen={mobileSidebarOpen} />
-
-      <div className="relative min-h-[calc(100vh-80px)]">
-        <AdminSidebar
-          mobileOpen={mobileSidebarOpen}
-          onMobileClose={() => setMobileSidebarOpen(false)}
-          onSelectSection={handleSectionChange}
-          activeSection={activeSection}
-          onCollapsedChange={setSidebarCollapsed}
-        />
-
-        {mobileSidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-        )}
-
-        <main 
-          className="px-4 py-6 lg:px-8 lg:py-8 transition-all duration-300"
-          style={{ marginLeft: isDesktop ? `${sidebarWidth}px` : '0' }}
-        >
-
-          {activeSection === "dashboard" ? (
-            <div className="space-y-8">
+  // Render dashboard content or other sections
+  if (activeSection === "dashboard") {
+    return (
+      <div className="space-y-8">
               {/* Dashboard Tabs */}
               <Tabs value={dashboardTab} onValueChange={setDashboardTab} className="w-full">
                 <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 dark:bg-gray-800">
@@ -604,14 +655,12 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               </section>
-            </div>
-          ) : (
-            <SectionRouter activeSection={activeSection} />
-          )}
-        </main>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Render other sections
+  return <Suspense fallback={<div>Loading...</div>}>{renderSection()}</Suspense>;
 }
 
 // Statistics Card Component
@@ -674,131 +723,3 @@ function StatCard({
   );
 }
 
-// Section Router Component
-function SectionRouter({ activeSection }: { activeSection: string }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { hasRouteAccess, loading: permissionsLoading } = useAdminPermissions();
-  
-  // Check route access and redirect if unauthorized
-  useEffect(() => {
-    if (!permissionsLoading) {
-      const currentPath = location.pathname;
-      // Dashboard is always accessible
-      if (currentPath !== "/admin/dashboard" && !hasRouteAccess(currentPath)) {
-        navigate("/admin/dashboard", { replace: true });
-      }
-    }
-  }, [location.pathname, hasRouteAccess, permissionsLoading, navigate]);
-  
-  // Get section label from URL
-  const getSectionLabel = (section: string): string => {
-    const labels: Record<string, string> = {
-      clients: "Clients",
-      professionals: "Professionals",
-      "sub-admins": "Sub Admins",
-      "delete-account": "Delete Account",
-      "category-manage": "Category Manage",
-      sectors: "Sectors",
-      categories: "Categories",
-      "default-content": "Default Content",
-      "favourite-categories": "Favourite Categories",
-      packages: "Packages",
-      "package-addons": "Package Addons",
-      "coupon-manage": "Coupon Manage",
-      "contact-requests": "Contact Requests",
-      "client-requests": "Client Requests",
-      "professional-requests": "Professional Requests",
-      "region-manage": "Region Manage",
-      countries: "Countries",
-      cities: "Cities",
-      "content-manage": "Content Manage",
-      "homepage-content": "Homepage Content",
-      "blog-content": "Blog Content",
-      "banner-content": "Banner Content",
-      "cost-guide": "Cost Guide",
-      "transaction-history": "Transaction History",
-      "user-plans": "User Plans",
-      "job-manage": "Job Manage",
-      "post-a-job": "Post a Job",
-      "job-posts": "Job Posts",
-      "bids-on-posts": "Bids on Posts",
-      "send-emails": "Send Emails",
-      "generate-html": "Generate HTML",
-      "job-amount": "Job Amount",
-      "ratings-manage": "Ratings Manage",
-      "payment-finance": "Payment & Finance",
-      "payment-settings": "Payment Settings",
-      "bank-transfer-request": "Bank Transfer Request",
-      "withdrawal-request": "Withdrawal Request",
-      refunds: "Refunds",
-      "dispute-manage": "Dispute Manage",
-      "dispute-list": "Dispute List",
-      "ask-step-in": "Ask Step In",
-      rewards: "Rewards",
-      "message-center": "Message Center",
-      affiliate: "Affiliate",
-      affiliates: "Affiliates",
-      "sharable-links": "Sharable Links",
-      "pay-outs": "Pay Outs",
-      "affiliate-setting": "Affiliate Setting",
-      "affiliate-metadata": "Affiliate Metadata",
-      "affiliate-support": "Affiliate Support",
-      referrals: "Referrals",
-      "referrals-client": "Referrals - Client",
-      "referrals-professional": "Referrals - Professional",
-      flagged: "Flagged",
-      service: "Service",
-      "service-category": "Service Category",
-      "approval-pending-service": "Approval Pending Service",
-      "required-modification-service": "Required Modification Service",
-      "approved-service": "Approved Service",
-      "all-service": "All Service",
-      locations: "Locations",
-      "service-order": "Service Order",
-      "completed-order": "Completed Order",
-      "pending-order": "Pending Order",
-      "cancel-order": "Cancel Order",
-      "disputed-order": "Disputed Order",
-      "active-order": "Active Order",
-      "custom-order": "Custom Order",
-      "pending-orders": "Pending Orders",
-      "accepted-orders": "Accepted Orders",
-      "rejected-orders": "Rejected Orders",
-    };
-    return labels[section] || section.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  };
-
-  // Route to specific page components
-  const renderSection = () => {
-    switch (activeSection) {
-      case "clients":
-        return <AdminClientsPage />;
-      case "professionals":
-        return <AdminProfessionalsPage />;
-      case "sub-admins":
-        return <AdminSubAdminsPage />;
-      case "delete-account":
-        return <AdminDeleteAccountPage />;
-      case "referrals-client":
-        return <AdminReferralsClientPage />;
-      case "referrals-professional":
-        return <AdminReferralsProfessionalPage />;
-      case "homepage-content":
-        return <AdminHomepageContentPage />;
-      case "blog-content":
-        return <AdminBlogContentPage />;
-      case "cost-guide":
-        return <AdminCostGuidePage />;
-      default:
-        return (
-          <AdminGenericPage
-            title={getSectionLabel(activeSection)}
-            description={`Manage ${getSectionLabel(activeSection).toLowerCase()} settings and configurations`}
-          />
-        );
-    }
-  };
-
-  return <Suspense fallback={<div>Loading...</div>}>{renderSection()}</Suspense>;
-}

@@ -1,4 +1,6 @@
+import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import AdminLayout from "./components/AdminLayout";
 import HomePage from "./components/HomePage";
 import HowItWorkProPage from "./components/HowItWorkProPage";
 import HowItWorkPage from "./components/HowItWorkPage";
@@ -55,9 +57,11 @@ function AppContent() {
         <Route path="/dispute/:disputeId" element={<DisputeDiscussionPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
-        <Route path="/admin" element={<AdminDashboardPage />} />
-        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-        <Route path="/admin/:section" element={<AdminDashboardPage />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path=":section" element={<AdminDashboardPage />} />
+        </Route>
         <Route path="/preview_page.html" element={<HomePage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
