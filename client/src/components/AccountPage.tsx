@@ -4401,12 +4401,12 @@ function InviteSection() {
                 <div className="flex-1 flex gap-2 w-full">
                   <input
                     type="text"
-                    value="https://www.tradespeoplehub.co.uk/signup/?referral=65985632"
+                    value="https://sortars.com/signup/?referral=65985632"
                     readOnly
                     className="flex-1 h-10 px-4 border border-gray-300 rounded-lg font-['Poppins',sans-serif] text-[13px] bg-gray-50"
                   />
                   <Button
-                    onClick={() => handleCopyLink("https://www.tradespeoplehub.co.uk/signup/?referral=65985632")}
+                    onClick={() => handleCopyLink("https://sortars.com/signup/?referral=65985632")}
                     variant="outline"
                     className="font-['Poppins',sans-serif] text-[14px] whitespace-nowrap"
                   >
@@ -4416,28 +4416,28 @@ function InviteSection() {
                 <div className="flex gap-2">
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mr-2">Share on</span>
                   <button
-                    onClick={() => handleShareFacebook("https://www.tradespeoplehub.co.uk/signup/?referral=65985632")}
+                    onClick={() => handleShareFacebook("https://sortars.com/signup/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] rounded-lg transition-colors"
                     title="Share on Facebook"
                   >
                     <Facebook className="w-5 h-5 text-white" fill="white" />
                   </button>
                   <button
-                    onClick={() => handleShareTwitter("https://www.tradespeoplehub.co.uk/signup/?referral=65985632")}
+                    onClick={() => handleShareTwitter("https://sortars.com/signup/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#1DA1F2] hover:bg-[#1A8CD8] rounded-lg transition-colors"
                     title="Share on Twitter"
                   >
                     <Twitter className="w-5 h-5 text-white" fill="white" />
                   </button>
                   <button
-                    onClick={() => handleShareEmail("https://www.tradespeoplehub.co.uk/signup/?referral=65985632")}
+                    onClick={() => handleShareEmail("https://sortars.com/signup/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#EA4335] hover:bg-[#D93025] rounded-lg transition-colors"
                     title="Share via Email"
                   >
                     <Mail className="w-5 h-5 text-white" />
                   </button>
                   <button
-                    onClick={() => handleShareWhatsApp("https://www.tradespeoplehub.co.uk/signup/?referral=65985632")}
+                    onClick={() => handleShareWhatsApp("https://sortars.com/signup/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#25D366] hover:bg-[#20BD5A] rounded-lg transition-colors"
                     title="Share on WhatsApp"
                   >
@@ -4453,12 +4453,12 @@ function InviteSection() {
                 <div className="flex-1 flex gap-2 w-full">
                   <input
                     type="text"
-                    value="https://www.tradespeoplehub.co.uk/?referral=65985632"
+                    value="https://sortars.com/?referral=65985632"
                     readOnly
                     className="flex-1 h-10 px-4 border border-gray-300 rounded-lg font-['Poppins',sans-serif] text-[13px] bg-gray-50"
                   />
                   <Button
-                    onClick={() => handleCopyLink("https://www.tradespeoplehub.co.uk/?referral=65985632")}
+                    onClick={() => handleCopyLink("https://sortars.com/?referral=65985632")}
                     variant="outline"
                     className="font-['Poppins',sans-serif] text-[14px] whitespace-nowrap"
                   >
@@ -4468,28 +4468,28 @@ function InviteSection() {
                 <div className="flex gap-2">
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mr-2">Share on</span>
                   <button
-                    onClick={() => handleShareFacebook("https://www.tradespeoplehub.co.uk/?referral=65985632")}
+                    onClick={() => handleShareFacebook("https://sortars.com/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] rounded-lg transition-colors"
                     title="Share on Facebook"
                   >
                     <Facebook className="w-5 h-5 text-white" fill="white" />
                   </button>
                   <button
-                    onClick={() => handleShareTwitter("https://www.tradespeoplehub.co.uk/?referral=65985632")}
+                    onClick={() => handleShareTwitter("https://sortars.com/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#1DA1F2] hover:bg-[#1A8CD8] rounded-lg transition-colors"
                     title="Share on Twitter"
                   >
                     <Twitter className="w-5 h-5 text-white" fill="white" />
                   </button>
                   <button
-                    onClick={() => handleShareEmail("https://www.tradespeoplehub.co.uk/?referral=65985632")}
+                    onClick={() => handleShareEmail("https://sortars.com/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#EA4335] hover:bg-[#D93025] rounded-lg transition-colors"
                     title="Share via Email"
                   >
                     <Mail className="w-5 h-5 text-white" />
                   </button>
                   <button
-                    onClick={() => handleShareWhatsApp("https://www.tradespeoplehub.co.uk/?referral=65985632")}
+                    onClick={() => handleShareWhatsApp("https://sortars.com/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#25D366] hover:bg-[#20BD5A] rounded-lg transition-colors"
                     title="Share on WhatsApp"
                   >
