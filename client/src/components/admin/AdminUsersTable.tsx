@@ -486,7 +486,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         {onCreateNew && (
           <Button
             onClick={onCreateNew}
-            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white"
+            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-0 shadow-lg shadow-blue-500/40 hover:shadow-xl hover:shadow-blue-500/50 transition-all"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add New
@@ -503,7 +503,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             placeholder="Search by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+            className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -514,10 +514,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             setLimit(parseInt(value));
             setPage(1);
           }}>
-            <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white">
+            <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-black border-[#FE8A0F]">
+            <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="20">20</SelectItem>
               <SelectItem value="50">50</SelectItem>
@@ -528,7 +528,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       </div>
 
       {/* Table */}
-      <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
         {loading ? (
           <div className="text-center py-12">
             <p className="text-black dark:text-white">Loading...</p>
@@ -541,7 +541,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-[#FE8A0F]/30 hover:bg-transparent">
+                <TableRow className="border-0 hover:bg-transparent shadow-sm">
                   <SortableHeader column="name" label="Name" />
                   <SortableHeader column="email" label="Email" />
                   {role === "professional" && (
@@ -565,7 +565,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                 {users.map((user) => (
                   <TableRow
                     key={user.id}
-                    className="border-[#FE8A0F]/30 hover:bg-[#FE8A0F]/5"
+                    className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <TableCell className="text-black dark:text-white font-medium">
                       <div className="flex items-center gap-2">
@@ -678,7 +678,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white dark:bg-black border-[#FE8A0F]">
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                           {onEdit && (
                             <DropdownMenuItem
                               onClick={() => onEdit(user)}
@@ -813,7 +813,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             setNoteText("");
           }
         }}>
-          <DialogContent className="bg-white dark:bg-black border-[#FE8A0F]">
+          <DialogContent className="bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
             <DialogHeader>
               <DialogTitle className="text-[#FE8A0F]">
                 {selectedUserForNote ? `Note for ${selectedUserForNote.name || `${selectedUserForNote.firstName} ${selectedUserForNote.lastName}`.trim()}` : "User Note"}
@@ -829,7 +829,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
                   placeholder="Add notes about this user..."
-                  className="mt-2 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[200px]"
+                  className="mt-2 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[200px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
             </div>
@@ -840,13 +840,13 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   setSelectedUserForNote(null);
                   setNoteText("");
                 }}
-                className="border-[#FE8A0F] text-black dark:text-white hover:bg-[#FE8A0F]/10"
+                className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveNote}
-                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white border-0 shadow-lg shadow-[#FE8A0F]/40 hover:shadow-xl hover:shadow-[#FE8A0F]/50 transition-all"
               >
                 Save Note
               </Button>
@@ -856,7 +856,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#FE8A0F]/30">
+          <div className="flex items-center justify-between mt-6 pt-4 border-0 shadow-sm">
             <p className="text-sm text-black dark:text-white">
               Page <span className="text-[#FE8A0F] font-semibold">{page}</span> of <span className="text-[#FE8A0F] font-semibold">{totalPages}</span>
             </p>
@@ -866,7 +866,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 disabled:opacity-50"
+                className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
@@ -876,7 +876,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                 size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 disabled:opacity-50"
+                className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
               >
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />

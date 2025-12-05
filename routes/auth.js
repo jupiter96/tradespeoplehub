@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
 import PendingRegistration from '../models/PendingRegistration.js';
+import SEOContent from '../models/SEOContent.js';
 import passport from '../services/passport.js';
 import {
   sendEmailVerificationCode,
@@ -1793,6 +1794,50 @@ router.get('/profile/:identifier', async (req, res) => {
   } catch (error) {
     console.error('Get public profile error', error);
     return res.status(500).json({ error: 'Failed to get profile' });
+  }
+});
+
+// Public SEO Content Endpoint (no authentication required)
+router.get('/seo-content/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    
+    if (!['homepage', 'blog', 'cost-guide'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid SEO content type' });
+    }
+
+    const seoContent = await SEOContent.findOne({ type });
+
+    if (!seoContent) {
+      return res.json({
+        type,
+        title: '',
+        metaKeywords: '',
+        metaDescription: '',
+        metaTitle: '',
+        metaKey: '',
+        ogTitle: '',
+        ogDescription: '',
+        ogImage: '',
+        ogUrl: '',
+        ogType: 'website',
+        ogSiteName: '',
+        twitterCard: 'summary_large_image',
+        twitterTitle: '',
+        twitterDescription: '',
+        twitterImage: '',
+        canonicalUrl: '',
+        robots: 'index, follow',
+        headerScript: '',
+        bodyScript: '',
+        description: '',
+      });
+    }
+
+    return res.json(seoContent);
+  } catch (error) {
+    console.error('Get public SEO content error', error);
+    return res.status(500).json({ error: 'Failed to get SEO content' });
   }
 });
 

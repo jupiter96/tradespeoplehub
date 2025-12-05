@@ -39,10 +39,10 @@ export default function AdminPageLayout({
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                className={`px-4 py-2 text-sm font-medium transition-all ${
                   activeTab === tab.key
-                    ? "border-[#FE8A0F] text-[#FE8A0F]"
-                    : "border-transparent text-black dark:text-white hover:text-[#FE8A0F]"
+                    ? "text-[#FE8A0F] shadow-md shadow-[#FE8A0F]/30"
+                    : "text-black dark:text-white hover:text-[#FE8A0F] hover:shadow-sm"
                 }`}
               >
                 {tab.label}

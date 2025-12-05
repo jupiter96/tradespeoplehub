@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
@@ -297,6 +297,8 @@ export default function AdminSidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollPositionRef = useRef<number | null>(null);
 
   // Detect dark mode and initialize theme for admin pages
   useEffect(() => {
@@ -401,8 +403,13 @@ export default function AdminSidebar({
 
   const desktopWidth = isCollapsed ? 96 : 320;
 
-  // Toggle menu expansion
+  // Toggle menu expansion - preserve scroll position
   const toggleMenu = (menuKey: string) => {
+    // Save current scroll position before state update
+    if (scrollContainerRef.current) {
+      savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
+    }
+    
     setExpandedMenus((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(menuKey)) {
@@ -413,6 +420,30 @@ export default function AdminSidebar({
       return newSet;
     });
   };
+
+  // Restore scroll position after menu expansion state changes
+  useEffect(() => {
+    if (savedScrollPositionRef.current !== null && scrollContainerRef.current) {
+      // Use multiple requestAnimationFrame calls and setTimeout to ensure DOM is fully updated
+      // This handles the case where the DOM height changes due to menu expansion/collapse
+      const restoreScroll = () => {
+        if (scrollContainerRef.current && savedScrollPositionRef.current !== null) {
+          scrollContainerRef.current.scrollTop = savedScrollPositionRef.current;
+          savedScrollPositionRef.current = null;
+        }
+      };
+      
+      // Use multiple animation frames to ensure layout is complete
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Add a small timeout to ensure all DOM updates are complete
+          setTimeout(() => {
+            restoreScroll();
+          }, 0);
+        });
+      });
+    }
+  }, [expandedMenus]);
 
   // Extract section from path (e.g., "/admin/clients" -> "clients")
   const getSectionFromPath = (path: string): string => {
@@ -425,19 +456,39 @@ export default function AdminSidebar({
     if (event) {
       event.preventDefault();
       event.stopPropagation();
+      // Prevent any default anchor behavior
+      if (event.currentTarget instanceof HTMLAnchorElement) {
+        event.currentTarget.href = 'javascript:void(0);';
+      }
     }
     
     // If menu has no children, navigate directly
     if (menu.children.length === 0 && menu.path) {
+      // Save scroll position before navigation to prevent page scroll jump
+      const scrollPosition = scrollContainerRef.current?.scrollTop || 0;
+      
       const section = getSectionFromPath(menu.path);
-      navigate(menu.path);
+      navigate(menu.path, { replace: false });
       onSelectSection?.(section);
       onMobileClose?.();
+      
+      // Restore sidebar scroll position after navigation
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollPosition;
+          }
+        });
+      });
       return;
     }
     
-    // If menu has children, toggle expansion
+    // If menu has children, toggle expansion (preserve scroll)
     if (menu.children.length > 0) {
+      // Save scroll position before toggling
+      if (scrollContainerRef.current) {
+        savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
+      }
       toggleMenu(menu.key);
     }
   };
@@ -447,12 +498,28 @@ export default function AdminSidebar({
     if (event) {
       event.preventDefault();
       event.stopPropagation();
+      // Prevent any default anchor behavior
+      if (event.currentTarget instanceof HTMLAnchorElement) {
+        event.currentTarget.href = 'javascript:void(0);';
+      }
     }
     
+    // Save scroll position before navigation
+    const scrollPosition = scrollContainerRef.current?.scrollTop || 0;
+    
     const section = getSectionFromPath(child.path);
-    navigate(child.path);
+    navigate(child.path, { replace: false });
     onSelectSection?.(section);
     onMobileClose?.();
+    
+    // Restore scroll position after navigation with multiple frames to ensure DOM is ready
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollPosition;
+        }
+      });
+    });
   };
 
   // Theme toggle function
@@ -595,8 +662,17 @@ export default function AdminSidebar({
       </div>
 
       <div 
+        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sidebar-scroll" 
-        style={{ minHeight: 0 }}
+        style={{ 
+          minHeight: 0,
+          // Prevent scroll chaining to parent
+          overscrollBehavior: 'contain'
+        }}
+        onScroll={(e) => {
+          // Prevent scroll event from bubbling up
+          e.stopPropagation();
+        }}
       >
         {menuItems
           .filter((menu) => {
@@ -656,10 +732,15 @@ export default function AdminSidebar({
               <div
                 role="button"
                 tabIndex={0}
-                onClick={(e) => handleMainMenuClick(menuToRender, e)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleMainMenuClick(menuToRender, e);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
+                    event.stopPropagation();
                     handleMainMenuClick(menuToRender);
                   }
                 }}
@@ -693,7 +774,12 @@ export default function AdminSidebar({
                   <button
                     type="button"
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
+                      // Save scroll position before toggling
+                      if (scrollContainerRef.current) {
+                        savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
+                      }
                       toggleMenu(menuToRender.key);
                     }}
                     className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
@@ -725,11 +811,15 @@ export default function AdminSidebar({
                       <button
                         key={child.key}
                         type="button"
-                        onClick={(e) => handleChildClick(child, e)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleChildClick(child, e);
+                        }}
                         title={collapsed && !isMobile ? child.label : undefined}
                         className={`group relative flex w-full cursor-pointer items-center rounded-2xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
                           isChildActive
-                            ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30"
+                            ? "bg-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/30 font-semibold"
                             : "text-current hover:bg-white/5 hover:text-[#3B82F6]"
                         } ${collapsed && !isMobile ? "justify-center" : "justify-start gap-3 w-full"}`}
                       >

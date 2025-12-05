@@ -236,7 +236,7 @@ export default function AdminUserModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-[#FE8A0F]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
         <DialogHeader>
           <DialogTitle className="text-[#FE8A0F] text-2xl">
             {isEditMode ? "Edit User" : "Create New User"}
@@ -255,7 +255,7 @@ export default function AdminUserModal({
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                 required
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
@@ -269,7 +269,7 @@ export default function AdminUserModal({
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                 required
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
@@ -285,7 +285,7 @@ export default function AdminUserModal({
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 disabled={isEditMode}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white disabled:opacity-50"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
@@ -299,7 +299,7 @@ export default function AdminUserModal({
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
@@ -316,7 +316,7 @@ export default function AdminUserModal({
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required={!isEditMode}
                 placeholder="Must include uppercase, lowercase, and numbers"
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
               {formData.password && (
                 <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
@@ -340,10 +340,10 @@ export default function AdminUserModal({
                 onValueChange={(value) => setFormData({ ...formData, role: value })}
                 disabled={isEditMode && formData.role === "admin" || (!isEditMode && role !== undefined)}
               >
-                <SelectTrigger className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                <SelectTrigger className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-black border-[#FE8A0F]">
+                <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                   <SelectItem value="client" className="text-black dark:text-white hover:bg-[#FE8A0F]/10">
                     Client
                   </SelectItem>
@@ -394,7 +394,7 @@ export default function AdminUserModal({
                     value={formData.tradingName}
                     onChange={(e) => setFormData({ ...formData, tradingName: e.target.value })}
                     required
-                    className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                    className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Your business/trading name"
                   />
                 </div>
@@ -410,7 +410,7 @@ export default function AdminUserModal({
                     onChange={(e) => setFormData({ ...formData, travelDistance: e.target.value })}
                     required
                     placeholder="e.g., 15 miles"
-                    className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+                    className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                 </div>
 
@@ -423,7 +423,7 @@ export default function AdminUserModal({
                     id="sector"
                     value={formData.sector}
                     onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                    className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                    className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="e.g., Home & Garden"
                   />
                 </div>
@@ -439,26 +439,26 @@ export default function AdminUserModal({
                 id="referralCode"
                 value={formData.referralCode}
                 onChange={(e) => setFormData({ ...formData, referralCode: e.target.value })}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#FE8A0F]/30">
+          <div className="flex justify-end gap-3 pt-4 border-0 shadow-sm">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white"
+              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-0 shadow-lg shadow-blue-500/40 hover:shadow-xl hover:shadow-blue-500/50 transition-all"
             >
               {loading ? "Saving..." : isEditMode ? "Update User" : "Create User"}
             </Button>

@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import SEOContent from '../models/SEOContent.js';
 
 const sanitizeUser = (user) => user.toSafeObject();
 
@@ -1103,6 +1104,114 @@ router.put('/users/:id/note', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Update note error', error);
     return res.status(500).json({ error: 'Failed to update note' });
+  }
+});
+
+// SEO Content Management Routes
+
+// Get SEO content by type
+router.get('/seo-content/:type', requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.params;
+    
+    if (!['homepage', 'blog', 'cost-guide'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid SEO content type' });
+    }
+
+    // Check permission for content-management
+    if (req.adminUser.role !== 'admin' && !req.adminUser.permissions?.includes('content-management')) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    let seoContent = await SEOContent.findOne({ type });
+
+    // If not found, create default
+    if (!seoContent) {
+      seoContent = await SEOContent.create({ type });
+    }
+
+    return res.json(seoContent);
+  } catch (error) {
+    console.error('Get SEO content error', error);
+    return res.status(500).json({ error: 'Failed to get SEO content' });
+  }
+});
+
+// Update SEO content
+router.put('/seo-content/:type', requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.params;
+    
+    if (!['homepage', 'blog', 'cost-guide'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid SEO content type' });
+    }
+
+    // Check permission for content-management
+    if (req.adminUser.role !== 'admin' && !req.adminUser.permissions?.includes('content-management')) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    const {
+      title,
+      metaKeywords,
+      metaDescription,
+      ogTitle,
+      ogDescription,
+      ogImage,
+      ogUrl,
+      ogType,
+      ogSiteName,
+      twitterCard,
+      twitterTitle,
+      twitterDescription,
+      twitterImage,
+      canonicalUrl,
+      robots,
+      headerScript,
+      bodyScript,
+      description,
+      metaTitle,
+      metaKey,
+    } = req.body;
+
+    const updateData = {
+      updatedBy: req.adminUser._id,
+    };
+
+    // Homepage fields
+    if (title !== undefined) updateData.title = title;
+    if (metaKeywords !== undefined) updateData.metaKeywords = metaKeywords;
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+    if (ogTitle !== undefined) updateData.ogTitle = ogTitle;
+    if (ogDescription !== undefined) updateData.ogDescription = ogDescription;
+    if (ogImage !== undefined) updateData.ogImage = ogImage;
+    if (ogUrl !== undefined) updateData.ogUrl = ogUrl;
+    if (ogType !== undefined) updateData.ogType = ogType;
+    if (ogSiteName !== undefined) updateData.ogSiteName = ogSiteName;
+    if (twitterCard !== undefined) updateData.twitterCard = twitterCard;
+    if (twitterTitle !== undefined) updateData.twitterTitle = twitterTitle;
+    if (twitterDescription !== undefined) updateData.twitterDescription = twitterDescription;
+    if (twitterImage !== undefined) updateData.twitterImage = twitterImage;
+    if (canonicalUrl !== undefined) updateData.canonicalUrl = canonicalUrl;
+    if (robots !== undefined) updateData.robots = robots;
+    if (headerScript !== undefined) updateData.headerScript = headerScript;
+    if (bodyScript !== undefined) updateData.bodyScript = bodyScript;
+
+    // Blog & Cost Guide fields
+    if (description !== undefined) updateData.description = description;
+    if (metaTitle !== undefined) updateData.metaTitle = metaTitle;
+    if (metaKey !== undefined) updateData.metaKey = metaKey;
+
+    const seoContent = await SEOContent.findOneAndUpdate(
+      { type },
+      updateData,
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    return res.json({ message: 'SEO content updated successfully', data: seoContent });
+  } catch (error) {
+    console.error('Update SEO content error', error);
+    return res.status(500).json({ error: 'Failed to update SEO content' });
   }
 });
 

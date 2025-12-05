@@ -224,7 +224,7 @@ export default function AdminSubAdminModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               placeholder="Enter full name"
             />
           </div>
@@ -241,7 +241,7 @@ export default function AdminSubAdminModal({
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
               disabled={isEditMode}
-              className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white disabled:opacity-50"
+              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               placeholder="Email"
             />
           </div>
@@ -259,7 +259,7 @@ export default function AdminSubAdminModal({
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required={!isEditMode}
               placeholder="Must include uppercase, lowercase, and numbers"
-              className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
             />
             {formData.password && (
               <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
@@ -286,7 +286,7 @@ export default function AdminSubAdminModal({
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 required
                 minLength={6}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Confirm Password"
               />
             </div>
@@ -297,7 +297,7 @@ export default function AdminSubAdminModal({
             <Label className="text-black dark:text-white mb-3 block">
               Roles <span className="text-red-500">*</span>
             </Label>
-            <div className="border border-[#FE8A0F] rounded-md p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
+            <div className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-md p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
               <div className="space-y-2">
                 {AVAILABLE_PERMISSIONS.map((permission) => (
                   <div key={permission.value} className="flex items-start space-x-2 py-1">
@@ -305,7 +305,7 @@ export default function AdminSubAdminModal({
                       id={permission.value}
                       checked={formData.permissions.includes(permission.value)}
                       onCheckedChange={() => handlePermissionToggle(permission.value)}
-                      className="border-[#FE8A0F] data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] mt-1"
+                      className="border-0 shadow-sm data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-0 data-[state=checked]:shadow-md data-[state=checked]:shadow-[#FE8A0F]/30 mt-1 transition-all"
                     />
                     <div className="flex-1">
                       <Label
@@ -327,20 +327,20 @@ export default function AdminSubAdminModal({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#FE8A0F]/30">
+          <div className="flex justify-end gap-3 pt-4 border-0 shadow-sm">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Close
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white"
+              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-0 shadow-lg shadow-blue-500/40 hover:shadow-xl hover:shadow-blue-500/50 transition-all"
             >
               {loading ? "Saving..." : isEditMode ? "Update" : "Add"}
             </Button>

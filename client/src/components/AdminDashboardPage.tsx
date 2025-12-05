@@ -56,6 +56,9 @@ import AdminSubAdminsPage from "./admin/AdminSubAdminsPage";
 import AdminDeleteAccountPage from "./admin/AdminDeleteAccountPage";
 import AdminReferralsClientPage from "./admin/AdminReferralsProfessionalPage";
 import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPage";
+import AdminHomepageContentPage from "./admin/AdminHomepageContentPage";
+import AdminBlogContentPage from "./admin/AdminBlogContentPage";
+import AdminCostGuidePage from "./admin/AdminCostGuidePage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -227,13 +230,13 @@ export default function AdminDashboardPage() {
                 <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 dark:bg-gray-800">
                   <TabsTrigger 
                     value="state-cards"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] text-gray-600 dark:text-gray-400"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
                   >
                     State Cards
                   </TabsTrigger>
                   <TabsTrigger 
                     value="statistics"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] text-gray-600 dark:text-gray-400"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
                   >
                     Statistics
                   </TabsTrigger>
@@ -247,7 +250,7 @@ export default function AdminDashboardPage() {
                       return (
                         <div
                           key={index}
-                          className="bg-white dark:bg-black rounded-lg border border-[#FE8A0F] p-6 shadow-sm"
+                          className="bg-white dark:bg-black rounded-lg border-0 p-6 shadow-lg shadow-[#FE8A0F]/20 hover:shadow-xl hover:shadow-[#FE8A0F]/30 transition-all"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
@@ -265,7 +268,7 @@ export default function AdminDashboardPage() {
                               </p>
                             </div>
                             {Icon && (
-                              <div className="ml-4 flex-shrink-0 p-2 bg-[#FE8A0F]/10 rounded border border-white/50">
+                              <div className="ml-4 flex-shrink-0 p-2 bg-[#FE8A0F]/10 rounded border-0 shadow-md shadow-[#FE8A0F]/20">
                                 <Icon className="w-5 h-5 text-[#FE8A0F]" />
                               </div>
                             )}
@@ -781,6 +784,12 @@ function SectionRouter({ activeSection }: { activeSection: string }) {
         return <AdminReferralsClientPage />;
       case "referrals-professional":
         return <AdminReferralsProfessionalPage />;
+      case "homepage-content":
+        return <AdminHomepageContentPage />;
+      case "blog-content":
+        return <AdminBlogContentPage />;
+      case "cost-guide":
+        return <AdminCostGuidePage />;
       default:
         return (
           <AdminGenericPage

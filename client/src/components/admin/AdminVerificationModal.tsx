@@ -241,7 +241,7 @@ export default function AdminVerificationModal({
                 return (
                   <div
                     key={type.id}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-lg p-3"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -297,7 +297,7 @@ export default function AdminVerificationModal({
                     )}
 
                     {/* Status Changer Box - Aligned to each section */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2 space-y-2">
+                    <div className="border-0 shadow-sm pt-2 mt-2 space-y-2">
                       <div>
                         <Label className="text-black dark:text-white text-xs font-medium">Status</Label>
                         <Select 
@@ -346,7 +346,7 @@ export default function AdminVerificationModal({
                             value={currentRejectionReason}
                             onChange={(e) => setRejectionReason(prev => ({ ...prev, [type.id]: e.target.value }))}
                             placeholder="Enter rejection reason..."
-                            className="bg-white dark:bg-black text-black dark:text-white mt-0.5 border-red-300 focus:border-red-500 text-xs h-16"
+                            className="bg-white dark:bg-black text-black dark:text-white mt-0.5 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 focus:shadow-lg focus:shadow-red-500/30 text-xs h-16 transition-shadow"
                             rows={2}
                             required
                           />
@@ -380,7 +380,7 @@ export default function AdminVerificationModal({
     {viewingDocument && (
       <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
         <DialogContent className="sm:max-w-[90vw] max-w-[95vw] max-h-[90vh] bg-white dark:bg-black p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <DialogHeader className="px-6 pt-6 pb-4 border-0 shadow-sm">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-black dark:text-white">
                 {viewingDocument.name}
@@ -390,7 +390,7 @@ export default function AdminVerificationModal({
                   variant="outline"
                   size="sm"
                   onClick={() => handleDownloadDocument(viewingDocument.url, viewingDocument.name)}
-                  className="text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  className="text-[#FE8A0F] border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -399,7 +399,7 @@ export default function AdminVerificationModal({
                   variant="outline"
                   size="sm"
                   onClick={() => window.open(viewingDocument.url, "_blank")}
-                  className="text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  className="text-[#FE8A0F] border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Open in New Tab

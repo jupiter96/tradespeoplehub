@@ -323,8 +323,8 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             )}
           </Button>
 
-          {/* Theme Toggle Button - Hidden on mobile */}
-          <Button
+          {/* Theme Toggle Button - Hidden for now, will be used later */}
+          {/* <Button
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
@@ -338,7 +338,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             ) : (
               <Moon className="w-5 h-5" />
             )}
-          </Button>
+          </Button> */}
 
           {/* Admin Name Dropdown */}
           <DropdownMenu>
@@ -353,7 +353,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
               <DropdownMenuItem
                 onClick={() => {
                   setShowEditProfile(true);
@@ -388,7 +388,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
           {/* Change Password Dialog */}
           <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
-            <DialogContent className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <DialogContent className="bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
               <DialogHeader>
                 <DialogTitle className="text-black dark:text-white">Change Password</DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -407,7 +407,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, currentPassword: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Enter current password"
                   />
                 </div>
@@ -422,7 +422,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, newPassword: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Must include uppercase, lowercase, and numbers"
                   />
                   {passwordData.newPassword && (
@@ -447,7 +447,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, confirmPassword: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Confirm new password"
                   />
                 </div>
@@ -462,7 +462,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                         confirmPassword: "",
                       });
                     }}
-                    className="border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   >
                     Cancel
                   </Button>
@@ -480,7 +480,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
           {/* Edit Profile Dialog */}
           <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
-            <DialogContent className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <DialogContent className="bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
               <DialogHeader>
                 <DialogTitle className="text-black dark:text-white">Edit Profile</DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -499,7 +499,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setProfileData({ ...profileData, name: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Enter your name"
                   />
                 </div>
@@ -514,7 +514,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setProfileData({ ...profileData, email: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -530,14 +530,14 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                         });
                       }
                     }}
-                    className="border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleUpdateProfile}
                     disabled={isUpdatingProfile}
-                    className="bg-[#FE8A0F] hover:bg-[#FE8A0F]/90 text-white"
+                    className="bg-[#FE8A0F] hover:bg-[#FE8A0F]/90 text-white border-0 shadow-lg shadow-[#FE8A0F]/40 hover:shadow-xl hover:shadow-[#FE8A0F]/50 transition-all"
                   >
                     {isUpdatingProfile ? "Updating..." : "Update Profile"}
                   </Button>
