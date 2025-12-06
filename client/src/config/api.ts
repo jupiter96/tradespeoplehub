@@ -1,8 +1,6 @@
-// API Configuration
-// Change this to switch between local and production environments
+
 
 // const API_BASE_URL = "http://localhost:5000";
-// const API_BASE_URL = "https://tradespeoplehub.vercel.app";
 const API_BASE_URL = "https://sortars.com";
 
 export const resolveApiUrl = (path: string): string => {
