@@ -81,10 +81,10 @@ jobs:
             
             # Restart application with PM2
             echo "🔄 Restarting application..."
-            if pm2 list | grep -q "trades-platform"; then
-              pm2 restart trades-platform
+            if pm2 list | grep -q "sortars"; then
+              pm2 restart sortars
             else
-              pm2 start server.js --name trades-platform --node-args="--experimental-modules"
+              pm2 start server.js --name sortars --node-args="--experimental-modules"
               pm2 save
             fi
             
@@ -102,5 +102,5 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             sleep 5
-            pm2 logs trades-platform --lines 20 --nostream || true
+            pm2 logs sortars --lines 20 --nostream || true
 
