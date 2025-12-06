@@ -78,7 +78,7 @@ const steps: Step[] = [
   { id: 5, title: "Budget", description: "Set budget" },
 ];
 
-// Main Sectors (기본 카테고리)
+// Main Sectors
 const sectors = [
   { value: "home-garden", label: "Home & Garden" },
   { value: "business", label: "Business Services" },
@@ -95,7 +95,7 @@ const sectors = [
   { value: "moving-storage", label: "Moving & Storage" },
 ];
 
-// Categories by sector (세부 카테고리 - 다중 선택 가능)
+// Categories by sector (multiple selection allowed)
 const categoriesBySector: { [key: string]: { value: string; label: string }[] } = {
   "home-garden": [
     { value: "plumbing", label: "Plumbing" },
@@ -491,7 +491,7 @@ export default function PostJobPage() {
 
                 {/* Step 1: Sector Selection (Single) + Categories (Multiple) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Level 1: Sector (단일 선택) */}
+                  {/* Level 1: Sector (single selection) */}
                   <div className="flex flex-col">
                     <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Sector

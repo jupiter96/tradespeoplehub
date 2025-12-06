@@ -1,0 +1,96 @@
+name: Deploy to Ubuntu Server (PM2 Ecosystem)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd client && npm ci
+
+      - name: Build client
+        run: npm run build:client
+        env:
+          NODE_ENV: production
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            
+            # Navigate to project directory
+            cd ${{ secrets.DEPLOY_PATH || '/var/www/trades-platform' }}
+            
+            # Pull latest changes
+            echo "📥 Pulling latest changes..."
+            git fetch origin
+            git reset --hard origin/main || git reset --hard origin/master
+            
+            # Install/update dependencies
+            echo "📦 Installing dependencies..."
+            npm ci --production=false
+            cd client && npm ci --production=false && cd ..
+            
+            # Build client
+            echo "🏗️ Building client..."
+            npm run build:client
+            
+            # Restart application with PM2 ecosystem
+            echo "🔄 Restarting application with PM2 ecosystem..."
+            if [ -f ecosystem.config.js ]; then
+              pm2 delete trades-platform 2>/dev/null || true
+              pm2 start ecosystem.config.js
+              pm2 save
+            else
+              # Fallback to direct PM2 start
+              if pm2 list | grep -q "trades-platform"; then
+                pm2 restart trades-platform
+              else
+                pm2 start server.js --name trades-platform \
+                  --node-args="--experimental-modules" \
+                  --env production
+                pm2 save
+              fi
+            fi
+            
+            # Show status
+            pm2 status
+            
+            echo "✅ Deployment completed successfully!"
+
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            sleep 5
+            pm2 logs trades-platform --lines 20 --nostream || true
+

@@ -55,7 +55,7 @@ export default function GrowBusinessSection() {
                 <div className="absolute right-0 top-16 w-[6px] h-[7px] bg-[#b89cea] transform rotate-[26deg]" />
                 <div className="absolute left-4 bottom-8 w-[6px] h-[6px] bg-[#ffe16b] transform rotate-[26deg]" />
 
-                {/* Z-index 1: Rectangle 30 - Right bottom image (내려옴) */}
+                {/* Z-index 1: Rectangle 30 - Right bottom image (moved down) */}
                 <div className="absolute right-0 bottom-0 md:bottom-4 z-[1]">
                   <img 
                     src={imgRectangle30} 
@@ -64,7 +64,7 @@ export default function GrowBusinessSection() {
                   />
                 </div>
 
-                {/* Z-index 2: Rectangle 13 - Main center image (우측으로 올림) */}
+                {/* Z-index 2: Rectangle 13 - Main center image (moved up to the right) */}
                 <div className="absolute left-[52%] md:left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-[2]">
                   <img 
                     src={imgRectangle13} 
@@ -73,7 +73,7 @@ export default function GrowBusinessSection() {
                   />
                 </div>
 
-                {/* Z-index 3: Group 15 - Josef Flores review card (아래로 내림) */}
+                {/* Z-index 3: Group 15 - Josef Flores review card (moved down) */}
                 <div className="absolute right-0 top-[240px] md:top-[280px] z-[3] bg-white rounded-[34px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.25)] px-4 py-3 flex items-center gap-3">
                   <img 
                     src={imgEllipse16} 
@@ -93,7 +93,7 @@ export default function GrowBusinessSection() {
                   </div>
                 </div>
 
-                {/* Z-index 4: Group 16 - Alexander Lesli review card (아래로 내림) */}
+                {/* Z-index 4: Group 16 - Alexander Lesli review card (moved down) */}
                 <div className="absolute left-0 top-16 md:top-24 z-[4] bg-white rounded-[34px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.25)] px-4 py-3 flex items-center gap-3">
                   <img 
                     src={imgEllipse17} 
@@ -113,7 +113,7 @@ export default function GrowBusinessSection() {
                   </div>
                 </div>
 
-                {/* Z-index 5: Group 17 - Small circular profile (Rectangle 13 상단 우측) */}
+                {/* Z-index 5: Group 17 - Small circular profile (top right of Rectangle 13) */}
                 <div className="absolute left-[52%] md:left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-[5]">
                   <div className="absolute -top-[115px] md:-top-[155px] right-[-15px] md:right-[-25px] w-[62.509px] h-[59.868px]">
                     <Group17 />

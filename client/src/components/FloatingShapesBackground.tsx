@@ -2,13 +2,13 @@ import { motion } from "motion/react";
 import { Hammer, Wrench, Settings, Drill, Paintbrush, Ruler } from "lucide-react";
 
 export default function FloatingShapesBackground() {
-  // 원형, 4각 도형 2개 - 더 크고 파란색/주황색 톤 (outline)
+  // 2 shapes: circle and square - larger with blue/orange tones (outline)
   const shapes = [
     { type: 'circle', size: 100, color: '#003D82', left: '8%', top: '12%', duration: 12, delay: 0 },
     { type: 'square', size: 95, color: '#FE8A0F', left: '85%', top: '70%', duration: 13, delay: 1 },
   ];
 
-  // 작업공구 아이콘 6개
+  // 6 tool icons
   const tools = [
     { Icon: Hammer, size: 48, color: '#FE8A0F', left: '25%', top: '30%', duration: 10, delay: 0.5 },
     { Icon: Wrench, size: 52, color: '#003D82', left: '65%', top: '40%', duration: 12, delay: 1.5 },

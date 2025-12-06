@@ -65,3 +65,4 @@ export function getPasswordHint(password: string): string {
   return validation.hints.join(', ') || 'Password must include uppercase, lowercase, and numbers';
 }
 
+

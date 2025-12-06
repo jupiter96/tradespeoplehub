@@ -17,10 +17,10 @@ export default function WalkingPersonAnimation() {
       }}
     >
       <div className="relative w-[80px] md:w-[100px] h-[80px] md:h-[100px]">
-        {/* 그림자 효과 */}
+        {/* Shadow effect */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-2 bg-black/20 rounded-full blur-sm"></div>
         
-        {/* 걷는 사람 이미지 */}
+        {/* Walking person image */}
         <img 
           src={walkingPerson} 
           alt="" 

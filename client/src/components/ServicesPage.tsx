@@ -344,7 +344,7 @@ export default function ServicesPage() {
     "Moving & Storage": "moving-storage"
   };
 
-  // Categories by sector (세부 카테고리) - from PostJobPage
+  // Categories by sector (subcategories) - from PostJobPage
   const categoriesBySector: { [key: string]: { value: string; label: string }[] } = {
     "home-garden": [
       { value: "plumbing", label: "Plumbing" },

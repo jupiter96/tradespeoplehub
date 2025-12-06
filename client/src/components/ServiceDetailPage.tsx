@@ -58,7 +58,7 @@ interface Review {
   };
 }
 
-// 리뷰 mock 데이터 생성 함수
+// Generate mock review data function
 const generateReviews = (serviceId: number, reviewCount: number, providerName: string, providerImage: string): Review[] => {
   const userNames = [
     "David James", "Sarah Johnson", "Michael Chen", "Emma Williams", "David Anderson", 
@@ -93,7 +93,7 @@ const generateReviews = (serviceId: number, reviewCount: number, providerName: s
   const priceRanges = ["£20.00 - £40.00", "£30.00 - £50.00", "£50.00 - £80.00"];
   const durations = ["Standard", "Express", "Premium"];
   
-  const numReviews = Math.min(3, reviewCount); // 최대 3개 리뷰 표시
+  const numReviews = Math.min(3, reviewCount); // Display maximum 3 reviews
   const reviews: Review[] = [];
   
   for (let i = 0; i < numReviews; i++) {
@@ -134,7 +134,7 @@ export default function ServiceDetailPage() {
   // Add to Cart Modal
   const [showAddToCartModal, setShowAddToCartModal] = useState(false);
   
-  // 실제 서비스 데이터 찾기
+  // Find actual service data
   const service = allServices.find(s => s.id === Number(id));
   
   // Get user coordinates from URL state (passed from ServicesPage) or use default Chelsea, London
@@ -170,7 +170,7 @@ export default function ServiceDetailPage() {
   // Initialize vote counts from review data - will be set properly after service check
   const [reviewVoteCounts, setReviewVoteCounts] = useState<Map<number, { helpful: number; notHelpful: number }>>(new Map());
   
-  // 서비스를 찾지 못한 경우
+  // If service not found
   if (!service) {
     return (
       <div className="w-full min-h-screen bg-[#f0f0f0]">
@@ -197,7 +197,7 @@ export default function ServiceDetailPage() {
     );
   }
 
-  // 리뷰 생성
+  // Generate reviews
   const reviews = generateReviews(service.id, service.reviewCount, service.providerName, service.providerImage);
   
   // Get current package (if applicable)
@@ -318,7 +318,7 @@ export default function ServiceDetailPage() {
       .reduce((sum, addon) => sum + addon.price, 0);
   };
   
-  // 가격 정보 (패키지가 있으면 선택된 패키지 사용, 없으면 서비스 기본 가격 사용)
+  // Price information (use selected package if available, otherwise use service base price)
   const hasPackages = !!(service.packages && service.packages.length > 0);
   const basePrice = selectedPackage 
     ? parseFloat(selectedPackage.price) 
@@ -630,7 +630,7 @@ export default function ServiceDetailPage() {
     ? selectedPackage.highlights 
     : generateHighlights();
 
-  // 서비스에 대한 상세 설명 생성
+  // Generate detailed description for service
   const aboutService = `Discover exceptional ${service.category.toLowerCase()} with ${service.providerName}. With a proven track record of ${service.completedTasks} completed tasks and a ${service.rating} star rating, you can trust in the quality and professionalism of this service. ${service.description} Our commitment to excellence ensures that every client receives personalized attention and outstanding results.`;
 
   const whatsIncluded = [
@@ -758,7 +758,7 @@ export default function ServiceDetailPage() {
     }
   ];
 
-  // Provider level 결정
+  // Determine provider level
   const providerLevel = service.rating >= 4.8 ? "Top Rated Seller" : 
                         service.rating >= 4.5 ? "Verified Professional" : 
                         "Verified Seller";

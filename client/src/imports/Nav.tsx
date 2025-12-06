@@ -403,20 +403,20 @@ export default function Nav() {
       const rect = element.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       
-      // 카테고리 중심점 계산
+      // Calculate category center point
       let leftPosition = rect.left + rect.width / 2;
       
-      // 드롭다운 예상 너비 (반응형) - min-w-[600px]를 기준으로
+      // Expected dropdown width (responsive) - based on min-w-[600px]
       const dropdownWidth = viewportWidth >= 1280 ? 800 : viewportWidth >= 1024 ? 700 : 600;
       const dropdownHalfWidth = dropdownWidth / 2;
       const padding = 30; // Increased padding for better edge spacing
       
-      // 왼쪽 경계 체크 - 화면 왼쪽에 너무 가까우면 중심을 오른쪽으로 이동
+      // Check left boundary - move center to the right if too close to screen left
       if (leftPosition - dropdownHalfWidth < padding) {
         leftPosition = dropdownHalfWidth + padding;
       }
       
-      // 오른쪽 경계 체크 - 화면 오른쪽에 너무 가까우면 중심을 왼쪽으로 이동
+      // Check right boundary - move center to the left if too close to screen right
       if (leftPosition + dropdownHalfWidth > viewportWidth - padding) {
         leftPosition = viewportWidth - dropdownHalfWidth - padding;
       }
@@ -475,7 +475,7 @@ export default function Nav() {
     }
   };
 
-  // 터치 스와이프 핸들러 - 부드러운 네이티브 스크롤 사용
+  // Touch swipe handler - uses smooth native scroll
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -491,13 +491,13 @@ export default function Nav() {
     const distance = touchStart - touchEnd;
     const isSignificantSwipe = Math.abs(distance) > 50;
     
-    // 빠른 스와이프의 경우 추가 스크롤
+    // Additional scroll for fast swipes
     if (isSignificantSwipe) {
       const isLeftSwipe = distance > 0;
       
       if (scrollContainerRef.current) {
         const currentScroll = scrollContainerRef.current.scrollLeft;
-        const swipeVelocity = distance * 2; // 스와이프 속도에 따라 더 멀리 스크롤
+        const swipeVelocity = distance * 2; // Scroll further based on swipe velocity
         
         scrollContainerRef.current.scrollTo({
           left: currentScroll + swipeVelocity,
@@ -507,7 +507,7 @@ export default function Nav() {
     }
   };
 
-  // 모바일 드롭다운 외부 클릭 시 닫기
+  // Close mobile dropdown on outside click
   useEffect(() => {
     const handleClickOutside = () => {
       setMobileDropdownOpen(false);
@@ -515,7 +515,7 @@ export default function Nav() {
     };
 
     if (mobileDropdownOpen && window.innerWidth < 768) {
-      // 약간의 지연을 두어 현재 클릭 이벤트가 완료된 후 리스너 추가
+      // Add a slight delay to add listener after current click event completes
       const timer = setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
       }, 0);
