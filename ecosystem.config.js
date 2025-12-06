@@ -10,7 +10,7 @@
 module.exports = {
   apps: [
     {
-      name: 'trades-platform',
+      name: 'sortars',
       script: 'server.js',
       instances: 1,
       exec_mode: 'fork',
