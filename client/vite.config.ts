@@ -122,6 +122,32 @@
     build: {
       target: 'esnext',
       outDir: '../build',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Vendor chunks
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'ui-vendor': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-dropdown-menu',
+              '@radix-ui/react-select',
+              '@radix-ui/react-tabs',
+              '@radix-ui/react-checkbox',
+              '@radix-ui/react-radio-group',
+              '@radix-ui/react-label',
+              '@radix-ui/react-avatar',
+              '@radix-ui/react-popover',
+              '@radix-ui/react-tooltip',
+              '@radix-ui/react-scroll-area',
+            ],
+            'chart-vendor': ['recharts'],
+            'form-vendor': ['react-hook-form'],
+            'icon-vendor': ['lucide-react'],
+            'utils-vendor': ['sonner', 'class-variance-authority', 'cmdk'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000, // Increase limit to 1MB
     },
     server: {
       port: 3000,
