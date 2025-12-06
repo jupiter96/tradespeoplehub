@@ -371,11 +371,12 @@ export default function AdminUserModal({
                     ...formData,
                     postcode: address.postcode,
                     address: address.address,
+                    townCity: address.townCity || formData.townCity,
                   });
                 }}
                 label="Postcode"
                 required
-                showAddressField={formData.role === "professional"}
+                showAddressField={true}
                 showTownCityField={false}
                 addressLabel="Full Address"
               />

@@ -25,6 +25,7 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import AddressAutocomplete from "./AddressAutocomplete";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { useNavigate } from "react-router-dom";
@@ -566,23 +567,21 @@ export default function CustomOrderModal({
 
                 {/* Address */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#FE8A0F]" />
-                    Service Address
-                  </Label>
-                  <Input
-                    type="text"
-                    placeholder="Enter full address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] mb-3"
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Postcode"
-                    value={postcode}
-                    onChange={(e) => setPostcode(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                  <AddressAutocomplete
+                    postcode={postcode}
+                    onPostcodeChange={(value) => setPostcode(value)}
+                    address={address}
+                    onAddressChange={(value) => setAddress(value)}
+                    onAddressSelect={(addressData) => {
+                      setPostcode(addressData.postcode);
+                      setAddress(addressData.address);
+                    }}
+                    label="Postcode"
+                    required
+                    showAddressField={true}
+                    showTownCityField={false}
+                    addressLabel="Service Address"
+                    className="font-['Poppins',sans-serif]"
                   />
                 </div>
 

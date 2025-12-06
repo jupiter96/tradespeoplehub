@@ -37,6 +37,7 @@ import FloatingToolsBackground from "./FloatingToolsBackground";
 import { toast } from "sonner@2.0.3";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 interface Step {
   id: number;
@@ -241,6 +242,7 @@ export default function PostJobPage() {
   
   // Step 4: Postcode & Timing
   const [postcode, setPostcode] = useState("SW1A 1AA");
+  const [address, setAddress] = useState("");
   const [urgency, setUrgency] = useState("");
   const [preferredStartDate, setPreferredStartDate] = useState("");
   
@@ -359,7 +361,8 @@ export default function PostJobPage() {
       sector: sectorLabel,
       categories: categoryLabels,
       postcode: postcode,
-      location: postcode, // In real app, would geocode this
+      address: address,
+      location: address || postcode, // Use address if available, otherwise postcode
       timing: timingMap[urgency] || "flexible",
       specificDate: urgency === "specific-date" ? preferredStartDate : undefined,
       budgetType: "fixed" as const,
@@ -724,13 +727,23 @@ export default function PostJobPage() {
                     Where do you need this done?
                   </h2>
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                    Enter the postcode where the work needs to be done.
+                    Enter the postcode and address where the work needs to be done.
                   </p>
-                  <Input
-                    placeholder="e.g., SW1A 1AA"
-                    value={postcode}
-                    onChange={(e) => setPostcode(e.target.value)}
-                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                  <AddressAutocomplete
+                    postcode={postcode}
+                    onPostcodeChange={(value) => setPostcode(value)}
+                    address={address}
+                    onAddressChange={(value) => setAddress(value)}
+                    onAddressSelect={(addressData) => {
+                      setPostcode(addressData.postcode);
+                      setAddress(addressData.address);
+                    }}
+                    label="Postcode"
+                    required
+                    showAddressField={true}
+                    showTownCityField={false}
+                    addressLabel="Full Address"
+                    className="font-['Poppins',sans-serif]"
                   />
                 </div>
 

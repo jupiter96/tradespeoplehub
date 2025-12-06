@@ -360,10 +360,12 @@ router.post('/register/initiate', async (req, res) => {
       postcode,
       referralCode,
       role: userType,
+      // Professional-specific fields
       tradingName: userType === 'professional' ? tradingName : undefined,
-      townCity: userType === 'professional' ? townCity : undefined,
-      address: userType === 'professional' ? address : undefined,
       travelDistance: userType === 'professional' ? travelDistance : undefined,
+      // Address fields - available for both client and professional
+      address: address || undefined,
+      townCity: townCity || undefined,
       emailCodeHash,
       emailCodeExpiresAt: codeExpiryDate(),
     });
@@ -537,11 +539,12 @@ router.post('/register/verify-phone', async (req, res) => {
       postcode: pendingRegistration.postcode,
       referralCode: pendingRegistration.referralCode,
       role: pendingRegistration.role,
+      // Professional-specific fields
       tradingName: pendingRegistration.role === 'professional' ? pendingRegistration.tradingName : undefined,
-      townCity: pendingRegistration.role === 'professional' ? pendingRegistration.townCity : undefined,
-      address: pendingRegistration.role === 'professional' ? pendingRegistration.address : undefined,
-      travelDistance:
-        pendingRegistration.role === 'professional' ? pendingRegistration.travelDistance : undefined,
+      travelDistance: pendingRegistration.role === 'professional' ? pendingRegistration.travelDistance : undefined,
+      // Address fields - available for both client and professional
+      address: pendingRegistration.address || undefined,
+      townCity: pendingRegistration.townCity || undefined,
       verification: verification,
     });
 
@@ -645,10 +648,12 @@ router.post('/social/complete', async (req, res) => {
       postcode,
       referralCode,
       role: userType,
+      // Professional-specific fields
       tradingName: userType === 'professional' ? tradingName : undefined,
-      townCity: userType === 'professional' ? townCity : undefined,
-      address: userType === 'professional' ? address : undefined,
       travelDistance: userType === 'professional' ? travelDistance : undefined,
+      // Address fields - available for both client and professional
+      address: address || undefined,
+      townCity: townCity || undefined,
       googleId: pending.provider === 'google' ? pending.providerId : undefined,
       facebookId: pending.provider === 'facebook' ? pending.providerId : undefined,
     });

@@ -356,10 +356,11 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
       return res.status(403).json({ error: 'Cannot change user to admin or subadmin role' });
     }
 
-    // If password is provided, hash it
+    // If password is provided, validate and hash it
     if (updates.password) {
-      if (updates.password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+      const passwordError = validatePasswordStrength(updates.password);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
       }
       updates.passwordHash = await bcrypt.hash(updates.password, 12);
       delete updates.password;

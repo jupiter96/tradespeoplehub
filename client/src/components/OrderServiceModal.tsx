@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
+import AddressAutocomplete from "./AddressAutocomplete";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
@@ -221,32 +222,23 @@ export default function OrderServiceModal({
 
           {/* Address */}
           <div className="mb-6">
-            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-              Service Address *
-            </Label>
-            <div className="relative mt-2">
-              <MapPin className="absolute left-3 top-3 w-4 h-4 text-[#6b6b6b]" />
-              <Input
-                type="text"
-                placeholder="Enter full address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="pl-10 font-['Poppins',sans-serif]"
-                required
-              />
-            </div>
+            <AddressAutocomplete
+              postcode={postcode}
+              onPostcodeChange={(value) => setPostcode(value)}
+              address={address}
+              onAddressChange={(value) => setAddress(value)}
+              onAddressSelect={(addressData) => {
+                setPostcode(addressData.postcode);
+                setAddress(addressData.address);
+              }}
+              label="Postcode"
+              required
+              showAddressField={true}
+              showTownCityField={false}
+              addressLabel="Service Address"
+              className="font-['Poppins',sans-serif]"
+            />
           </div>
-
-          {/* Postcode */}
-          <div className="mb-6">
-            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-              Postcode *
-            </Label>
-            <Input
-              type="text"
-              placeholder="e.g., SW1A 1AA"
-              value={postcode}
-              onChange={(e) => setPostcode(e.target.value.toUpperCase())}
               className="font-['Poppins',sans-serif]"
               required
             />
