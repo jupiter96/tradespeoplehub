@@ -300,7 +300,7 @@ export default function AvailableJobsSection() {
 
       {/* Send Quote Dialog */}
       <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b border-gray-200 pb-4 mb-6">
             <DialogTitle className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
               Send Quote

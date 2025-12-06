@@ -114,7 +114,7 @@ export default function InviteToQuoteModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
             Request Quote from {professionalName}

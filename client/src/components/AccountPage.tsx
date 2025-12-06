@@ -239,7 +239,11 @@ export default function AccountPage() {
                   </Avatar>
                   <div>
                     <h3 className="font-['Poppins',sans-serif] text-[18px] mb-1">
-                      {userInfo?.name || 'User'}
+                      {userRole === "professional" && userInfo?.tradingName
+                        ? userInfo.tradingName
+                        : (userInfo?.firstName && userInfo?.lastName
+                          ? `${userInfo.firstName} ${userInfo.lastName}`
+                          : userInfo?.name || 'User')}
                     </h3>
                     <Badge className="bg-white/20 text-white border-0 font-['Poppins',sans-serif] text-[11px]">
                       {userRole === "client" ? "Client" : "Professional"}
@@ -1353,7 +1357,7 @@ function JobsSection() {
 
       {/* Job Details Modal */}
       <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
           {selectedJob && (
             <>
               <DialogHeader>
@@ -3262,7 +3266,7 @@ function WithdrawSection() {
 
       {/* Add Bank Account Dialog */}
       <Dialog open={showAddBankAccount} onOpenChange={setShowAddBankAccount}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
               Add Bank Account
@@ -3336,7 +3340,7 @@ function WithdrawSection() {
 
       {/* Add PayPal Dialog */}
       <Dialog open={showAddPayPal} onOpenChange={setShowAddPayPal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
               Add PayPal Account
@@ -3605,7 +3609,7 @@ function SecuritySection() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] flex items-center gap-2">
               <AlertCircle className="w-6 h-6 text-red-500" />

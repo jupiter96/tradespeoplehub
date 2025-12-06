@@ -171,7 +171,11 @@ export default function ProfilePage() {
   }
 
   // Format profile data for display
-  const displayName = profile.tradingName || profile.name;
+  // For professionals, prioritize tradingName over firstName/lastName
+  const displayName = profile.tradingName || 
+    (profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : null) || 
+    profile.name || 
+    "Professional";
   const displayTitle = profile.sector || "Professional Service Provider";
   const displayLocation = profile.townCity || profile.postcode || profile.address || "Location not specified";
   const displayBio = profile.publicProfile?.bio || profile.aboutService || "No bio available.";
@@ -452,7 +456,7 @@ export default function ProfilePage() {
                     <h3 className="text-[#003D82] text-[20px] font-semibold mb-4">
                       About Me
                     </h3>
-                    <p className="text-gray-700 leading-relaxed mb-6">
+                    <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-wrap break-words text-justify">
                       {displayBio}
                     </p>
 
@@ -535,7 +539,7 @@ export default function ProfilePage() {
                               <h4 className="text-[#003D82] font-semibold mb-1">
                                 {service.description}
                               </h4>
-                              <p className="text-gray-600 text-[14px] mb-2">
+                              <p className="text-gray-600 text-[14px] mb-2 leading-relaxed break-words">
                                 {service.category}
                               </p>
                               <div className="flex items-center gap-3">
@@ -583,7 +587,7 @@ export default function ProfilePage() {
                             <h4 className="text-[#003D82] font-semibold mb-2">
                               {item.title}
                             </h4>
-                            <p className="text-gray-600 text-[14px]">
+                            <p className="text-gray-600 text-[14px] leading-relaxed break-words whitespace-pre-wrap">
                               {item.description}
                             </p>
                           </div>
@@ -634,7 +638,7 @@ export default function ProfilePage() {
                                     />
                                   ))}
                                 </div>
-                                <p className="text-gray-700 leading-relaxed">
+                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
                                   {review.comment}
                                 </p>
                               </div>

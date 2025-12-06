@@ -75,6 +75,7 @@ export default function ProfileSection() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const displayNameRef = React.useRef<HTMLHeadingElement>(null);
   const [newPortfolioItem, setNewPortfolioItem] = useState({
     image: "",
     title: "",
@@ -95,15 +96,50 @@ export default function ProfileSection() {
     insurance: userInfo?.verification?.publicLiabilityInsurance?.status === 'verified' || userInfo?.verification?.publicLiabilityInsurance?.status === 'completed',
   };
   
-  const displayName = userInfo?.tradingName || userInfo?.name || "Professional";
+  // For professionals, prioritize tradingName over firstName/lastName
+  const displayName = userInfo?.tradingName || 
+    (userInfo?.firstName && userInfo?.lastName ? `${userInfo.firstName} ${userInfo.lastName}` : null) || 
+    userInfo?.name || 
+    "Professional";
   const displayTitle = userInfo?.sector || "Professional Service Provider";
-  const displayLocation = userInfo?.townCity || userInfo?.postcode || userInfo?.address || "Location not specified";
+  // Extract city and county from address field
+  // Address format: "address line, city, county, postcode"
+  const getCityAndCounty = () => {
+    if (userInfo?.address) {
+      const addressParts = userInfo.address.split(',').map(part => part.trim());
+      // Address format: [address line, city, county, postcode]
+      // We only use city and county, not postcode
+      const city = userInfo.townCity || addressParts[1] || '';
+      const county = addressParts[2] || '';
+      
+      if (city && county) {
+        return `${city}, ${county}`;
+      } else if (city) {
+        return city;
+      } else if (county) {
+        return county;
+      }
+    }
+    
+    // Fallback to townCity
+    if (userInfo?.townCity) {
+      return userInfo.townCity;
+    }
+    
+    return "Location not specified";
+  };
+  
+  const displayLocation = getCityAndCounty();
   const displayBio = bio || "No bio available.";
   const memberSince = userInfo?.createdAt 
-    ? new Date(userInfo.createdAt).getFullYear().toString()
-    : "2024";
+    ? (() => {
+        const date = new Date(userInfo.createdAt);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${months[date.getMonth()]}, ${date.getFullYear()}`;
+      })()
+    : "Jan, 2024";
   const reviewCount = 0;
-  const rating = "5.0";
+  const rating = 5.0;
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
   const [portfolioImageFile, setPortfolioImageFile] = useState<File | null>(null);
@@ -131,6 +167,42 @@ export default function ProfileSection() {
       setAvatarPreview(userInfo.avatar || null);
     }
   }, [userInfo]);
+
+  // Adjust font size dynamically for display name in preview modal
+  useEffect(() => {
+    if (isPreviewOpen && displayNameRef.current) {
+      const adjustFontSize = () => {
+        const element = displayNameRef.current;
+        if (!element) return;
+
+        const container = element.parentElement;
+        if (!container) return;
+
+        const containerWidth = container.offsetWidth;
+        let fontSize = 20; // Start with smaller max size
+        element.style.fontSize = `${fontSize}px`;
+
+        // Check if text overflows
+        while (element.scrollWidth > containerWidth && fontSize > 12) {
+          fontSize -= 0.5;
+          element.style.fontSize = `${fontSize}px`;
+        }
+      };
+
+      // Adjust on mount and window resize
+      adjustFontSize();
+      window.addEventListener('resize', adjustFontSize);
+      
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        adjustFontSize();
+      });
+
+      return () => {
+        window.removeEventListener('resize', adjustFontSize);
+      };
+    }
+  }, [isPreviewOpen, displayName]);
 
   const generateProfileUrl = () => {
     if (userInfo?.id) {
@@ -966,17 +1038,17 @@ export default function ProfileSection() {
 
       {/* Preview Modal - Full Profile Preview */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="w-full md:min-w-[60vw] max-w-[86rem] max-h-[90vh] overflow-y-auto bg-[#f0f0f0] dark:bg-black p-0">
+        <DialogContent className="w-[80vw] max-w-[80vw] max-h-[90vh] overflow-y-auto overflow-x-hidden bg-[#f0f0f0] dark:bg-black p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-[#FE8A0F] text-2xl">Profile Preview</DialogTitle>
             <DialogDescription>
               This is how your profile appears to clients. Click "Open in New Tab" to see the full page.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-4 md:p-6 space-y-4">
+          <div className="p-4 md:p-6 space-y-4 w-full max-w-full overflow-x-hidden">
             {/* Profile Header - Matching ProfilePage style */}
-            <div className="bg-white dark:bg-black rounded-2xl shadow-sm p-3 md:p-6 mb-4">
-              <div className="flex gap-4 md:gap-6">
+            <div className="bg-white dark:bg-black rounded-2xl shadow-sm p-3 md:p-6 mb-4 w-full max-w-full overflow-x-hidden">
+              <div className="flex gap-4 md:gap-6 w-full max-w-full overflow-x-hidden">
                 <div className="flex-shrink-0 relative">
                   <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-gray-100 relative">
                     <AvatarImage 
@@ -1006,25 +1078,44 @@ export default function ProfileSection() {
                     )}
                   </Avatar>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-[#003D82] text-[20px] md:text-[28px] font-['Poppins',sans-serif] mb-1 md:mb-2 truncate">
-                    {displayName}
-                  </h1>
-                  <p className="text-gray-600 text-[13px] md:text-[16px] mb-2 md:mb-3">
-                    {displayTitle}
-                  </p>
-                  <div className="flex items-center gap-2 text-gray-500 text-[12px] md:text-[14px] mb-2 md:mb-3">
-                    <MapPin className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-                    <span className="truncate">{displayLocation}</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 md:gap-6">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 md:w-5 md:h-5 fill-[#FE8A0F] text-[#FE8A0F]" />
-                      <span className="font-semibold text-[14px] md:text-[16px]">{rating}</span>
-                      <span className="text-gray-500 text-[12px] md:text-[14px]">({reviewCount} reviews)</span>
+                <div className="flex-1 min-w-0 h-24 md:h-32 flex flex-col justify-between">
+                  <div className="flex-1 flex flex-col justify-start min-h-0">
+                    <h1 
+                      ref={displayNameRef}
+                      className="text-[#003D82] font-['Poppins',sans-serif] mb-0.5 md:mb-1 whitespace-nowrap overflow-hidden"
+                      style={{
+                        fontSize: '20px',
+                        lineHeight: '1.2',
+                        transition: 'font-size 0.1s ease'
+                      }}
+                    >
+                      {displayName}
+                    </h1>
+                    <p className="text-gray-600 text-[11px] md:text-[13px] mb-0.5 md:mb-1 line-clamp-1">
+                      {displayTitle}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[10px] md:text-[12px] mb-0.5 md:mb-1">
+                      <MapPin className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0" />
+                      <span className="truncate">{displayLocation}</span>
                     </div>
-                    <div className="text-[12px] md:text-[14px] text-gray-600">
-                      <Calendar className="w-3 h-3 md:w-4 md:h-4 inline mr-1" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-auto">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3 h-3 md:w-4 md:h-4 ${
+                            star <= Math.round(rating)
+                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                              : "fill-gray-300 text-gray-300"
+                          }`}
+                        />
+                      ))}
+                      <span className="font-semibold text-[11px] md:text-[13px] ml-0.5">{rating.toFixed(1)}</span>
+                      <span className="text-gray-500 text-[9px] md:text-[11px]">({reviewCount})</span>
+                    </div>
+                    <div className="text-[9px] md:text-[11px] text-gray-600">
+                      <Calendar className="w-2.5 h-2.5 md:w-3 md:h-3 inline mr-0.5" />
                       Member since {memberSince}
                     </div>
                   </div>
@@ -1033,11 +1124,11 @@ export default function ProfileSection() {
             </div>
 
             {/* Main Content - Tabs like ProfilePage */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 w-full max-w-full overflow-x-hidden">
               {/* Tabs Content - Full Width */}
-              <div className="w-full">
+              <div className="w-full max-w-full overflow-x-hidden">
                 <Tabs value={previewActiveTab} onValueChange={setPreviewActiveTab} className="w-full">
-                  <TabsList className="w-full bg-white dark:bg-black rounded-xl p-1 shadow-sm mb-4">
+                  <TabsList className="w-full max-w-full bg-white dark:bg-black rounded-xl p-1 shadow-sm mb-4 overflow-x-hidden">
                     <TabsTrigger 
                       value="about" 
                       className="flex-1 text-[11px] md:text-[13px] data-[state=active]:bg-[#003D82] data-[state=active]:text-white"
@@ -1066,12 +1157,12 @@ export default function ProfileSection() {
 
                   {/* About Me Tab */}
                   <TabsContent value="about">
-                    <Card>
-                      <CardContent className="p-4 md:p-6">
+                    <Card className="w-full max-w-full overflow-x-hidden">
+                      <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           About Me
                         </h3>
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[13px] md:text-[14px] mb-4 md:mb-6">
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[13px] md:text-[14px] mb-4 md:mb-6 whitespace-pre-wrap break-words text-justify">
                           {displayBio}
                         </p>
 
@@ -1108,7 +1199,7 @@ export default function ProfileSection() {
                           {qualifications && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Qualifications</h5>
-                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-[12px] md:text-[14px]">
+                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
                                 {qualifications}
                               </p>
                             </div>
@@ -1116,7 +1207,7 @@ export default function ProfileSection() {
                           {certifications && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Certifications</h5>
-                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-[12px] md:text-[14px]">
+                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
                                 {certifications}
                               </p>
                             </div>
@@ -1124,7 +1215,7 @@ export default function ProfileSection() {
                           {companyDetails && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Company Details</h5>
-                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-[12px] md:text-[14px]">
+                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
                                 {companyDetails}
                               </p>
                             </div>
@@ -1153,8 +1244,8 @@ export default function ProfileSection() {
 
                   {/* My Services Tab */}
                   <TabsContent value="services">
-                    <Card>
-                      <CardContent className="p-4 md:p-6">
+                    <Card className="w-full max-w-full overflow-x-hidden">
+                      <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           My Services
                         </h3>
@@ -1171,10 +1262,10 @@ export default function ProfileSection() {
                                   className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover flex-shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-[#003D82] font-semibold mb-1 text-[13px] md:text-[15px] line-clamp-2">
+                                  <h4 className="text-[#003D82] font-semibold mb-1 text-[13px] md:text-[15px] line-clamp-2 break-words">
                                     {service.description}
                                   </h4>
-                                  <p className="text-gray-600 text-[11px] md:text-[14px] mb-2">
+                                  <p className="text-gray-600 text-[11px] md:text-[14px] mb-2 leading-relaxed break-words">
                                     {service.category}
                                   </p>
                                   <div className="flex items-center gap-2 md:gap-3">
@@ -1202,8 +1293,8 @@ export default function ProfileSection() {
 
                   {/* Portfolio Tab */}
                   <TabsContent value="portfolio">
-                    <Card>
-                      <CardContent className="p-4 md:p-6">
+                    <Card className="w-full max-w-full overflow-x-hidden">
+                      <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           Portfolio
                         </h3>
@@ -1222,7 +1313,7 @@ export default function ProfileSection() {
                                 <h4 className="text-[#003D82] font-semibold mb-1 md:mb-2 text-[13px] md:text-[15px]">
                                   {item.title}
                                 </h4>
-                                <p className="text-gray-600 text-[11px] md:text-[14px]">
+                                <p className="text-gray-600 text-[11px] md:text-[14px] leading-relaxed break-words whitespace-pre-wrap">
                                   {item.description}
                                 </p>
                               </div>
@@ -1237,8 +1328,8 @@ export default function ProfileSection() {
 
                   {/* Reviews Tab */}
                   <TabsContent value="reviews">
-                    <Card>
-                      <CardContent className="p-4 md:p-6">
+                    <Card className="w-full max-w-full overflow-x-hidden">
+                      <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           Reviews ({reviewCount})
                         </h3>
@@ -1252,9 +1343,9 @@ export default function ProfileSection() {
               </div>
 
               {/* Verifications Card - Full Width Row */}
-              <div className="w-full">
-                <Card>
-                  <CardContent className="p-4 md:p-6">
+              <div className="w-full max-w-full overflow-x-hidden">
+                <Card className="w-full max-w-full overflow-x-hidden">
+                  <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
                     <h3 className="text-[#003D82] text-[14px] md:text-[18px] font-semibold mb-3 md:mb-4">
                       Verifications
                     </h3>
@@ -1310,13 +1401,13 @@ export default function ProfileSection() {
 
               {/* Available Services - Full Width Row */}
               {professionalServices.length > 0 && (
-                <div className="w-full">
-                  <Card>
-                    <CardContent className="p-4 md:p-6">
+                <div className="w-full max-w-full overflow-x-hidden">
+                  <Card className="w-full max-w-full overflow-x-hidden">
+                    <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
                       <h3 className="text-[#003D82] text-[14px] md:text-[18px] font-semibold mb-3 md:mb-4">
                         Available Services
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 w-full max-w-full overflow-x-hidden">
                         {professionalServices.slice(0, 5).map((service) => (
                           <div
                             key={service.id}
@@ -1345,7 +1436,7 @@ export default function ProfileSection() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 md:gap-4 justify-end pt-4">
+            <div className="flex gap-3 md:gap-4 justify-end pt-4 w-full max-w-full overflow-x-hidden">
               <Button
                 variant="outline"
                 onClick={() => setIsPreviewOpen(false)}

@@ -502,7 +502,7 @@ export default function CartPage() {
                               Add New Address
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-[500px]">
+                          <DialogContent className="w-[70vw]">
                             <DialogHeader>
                               <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
                                 Add New Address

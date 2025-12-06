@@ -388,7 +388,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
           {/* Change Password Dialog */}
           <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
-            <DialogContent className="bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+            <DialogContent className="w-[70vw] bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
               <DialogHeader>
                 <DialogTitle className="text-black dark:text-white">Change Password</DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -480,7 +480,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
           {/* Edit Profile Dialog */}
           <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
-            <DialogContent className="bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+            <DialogContent className="w-[70vw] bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
               <DialogHeader>
                 <DialogTitle className="text-black dark:text-white">Edit Profile</DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">

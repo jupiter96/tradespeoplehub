@@ -162,7 +162,7 @@ export default function AddToCartModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[1000px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[24px] md:text-[28px] text-[#2c353f]">
             Customize Your Order

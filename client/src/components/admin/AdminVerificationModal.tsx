@@ -215,7 +215,7 @@ export default function AdminVerificationModal({
   return (
     <>
     <Dialog open={open && !viewingDocument} onOpenChange={onClose}>
-      <DialogContent className="w-[90%] sm:w-[35%] max-w-[500px] max-h-[90vh] overflow-y-auto bg-white dark:bg-black p-4">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black p-4">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-base font-semibold text-black dark:text-white">
             Verification - {userName}
@@ -379,7 +379,7 @@ export default function AdminVerificationModal({
     {/* Document Viewer Modal */}
     {viewingDocument && (
       <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
-        <DialogContent className="sm:max-w-[90vw] max-w-[95vw] max-h-[90vh] bg-white dark:bg-black p-0">
+        <DialogContent className="w-[70vw] max-h-[90vh] bg-white dark:bg-black p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-0 shadow-sm">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-black dark:text-white">

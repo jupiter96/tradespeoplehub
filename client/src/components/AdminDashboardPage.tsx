@@ -68,7 +68,7 @@ export default function AdminDashboardPage() {
   const { hasRouteAccess, loading: permissionsLoading } = useAdminPermissions();
   const [statistics, setStatistics] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [dashboardTab, setDashboardTab] = useState("state-cards");
+  const [dashboardTab, setDashboardTab] = useState("statistics");
   
   // Get active section from URL, default to "dashboard"
   // URL section is already in the correct format (clients, professionals, etc.)
@@ -280,13 +280,13 @@ export default function AdminDashboardPage() {
               <Tabs value={dashboardTab} onValueChange={setDashboardTab} className="w-full">
                 <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 dark:bg-gray-800">
                   <TabsTrigger 
-                    value="state-cards"
+                    value="statistics"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
                   >
                     State Cards
                   </TabsTrigger>
                   <TabsTrigger 
-                    value="statistics"
+                    value="state-cards"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
                   >
                     Statistics

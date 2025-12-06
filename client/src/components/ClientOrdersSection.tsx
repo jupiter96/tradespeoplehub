@@ -1587,7 +1587,7 @@ export default function ClientOrdersSection() {
 
         {/* Rating Dialog */}
         <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
                 Rate Your Service
@@ -1651,7 +1651,7 @@ export default function ClientOrdersSection() {
 
         {/* Cancel Order Dialog */}
         <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
                 Cancel Order
@@ -1706,7 +1706,7 @@ export default function ClientOrdersSection() {
 
         {/* Dispute Dialog */}
         <Dialog open={isDisputeDialogOpen} onOpenChange={setIsDisputeDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                 Open a Dispute
@@ -2357,7 +2357,7 @@ export default function ClientOrdersSection() {
 
       {/* Rating Dialog */}
       <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               Rate Your Service

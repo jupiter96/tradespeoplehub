@@ -379,7 +379,7 @@ export default function PromoCodeSection() {
 
       {/* Create Promo Code Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
               Add coupons

@@ -297,7 +297,7 @@ export default function MyJobsSection() {
 
       {/* View Job Dialog with Quotes */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[24px]">
               {currentJob?.title}
@@ -479,7 +479,7 @@ export default function MyJobsSection() {
 
       {/* Chat Dialog */}
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="w-[70vw] max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               Chat with {selectedQuote?.professionalName}
@@ -532,7 +532,7 @@ export default function MyJobsSection() {
 
       {/* Edit Job Dialog (Simplified) */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               Edit Job

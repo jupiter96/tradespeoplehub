@@ -1339,7 +1339,7 @@ export default function JobDetailPage() {
 
       {/* Quote Submission Dialog for Professionals */}
       <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               Submit Your Quote
@@ -1496,7 +1496,7 @@ export default function JobDetailPage() {
 
       {/* Award Job Modal */}
       <Dialog open={showAwardModal} onOpenChange={setShowAwardModal}>
-        <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader className="mb-4 sm:mb-6">
             <DialogTitle className="font-['Poppins',sans-serif] text-[18px] sm:text-[22px] text-[#2c353f] mb-2">
               Set up Milestone Payments
@@ -1667,7 +1667,7 @@ export default function JobDetailPage() {
 
       {/* New Milestone Dialog */}
       <Dialog open={showNewMilestoneDialog} onOpenChange={setShowNewMilestoneDialog}>
-        <DialogContent className="max-w-[500px] p-6 font-['Poppins',sans-serif]">
+        <DialogContent className="w-[70vw] p-6 font-['Poppins',sans-serif]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
               Create New Milestone
@@ -1744,7 +1744,7 @@ export default function JobDetailPage() {
 
       {/* Dispute Modal */}
       <Dialog open={showDisputeModal} onOpenChange={setShowDisputeModal}>
-        <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto font-['Poppins',sans-serif]">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto font-['Poppins',sans-serif]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
               Dispute Milestone

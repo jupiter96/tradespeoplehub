@@ -764,6 +764,7 @@ router.get('/admins', requireAdmin, async (req, res) => {
 });
 
 // Create admin user (sub-admin)
+// Create sub-admin
 router.post('/admins', requireAdmin, async (req, res) => {
   try {
     // Only super admin or admin with admin-management permission can create sub-admins
@@ -775,15 +776,19 @@ router.post('/admins', requireAdmin, async (req, res) => {
 
     const { firstName, lastName, email, password, permissions } = req.body || {};
 
-    if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    // Simple validation - only name, email, password, and roles are required
+    if (!firstName?.trim()) {
+      return res.status(400).json({ error: 'First name is required' });
     }
-
-    const passwordError = validatePasswordStrength(password);
-    if (passwordError) {
-      return res.status(400).json({ error: passwordError });
+    if (!lastName?.trim()) {
+      return res.status(400).json({ error: 'Last name is required' });
     }
-
+    if (!email?.trim()) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!password?.trim()) {
+      return res.status(400).json({ error: 'Password is required' });
+    }
     if (!permissions || !Array.isArray(permissions) || permissions.length === 0) {
       return res.status(400).json({ error: 'At least one permission is required' });
     }
@@ -794,19 +799,16 @@ router.post('/admins', requireAdmin, async (req, res) => {
       return res.status(409).json({ error: 'Email already exists' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password.trim(), 12);
 
-    // Create sub-admin with only admin-related fields
-    // Sub-admins are not related to client/professional roles
+    // Create sub-admin - only admin-related fields
     const admin = await User.create({
-      firstName,
-      lastName,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: normalizedEmail,
       passwordHash,
       role: 'subadmin',
-      permissions: permissions || [],
-      // Sub-admins don't need phone, postcode, or other client/professional fields
-      // These fields are optional for admin role
+      permissions: permissions,
     });
 
     return res.status(201).json({ admin: admin.toSafeObject() });
@@ -856,10 +858,7 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
 
     // If password is provided, hash it
     if (updates.password) {
-      if (updates.password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters long' });
-      }
-      updates.passwordHash = await bcrypt.hash(updates.password, 12);
+      updates.passwordHash = await bcrypt.hash(updates.password.trim(), 12);
       delete updates.password;
     }
 

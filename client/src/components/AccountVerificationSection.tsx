@@ -703,7 +703,7 @@ export default function AccountVerificationSection() {
           setCodeSent(false);
         }
       }}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[70vw]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               {currentItem?.type === "upload" 

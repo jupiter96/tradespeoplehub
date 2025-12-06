@@ -213,7 +213,7 @@ export default function CustomOrderModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl h-[85vh] p-0 flex flex-col gap-0">
+      <DialogContent className="w-[70vw] h-[85vh] p-0 flex flex-col gap-0">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
           <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-[#FE8A0F]" />

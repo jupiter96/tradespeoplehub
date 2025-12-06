@@ -11,7 +11,6 @@ import {
 import { Checkbox } from "../ui/checkbox";
 import { toast } from "sonner";
 import API_BASE_URL from "../../config/api";
-import { validatePassword, getPasswordHint } from "../../utils/passwordValidation";
 
 interface SubAdmin {
   id?: string;
@@ -30,32 +29,31 @@ interface AdminSubAdminModalProps {
 }
 
 // Available permissions for sub-admins
-// Sub-admins can only manage admin panel pages, not client/professional user data
 const AVAILABLE_PERMISSIONS = [
-  { value: "admin-management", label: "Admin Management", description: "Manage sub-admin accounts" },
-  { value: "professionals-management", label: "Professional Management", description: "Manage professional users" },
-  { value: "clients-management", label: "Client Management", description: "Manage client users" },
-  { value: "category-management", label: "Category Management", description: "Manage categories and sectors" },
-  { value: "package-management", label: "Package Management", description: "Manage packages and addons" },
-  { value: "contact-management", label: "Contact Management", description: "Manage contact requests" },
-  { value: "region-management", label: "Region Management", description: "Manage countries and cities" },
-  { value: "content-management", label: "Content Management", description: "Manage website content" },
-  { value: "user-plans-management", label: "User Plans Management", description: "Manage user subscription plans" },
-  { value: "job-management", label: "Job Management", description: "Manage job posts and bids" },
-  { value: "dispute-management", label: "Dispute Management", description: "Manage disputes and interventions" },
-  { value: "ratings-management", label: "Ratings Management", description: "Manage user ratings" },
-  { value: "payment-settings", label: "Payment Settings", description: "Manage payment configurations" },
-  { value: "withdrawal-request", label: "Withdrawal Request", description: "Manage withdrawal requests" },
-  { value: "refunds", label: "Refunds", description: "Manage refunds" },
-  { value: "message-center", label: "Message Center", description: "Manage messages" },
-  { value: "affiliate", label: "Affiliate", description: "Manage affiliate programs" },
-  { value: "referrals", label: "Referrals", description: "Manage referral programs" },
-  { value: "flagged", label: "Flagged", description: "Manage flagged content" },
-  { value: "service", label: "Service", description: "Manage services" },
-  { value: "service-order", label: "Service Order", description: "Manage service orders" },
-  { value: "custom-order", label: "Custom Order", description: "Manage custom orders" },
-  { value: "transaction-history", label: "Transaction History", description: "View transaction history" },
-  { value: "coupon-manage", label: "Coupon Manage", description: "Manage coupons" },
+  { value: "admin-management", label: "Admin Management" },
+  { value: "professionals-management", label: "Professional Management" },
+  { value: "clients-management", label: "Client Management" },
+  { value: "category-management", label: "Category Management" },
+  { value: "package-management", label: "Package Management" },
+  { value: "contact-management", label: "Contact Management" },
+  { value: "region-management", label: "Region Management" },
+  { value: "content-management", label: "Content Management" },
+  { value: "user-plans-management", label: "User Plans Management" },
+  { value: "job-management", label: "Job Management" },
+  { value: "dispute-management", label: "Dispute Management" },
+  { value: "ratings-management", label: "Ratings Management" },
+  { value: "payment-settings", label: "Payment Settings" },
+  { value: "withdrawal-request", label: "Withdrawal Request" },
+  { value: "refunds", label: "Refunds" },
+  { value: "message-center", label: "Message Center" },
+  { value: "affiliate", label: "Affiliate" },
+  { value: "referrals", label: "Referrals" },
+  { value: "flagged", label: "Flagged" },
+  { value: "service", label: "Service" },
+  { value: "service-order", label: "Service Order" },
+  { value: "custom-order", label: "Custom Order" },
+  { value: "transaction-history", label: "Transaction History" },
+  { value: "coupon-manage", label: "Coupon Manage" },
 ];
 
 export default function AdminSubAdminModal({
@@ -70,7 +68,6 @@ export default function AdminSubAdminModal({
     name: "",
     email: "",
     password: "",
-    confirmPassword: "",
     permissions: [] as string[],
   });
 
@@ -82,7 +79,6 @@ export default function AdminSubAdminModal({
           : subAdmin.name || "",
         email: subAdmin.email || "",
         password: "",
-        confirmPassword: "",
         permissions: subAdmin.permissions || [],
       });
     } else {
@@ -90,7 +86,6 @@ export default function AdminSubAdminModal({
         name: "",
         email: "",
         password: "",
-        confirmPassword: "",
         permissions: [],
       });
     }
@@ -110,52 +105,47 @@ export default function AdminSubAdminModal({
     setLoading(true);
 
     try {
-      // Validation
-      if (!formData.name || !formData.email) {
-        toast.error("Name and email are required");
+      // Simple validation - only name, email, password, and roles are required
+      const trimmedName = formData.name?.trim() || "";
+      const trimmedEmail = formData.email?.trim() || "";
+      const trimmedPassword = formData.password?.trim() || "";
+
+      if (!trimmedName) {
+        toast.error("Name is required");
         setLoading(false);
         return;
       }
 
-      if (!isEditMode && !formData.password) {
-        toast.error("Password is required for new sub-admins");
+      if (!trimmedEmail) {
+        toast.error("Email is required");
         setLoading(false);
         return;
       }
 
-      if (formData.password) {
-        const passwordValidation = validatePassword(formData.password);
-        if (!passwordValidation.isValid) {
-          toast.error(passwordValidation.errors[0] || "Password does not meet requirements");
-          setLoading(false);
-          return;
-        }
-      }
-
-      if (!isEditMode && formData.password !== formData.confirmPassword) {
-        toast.error("Passwords do not match");
+      if (!isEditMode && !trimmedPassword) {
+        toast.error("Password is required");
         setLoading(false);
         return;
       }
 
       if (formData.permissions.length === 0) {
-        toast.error("Please select at least one permission");
+        toast.error("Please select at least one role");
         setLoading(false);
         return;
       }
 
       // Split name into firstName and lastName
-      const nameParts = formData.name.trim().split(" ");
+      const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
       const payload: any = {
         firstName,
         lastName,
-        email: formData.email.trim().toLowerCase(),
+        email: trimmedEmail.toLowerCase(),
         role: "subadmin",
         permissions: formData.permissions,
-        ...(formData.password && { password: formData.password }),
+        ...(trimmedPassword && { password: trimmedPassword }),
       };
 
       if (isEditMode) {
@@ -206,14 +196,14 @@ export default function AdminSubAdminModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-[#FE8A0F]">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
         <DialogHeader>
           <DialogTitle className="text-[#FE8A0F] text-2xl">
             {isEditMode ? "Edit Sub Admin" : "Add Sub Admin"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* Name */}
           <div>
             <Label htmlFor="name" className="text-black dark:text-white">
@@ -224,7 +214,7 @@ export default function AdminSubAdminModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
               placeholder="Enter full name"
             />
           </div>
@@ -241,8 +231,8 @@ export default function AdminSubAdminModal({
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
               disabled={isEditMode}
-              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-              placeholder="Email"
+              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
+              placeholder="Enter email address"
             />
           </div>
 
@@ -250,7 +240,7 @@ export default function AdminSubAdminModal({
           <div>
             <Label htmlFor="password" className="text-black dark:text-white">
               Password {!isEditMode && <span className="text-red-500">*</span>}
-              {isEditMode && <span className="text-xs text-black/60 dark:text-white/60">(leave blank to keep current)</span>}
+              {isEditMode && <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(leave blank to keep current)</span>}
             </Label>
             <Input
               id="password"
@@ -258,39 +248,10 @@ export default function AdminSubAdminModal({
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required={!isEditMode}
-              placeholder="Must include uppercase, lowercase, and numbers"
-              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
+              placeholder="Enter password"
             />
-            {formData.password && (
-              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                {getPasswordHint(formData.password)}
-              </p>
-            )}
-            {!formData.password && !isEditMode && (
-              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                Password must include uppercase, lowercase, and numbers
-              </p>
-            )}
           </div>
-
-          {/* Confirm Password - Only for new sub-admins */}
-          {!isEditMode && (
-            <div>
-              <Label htmlFor="confirmPassword" className="text-black dark:text-white">
-                Confirm Password <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                required
-                minLength={6}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                placeholder="Confirm Password"
-              />
-            </div>
-          )}
 
           {/* Roles/Permissions */}
           <div>
@@ -300,26 +261,19 @@ export default function AdminSubAdminModal({
             <div className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-md p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
               <div className="space-y-2">
                 {AVAILABLE_PERMISSIONS.map((permission) => (
-                  <div key={permission.value} className="flex items-start space-x-2 py-1">
+                  <div key={permission.value} className="flex items-center space-x-2 py-1">
                     <Checkbox
                       id={permission.value}
                       checked={formData.permissions.includes(permission.value)}
                       onCheckedChange={() => handlePermissionToggle(permission.value)}
-                      className="border-0 shadow-sm data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-0 data-[state=checked]:shadow-md data-[state=checked]:shadow-[#FE8A0F]/30 mt-1 transition-all"
+                      className="border-0 shadow-sm data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-0 data-[state=checked]:shadow-md data-[state=checked]:shadow-[#FE8A0F]/30 transition-all"
                     />
-                    <div className="flex-1">
-                      <Label
-                        htmlFor={permission.value}
-                        className="text-sm font-medium cursor-pointer text-black dark:text-white"
-                      >
-                        {permission.label}
-                      </Label>
-                      {permission.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          {permission.description}
-                        </p>
-                      )}
-                    </div>
+                    <Label
+                      htmlFor={permission.value}
+                      className="text-sm font-medium cursor-pointer text-black dark:text-white"
+                    >
+                      {permission.label}
+                    </Label>
                   </div>
                 ))}
               </div>
@@ -327,7 +281,7 @@ export default function AdminSubAdminModal({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-0 shadow-sm">
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
@@ -335,14 +289,14 @@ export default function AdminSubAdminModal({
               disabled={loading}
               className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
-              Close
+              Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-0 shadow-lg shadow-blue-500/40 hover:shadow-xl hover:shadow-blue-500/50 transition-all"
+              className="bg-[#FE8A0F] hover:bg-[#FE8A0F]/90 text-white border-0 shadow-lg shadow-[#FE8A0F]/40 hover:shadow-xl hover:shadow-[#FE8A0F]/50 transition-all"
             >
-              {loading ? "Saving..." : isEditMode ? "Update" : "Add"}
+              {loading ? "Saving..." : isEditMode ? "Update" : "Create"}
             </Button>
           </div>
         </form>
@@ -350,7 +304,3 @@ export default function AdminSubAdminModal({
     </Dialog>
   );
 }
-
-
-
-

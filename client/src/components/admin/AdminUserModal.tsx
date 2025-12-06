@@ -232,7 +232,7 @@ export default function AdminUserModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
         <DialogHeader>
           <DialogTitle className="text-[#FE8A0F] text-2xl">
             {isEditMode ? "Edit User" : "Create New User"}

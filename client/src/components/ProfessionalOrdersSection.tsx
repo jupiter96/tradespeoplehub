@@ -1513,7 +1513,7 @@ export default function ProfessionalOrdersSection() {
 
         {/* Delivery Dialog */}
         <Dialog open={isDeliveryDialogOpen} onOpenChange={setIsDeliveryDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
                 Deliver Order
@@ -1556,7 +1556,7 @@ export default function ProfessionalOrdersSection() {
 
         {/* Cancel Order Dialog */}
         <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
                 Cancel Order
@@ -1611,7 +1611,7 @@ export default function ProfessionalOrdersSection() {
 
         {/* Dispute Dialog */}
         <Dialog open={isDisputeDialogOpen} onOpenChange={setIsDisputeDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                 Open a Dispute

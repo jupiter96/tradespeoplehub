@@ -84,7 +84,7 @@ export default function BookingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div>
