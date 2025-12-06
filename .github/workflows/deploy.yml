@@ -16,6 +16,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.SERVER_IP }}" ]; then
+            echo "❌ Error: SERVER_IP secret is not set"
+            echo "Please set SERVER_IP in GitHub Secrets (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_USER }}" ]; then
+            echo "❌ Error: SERVER_USER secret is not set"
+            echo "Please set SERVER_USER in GitHub Secrets"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_SSH_KEY }}" ]; then
+            echo "❌ Error: SERVER_SSH_KEY secret is not set"
+            echo "Please set SERVER_SSH_KEY in GitHub Secrets"
+            exit 1
+          fi
+          echo "✅ All required secrets are set"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -36,15 +55,15 @@ jobs:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
             
             # Navigate to project directory
-            cd ${{ secrets.DEPLOY_PATH || '/var/www/trades-platform' }}
+            cd /var/www/sortars.com
             
             # Pull latest changes
             echo "📥 Pulling latest changes..."
@@ -77,10 +96,10 @@ jobs:
       - name: Health check
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             sleep 5
             pm2 logs trades-platform --lines 20 --nostream || true
