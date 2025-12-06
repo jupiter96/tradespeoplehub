@@ -134,7 +134,6 @@ jobs:
               --output ./logs/pm2-out.log \
               --time \
               --merge-logs \
-              --autorestart \
               --min-uptime 10s \
               --max-restarts 10
             
