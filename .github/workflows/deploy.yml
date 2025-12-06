@@ -63,7 +63,7 @@ jobs:
             set -e
             
             PROJECT_DIR="/var/www/sortars.com"
-            REPO_URL="git@github.com:jupiter96/tradespeoplehub.git"
+            REPO_URL="https://github.com/jupiter96/tradespeoplehub.git"
             BRANCH="main"
             
             # Ensure we're in the project directory
