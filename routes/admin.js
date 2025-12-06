@@ -195,10 +195,10 @@ router.get('/users', requireAdmin, async (req, res) => {
     // Check permissions for sub-admins
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
     if (!isSuperAdmin) {
-      if (role === 'client' && !req.adminUser.permissions.includes('homeowners-management')) {
+      if (role === 'client' && !req.adminUser.permissions.includes('clients-management')) {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
-      if (role === 'professional' && !req.adminUser.permissions.includes('tradesmen-management')) {
+      if (role === 'professional' && !req.adminUser.permissions.includes('professionals-management')) {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
     }
@@ -420,31 +420,31 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     // Count users by role
-    const tradesmenCount = await User.countDocuments({ role: 'professional', isBlocked: { $ne: true } });
-    const tradesmenToday = await User.countDocuments({ 
+    const professionalsCount = await User.countDocuments({ role: 'professional', isBlocked: { $ne: true } });
+    const professionalsToday = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
       createdAt: { $gte: today }
     });
-    const tradesmenYesterday = await User.countDocuments({ 
+    const professionalsYesterday = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
       createdAt: { $gte: yesterday, $lt: today }
     });
-    const tradesmenDailyChange = tradesmenToday - tradesmenYesterday;
+    const professionalsDailyChange = professionalsToday - professionalsYesterday;
 
-    const homeownersCount = await User.countDocuments({ role: 'client', isBlocked: { $ne: true } });
-    const homeownersToday = await User.countDocuments({ 
+    const clientsCount = await User.countDocuments({ role: 'client', isBlocked: { $ne: true } });
+    const clientsToday = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
       createdAt: { $gte: today }
     });
-    const homeownersYesterday = await User.countDocuments({ 
+    const clientsYesterday = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
       createdAt: { $gte: yesterday, $lt: today }
     });
-    const homeownersDailyChange = homeownersToday - homeownersYesterday;
+    const clientsDailyChange = clientsToday - clientsYesterday;
 
     const subadminCount = await User.countDocuments({ role: 'subadmin' });
 
@@ -513,11 +513,11 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
 
     // Count referrals
-    const tradesmenReferrals = await User.countDocuments({
+    const professionalsReferrals = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
     });
-    const homeownerReferrals = await User.countDocuments({
+    const clientsReferrals = await User.countDocuments({
       role: 'client',
       referralCode: { $exists: true, $ne: null },
     });
@@ -581,8 +581,8 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     // For now, returning mock data that matches the image
     const statistics = {
       // Column 1 - Orange
-      tradesmen: tradesmenCount || 483,
-      tradesmenDailyChange: tradesmenDailyChange,
+      professionals: professionalsCount || 483,
+      professionalsDailyChange: professionalsDailyChange,
       totalJob: 412, // Would come from Job model
       totalJobDailyChange: 12, // Mock
       totalCategory: 177, // Would come from Category model
@@ -593,16 +593,16 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       // New verification statistics
       totalVerificationUsers: totalVerificationUsers || 0,
       verificationUsersToday: verificationUsersToday || 0,
-      tradesmenReferrals: tradesmenReferrals || 28,
-      tradesmenReferralsDailyChange: 0, // Mock
+      professionalsReferrals: professionalsReferrals || 28,
+      professionalsReferralsDailyChange: 0, // Mock
       flagged: flaggedCount || 0,
       flaggedDailyChange: flaggedDailyChange,
       approvalPendingService: 0, // Would come from Service model with pending status
       approvalPendingServiceDailyChange: 0, // Mock
 
       // Column 2 - Red
-      homeowners: homeownersCount || 345,
-      homeownersDailyChange: homeownersDailyChange,
+      clients: clientsCount || 345,
+      clientsDailyChange: clientsDailyChange,
       totalJobInDispute: 286, // Would come from Job model with dispute status
       totalJobInDisputeDailyChange: 5, // Mock
       pendingWithdrawalRequest: 81, // Would come from Withdrawal model
@@ -610,8 +610,8 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       messageCenter: 54, // Would come from Message model
       messageCenterNew: 2, // New messages in last 7 days
       messageCenterDailyChange: 1, // Mock
-      homeownerReferrals: homeownerReferrals || 28,
-      homeownerReferralsDailyChange: 0, // Mock
+      clientsReferrals: clientsReferrals || 28,
+      clientsReferralsDailyChange: 0, // Mock
       deletedAccount: deletedAccountsCount || 15,
       deletedAccountNew: deletedAccountsNew || 15,
       deletedAccountDailyChange: deletedAccountsDailyChange,

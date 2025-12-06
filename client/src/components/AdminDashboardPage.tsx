@@ -346,9 +346,9 @@ export default function AdminDashboardPage() {
                     <StatCard
                       icon={Users}
                       title="PROFESSIONALS"
-                      value={statistics?.tradesmen || 0}
+                      value={statistics?.professionals || 0}
                       color="orange"
-                      dailyChange={statistics?.tradesmenDailyChange}
+                      dailyChange={statistics?.professionalsDailyChange}
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
@@ -393,9 +393,9 @@ export default function AdminDashboardPage() {
                     <StatCard
                       icon={TrendingUp}
                       title="PROFESSIONAL REFERRALS"
-                      value={statistics?.tradesmenReferrals || 0}
+                      value={statistics?.professionalsReferrals || 0}
                       color="orange"
-                      dailyChange={statistics?.tradesmenReferralsDailyChange}
+                      dailyChange={statistics?.professionalsReferralsDailyChange}
                       onClick={() => navigate("/admin/referrals-professional")}
                     />
                     <StatCard
@@ -421,9 +421,9 @@ export default function AdminDashboardPage() {
                     <StatCard
                       icon={Users}
                       title="CLIENTS"
-                      value={statistics?.homeowners || 0}
+                      value={statistics?.clients || 0}
                       color="red"
-                      dailyChange={statistics?.homeownersDailyChange}
+                      dailyChange={statistics?.clientsDailyChange}
                       onClick={() => navigate("/admin/clients")}
                     />
                     <StatCard
@@ -454,9 +454,9 @@ export default function AdminDashboardPage() {
                     <StatCard
                       icon={TrendingUp}
                       title="CLIENT REFERRALS"
-                      value={statistics?.homeownerReferrals || 0}
+                      value={statistics?.clientsReferrals || 0}
                       color="red"
-                      dailyChange={statistics?.homeownerReferralsDailyChange}
+                      dailyChange={statistics?.clientsReferralsDailyChange}
                       onClick={() => navigate("/admin/referrals-client")}
                     />
                     <StatCard

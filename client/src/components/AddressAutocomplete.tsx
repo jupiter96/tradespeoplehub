@@ -75,6 +75,8 @@ export default function AddressAutocomplete({
   const [error, setError] = useState<string | null>(null);
   const [postcodeAddresses, setPostcodeAddresses] = useState<AddressSuggestion[]>([]);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [addressJustSelected, setAddressJustSelected] = useState(false);
+  const [postcodeJustSelected, setPostcodeJustSelected] = useState(false);
   const [manualAddress, setManualAddress] = useState({
     line1: '',
     line2: '',
@@ -244,10 +246,10 @@ export default function AddressAutocomplete({
     }
   };
 
-  // Filter addresses based on address line input
-  const filterAddressSuggestions = (addressValue: string) => {
-    if (!addressValue || addressValue.trim().length < 1) {
-      // If input is empty, show all addresses if postcode is available
+  // Fetch address suggestions by address text (when postcode is available)
+  const fetchAddressSuggestions = async (addressValue: string) => {
+    if (!addressValue || addressValue.trim().length < 2) {
+      // If input is empty or too short, show all addresses if postcode is available
       if (postcode && postcodeAddresses.length > 0) {
         setAddressSuggestions(postcodeAddresses.slice(0, 10));
         setShowAddressSuggestions(true);
@@ -258,34 +260,81 @@ export default function AddressAutocomplete({
       return;
     }
 
-    if (postcodeAddresses.length === 0) {
-      setAddressSuggestions([]);
-      setShowAddressSuggestions(false);
+    // If postcode addresses are already loaded, filter them
+    if (postcodeAddresses.length > 0) {
+      const searchTerm = addressValue.toLowerCase().trim();
+      const filtered = postcodeAddresses.filter((addr) => {
+        // For combined address mode, search in both address lines and town/city
+        const addressLines = [
+          addr.line_1,
+          addr.line_2,
+          addr.line_3,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        
+        const townCity = (addr.town_or_city || "").toLowerCase();
+        const fullAddress = combinedAddressMode 
+          ? `${addressLines}, ${townCity}`
+          : addressLines;
+        
+        return fullAddress.includes(searchTerm);
+      }).slice(0, 10);
+
+      setAddressSuggestions(filtered);
+      setShowAddressSuggestions(filtered.length > 0);
       return;
     }
 
-    const searchTerm = addressValue.toLowerCase().trim();
-    const filtered = postcodeAddresses.filter((addr) => {
-      // For combined address mode, search in both address lines and town/city
-      const addressLines = [
-        addr.line_1,
-        addr.line_2,
-        addr.line_3,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      
-      const townCity = (addr.town_or_city || "").toLowerCase();
-      const fullAddress = combinedAddressMode 
-        ? `${addressLines}, ${townCity}`
-        : addressLines;
-      
-      return fullAddress.includes(searchTerm);
-    }).slice(0, 10);
+    // If no postcode addresses loaded but postcode exists, fetch them first
+    if (postcode && postcode.trim().length >= 5) {
+      setIsAddressLoading(true);
+      try {
+        await fetchSuggestions(postcode);
+        // After fetching, filter the results
+        setTimeout(() => {
+          if (postcodeAddresses.length > 0) {
+            const searchTerm = addressValue.toLowerCase().trim();
+            const filtered = postcodeAddresses.filter((addr) => {
+              const addressLines = [
+                addr.line_1,
+                addr.line_2,
+                addr.line_3,
+              ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+              
+              const townCity = (addr.town_or_city || "").toLowerCase();
+              const fullAddress = combinedAddressMode 
+                ? `${addressLines}, ${townCity}`
+                : addressLines;
+              
+              return fullAddress.includes(searchTerm);
+            }).slice(0, 10);
 
-    setAddressSuggestions(filtered);
-    setShowAddressSuggestions(filtered.length > 0);
+            setAddressSuggestions(filtered);
+            setShowAddressSuggestions(filtered.length > 0);
+          }
+        }, 100);
+      } catch (err) {
+        console.error("Error fetching address suggestions:", err);
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+      } finally {
+        setIsAddressLoading(false);
+      }
+    } else {
+      // No postcode available, clear suggestions
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    }
+  };
+
+  // Filter addresses based on address line input (backward compatibility)
+  const filterAddressSuggestions = (addressValue: string) => {
+    fetchAddressSuggestions(addressValue);
   };
 
   // Filter cities based on input
@@ -341,22 +390,22 @@ export default function AddressAutocomplete({
 
   // Debounced address line change handler
   useEffect(() => {
+    // Don't show suggestions if address was just selected
+    if (addressJustSelected) {
+      return;
+    }
+
     if (addressDebounceTimerRef.current) {
       clearTimeout(addressDebounceTimerRef.current);
     }
 
     addressDebounceTimerRef.current = setTimeout(() => {
       if (address) {
-        // Only filter if postcode addresses are already loaded
-        // Don't auto-fetch - keep postcode and address independent
-        if (postcodeAddresses.length > 0) {
-          filterAddressSuggestions(address);
-        } else {
-          // If no postcode addresses loaded, clear suggestions
-          setAddressSuggestions([]);
-          setShowAddressSuggestions(false);
-        }
+        // Fetch or filter address suggestions only if user is actively typing
+        fetchAddressSuggestions(address);
       } else {
+        // If input is empty, don't automatically show suggestions
+        // User should focus on the field or start typing to see suggestions
         setAddressSuggestions([]);
         setShowAddressSuggestions(false);
       }
@@ -367,7 +416,7 @@ export default function AddressAutocomplete({
         clearTimeout(addressDebounceTimerRef.current);
       }
     };
-  }, [address, postcode, postcodeAddresses, combinedAddressMode]);
+  }, [address, postcode, postcodeAddresses, combinedAddressMode, addressJustSelected]);
 
   // Debounced city change handler
   useEffect(() => {
@@ -396,6 +445,10 @@ export default function AddressAutocomplete({
     onPostcodeChange(value);
     setError(null);
     setSelectedIndex(-1);
+    // Reset the flag when user starts typing again
+    if (postcodeJustSelected) {
+      setPostcodeJustSelected(false);
+    }
   };
 
   // Handle selection from postcode suggestions - update postcode and address field
@@ -420,11 +473,23 @@ export default function AddressAutocomplete({
     setShowSuggestions(false);
     setSuggestions([]);
     setSelectedIndex(-1);
+    setPostcodeJustSelected(true);
+    
+    // Reset flag after a short delay to allow for future input
+    setTimeout(() => {
+      setPostcodeJustSelected(false);
+    }, 500);
   };
 
   // Handle selection from address suggestions - only update address field
   const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
     const fullAddress = formatAddressDisplay(suggestion);
+
+    // Set flag before updating address to prevent dropdown from showing
+    setAddressJustSelected(true);
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    setSelectedAddressIndex(-1);
 
     if (onAddressSelect) {
       onAddressSelect({
@@ -442,9 +507,10 @@ export default function AddressAutocomplete({
       }
     }
 
-    setShowAddressSuggestions(false);
-    setAddressSuggestions([]);
-    setSelectedAddressIndex(-1);
+    // Reset flag after a longer delay to prevent dropdown from reappearing
+    setTimeout(() => {
+      setAddressJustSelected(false);
+    }, 1000);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -504,6 +570,10 @@ export default function AddressAutocomplete({
             onChange={handlePostcodeChange}
             onKeyDown={handleKeyDown}
             onFocus={() => {
+              // Don't show suggestions if postcode was just selected
+              if (postcodeJustSelected) {
+                return;
+              }
               if (suggestions.length > 0) {
                 setShowSuggestions(true);
               } else if (postcode && postcode.trim().length >= 1) {
@@ -545,8 +615,8 @@ export default function AddressAutocomplete({
       </div>
 
       {/* Address Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg h-[400px] overflow-y-auto">
+      {showSuggestions && suggestions.length > 0 && !postcodeJustSelected && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.postcode}-${index}`}
@@ -586,15 +656,36 @@ export default function AddressAutocomplete({
                 ? address 
                 : address || ""}
               onChange={(e) => {
-                onAddressChange?.(e.target.value);
+                const newValue = e.target.value;
+                onAddressChange?.(newValue);
                 setSelectedAddressIndex(-1);
+                // Reset the flag when user starts typing again (actively editing)
+                if (addressJustSelected && newValue.length > 0) {
+                  setAddressJustSelected(false);
+                }
               }}
               onFocus={() => {
-                if (addressSuggestions.length > 0) {
+                // Don't show suggestions if address was just selected
+                if (addressJustSelected) {
+                  return;
+                }
+                // Only show suggestions if user is actively interacting with the address field
+                // Don't automatically show suggestions when postcode is entered
+                if (address && address.trim().length >= 1) {
+                  // If there's already input, show suggestions
+                  if (addressSuggestions.length > 0) {
+                    setShowAddressSuggestions(true);
+                  } else {
+                    // Trigger search on focus if we have input
+                    fetchAddressSuggestions(address);
+                  }
+                } else if (postcode && postcodeAddresses.length > 0) {
+                  // Only show suggestions if address field is empty and user focuses on it
+                  setAddressSuggestions(postcodeAddresses.slice(0, 10));
                   setShowAddressSuggestions(true);
-                } else if (address && address.trim().length >= 1) {
-                  // Trigger search on focus if we have input
-                  filterAddressSuggestions(address);
+                } else if (postcode && postcode.trim().length >= 5) {
+                  // Fetch addresses if postcode is available but not loaded
+                  fetchAddressSuggestions("");
                 }
               }}
               onKeyDown={(e) => {
@@ -630,25 +721,38 @@ export default function AddressAutocomplete({
           </div>
           {!postcode && address && address.trim().length >= 1 && (
             <p className="mt-1 text-xs text-black/60 dark:text-white/60">
-              Enter a postcode first for better address suggestions
+              Enter a postcode first for address suggestions
             </p>
           )}
           
           {/* Message when no address suggestions found */}
-          {postcode && postcode.trim().length >= 3 && !isAddressLoading && address && address.trim().length >= 1 && showAddressSuggestions && addressSuggestions.length === 0 && (
+          {postcode && postcode.trim().length >= 5 && !isAddressLoading && address && address.trim().length >= 1 && showAddressSuggestions && addressSuggestions.length === 0 && (
             <p className="mt-1 text-xs text-black/60 dark:text-white/60">
-              No addresses found. Please enter manually.
+              No addresses found.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowManualEntry(true);
+                  // Pre-fill postcode if available
+                  if (postcode) {
+                    setManualAddress(prev => ({ ...prev, postcode }));
+                  }
+                }}
+                className="text-[#FE8A0F] hover:underline cursor-pointer"
+              >
+                Please enter manually.
+              </button>
             </p>
           )}
           
-          {/* Address Suggestions Dropdown */}
-          {showAddressSuggestions && addressSuggestions.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg h-[400px] overflow-y-auto">
+          {/* Address Suggestions Dropdown - Same style as postcode suggestions */}
+          {showAddressSuggestions && addressSuggestions.length > 0 && !addressJustSelected && (
+            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
               {addressSuggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.postcode}-${suggestion.line_1}-${index}`}
                   type="button"
-                  onClick={() => handleSelectPostcodeSuggestion(suggestion)}
+                  onClick={() => handleSelectAddressSuggestion(suggestion)}
                   className={`w-full px-4 py-3 text-left hover:bg-[#FE8A0F]/10 transition-colors border-b border-[#FE8A0F]/20 last:border-b-0 ${
                     selectedAddressIndex === index
                       ? "bg-[#FE8A0F]/20"
@@ -725,7 +829,7 @@ export default function AddressAutocomplete({
           
           {/* City Suggestions Dropdown */}
           {showCitySuggestions && citySuggestions.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg h-[400px] overflow-y-auto">
+            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
               {citySuggestions.map((city, index) => (
                 <button
                   key={`city-${city}-${index}`}

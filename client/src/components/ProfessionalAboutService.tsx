@@ -11,11 +11,12 @@ import { useAccount } from "./AccountContext";
 
 export default function ProfessionalAboutService() {
   const navigate = useNavigate();
-  const { updateUserInfo, isLoggedIn, userRole } = useAccount();
+  const { updateProfile, isLoggedIn, userRole } = useAccount();
   const [formData, setFormData] = useState({
     aboutService: "",
     hasTradeQualification: "no",
     hasPublicLiability: "no",
+    qualifications: "",
   });
   const [charCount, setCharCount] = useState(0);
 
@@ -34,19 +35,34 @@ export default function ProfessionalAboutService() {
     setCharCount(text.length);
   };
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     if (charCount < 100) {
       alert("Please write at least 100 characters about your service");
       return;
     }
-    // Save to AccountContext
-    updateUserInfo({
-      aboutService: formData.aboutService,
-      hasTradeQualification: formData.hasTradeQualification,
-      hasPublicLiability: formData.hasPublicLiability,
-    });
-    // Navigate to account page
-    navigate("/account");
+    
+    try {
+      // Prepare update data
+      const updateData: any = {
+        aboutService: formData.aboutService,
+        hasTradeQualification: formData.hasTradeQualification,
+        hasPublicLiability: formData.hasPublicLiability,
+      };
+      
+      // Include qualifications if trade qualification is yes
+      if (formData.hasTradeQualification === "yes") {
+        updateData.publicProfile = {
+          qualifications: formData.qualifications || "",
+        };
+      }
+      
+      // Save to backend
+      await updateProfile(updateData);
+      // Navigate to account page
+      navigate("/account");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to save. Please try again.");
+    }
   };
 
   const handleDoLater = () => {
@@ -108,7 +124,14 @@ export default function ProfessionalAboutService() {
               </h3>
               <RadioGroup
                 value={formData.hasTradeQualification}
-                onValueChange={(value) => setFormData({ ...formData, hasTradeQualification: value })}
+                onValueChange={(value) => {
+                  setFormData({ 
+                    ...formData, 
+                    hasTradeQualification: value,
+                    // Clear qualifications if switching to "no"
+                    qualifications: value === "no" ? "" : formData.qualifications
+                  });
+                }}
                 className="flex items-center justify-center gap-8"
               >
                 <div className="flex items-center space-x-2">
@@ -124,6 +147,21 @@ export default function ProfessionalAboutService() {
                   </Label>
                 </div>
               </RadioGroup>
+              
+              {/* Qualifications Input - Show when YES is selected */}
+              {formData.hasTradeQualification === "yes" && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                    Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
+                  </p>
+                  <Textarea
+                    value={formData.qualifications}
+                    onChange={(e) => setFormData({ ...formData, qualifications: e.target.value })}
+                    placeholder="Enter your qualifications and accreditations with registration numbers..."
+                    className="min-h-[120px] border-2 border-gray-300 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Public Liability Insurance */}

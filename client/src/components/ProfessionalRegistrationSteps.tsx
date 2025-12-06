@@ -16,6 +16,7 @@ import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { PoundSterling, Calendar } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
@@ -95,6 +96,8 @@ export default function ProfessionalRegistrationSteps() {
   // Form data
   const [aboutService, setAboutService] = useState<string>("");
   const [skipAboutMe, setSkipAboutMe] = useState<boolean>(false);
+  const [hasTradeQualification, setHasTradeQualification] = useState<"yes" | "no">("no");
+  const [qualifications, setQualifications] = useState<string>("");
   const [sector, setSector] = useState<string>("");
   const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
@@ -112,6 +115,12 @@ export default function ProfessionalRegistrationSteps() {
       setSkipAboutMe(false);
     } else {
       setSkipAboutMe(true);
+    }
+    if (userInfo?.hasTradeQualification) {
+      setHasTradeQualification(userInfo.hasTradeQualification === true || userInfo.hasTradeQualification === "yes" ? "yes" : "no");
+    }
+    if (userInfo?.publicProfile?.qualifications) {
+      setQualifications(userInfo.publicProfile.qualifications);
     }
     if (userInfo?.sector) {
       setSector(userInfo.sector);
@@ -192,10 +201,16 @@ export default function ProfessionalRegistrationSteps() {
           postcode: userInfo?.postcode || "",
         };
 
-        // Update about service
+        // Update about service and qualifications
         if (currentStep >= 1) {
           if (!skipAboutMe && aboutService.trim()) {
             updateData.aboutService = aboutService.trim();
+          }
+          updateData.hasTradeQualification = hasTradeQualification;
+          if (hasTradeQualification === "yes") {
+            updateData.publicProfile = {
+              qualifications: qualifications || "",
+            };
           }
         }
         // Only update sector if it doesn't already exist
@@ -495,6 +510,52 @@ export default function ProfessionalRegistrationSteps() {
                       <p className="text-xs text-yellow-800 font-['Poppins',sans-serif]">
                         You can add this information later in your profile settings.
                       </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Trade Qualification Section */}
+                <div className="pt-6 border-t border-gray-200">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4 text-center">
+                    Do you have any trade qualification or accreditation?
+                  </h3>
+                  <RadioGroup
+                    value={hasTradeQualification}
+                    onValueChange={(value) => {
+                      setHasTradeQualification(value as "yes" | "no");
+                      // Clear qualifications if switching to "no"
+                      if (value === "no") {
+                        setQualifications("");
+                      }
+                    }}
+                    className="flex items-center justify-center gap-8"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="trade-yes" className="border-2 border-gray-400 text-[#FE8A0F]" />
+                      <Label htmlFor="trade-yes" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
+                        YES
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="trade-no" className="border-2 border-gray-400 text-[#FE8A0F]" />
+                      <Label htmlFor="trade-no" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
+                        NO
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  
+                  {/* Qualifications Input - Show when YES is selected */}
+                  {hasTradeQualification === "yes" && (
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                        Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
+                      </p>
+                      <Textarea
+                        value={qualifications}
+                        onChange={(e) => setQualifications(e.target.value)}
+                        placeholder="Enter your qualifications and accreditations with registration numbers..."
+                        className="min-h-[120px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                      />
                     </div>
                   )}
                 </div>

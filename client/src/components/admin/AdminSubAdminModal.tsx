@@ -33,8 +33,8 @@ interface AdminSubAdminModalProps {
 // Sub-admins can only manage admin panel pages, not client/professional user data
 const AVAILABLE_PERMISSIONS = [
   { value: "admin-management", label: "Admin Management", description: "Manage sub-admin accounts" },
-  { value: "tradesmen-management", label: "Professional Management", description: "Manage professional users" },
-  { value: "homeowners-management", label: "Client Management", description: "Manage client users" },
+  { value: "professionals-management", label: "Professional Management", description: "Manage professional users" },
+  { value: "clients-management", label: "Client Management", description: "Manage client users" },
   { value: "category-management", label: "Category Management", description: "Manage categories and sectors" },
   { value: "package-management", label: "Package Management", description: "Manage packages and addons" },
   { value: "contact-management", label: "Contact Management", description: "Manage contact requests" },

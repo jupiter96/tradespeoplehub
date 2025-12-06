@@ -67,8 +67,8 @@ export function useAdminPermissions() {
     // Map routes to permissions
     const routePermissionMap: Record<string, string> = {
       "/admin/dashboard": "dashboard", // Dashboard is always accessible
-      "/admin/clients": "homeowners-management",
-      "/admin/professionals": "tradesmen-management",
+      "/admin/clients": "clients-management",
+      "/admin/professionals": "professionals-management",
       "/admin/sub-admins": "admin-management", // Only super admin or sub-admin with admin-management permission
       "/admin/delete-account": "user-management",
       "/admin/sectors": "category-management",
