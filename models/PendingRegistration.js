@@ -14,11 +14,21 @@ const pendingRegistrationSchema = new mongoose.Schema(
     townCity: { type: String, trim: true },
     address: { type: String, trim: true },
     travelDistance: { type: String, trim: true },
-    emailCodeHash: String,
-    emailCodeExpiresAt: Date,
+    emailCodeHash: {
+      type: String,
+      trim: true,
+    },
+    emailCodeExpiresAt: {
+      type: Date,
+    },
     emailVerified: { type: Boolean, default: false },
-    phoneCodeHash: String,
-    phoneCodeExpiresAt: Date,
+    phoneCodeHash: {
+      type: String,
+      trim: true,
+    },
+    phoneCodeExpiresAt: {
+      type: Date,
+    },
     expiresAt: {
       type: Date,
       default: () => new Date(Date.now() + 30 * 60 * 1000), // 30 minutes

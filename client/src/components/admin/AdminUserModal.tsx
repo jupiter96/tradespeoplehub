@@ -119,21 +119,17 @@ export default function AdminUserModal({
         return;
       }
 
+      // Address is required for both client and professional
+      if (!formData.address?.trim()) {
+        toast.error("Address is required");
+        setLoading(false);
+        return;
+      }
+
       // Professional-specific required fields
       if (formData.role === "professional") {
         if (!formData.tradingName?.trim()) {
           toast.error("Trading name is required for professionals");
-          setLoading(false);
-          return;
-        }
-        // Town/City is only required if address is not provided
-        if (!formData.address?.trim() && !formData.townCity?.trim()) {
-          toast.error("Address or Town/City is required for professionals");
-          setLoading(false);
-          return;
-        }
-        if (!formData.address?.trim()) {
-          toast.error("Address is required for professionals");
           setLoading(false);
           return;
         }

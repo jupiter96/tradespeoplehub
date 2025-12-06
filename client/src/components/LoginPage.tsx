@@ -182,21 +182,21 @@ export default function LoginPage() {
     if (!registerLastName.trim()) {
       errors.lastName = "Last name is required";
     }
-    if (userType === "professional" && !registerTradingName.trim()) {
-      errors.tradingName = "Trading name is required";
+    // Address is required for both client and professional
+    if (!registerAddress.trim()) {
+      errors.address = "Address is required";
     }
     if (!registerPostcode.trim()) {
       errors.postcode = "Postcode is required";
     }
-    // Town/City is only required if address is not provided
-    if (userType === "professional" && !registerAddress.trim() && !registerTownCity.trim()) {
-      errors.townCity = "Town/City is required";
-    }
-    if (userType === "professional" && !registerAddress.trim()) {
-      errors.address = "Address is required";
-    }
-    if (userType === "professional" && !registerTravelDistance) {
-      errors.travelDistance = "Travel distance is required";
+    // Professional-specific required fields
+    if (userType === "professional") {
+      if (!registerTradingName.trim()) {
+        errors.tradingName = "Trading name is required";
+      }
+      if (!registerTravelDistance) {
+        errors.travelDistance = "Travel distance is required";
+      }
     }
     if (!registerPhone.trim()) {
       errors.phone = "Phone number is required";
@@ -369,6 +369,8 @@ export default function LoginPage() {
           email: newlyRegisteredUser?.email || "",
           phone: newlyRegisteredUser?.phone || "",
           postcode: newlyRegisteredUser?.postcode || "",
+          address: newlyRegisteredUser?.address || "",
+          tradingName: newlyRegisteredUser?.tradingName || "",
           sector: professionalSector,
           services: allServices,
           aboutService: professionalAboutMe,
@@ -425,6 +427,8 @@ export default function LoginPage() {
           email: newlyRegisteredUser?.email || "",
           phone: newlyRegisteredUser?.phone || "",
           postcode: newlyRegisteredUser?.postcode || "",
+          address: newlyRegisteredUser?.address || "",
+          tradingName: newlyRegisteredUser?.tradingName || "",
         };
 
         if (verificationStep >= 3) updateData.sector = professionalSector;
@@ -902,9 +906,14 @@ export default function LoginPage() {
                         {fieldErrors.postcode}
                       </p>
                     )}
-                    {(fieldErrors.address || fieldErrors.townCity) && userType === "professional" && (
+                    {fieldErrors.address && (
                       <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                        {fieldErrors.address || fieldErrors.townCity}
+                        {fieldErrors.address}
+                      </p>
+                    )}
+                    {fieldErrors.townCity && userType === "professional" && (
+                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        {fieldErrors.townCity}
                       </p>
                     )}
                   </div>

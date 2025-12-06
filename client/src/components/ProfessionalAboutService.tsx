@@ -11,7 +11,7 @@ import { useAccount } from "./AccountContext";
 
 export default function ProfessionalAboutService() {
   const navigate = useNavigate();
-  const { updateProfile, isLoggedIn, userRole } = useAccount();
+  const { updateProfile, isLoggedIn, userRole, userInfo } = useAccount();
   const [formData, setFormData] = useState({
     aboutService: "",
     hasTradeQualification: "no",
@@ -44,6 +44,13 @@ export default function ProfessionalAboutService() {
     try {
       // Prepare update data
       const updateData: any = {
+        firstName: userInfo?.firstName || "",
+        lastName: userInfo?.lastName || "",
+        email: userInfo?.email || "",
+        phone: userInfo?.phone || "",
+        postcode: userInfo?.postcode || "",
+        address: userInfo?.address || "",
+        tradingName: userInfo?.tradingName || "",
         aboutService: formData.aboutService,
         hasTradeQualification: formData.hasTradeQualification,
         hasPublicLiability: formData.hasPublicLiability,

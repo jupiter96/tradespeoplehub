@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema(
     postcode: {
       type: String,
       required() {
-        return this.role !== 'admin';
+        return this.role === 'client' || this.role === 'professional';
       },
       trim: true,
     },
@@ -52,12 +52,36 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    avatar: String,
-    tradingName: String,
-    townCity: String,
-    address: String,
-    travelDistance: String,
-    sector: String,
+    avatar: {
+      type: String,
+      trim: true,
+    },
+    tradingName: {
+      type: String,
+      required() {
+        return this.role === 'professional';
+      },
+      trim: true,
+    },
+    townCity: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      required() {
+        return this.role === 'client' || this.role === 'professional';
+      },
+      trim: true,
+    },
+    travelDistance: {
+      type: String,
+      trim: true,
+    },
+    sector: {
+      type: String,
+      trim: true,
+    },
     sectors: {
       type: [String],
       default: [],
@@ -66,7 +90,10 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-    aboutService: String,
+    aboutService: {
+      type: String,
+      trim: true,
+    },
     hasTradeQualification: {
       type: String,
       enum: ['yes', 'no'],
@@ -93,7 +120,9 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        verifiedAt: Date,
+        verifiedAt: {
+          type: Date,
+        },
       },
       phone: {
         status: {
@@ -101,7 +130,9 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        verifiedAt: Date,
+        verifiedAt: {
+          type: Date,
+        },
       },
       address: {
         status: {
@@ -109,10 +140,21 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        documentUrl: String,
-        documentName: String,
-        rejectionReason: String,
-        verifiedAt: Date,
+        documentUrl: {
+          type: String,
+          trim: true,
+        },
+        documentName: {
+          type: String,
+          trim: true,
+        },
+        rejectionReason: {
+          type: String,
+          trim: true,
+        },
+        verifiedAt: {
+          type: Date,
+        },
       },
       idCard: {
         status: {
@@ -120,10 +162,21 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        documentUrl: String,
-        documentName: String,
-        rejectionReason: String,
-        verifiedAt: Date,
+        documentUrl: {
+          type: String,
+          trim: true,
+        },
+        documentName: {
+          type: String,
+          trim: true,
+        },
+        rejectionReason: {
+          type: String,
+          trim: true,
+        },
+        verifiedAt: {
+          type: Date,
+        },
       },
       paymentMethod: {
         status: {
@@ -131,8 +184,13 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        maskedCard: String,
-        verifiedAt: Date,
+        maskedCard: {
+          type: String,
+          trim: true,
+        },
+        verifiedAt: {
+          type: Date,
+        },
       },
       publicLiabilityInsurance: {
         status: {
@@ -140,14 +198,30 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        documentUrl: String,
-        documentName: String,
-        rejectionReason: String,
-        verifiedAt: Date,
+        documentUrl: {
+          type: String,
+          trim: true,
+        },
+        documentName: {
+          type: String,
+          trim: true,
+        },
+        rejectionReason: {
+          type: String,
+          trim: true,
+        },
+        verifiedAt: {
+          type: Date,
+        },
       },
     },
-    passwordResetToken: String,
-    passwordResetExpires: Date,
+    passwordResetToken: {
+      type: String,
+      trim: true,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
     googleId: {
       type: String,
       index: true,
@@ -163,12 +237,17 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    blockedAt: Date,
+    blockedAt: {
+      type: Date,
+    },
     blockedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
-    blockReason: String,
+    blockReason: {
+      type: String,
+      trim: true,
+    },
     blockReviewInvitation: {
       type: Boolean,
       default: false,
@@ -185,20 +264,44 @@ const userSchema = new mongoose.Schema(
     },
     // Public profile fields
     publicProfile: {
-      bio: String,
+      bio: {
+        type: String,
+        trim: true,
+      },
       portfolio: [{
-        image: String,
-        title: String,
-        description: String,
+        image: {
+          type: String,
+          trim: true,
+        },
+        title: {
+          type: String,
+          trim: true,
+        },
+        description: {
+          type: String,
+          trim: true,
+        },
       }],
-      publicProfileUrl: String, // Unique URL slug for public profile
+      publicProfileUrl: {
+        type: String,
+        trim: true,
+      },
       isPublic: {
         type: Boolean,
         default: true,
       },
-      qualifications: String,
-      certifications: String,
-      companyDetails: String,
+      qualifications: {
+        type: String,
+        trim: true,
+      },
+      certifications: {
+        type: String,
+        trim: true,
+      },
+      companyDetails: {
+        type: String,
+        trim: true,
+      },
     },
   },
   {

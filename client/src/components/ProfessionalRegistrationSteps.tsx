@@ -199,6 +199,8 @@ export default function ProfessionalRegistrationSteps() {
           email: userInfo?.email || "",
           phone: userInfo?.phone || "",
           postcode: userInfo?.postcode || "",
+          address: userInfo?.address || "",
+          tradingName: userInfo?.tradingName || "",
         };
 
         // Update about service and qualifications
@@ -273,6 +275,8 @@ export default function ProfessionalRegistrationSteps() {
         email: userInfo?.email || "",
         phone: userInfo?.phone || "",
         postcode: userInfo?.postcode || "",
+        address: userInfo?.address || "",
+        tradingName: userInfo?.tradingName || "",
         services: allServices,
         hasPublicLiability: insurance,
       };

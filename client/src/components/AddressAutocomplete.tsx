@@ -92,10 +92,19 @@ export default function AddressAutocomplete({
     const updated = { ...manualAddress, [field]: value };
     setManualAddress(updated);
     
-    // Update parent components immediately
-    if (field === 'line1' || field === 'line2') {
-      const fullAddress = [updated.line1, updated.line2].filter(Boolean).join(', ');
-      onAddressChange?.(fullAddress);
+    // Build combined address in format: [address line, city, county, postcode]
+    const addressParts = [];
+    const addressLine = [updated.line1, updated.line2].filter(Boolean).join(', ');
+    if (addressLine) addressParts.push(addressLine);
+    if (updated.townCity) addressParts.push(updated.townCity);
+    if (updated.county) addressParts.push(updated.county);
+    if (updated.postcode) addressParts.push(updated.postcode);
+    
+    const combinedAddress = addressParts.join(', ');
+    
+    // Update parent components immediately with combined address
+    if (field === 'line1' || field === 'line2' || field === 'townCity' || field === 'county' || field === 'postcode') {
+      onAddressChange?.(combinedAddress);
     }
     if (field === 'townCity') {
       onTownCityChange?.(value);
@@ -106,10 +115,9 @@ export default function AddressAutocomplete({
     
     // Call onAddressSelect when all required fields are filled
     if (updated.line1 && updated.townCity && updated.postcode) {
-      const fullAddress = [updated.line1, updated.line2].filter(Boolean).join(', ');
       onAddressSelect?.({
         postcode: updated.postcode,
-        address: fullAddress,
+        address: combinedAddress,
         townCity: updated.townCity,
         county: updated.county,
       });

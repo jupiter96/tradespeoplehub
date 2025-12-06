@@ -303,9 +303,19 @@ const validateRegistrationPayload = (payload, { requirePassword } = { requirePas
     return 'Invalid user type';
   }
 
-  // For professionals: address is required, townCity is optional if address is provided
-  if (userType === 'professional' && (!tradingName || (!townCity && !address) || !address || !travelDistance)) {
-    return 'Professional registration requires business details';
+  // Address is required for both client and professional
+  if (!address || !address.trim()) {
+    return 'Address is required';
+  }
+
+  // For professionals: tradingName and travelDistance are required
+  if (userType === 'professional') {
+    if (!tradingName || !tradingName.trim()) {
+      return 'Trading name is required for professionals';
+    }
+    if (!travelDistance || !travelDistance.trim()) {
+      return 'Travel distance is required for professionals';
+    }
   }
 
   return null;
@@ -333,6 +343,18 @@ router.post('/register/initiate', async (req, res) => {
       address,
       travelDistance,
     } = req.body;
+
+    console.log('[Registration] Received registration data:', {
+      userType,
+      tradingName: tradingName || '(empty)',
+      address: address || '(empty)',
+      townCity: townCity || '(empty)',
+      travelDistance: travelDistance || '(empty)',
+      hasTradingName: tradingName !== undefined && tradingName !== null,
+      hasAddress: address !== undefined && address !== null,
+      tradingNameType: typeof tradingName,
+      addressType: typeof address,
+    });
 
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
@@ -366,23 +388,53 @@ router.post('/register/initiate', async (req, res) => {
 
     // Professional-specific fields
     if (userType === 'professional') {
-      if (tradingName && tradingName.trim()) {
-        pendingRegistrationData.tradingName = tradingName.trim();
+      // Always set tradingName if it exists (even if empty string, it will be trimmed)
+      if (tradingName !== undefined && tradingName !== null) {
+        const trimmedTradingName = String(tradingName).trim();
+        if (trimmedTradingName) {
+          pendingRegistrationData.tradingName = trimmedTradingName;
+        }
       }
-      if (travelDistance && travelDistance.trim()) {
-        pendingRegistrationData.travelDistance = travelDistance.trim();
+      if (travelDistance !== undefined && travelDistance !== null) {
+        const trimmedTravelDistance = String(travelDistance).trim();
+        if (trimmedTravelDistance) {
+          pendingRegistrationData.travelDistance = trimmedTravelDistance;
+        }
       }
     }
 
     // Address fields - available for both client and professional
-    if (address && address.trim()) {
-      pendingRegistrationData.address = address.trim();
+    // Always set address if it exists (even if empty string, it will be trimmed)
+    if (address !== undefined && address !== null) {
+      const trimmedAddress = String(address).trim();
+      if (trimmedAddress) {
+        pendingRegistrationData.address = trimmedAddress;
+      }
     }
-    if (townCity && townCity.trim()) {
-      pendingRegistrationData.townCity = townCity.trim();
+    if (townCity !== undefined && townCity !== null) {
+      const trimmedTownCity = String(townCity).trim();
+      if (trimmedTownCity) {
+        pendingRegistrationData.townCity = trimmedTownCity;
+      }
     }
 
+    console.log('[Registration] Creating pending registration with data:', {
+      email: normalizedEmail,
+      role: userType,
+      tradingName: pendingRegistrationData.tradingName,
+      address: pendingRegistrationData.address,
+      townCity: pendingRegistrationData.townCity,
+      travelDistance: pendingRegistrationData.travelDistance,
+    });
+
     const pendingRegistration = await PendingRegistration.create(pendingRegistrationData);
+
+    console.log('[Registration] Pending registration created:', {
+      id: pendingRegistration._id,
+      tradingName: pendingRegistration.tradingName,
+      address: pendingRegistration.address,
+      townCity: pendingRegistration.townCity,
+    });
 
     try {
       await sendEmailVerificationCode(normalizedEmail, emailCode);
@@ -490,6 +542,13 @@ router.post('/register/verify-phone', async (req, res) => {
     }
 
     console.log('[Phone Verification] Registration - Pending registration found for:', pendingRegistration.email);
+    console.log('[Phone Verification] Registration - Pending registration data:', {
+      tradingName: pendingRegistration.tradingName,
+      address: pendingRegistration.address,
+      townCity: pendingRegistration.townCity,
+      travelDistance: pendingRegistration.travelDistance,
+      role: pendingRegistration.role,
+    });
 
     if (!pendingRegistration.emailVerified) {
       console.log('[Phone Verification] Registration - Email not verified yet');
@@ -558,23 +617,65 @@ router.post('/register/verify-phone', async (req, res) => {
 
     // Professional-specific fields
     if (pendingRegistration.role === 'professional') {
-      if (pendingRegistration.tradingName && pendingRegistration.tradingName.trim()) {
-        userData.tradingName = pendingRegistration.tradingName.trim();
+      // Always set tradingName if it exists (even if empty string, it will be trimmed)
+      if (pendingRegistration.tradingName !== undefined && pendingRegistration.tradingName !== null) {
+        const trimmedTradingName = String(pendingRegistration.tradingName).trim();
+        if (trimmedTradingName) {
+          userData.tradingName = trimmedTradingName;
+        }
       }
-      if (pendingRegistration.travelDistance && pendingRegistration.travelDistance.trim()) {
-        userData.travelDistance = pendingRegistration.travelDistance.trim();
+      if (pendingRegistration.travelDistance !== undefined && pendingRegistration.travelDistance !== null) {
+        const trimmedTravelDistance = String(pendingRegistration.travelDistance).trim();
+        if (trimmedTravelDistance) {
+          userData.travelDistance = trimmedTravelDistance;
+        }
       }
     }
 
     // Address fields - available for both client and professional
-    if (pendingRegistration.address && pendingRegistration.address.trim()) {
-      userData.address = pendingRegistration.address.trim();
+    // Always set address if it exists (even if empty string, it will be trimmed)
+    if (pendingRegistration.address !== undefined && pendingRegistration.address !== null) {
+      const trimmedAddress = String(pendingRegistration.address).trim();
+      if (trimmedAddress) {
+        userData.address = trimmedAddress;
+      }
     }
-    if (pendingRegistration.townCity && pendingRegistration.townCity.trim()) {
-      userData.townCity = pendingRegistration.townCity.trim();
+    if (pendingRegistration.townCity !== undefined && pendingRegistration.townCity !== null) {
+      const trimmedTownCity = String(pendingRegistration.townCity).trim();
+      if (trimmedTownCity) {
+        userData.townCity = trimmedTownCity;
+      }
     }
 
-    const user = await User.create(userData);
+    console.log('[Phone Verification] Registration - Creating user with data:', {
+      role: userData.role,
+      tradingName: userData.tradingName,
+      address: userData.address,
+      townCity: userData.townCity,
+      travelDistance: userData.travelDistance,
+    });
+
+    // Create user instance and explicitly save to ensure all fields are persisted
+    const user = new User(userData);
+    await user.save();
+
+    console.log('[Phone Verification] Registration - User created and saved:', {
+      id: user._id,
+      tradingName: user.tradingName,
+      address: user.address,
+      townCity: user.townCity,
+      travelDistance: user.travelDistance,
+    });
+
+    // Verify the saved data by fetching from database
+    const savedUser = await User.findById(user._id);
+    console.log('[Phone Verification] Registration - Verified saved user data:', {
+      id: savedUser._id,
+      tradingName: savedUser.tradingName,
+      address: savedUser.address,
+      townCity: savedUser.townCity,
+      travelDistance: savedUser.travelDistance,
+    });
 
     console.log('[Phone Verification] Registration - User created successfully:', {
       userId: user.id,
@@ -1028,7 +1129,19 @@ router.put('/profile', requireAuth, async (req, res) => {
     user.firstName = firstName.trim();
     user.lastName = lastName.trim();
     user.postcode = postcode.trim();
-    user.address = address?.trim() || undefined;
+    
+    // Address is required for client and professional, preserve existing value if not provided
+    if (address !== undefined && address !== null) {
+      const trimmedAddress = String(address).trim();
+      if (trimmedAddress) {
+        user.address = trimmedAddress;
+      } else if ((user.role === 'client' || user.role === 'professional') && !user.address) {
+        return res.status(400).json({ error: 'Address is required' });
+      }
+    } else if ((user.role === 'client' || user.role === 'professional') && !user.address) {
+      return res.status(400).json({ error: 'Address is required' });
+    }
+    
     user.townCity = townCity?.trim() || undefined;
 
     // Initialize verification object if it doesn't exist
@@ -1090,7 +1203,18 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     if (user.role === 'professional') {
-      user.tradingName = tradingName?.trim() || undefined;
+      // Trading name is required for professionals, preserve existing value if not provided
+      if (tradingName !== undefined && tradingName !== null) {
+        const trimmedTradingName = String(tradingName).trim();
+        if (trimmedTradingName) {
+          user.tradingName = trimmedTradingName;
+        } else if (!user.tradingName) {
+          return res.status(400).json({ error: 'Trading name is required for professionals' });
+        }
+      } else if (!user.tradingName) {
+        return res.status(400).json({ error: 'Trading name is required for professionals' });
+      }
+      
       user.travelDistance = travelDistance || undefined;
       
       // Sector can only be set once during registration, cannot be changed afterwards
