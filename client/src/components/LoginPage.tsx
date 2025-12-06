@@ -237,10 +237,10 @@ export default function LoginPage() {
       password: registerPassword,
       referralCode: registerReferralCode,
       userType,
+      address: registerAddress.trim(), // Address is required for both client and professional
+      ...(registerTownCity && { townCity: registerTownCity.trim() }), // Include townCity if available
       ...(userType === "professional" && {
-        tradingName: registerTradingName,
-        townCity: registerTownCity,
-        address: registerAddress,
+        tradingName: registerTradingName.trim(),
         travelDistance: registerTravelDistance,
       })
     };
@@ -882,9 +882,22 @@ export default function LoginPage() {
                           });
                         }
                       }}
+                      onTownCityChange={(value) => {
+                        setRegisterTownCity(value);
+                        if (fieldErrors.townCity) {
+                          setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.townCity;
+                            return newErrors;
+                          });
+                        }
+                      }}
                       onAddressSelect={(address) => {
-                        setRegisterPostcode(address.postcode);
-                        setRegisterAddress(address.address);
+                        setRegisterPostcode(address.postcode || "");
+                        setRegisterAddress(address.address || "");
+                        if (address.townCity) {
+                          setRegisterTownCity(address.townCity);
+                        }
                         // Clear any related errors
                         setFieldErrors(prev => {
                           const newErrors = { ...prev };
