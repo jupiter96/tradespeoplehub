@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import SEOContent from '../models/SEOContent.js';
 
 const sanitizeUser = (user) => user.toSafeObject();
@@ -30,21 +31,16 @@ const validatePasswordStrength = (password) => {
 // Admin authentication middleware
 const requireAdmin = async (req, res, next) => {
   try {
-    if (!req.session || !req.session.userId) {
+    if (!req.session || !req.session.adminId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const user = await User.findById(req.session.userId);
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+    const admin = await Admin.findById(req.session.adminId);
+    if (!admin) {
+      return res.status(401).json({ error: 'Admin not found' });
     }
 
-    // Allow both admin and subadmin roles
-    if (user.role !== 'admin' && user.role !== 'subadmin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    req.adminUser = user;
+    req.adminUser = admin;
     next();
   } catch (error) {
     console.error('Admin auth error', error);
@@ -88,26 +84,23 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ 
-      email: normalizedEmail, 
-      role: { $in: ['admin', 'subadmin'] } 
-    });
+    const admin = await Admin.findOne({ email: normalizedEmail });
 
-    if (!user) {
+    if (!admin) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    req.session.userId = user._id.toString();
-    req.session.role = user.role;
+    req.session.adminId = admin._id.toString();
+    req.session.role = admin.role;
 
     return res.json({
       message: 'Login successful',
-      user: user.toSafeObject(),
+      user: admin.toSafeObject(),
     });
   } catch (error) {
     console.error('Admin login error', error);
@@ -129,11 +122,11 @@ router.post('/logout', requireAdmin, (req, res) => {
 // Get current admin user
 router.get('/me', requireAdmin, async (req, res) => {
   try {
-    const user = await User.findById(req.session.userId);
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+    const admin = await Admin.findById(req.session.adminId);
+    if (!admin) {
+      return res.status(401).json({ error: 'Admin not found' });
     }
-    return res.json({ user: user.toSafeObject() });
+    return res.json({ user: admin.toSafeObject() });
   } catch (error) {
     console.error('Get admin user error', error);
     return res.status(500).json({ error: 'Failed to get user' });
@@ -149,32 +142,32 @@ router.put('/profile', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Email and name are required' });
     }
 
-    const user = await User.findById(req.session.userId);
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+    const admin = await Admin.findById(req.session.adminId);
+    if (!admin) {
+      return res.status(401).json({ error: 'Admin not found' });
     }
 
     // Normalize email
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email is being changed
-    if (normalizedEmail !== user.email) {
+    if (normalizedEmail !== admin.email) {
       // Check if new email is already in use
-      const existingUser = await User.findOne({ email: normalizedEmail });
-      if (existingUser) {
+      const existingAdmin = await Admin.findOne({ email: normalizedEmail });
+      if (existingAdmin) {
         return res.status(409).json({ error: 'Email is already in use' });
       }
-      user.email = normalizedEmail;
+      admin.email = normalizedEmail;
     }
 
     // Update name
-    user.name = name.trim();
+    admin.name = name.trim();
 
-    await user.save();
+    await admin.save();
 
     return res.json({ 
       message: 'Profile updated successfully',
-      user: user.toSafeObject() 
+      user: admin.toSafeObject() 
     });
   } catch (error) {
     console.error('Update admin profile error', error);
@@ -705,8 +698,7 @@ router.get('/admins', requireAdmin, async (req, res) => {
     const query = { role: 'subadmin' };
     if (search) {
       query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
       ];
     }
@@ -719,7 +711,7 @@ router.get('/admins', requireAdmin, async (req, res) => {
     
     // Map frontend sort fields to database fields
     const sortFieldMap = {
-      'name': 'firstName',
+      'name': 'name',
       'email': 'email',
       'createdAt': 'createdAt',
     };
@@ -727,24 +719,18 @@ router.get('/admins', requireAdmin, async (req, res) => {
     const dbSortField = sortFieldMap[sortBy] || 'createdAt';
     sortObj[dbSortField] = sortDirection;
     
-    // If sorting by name, also sort by lastName
-    if (sortBy === 'name') {
-      sortObj['lastName'] = sortDirection;
-    }
-    
-    const admins = await User.find(query)
+    const admins = await Admin.find(query)
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await User.countDocuments(query);
+    const total = await Admin.countDocuments(query);
 
     const sanitizedAdmins = admins.map((admin) => {
       const adminObj = { ...admin };
       delete adminObj.passwordHash;
       adminObj.id = adminObj._id.toString();
-      adminObj.name = `${adminObj.firstName} ${adminObj.lastName}`.trim();
       return adminObj;
     });
 
@@ -774,14 +760,11 @@ router.post('/admins', requireAdmin, async (req, res) => {
       return res.status(403).json({ error: 'Insufficient permissions to create sub-admins' });
     }
 
-    const { firstName, lastName, email, password, permissions } = req.body || {};
+    const { name, email, password, permissions } = req.body || {};
 
     // Simple validation - only name, email, password, and roles are required
-    if (!firstName?.trim()) {
-      return res.status(400).json({ error: 'First name is required' });
-    }
-    if (!lastName?.trim()) {
-      return res.status(400).json({ error: 'Last name is required' });
+    if (!name?.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
     }
     if (!email?.trim()) {
       return res.status(400).json({ error: 'Email is required' });
@@ -794,17 +777,16 @@ router.post('/admins', requireAdmin, async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
-    if (existingUser) {
+    const existingAdmin = await Admin.findOne({ email: normalizedEmail });
+    if (existingAdmin) {
       return res.status(409).json({ error: 'Email already exists' });
     }
 
     const passwordHash = await bcrypt.hash(password.trim(), 12);
 
     // Create sub-admin - only admin-related fields
-    const admin = await User.create({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+    const admin = await Admin.create({
+      name: name.trim(),
       email: normalizedEmail,
       passwordHash,
       role: 'subadmin',
@@ -835,41 +817,22 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
     delete updates.role;
     delete updates.email;
 
-    // Remove any client/professional related fields from updates
-    // Sub-admins should not have these fields - they are only for admin panel management
-    delete updates.phone;
-    delete updates.postcode;
-    delete updates.address;
-    delete updates.townCity;
-    delete updates.tradingName;
-    delete updates.sector;
-    delete updates.sectors;
-    delete updates.services;
-    delete updates.aboutService;
-    delete updates.hasTradeQualification;
-    delete updates.hasPublicLiability;
-    delete updates.professionalIndemnityAmount;
-    delete updates.insuranceExpiryDate;
-    delete updates.travelDistance;
-    delete updates.referralCode;
-    delete updates.avatar;
-    delete updates.verification;
-    delete updates.publicProfile;
-
-    // If password is provided, hash it
-    if (updates.password) {
-      updates.passwordHash = await bcrypt.hash(updates.password.trim(), 12);
-      delete updates.password;
+    // Only allow updating name, password, and permissions
+    const allowedUpdates = {};
+    if (updates.name) {
+      allowedUpdates.name = updates.name.trim();
     }
-
-    // Validate permissions if provided
+    if (updates.password) {
+      allowedUpdates.passwordHash = await bcrypt.hash(updates.password.trim(), 12);
+    }
     if (updates.permissions !== undefined) {
       if (!Array.isArray(updates.permissions) || updates.permissions.length === 0) {
         return res.status(400).json({ error: 'At least one permission is required' });
       }
+      allowedUpdates.permissions = updates.permissions;
     }
 
-    const admin = await User.findByIdAndUpdate(adminId, updates, { new: true, runValidators: true });
+    const admin = await Admin.findByIdAndUpdate(adminId, allowedUpdates, { new: true, runValidators: true });
     if (!admin || admin.role !== 'subadmin') {
       return res.status(404).json({ error: 'Sub admin not found' });
     }
@@ -894,11 +857,11 @@ router.delete('/admins/:id', requireAdmin, async (req, res) => {
     const adminId = req.params.id;
 
     // Prevent deleting yourself
-    if (adminId === req.session.userId) {
+    if (adminId === req.session.adminId) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
-    const admin = await User.findByIdAndDelete(adminId);
+    const admin = await Admin.findByIdAndDelete(adminId);
     if (!admin || admin.role !== 'subadmin') {
       return res.status(404).json({ error: 'Sub admin not found' });
     }

@@ -14,8 +14,7 @@ import API_BASE_URL from "../../config/api";
 
 interface SubAdmin {
   id?: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string;
   email?: string;
   permissions?: string[];
   [key: string]: any;
@@ -74,9 +73,7 @@ export default function AdminSubAdminModal({
   useEffect(() => {
     if (subAdmin) {
       setFormData({
-        name: subAdmin.firstName && subAdmin.lastName 
-          ? `${subAdmin.firstName} ${subAdmin.lastName}` 
-          : subAdmin.name || "",
+        name: subAdmin.name || "",
         email: subAdmin.email || "",
         password: "",
         permissions: subAdmin.permissions || [],
@@ -134,14 +131,8 @@ export default function AdminSubAdminModal({
         return;
       }
 
-      // Split name into firstName and lastName
-      const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0);
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
       const payload: any = {
-        firstName,
-        lastName,
+        name: trimmedName,
         email: trimmedEmail.toLowerCase(),
         role: "subadmin",
         permissions: formData.permissions,

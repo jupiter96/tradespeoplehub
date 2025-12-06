@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
-import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 
 export async function ensureAdminUser() {
-  const adminCount = await User.countDocuments({ role: 'admin' });
+  const adminCount = await Admin.countDocuments({ role: 'admin' });
   if (adminCount > 0) {
     return;
   }
@@ -11,19 +11,11 @@ export async function ensureAdminUser() {
 
   const passwordHash = await bcrypt.hash('123456', 12);
 
-  const createdAdmin = await User.create({
-    firstName: 'Admin',
-    lastName: 'User',
+  const createdAdmin = await Admin.create({
+    name: 'Admin User',
     email: 'admin@gmail.com',
     passwordHash,
     role: 'admin',
-    phone: '+44 7000 000000',
-    postcode: 'SW1A 1AA',
-    referralCode: 'ADMIN-REF',
-    townCity: 'London',
-    address: '1 Admin Street',
-    travelDistance: '0miles',
-    avatar: null,
   });
 
   console.info(`Seeded default admin user (${createdAdmin.email} / 123456)`);
