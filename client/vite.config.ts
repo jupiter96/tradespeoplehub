@@ -4,8 +4,6 @@
   import path from 'path';
 
   export default defineConfig({
-    // Use absolute path for Vercel deployment
-    // This ensures proper MIME type handling for static assets
     base: '/',
     plugins: [react()],
     resolve: {

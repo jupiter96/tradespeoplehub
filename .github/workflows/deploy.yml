@@ -107,6 +107,9 @@ jobs:
             echo "🏗️ Building client..."
             npm run build:client
             
+            # Create logs directory if it doesn't exist
+            mkdir -p logs
+            
             # Restart application with PM2
             echo "🔄 Restarting application..."
             
@@ -116,26 +119,45 @@ jobs:
               npm install -g pm2
             fi
             
-            # Use ecosystem.config.js if it exists, otherwise use direct start
-            if [ -f "ecosystem.config.js" ]; then
-              echo "📋 Using ecosystem.config.js..."
-              # Update ecosystem.config.js app name to 'sortars' if needed
-              pm2 delete sortars 2>/dev/null || pm2 delete trades-platform 2>/dev/null || true
-              # Start with ecosystem config but override name
-              pm2 start ecosystem.config.js --update-env
-              # Rename if needed
-              pm2 restart sortars 2>/dev/null || pm2 restart trades-platform 2>/dev/null || true
-            else
-              echo "📋 Starting with direct PM2 command..."
-              if pm2 list | grep -q "sortars"; then
-                pm2 restart sortars
-              else
-                pm2 start server.js --name sortars --node-args="--experimental-modules"
-              fi
-            fi
+            # Stop and delete existing process if it exists
+            pm2 delete sortars 2>/dev/null || true
+            
+            # Start PM2 with direct command
+            echo "📋 Starting PM2 process..."
+            pm2 start server.js \
+              --name sortars \
+              --node-args="--experimental-modules" \
+              --env production \
+              --max-memory-restart 1G \
+              --log ./logs/pm2-combined.log \
+              --error ./logs/pm2-error.log \
+              --out ./logs/pm2-out.log \
+              --time \
+              --merge-logs \
+              --autorestart \
+              --min-uptime 10s \
+              --max-restarts 10
             
             # Save PM2 process list
             pm2 save
+            
+            # Setup PM2 startup script (only if not already configured)
+            echo "🔧 Checking PM2 startup configuration..."
+            if [ ! -f /etc/systemd/system/pm2-$USER.service ] && [ ! -f /etc/systemd/system/pm2-root.service ]; then
+              echo "📋 Setting up PM2 startup script..."
+              # Generate startup command (this will output a command that needs sudo)
+              STARTUP_OUTPUT=$(pm2 startup systemd -u $USER --hp $HOME 2>&1 || pm2 startup 2>&1)
+              echo "$STARTUP_OUTPUT"
+              # Try to extract and run the sudo command if possible
+              STARTUP_CMD=$(echo "$STARTUP_OUTPUT" | grep -E "sudo.*pm2" | head -1)
+              if [ -n "$STARTUP_CMD" ]; then
+                echo "⚠️ Note: PM2 startup requires sudo. The command is:"
+                echo "$STARTUP_CMD"
+                echo "💡 Please run this command manually on the server if startup is not configured yet."
+              fi
+            else
+              echo "✅ PM2 startup already configured"
+            fi
             
             # Wait a moment for PM2 to start
             sleep 3
@@ -145,11 +167,11 @@ jobs:
             pm2 status
             
             # Check if the process is actually running
-            if pm2 list | grep -q "sortars.*online\|trades-platform.*online"; then
+            if pm2 list | grep -q "sortars.*online"; then
               echo "✅ PM2 process is running"
             else
               echo "⚠️ Warning: PM2 process may not be running. Checking logs..."
-              pm2 logs sortars --lines 50 --nostream || pm2 logs trades-platform --lines 50 --nostream || true
+              pm2 logs sortars --lines 50 --nostream || true
               echo "❌ PM2 process failed to start. Please check the logs above."
               exit 1
             fi
@@ -169,8 +191,8 @@ jobs:
             pm2 status
             echo ""
             echo "📋 Recent PM2 logs for sortars:"
-            pm2 logs sortars --lines 30 --nostream 2>/dev/null || pm2 logs trades-platform --lines 30 --nostream 2>/dev/null || echo "No logs found"
+            pm2 logs sortars --lines 30 --nostream 2>/dev/null || echo "No logs found"
             echo ""
             echo "📋 PM2 process info:"
-            pm2 describe sortars 2>/dev/null || pm2 describe trades-platform 2>/dev/null || echo "Process not found"
+            pm2 describe sortars 2>/dev/null || echo "Process not found"
 

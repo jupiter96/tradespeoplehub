@@ -12,8 +12,7 @@
     "build": "npm run build:client",
     "build:client": "cd client && npm run build",
     "postinstall": "cd client && npm install",
-    "start": "npm run build:client && node server.js",
-    "vercel-build": "npm run build:client"
+    "start": "npm run build:client && node server.js"
   },
   "keywords": [],
   "author": "",
