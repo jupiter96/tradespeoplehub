@@ -133,9 +133,7 @@ jobs:
               --error ./logs/pm2-error.log \
               --output ./logs/pm2-out.log \
               --time \
-              --merge-logs \
-              --min-uptime 10s \
-              --max-restarts 10
+              --merge-logs
             
             # Save PM2 process list
             pm2 save
