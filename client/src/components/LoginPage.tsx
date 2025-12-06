@@ -654,9 +654,56 @@ export default function LoginPage() {
               {/* Register Tab */}
               <TabsContent value="register" className="mt-0">
                 <div className="mb-4">
-                  <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1">
-                    Create Account
-                  </h2>
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
+                      Create Account
+                    </h2>
+                    {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          // Random UK data
+                          const firstNames = ['James', 'Sarah', 'Michael', 'Emma', 'David', 'Olivia', 'Robert', 'Sophia', 'William', 'Isabella'];
+                          const lastNames = ['Smith', 'Jones', 'Williams', 'Brown', 'Taylor', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Johnson'];
+                          const tradingNames = ['ABC Plumbing Services', 'XYZ Electrical Solutions', 'Premier Home Repairs', 'Expert Builders Ltd', 'Quality Carpentry Co'];
+                          const addresses = ['123 High Street', '45 Oak Avenue', '78 Park Lane', '12 Garden Road', '56 Market Square'];
+                          const towns = ['London', 'Manchester', 'Birmingham', 'Leeds', 'Liverpool'];
+                          const postcodes = ['SW1A 1AA', 'M1 1AA', 'B1 1AA', 'LS1 1AA', 'L1 1AA'];
+                          const travelDistances = ['5 miles', '10 miles', '15 miles', '20 miles', '30 miles'];
+                          
+                          const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                          const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                          const randomEmail = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 1000)}@example.com`;
+                          const randomPhone = `+44${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+                          const randomPostcode = postcodes[Math.floor(Math.random() * postcodes.length)];
+                          const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
+                          const randomTown = towns[Math.floor(Math.random() * towns.length)];
+                          const randomTradingName = tradingNames[Math.floor(Math.random() * tradingNames.length)];
+                          const randomTravelDistance = travelDistances[Math.floor(Math.random() * travelDistances.length)];
+                          const randomPassword = 'Test123';
+                          
+                          setRegisterFirstName(randomFirstName);
+                          setRegisterLastName(randomLastName);
+                          setRegisterEmail(randomEmail);
+                          setRegisterPhone(randomPhone);
+                          setRegisterPostcode(randomPostcode);
+                          setRegisterPassword(randomPassword);
+                          setRegisterConfirmPassword(randomPassword);
+                          if (userType === 'professional') {
+                            setRegisterTradingName(randomTradingName);
+                            setRegisterAddress(randomAddress);
+                            setRegisterTownCity(randomTown);
+                            setRegisterTravelDistance(randomTravelDistance);
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 px-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F] hover:text-white"
+                      >
+                        Fill Random Data
+                      </Button>
+                    )}
+                  </div>
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                     Join our community today
                   </p>

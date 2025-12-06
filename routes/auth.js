@@ -351,7 +351,7 @@ router.post('/register/initiate', async (req, res) => {
 
     await PendingRegistration.deleteOne({ email: normalizedEmail }).catch(() => {});
 
-    const pendingRegistration = await PendingRegistration.create({
+    const pendingRegistrationData = {
       firstName,
       lastName,
       email: normalizedEmail,
@@ -360,15 +360,29 @@ router.post('/register/initiate', async (req, res) => {
       postcode,
       referralCode,
       role: userType,
-      // Professional-specific fields
-      tradingName: userType === 'professional' ? tradingName : undefined,
-      travelDistance: userType === 'professional' ? travelDistance : undefined,
-      // Address fields - available for both client and professional
-      address: address || undefined,
-      townCity: townCity || undefined,
       emailCodeHash,
       emailCodeExpiresAt: codeExpiryDate(),
-    });
+    };
+
+    // Professional-specific fields
+    if (userType === 'professional') {
+      if (tradingName && tradingName.trim()) {
+        pendingRegistrationData.tradingName = tradingName.trim();
+      }
+      if (travelDistance && travelDistance.trim()) {
+        pendingRegistrationData.travelDistance = travelDistance.trim();
+      }
+    }
+
+    // Address fields - available for both client and professional
+    if (address && address.trim()) {
+      pendingRegistrationData.address = address.trim();
+    }
+    if (townCity && townCity.trim()) {
+      pendingRegistrationData.townCity = townCity.trim();
+    }
+
+    const pendingRegistration = await PendingRegistration.create(pendingRegistrationData);
 
     try {
       await sendEmailVerificationCode(normalizedEmail, emailCode);
@@ -530,7 +544,7 @@ router.post('/register/verify-phone', async (req, res) => {
       },
     };
 
-    const user = await User.create({
+    const userData = {
       firstName: pendingRegistration.firstName,
       lastName: pendingRegistration.lastName,
       email: pendingRegistration.email,
@@ -539,14 +553,28 @@ router.post('/register/verify-phone', async (req, res) => {
       postcode: pendingRegistration.postcode,
       referralCode: pendingRegistration.referralCode,
       role: pendingRegistration.role,
-      // Professional-specific fields
-      tradingName: pendingRegistration.role === 'professional' ? pendingRegistration.tradingName : undefined,
-      travelDistance: pendingRegistration.role === 'professional' ? pendingRegistration.travelDistance : undefined,
-      // Address fields - available for both client and professional
-      address: pendingRegistration.address || undefined,
-      townCity: pendingRegistration.townCity || undefined,
       verification: verification,
-    });
+    };
+
+    // Professional-specific fields
+    if (pendingRegistration.role === 'professional') {
+      if (pendingRegistration.tradingName && pendingRegistration.tradingName.trim()) {
+        userData.tradingName = pendingRegistration.tradingName.trim();
+      }
+      if (pendingRegistration.travelDistance && pendingRegistration.travelDistance.trim()) {
+        userData.travelDistance = pendingRegistration.travelDistance.trim();
+      }
+    }
+
+    // Address fields - available for both client and professional
+    if (pendingRegistration.address && pendingRegistration.address.trim()) {
+      userData.address = pendingRegistration.address.trim();
+    }
+    if (pendingRegistration.townCity && pendingRegistration.townCity.trim()) {
+      userData.townCity = pendingRegistration.townCity.trim();
+    }
+
+    const user = await User.create(userData);
 
     console.log('[Phone Verification] Registration - User created successfully:', {
       userId: user.id,
@@ -639,7 +667,7 @@ router.post('/social/complete', async (req, res) => {
 
     const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
 
-    const user = await User.create({
+    const userData = {
       firstName,
       lastName,
       email: normalizedEmail,
@@ -648,15 +676,29 @@ router.post('/social/complete', async (req, res) => {
       postcode,
       referralCode,
       role: userType,
-      // Professional-specific fields
-      tradingName: userType === 'professional' ? tradingName : undefined,
-      travelDistance: userType === 'professional' ? travelDistance : undefined,
-      // Address fields - available for both client and professional
-      address: address || undefined,
-      townCity: townCity || undefined,
       googleId: pending.provider === 'google' ? pending.providerId : undefined,
       facebookId: pending.provider === 'facebook' ? pending.providerId : undefined,
-    });
+    };
+
+    // Professional-specific fields
+    if (userType === 'professional') {
+      if (tradingName && tradingName.trim()) {
+        userData.tradingName = tradingName.trim();
+      }
+      if (travelDistance && travelDistance.trim()) {
+        userData.travelDistance = travelDistance.trim();
+      }
+    }
+
+    // Address fields - available for both client and professional
+    if (address && address.trim()) {
+      userData.address = address.trim();
+    }
+    if (townCity && townCity.trim()) {
+      userData.townCity = townCity.trim();
+    }
+
+    const user = await User.create(userData);
 
     req.session.userId = user.id;
     req.session.role = user.role;
@@ -1263,8 +1305,13 @@ router.put('/profile/password', requireAuth, async (req, res) => {
   }
 });
 
-router.delete('/profile', requireAuth, async (req, res) => {
+router.delete('/profile', async (req, res) => {
   try {
+    // Check authentication
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const { confirmText } = req.body || {};
 
     if (confirmText !== 'DELETE') {
@@ -1274,6 +1321,12 @@ router.delete('/profile', requireAuth, async (req, res) => {
     const user = await User.findById(req.session.userId);
     if (!user) {
       return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    // Only allow client and professional users to delete their own account
+    // Admin and subadmin users should use admin panel for account management
+    if (user.role === 'admin' || user.role === 'subadmin') {
+      return res.status(403).json({ error: 'Admin users cannot delete their account through this endpoint. Please contact system administrator.' });
     }
 
     // Delete user's avatar from Cloudinary if exists
