@@ -62,13 +62,41 @@ jobs:
           script: |
             set -e
             
-            # Navigate to project directory
-            cd /var/www/sortars.com
+            PROJECT_DIR="/var/www/sortars.com"
+            REPO_URL="git@github.com:jupiter96/tradespeoplehub.git"
+            BRANCH="main"
             
-            # Pull latest changes
-            echo "📥 Pulling latest changes..."
-            git fetch origin
-            git reset --hard origin/main || git reset --hard origin/master
+            # Ensure we're in the project directory
+            cd "$PROJECT_DIR" 2>/dev/null || {
+              echo "📁 Creating project directory..."
+              mkdir -p "$PROJECT_DIR" || sudo mkdir -p "$PROJECT_DIR"
+              [ -w "$PROJECT_DIR" ] || sudo chown -R $USER:$USER "$PROJECT_DIR" || sudo chown -R $(whoami):$(whoami) "$PROJECT_DIR"
+              cd "$PROJECT_DIR"
+            }
+            
+            # Check if it's a git repository
+            if [ ! -d ".git" ]; then
+              echo "📥 Initializing/cloning repository..."
+              if [ -z "$(ls -A)" ]; then
+                # Directory is empty, clone into it
+                git clone "$REPO_URL" .
+              else
+                # Directory has files but no .git, initialize and set remote
+                git init
+                git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
+                git fetch origin
+                git checkout -b main 2>/dev/null || git checkout main 2>/dev/null
+                git reset --hard "origin/main"
+              fi
+            else
+              echo "📥 Pulling latest changes..."
+              git fetch origin
+              git checkout main 2>/dev/null || git checkout -b main origin/main 2>/dev/null
+              git reset --hard "origin/main"
+            fi
+            
+            # Ensure we're still in the project directory
+            cd "$PROJECT_DIR"
             
             # Install/update dependencies
             echo "📦 Installing dependencies..."
