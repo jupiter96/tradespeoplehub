@@ -105,8 +105,8 @@ interface AccountContextType {
   currentUser: UserInfo | null;
   login: (payload: LoginPayload) => Promise<UserInfo>;
   register: (payload: RegisterPayload) => Promise<void>;
-  verifyRegistrationEmail: (code: string) => Promise<void>;
-  completeRegistration: (code: string) => Promise<UserInfo>;
+  verifyRegistrationEmail: (code: string, email?: string) => Promise<void>;
+  completeRegistration: (code: string, email?: string) => Promise<UserInfo>;
   fetchPendingSocialProfile: () => Promise<PendingSocialProfile | null>;
   completeSocialRegistration: (payload: SocialRegistrationPayload) => Promise<UserInfo>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<UserInfo>;
@@ -211,10 +211,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   );
 
   const verifyRegistrationEmail = useCallback(
-    async (code: string) => {
+    async (code: string, email?: string) => {
       const data = await requestJson("/api/auth/register/verify-email", {
         method: "POST",
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, email }),
       });
       return data;
     },
@@ -222,12 +222,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   );
 
   const completeRegistration = useCallback(
-    async (code: string) => {
+    async (code: string, email?: string) => {
       console.log('[Phone Verification] AccountContext - completeRegistration called with code');
       try {
         const data = await requestJson("/api/auth/register/verify-phone", {
           method: "POST",
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, email }),
         });
 
         console.log('[Phone Verification] AccountContext - Registration API response received:', {

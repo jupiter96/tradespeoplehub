@@ -275,7 +275,7 @@ export default function LoginPage() {
     setRegisterError(null);
     setIsVerifyingEmail(true);
     try {
-      const response = await verifyRegistrationEmail(emailVerificationCode);
+      const response = await verifyRegistrationEmail(emailVerificationCode, registerEmail);
       setPhoneCodeHint(response?.phoneCode || null);
       setEmailCodeHint(null);
       setVerificationStep(2);
@@ -301,7 +301,7 @@ export default function LoginPage() {
     setIsCompletingRegistration(true);
     try {
       console.log('[Phone Verification] Frontend - Calling completeRegistration API');
-      const user = await completeRegistration(phoneVerificationCode);
+      const user = await completeRegistration(phoneVerificationCode, registerEmail);
       console.log('[Phone Verification] Frontend - Registration completed successfully:', {
         userId: user.id,
         email: user.email,

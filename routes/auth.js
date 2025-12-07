@@ -5,6 +5,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
 import PendingRegistration from '../models/PendingRegistration.js';
@@ -147,26 +148,71 @@ const setPendingRegistrationSession = (req, registrationId) => {
   req.session[registrationSessionKey] = registrationId;
 };
 
+const saveSession = (req) => {
+  return new Promise((resolve, reject) => {
+    req.session.save((err) => {
+      if (err) {
+        console.error('[Session] Failed to save session:', err);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+};
+
 const clearPendingRegistrationSession = (req) => {
   delete req.session[registrationSessionKey];
 };
 
-const loadPendingRegistration = async (req) => {
+const loadPendingRegistration = async (req, email = null) => {
+  console.log('[loadPendingRegistration] Starting load:', {
+    hasSession: !!req.session,
+    sessionId: req.session?.id,
+    registrationId: req.session?.[registrationSessionKey],
+    providedEmail: email,
+  });
+
+  // First try to load from session
   const registrationId = req.session?.[registrationSessionKey];
-  if (!registrationId) {
-    return null;
+  if (registrationId) {
+    try {
+      console.log('[loadPendingRegistration] Trying to load by session ID:', registrationId);
+      const pending = await PendingRegistration.findById(registrationId);
+      if (pending) {
+        console.log('[loadPendingRegistration] Found by session ID:', pending._id);
+        return pending;
+      }
+      // If not found, clear session
+      console.log('[loadPendingRegistration] Not found by session ID, clearing session');
+      clearPendingRegistrationSession(req);
+    } catch (error) {
+      console.error('[loadPendingRegistration] Failed to load pending registration by ID', error);
+    }
   }
 
-  try {
-    const pending = await PendingRegistration.findById(registrationId);
-    if (!pending) {
-      clearPendingRegistrationSession(req);
+  // Fallback: try to load by email if provided
+  if (email) {
+    try {
+      const normalizedEmail = normalizeEmail(email);
+      console.log('[loadPendingRegistration] Trying to load by email:', normalizedEmail);
+      const pending = await PendingRegistration.findOne({ email: normalizedEmail });
+      if (pending) {
+        console.log('[loadPendingRegistration] Found by email, updating session:', pending._id);
+        // Update session with found registration
+        setPendingRegistrationSession(req, pending.id);
+        await saveSession(req);
+        return pending;
+      } else {
+        console.log('[loadPendingRegistration] Not found by email:', normalizedEmail);
+      }
+    } catch (error) {
+      console.error('[loadPendingRegistration] Failed to load pending registration by email', error);
     }
-    return pending;
-  } catch (error) {
-    console.error('Failed to load pending registration', error);
-    return null;
   }
+
+  console.log('[loadPendingRegistration] No pending registration found');
+  return null;
 };
 
 const setPendingSocialProfile = (req, profile) => {
@@ -360,18 +406,146 @@ router.post('/register/initiate', async (req, res) => {
     if (!normalizedEmail) {
       return res.status(400).json({ error: 'Email is required' });
     }
-    clearPendingRegistrationSession(req);
 
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
+    // Check if there's an existing pending registration
+    let existingPending = await PendingRegistration.findOne({ email: normalizedEmail });
+    
+    // If there's an existing pending registration that's not expired, reuse it
+    if (existingPending) {
+      const now = new Date();
+      const isExpired = existingPending.expiresAt && existingPending.expiresAt < now;
+      const emailCodeExpired = existingPending.emailCodeExpiresAt && existingPending.emailCodeExpiresAt < now;
+      
+      // If expired, delete it and create a new one
+      if (isExpired || (emailCodeExpired && !existingPending.emailVerified)) {
+        console.log('[Registration] Existing pending registration expired, creating new one');
+        await existingPending.deleteOne();
+        existingPending = null;
+      } else {
+        // If not expired and not fully verified, update it with new data
+        console.log('[Registration] Found existing pending registration, updating with new data');
+        existingPending.firstName = firstName;
+        existingPending.lastName = lastName;
+        existingPending.phone = phone;
+        existingPending.postcode = postcode;
+        existingPending.referralCode = referralCode;
+        existingPending.role = userType;
+        
+        // Update professional fields if applicable
+        if (userType === 'professional') {
+          if (tradingName !== undefined && tradingName !== null) {
+            const trimmedTradingName = String(tradingName).trim();
+            if (trimmedTradingName) {
+              existingPending.tradingName = trimmedTradingName;
+            }
+          }
+          if (travelDistance !== undefined && travelDistance !== null) {
+            const trimmedTravelDistance = String(travelDistance).trim();
+            if (trimmedTravelDistance) {
+              existingPending.travelDistance = trimmedTravelDistance;
+            }
+          }
+        }
+        
+        // Update address fields
+        if (address !== undefined && address !== null) {
+          const trimmedAddress = String(address).trim();
+          if (trimmedAddress) {
+            existingPending.address = trimmedAddress;
+          }
+        }
+        if (townCity !== undefined && townCity !== null) {
+          const trimmedTownCity = String(townCity).trim();
+          if (trimmedTownCity) {
+            existingPending.townCity = trimmedTownCity;
+          }
+        }
+        
+        // Generate new email code if not already verified
+        if (!existingPending.emailVerified) {
+          const emailCode = generateCode();
+          const emailCodeHash = await bcrypt.hash(emailCode, 10);
+          existingPending.emailCodeHash = emailCodeHash;
+          existingPending.emailCodeExpiresAt = codeExpiryDate();
+          existingPending.emailVerified = false;
+          
+          // Update password hash
+          const passwordHash = await bcrypt.hash(password, 12);
+          existingPending.passwordHash = passwordHash;
+          
+          // Reset expiration
+          existingPending.expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+          
+          await existingPending.save();
+          
+          try {
+            await sendEmailVerificationCode(normalizedEmail, emailCode);
+          } catch (notificationError) {
+            console.error('Failed to send verification email', notificationError);
+            if (isProduction) {
+              console.warn('Continuing registration flow despite email send failure (production mode)');
+            } else {
+              return res.status(502).json({ error: 'Failed to send verification email' });
+            }
+          }
+          
+          setPendingRegistrationSession(req, existingPending.id);
+          await saveSession(req);
+          
+          return res.status(200).json({ 
+            message: 'Email verification code sent',
+            emailCode: emailCode
+          });
+        } else {
+          // Email already verified, just send phone code if needed
+          if (!existingPending.phoneCodeHash || 
+              (existingPending.phoneCodeExpiresAt && existingPending.phoneCodeExpiresAt < new Date())) {
+            const smsCode = generateCode();
+            const smsCodeHash = await bcrypt.hash(smsCode, 10);
+            existingPending.phoneCodeHash = smsCodeHash;
+            existingPending.phoneCodeExpiresAt = codeExpiryDate();
+            
+            await existingPending.save();
+            
+            try {
+              await sendSmsVerificationCode(existingPending.phone, smsCode);
+            } catch (notificationError) {
+              console.error('Failed to send SMS code', notificationError);
+              if (isProduction) {
+                console.warn('Continuing registration flow despite SMS send failure (production mode)');
+              } else {
+                return res.status(502).json({ error: 'Failed to send SMS code' });
+              }
+            }
+            
+            setPendingRegistrationSession(req, existingPending.id);
+            await saveSession(req);
+            
+            return res.status(200).json({ 
+              message: 'Phone verification code sent',
+              phoneCode: smsCode
+            });
+          }
+          
+          setPendingRegistrationSession(req, existingPending.id);
+          await saveSession(req);
+          return res.status(200).json({ 
+            message: 'Registration in progress. Please verify your phone number.',
+            phoneCode: null
+          });
+        }
+      }
+    }
+
+    // Create new pending registration
     const passwordHash = await bcrypt.hash(password, 12);
     const emailCode = generateCode();
     const emailCodeHash = await bcrypt.hash(emailCode, 10);
-
-    await PendingRegistration.deleteOne({ email: normalizedEmail }).catch(() => {});
 
     const pendingRegistrationData = {
       firstName,
@@ -425,16 +599,40 @@ router.post('/register/initiate', async (req, res) => {
       address: pendingRegistrationData.address,
       townCity: pendingRegistrationData.townCity,
       travelDistance: pendingRegistrationData.travelDistance,
+      hasPasswordHash: !!pendingRegistrationData.passwordHash,
+      hasEmailCodeHash: !!pendingRegistrationData.emailCodeHash,
     });
 
-    const pendingRegistration = await PendingRegistration.create(pendingRegistrationData);
+    // Verify MongoDB connection before creating
+    if (mongoose.connection.readyState !== 1) {
+      console.error('[Registration] MongoDB not connected. Connection state:', mongoose.connection.readyState);
+      return res.status(500).json({ error: 'Database connection error. Please try again.' });
+    }
 
-    console.log('[Registration] Pending registration created:', {
-      id: pendingRegistration._id,
-      tradingName: pendingRegistration.tradingName,
-      address: pendingRegistration.address,
-      townCity: pendingRegistration.townCity,
-    });
+    let pendingRegistration;
+    try {
+      pendingRegistration = await PendingRegistration.create(pendingRegistrationData);
+      console.log('[Registration] Pending registration created successfully:', {
+        id: pendingRegistration._id,
+        email: pendingRegistration.email,
+        tradingName: pendingRegistration.tradingName,
+        address: pendingRegistration.address,
+        townCity: pendingRegistration.townCity,
+      });
+    } catch (createError) {
+      console.error('[Registration] Failed to create pending registration:', {
+        error: createError.message,
+        stack: createError.stack,
+        code: createError.code,
+        name: createError.name,
+        pendingRegistrationData: {
+          email: pendingRegistrationData.email,
+          role: pendingRegistrationData.role,
+          hasPasswordHash: !!pendingRegistrationData.passwordHash,
+        }
+      });
+      throw createError;
+    }
 
     try {
       await sendEmailVerificationCode(normalizedEmail, emailCode);
@@ -450,6 +648,11 @@ router.post('/register/initiate', async (req, res) => {
     }
 
     setPendingRegistrationSession(req, pendingRegistration.id);
+    await saveSession(req);
+    console.log('[Registration] Session saved successfully:', {
+      sessionId: req.session.id,
+      registrationId: req.session[registrationSessionKey],
+    });
 
     // Include code in response for testing
     return res.status(200).json({ 
@@ -457,21 +660,85 @@ router.post('/register/initiate', async (req, res) => {
       emailCode: emailCode
     });
   } catch (error) {
-    console.error('Register initiate error', error);
-    return res.status(500).json({ error: 'Failed to start registration' });
+    console.error('[Registration] Register initiate error:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      name: error.name,
+      errors: error.errors,
+    });
+    
+    // Provide more specific error messages
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors || {}).map((e) => e.message).join(', ');
+      return res.status(400).json({ error: `Validation error: ${validationErrors}` });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+    
+    if (error.message && error.message.includes('Mongo')) {
+      return res.status(500).json({ error: 'Database error. Please try again.' });
+    }
+    
+    return res.status(500).json({ error: error.message || 'Failed to start registration' });
   }
 });
 
 router.post('/register/verify-email', async (req, res) => {
   try {
-    const { code } = req.body || {};
+    const { code, email } = req.body || {};
+    console.log('[Email Verification] Received request:', {
+      hasCode: !!code,
+      email: email,
+      normalizedEmail: email ? normalizeEmail(email) : null,
+      sessionId: req.session?.id,
+      sessionRegistrationId: req.session?.[registrationSessionKey],
+    });
+    
     if (!isValidCode(code)) {
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
-    const pendingRegistration = await loadPendingRegistration(req);
+    // Ensure email is provided for fallback lookup
+    if (!email) {
+      console.error('[Email Verification] No email provided in request');
+    }
+
+    const pendingRegistration = await loadPendingRegistration(req, email);
+    console.log('[Email Verification] Loaded pending registration:', {
+      found: !!pendingRegistration,
+      email: pendingRegistration?.email,
+      id: pendingRegistration?._id,
+      emailVerified: pendingRegistration?.emailVerified,
+    });
+    
     if (!pendingRegistration) {
-      return res.status(400).json({ error: 'No pending registration found' });
+      // Try to find any pending registrations for debugging
+      if (email) {
+        const normalizedEmail = normalizeEmail(email);
+        const allPending = await PendingRegistration.find({ email: normalizedEmail }).limit(5);
+        console.error('[Email Verification] No pending registration found. Debug info:', {
+          sessionId: req.session?.id,
+          sessionRegistrationId: req.session?.[registrationSessionKey],
+          providedEmail: email,
+          normalizedEmail: normalizedEmail,
+          foundPendingCount: allPending.length,
+          pendingRegistrations: allPending.map(p => ({
+            id: p._id,
+            email: p.email,
+            expiresAt: p.expiresAt,
+            emailVerified: p.emailVerified,
+          })),
+        });
+      } else {
+        console.error('[Email Verification] No pending registration found. No email provided:', {
+          sessionId: req.session?.id,
+          sessionRegistrationId: req.session?.[registrationSessionKey],
+        });
+      }
+      return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
 
     if (pendingRegistration.emailVerified) {
@@ -527,7 +794,7 @@ router.post('/register/verify-email', async (req, res) => {
 
 router.post('/register/verify-phone', async (req, res) => {
   try {
-    const { code } = req.body || {};
+    const { code, email } = req.body || {};
     console.log('[Phone Verification] Registration - Received code:', code ? '****' : 'missing');
     
     if (!isValidCode(code)) {
@@ -535,10 +802,10 @@ router.post('/register/verify-phone', async (req, res) => {
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
-    const pendingRegistration = await loadPendingRegistration(req);
+    const pendingRegistration = await loadPendingRegistration(req, email);
     if (!pendingRegistration) {
       console.log('[Phone Verification] Registration - No pending registration found');
-      return res.status(400).json({ error: 'No pending registration found' });
+      return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
 
     console.log('[Phone Verification] Registration - Pending registration found for:', pendingRegistration.email);

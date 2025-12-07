@@ -8,7 +8,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Loader2,
-  User
+  User,
+  Plus,
+  X
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -97,7 +99,7 @@ export default function ProfessionalRegistrationSteps() {
   const [aboutService, setAboutService] = useState<string>("");
   const [skipAboutMe, setSkipAboutMe] = useState<boolean>(false);
   const [hasTradeQualification, setHasTradeQualification] = useState<"yes" | "no">("no");
-  const [qualifications, setQualifications] = useState<string>("");
+  const [qualifications, setQualifications] = useState<string[]>([]);
   const [sector, setSector] = useState<string>("");
   const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
@@ -120,7 +122,18 @@ export default function ProfessionalRegistrationSteps() {
       setHasTradeQualification(userInfo.hasTradeQualification === true || userInfo.hasTradeQualification === "yes" ? "yes" : "no");
     }
     if (userInfo?.publicProfile?.qualifications) {
-      setQualifications(userInfo.publicProfile.qualifications);
+      // Convert string to array (split by newlines or keep as single item)
+      const quals = typeof userInfo.publicProfile.qualifications === 'string' 
+        ? userInfo.publicProfile.qualifications.split('\n').filter(q => q.trim())
+        : Array.isArray(userInfo.publicProfile.qualifications)
+        ? userInfo.publicProfile.qualifications
+        : [];
+      setQualifications(quals.length > 0 ? quals : [""]);
+    } else if (hasTradeQualification === "yes") {
+      // Initialize with one empty field if trade qualification is yes but no qualifications exist
+      setQualifications([""]);
+    } else {
+      setQualifications([]);
     }
     if (userInfo?.sector) {
       setSector(userInfo.sector);
@@ -210,8 +223,12 @@ export default function ProfessionalRegistrationSteps() {
           }
           updateData.hasTradeQualification = hasTradeQualification;
           if (hasTradeQualification === "yes") {
+            // Convert array to string (join with newlines)
+            const qualificationsStr = qualifications
+              .filter(q => q.trim())
+              .join('\n');
             updateData.publicProfile = {
-              qualifications: qualifications || "",
+              qualifications: qualificationsStr || "",
             };
           }
         }
@@ -529,7 +546,10 @@ export default function ProfessionalRegistrationSteps() {
                       setHasTradeQualification(value as "yes" | "no");
                       // Clear qualifications if switching to "no"
                       if (value === "no") {
-                        setQualifications("");
+                        setQualifications([]);
+                      } else if (value === "yes" && qualifications.length === 0) {
+                        // Initialize with one empty field if switching to "yes"
+                        setQualifications([""]);
                       }
                     }}
                     className="flex items-center justify-center gap-8"
@@ -551,15 +571,54 @@ export default function ProfessionalRegistrationSteps() {
                   {/* Qualifications Input - Show when YES is selected */}
                   {hasTradeQualification === "yes" && (
                     <div className="mt-6 pt-4 border-t border-gray-200">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
-                        Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
-                      </p>
-                      <Textarea
-                        value={qualifications}
-                        onChange={(e) => setQualifications(e.target.value)}
-                        placeholder="Enter your qualifications and accreditations with registration numbers..."
-                        className="min-h-[120px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
-                      />
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {qualifications.map((qual, index) => (
+                          <div key={index} className="flex items-start gap-2">
+                            <Input
+                              value={qual}
+                              onChange={(e) => {
+                                const newQualifications = [...qualifications];
+                                newQualifications[index] = e.target.value;
+                                setQualifications(newQualifications);
+                              }}
+                              placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
+                              className="flex-1 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                            />
+                            {qualifications.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const newQualifications = qualifications.filter((_, i) => i !== index);
+                                  setQualifications(newQualifications.length > 0 ? newQualifications : [""]);
+                                }}
+                                className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setQualifications([...qualifications, ""]);
+                          }}
+                          className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] h-10"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Another Qualification
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
