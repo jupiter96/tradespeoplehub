@@ -9,6 +9,7 @@ interface AdminPageLayoutProps {
   defaultTab?: string;
   children?: React.ReactNode | ((activeTab: string) => React.ReactNode);
   enableTabSlider?: boolean;
+  onTabChange?: (tab: string) => void;
 }
 
 export default function AdminPageLayout({
@@ -18,6 +19,7 @@ export default function AdminPageLayout({
   defaultTab,
   children,
   enableTabSlider = false,
+  onTabChange,
 }: AdminPageLayoutProps) {
   const [activeTab, setActiveTab] = useState<string>(defaultTab || tabs?.[0]?.key || "");
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -31,6 +33,13 @@ export default function AdminPageLayout({
       setActiveTab(defaultTab);
     }
   }, [tabs, defaultTab]);
+
+  // Notify parent when activeTab changes
+  useEffect(() => {
+    if (onTabChange && activeTab) {
+      onTabChange(activeTab);
+    }
+  }, [activeTab, onTabChange]);
 
   useEffect(() => {
     if (enableTabSlider && tabsContainerRef.current) {

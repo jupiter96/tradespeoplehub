@@ -38,7 +38,6 @@ export default function AdminCategoriesPage() {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedSectorId, setSelectedSectorId] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -77,11 +76,12 @@ export default function AdminCategoriesPage() {
     fetchSectors();
   }, []);
 
-  useEffect(() => {
-    if (activeTab && activeTab !== selectedSectorId) {
-      setSelectedSectorId(activeTab);
+  // Handle tab change from AdminPageLayout
+  const handleTabChange = (tab: string) => {
+    if (tab && tab !== selectedSectorId) {
+      setSelectedSectorId(tab);
     }
-  }, [activeTab]);
+  };
 
   useEffect(() => {
     if (selectedSectorId) {
@@ -517,13 +517,9 @@ export default function AdminCategoriesPage() {
         tabs={sectorTabs}
         defaultTab={selectedSectorId}
         enableTabSlider={true}
+        onTabChange={handleTabChange}
       >
         {(tab) => {
-          // Update activeTab when tab changes
-          if (tab !== activeTab) {
-            setActiveTab(tab);
-          }
-
           const currentCategories = getCurrentCategories(tab);
 
           return (
