@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import BenefitsAutoScroll from "./BenefitsAutoScroll";
@@ -31,6 +31,8 @@ import {
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
 import { useJobs } from "./JobsContext";
+import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
+import { resolveApiUrl } from "../config/api";
 import { Checkbox } from "./ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import FloatingToolsBackground from "./FloatingToolsBackground";
@@ -78,24 +80,8 @@ const steps: Step[] = [
   { id: 5, title: "Budget", description: "Set budget" },
 ];
 
-// Main Sectors
-const sectors = [
-  { value: "home-garden", label: "Home & Garden" },
-  { value: "business", label: "Business Services" },
-  { value: "personal", label: "Personal Services" },
-  { value: "repair-maintenance", label: "Repair & Maintenance" },
-  { value: "technology", label: "Technology Services" },
-  { value: "education", label: "Education & Tutoring" },
-  { value: "beauty-wellness", label: "Beauty & Wellness" },
-  { value: "health-wellness", label: "Health & Wellness" },
-  { value: "legal-financial", label: "Legal & Financial" },
-  { value: "events", label: "Event Services" },
-  { value: "pets", label: "Pet Services" },
-  { value: "automotive", label: "Automotive" },
-  { value: "moving-storage", label: "Moving & Storage" },
-];
-
-// Categories by sector (multiple selection allowed)
+// Categories by sector will be loaded from API
+// This is kept for backward compatibility but will be replaced with API data
 const categoriesBySector: { [key: string]: { value: string; label: string }[] } = {
   "home-garden": [
     { value: "plumbing", label: "Plumbing" },
@@ -226,7 +212,56 @@ export default function PostJobPage() {
   const { isLoggedIn, userInfo } = useAccount();
   const { addJob } = useJobs();
   const navigate = useNavigate();
+  const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
+  const [categoriesBySectorData, setCategoriesBySectorData] = useState<{ [key: string]: { value: string; label: string }[] }>({});
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // Transform sectors data for dropdown
+  const sectors = sectorsData.map((s) => ({
+    value: s.slug,
+    label: s.name,
+  }));
+  
+  // Load categories for each sector
+  useEffect(() => {
+    const loadCategories = async () => {
+      const categoriesMap: { [key: string]: { value: string; label: string }[] } = {};
+      
+      for (const sector of sectorsData) {
+        try {
+          const response = await fetch(
+            `${resolveApiUrl('/api/categories')}?sectorSlug=${sector.slug}&activeOnly=true`,
+            { credentials: 'include' }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            categoriesMap[sector.slug] = (data.categories || []).map((cat: any) => ({
+              value: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+              label: cat.name,
+            }));
+          }
+        } catch (error) {
+          console.error(`Error loading categories for sector ${sector.slug}:`, error);
+        }
+      }
+      
+      setCategoriesBySectorData(categoriesMap);
+    };
+    
+    if (sectorsData.length > 0) {
+      loadCategories();
+    }
+  }, [sectorsData]);
+  
+  // Use API data if available, fallback to hardcoded
+  const effectiveCategoriesBySector = Object.keys(categoriesBySectorData).length > 0 
+    ? categoriesBySectorData 
+    : categoriesBySector;
+  
+  // Get categories for selected sector
+  const getCategoriesForSector = (sectorSlug: string) => {
+    return effectiveCategoriesBySector[sectorSlug] || [];
+  };
   
   // Step 1: Category Selection (Sector + Multiple Categories)
   const [selectedSector, setSelectedSector] = useState("");
@@ -352,7 +387,7 @@ export default function PostJobPage() {
     // Get category labels
     const categoryLabels = selectedCategories
       .map(catValue => {
-        const categories = categoriesBySector[selectedSector] || [];
+        const categories = effectiveCategoriesBySector[selectedSector] || [];
         return categories.find(c => c.value === catValue)?.label || catValue;
       });
 
@@ -538,7 +573,7 @@ export default function PostJobPage() {
                             {selectedCategories.length > 0 ? (
                               <>
                                 {selectedCategories.map((categoryValue) => {
-                                  const category = categoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
+                                  const category = effectiveCategoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
                                   return (
                                     <div
                                       key={categoryValue}
@@ -578,7 +613,7 @@ export default function PostJobPage() {
                                 No category found.
                               </CommandEmpty>
                               <CommandGroup>
-                                {categoriesBySector[selectedSector]?.map((category) => {
+                                {effectiveCategoriesBySector[selectedSector]?.map((category) => {
                                   const isSelected = selectedCategories.includes(category.value);
                                   return (
                                     <CommandItem

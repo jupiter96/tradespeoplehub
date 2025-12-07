@@ -87,7 +87,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [verificationStatuses, setVerificationStatuses] = useState<Record<string, any>>({});
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -476,31 +476,18 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-sm text-black dark:text-white">
+      {/* Search and Controls - All in one row */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-black dark:text-white whitespace-nowrap">
             Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> {title.toLowerCase()}
           </p>
         </div>
-        {onCreateNew && (
-          <Button
-            onClick={onCreateNew}
-            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-0 shadow-lg shadow-blue-500/40 hover:shadow-xl hover:shadow-blue-500/50 transition-all"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add New
-          </Button>
-        )}
-      </div>
-
-      {/* Search and Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="relative flex-1 w-full sm:max-w-md">
+        <div className="relative flex-shrink-0" style={{ width: '200px' }}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
           <Input
             type="text"
-            placeholder="Search by name or email..."
+            placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
@@ -525,6 +512,17 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             </SelectContent>
           </Select>
         </div>
+        {onCreateNew && (
+          <div className="ml-auto">
+            <Button
+              onClick={onCreateNew}
+              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-0 shadow-lg shadow-blue-500/40 hover:shadow-xl hover:shadow-blue-500/50 transition-all"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Table */}

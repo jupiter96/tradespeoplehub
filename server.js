@@ -11,6 +11,9 @@ import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import addressRoutes from './routes/address.js';
+import sectorRoutes from './routes/sectors.js';
+import categoryRoutes from './routes/categories.js';
+import subCategoryRoutes from './routes/subcategories.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 
@@ -140,6 +143,9 @@ app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/address', addressRoutes);
+app.use('/api/sectors', sectorRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/subcategories', subCategoryRoutes);
 
 // API catch-all handler
 app.get('/api/*', (req, res) => {

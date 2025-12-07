@@ -24,6 +24,8 @@ import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
+import { useSectors } from "../hooks/useSectorsAndCategories";
+import type { Sector } from "../hooks/useSectorsAndCategories";
 
 const STEPS = [
   { id: 1, title: "About Me", icon: User, description: "Tell us about yourself" },
@@ -33,20 +35,7 @@ const STEPS = [
   { id: 5, title: "Insurance", icon: Shield, description: "Public liability insurance status" },
 ];
 
-const SECTORS = [
-  "Home & Garden",
-  "Plumbing",
-  "Electrical",
-  "Heating & Cooling",
-  "Building & Construction",
-  "Painting & Decorating",
-  "Carpentry & Joinery",
-  "Roofing",
-  "Flooring",
-  "Landscaping",
-  "Cleaning",
-  "Other",
-];
+// SECTORS will be loaded from API
 
 const CATEGORIES = [
   "Emergency Repairs",
@@ -92,8 +81,12 @@ const SUBCATEGORIES = [
 export default function ProfessionalRegistrationSteps() {
   const navigate = useNavigate();
   const { userInfo, updateProfile, isLoggedIn } = useAccount();
+  const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Extract sector names for the select dropdown
+  const SECTORS = sectorsData.map((s: Sector) => s.name);
   
   // Form data
   const [aboutService, setAboutService] = useState<string>("");
@@ -635,7 +628,11 @@ export default function ProfessionalRegistrationSteps() {
                       (Select one sector only)
                     </span>
                   </Label>
-                  {userInfo?.sector ? (
+                  {sectorsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
+                    </div>
+                  ) : userInfo?.sector ? (
                     // If sector already exists, show it as read-only
                     <div className="space-y-2">
                       <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">

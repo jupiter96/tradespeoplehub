@@ -57,6 +57,8 @@ import AdminReferralsProfessionalPage from "./admin/AdminReferralsProfessionalPa
 import AdminHomepageContentPage from "./admin/AdminHomepageContentPage";
 import AdminBlogContentPage from "./admin/AdminBlogContentPage";
 import AdminCostGuidePage from "./admin/AdminCostGuidePage";
+import AdminSectorsPage from "./admin/AdminSectorsPage";
+import AdminCategoriesPage from "./admin/AdminCategoriesPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -208,6 +210,10 @@ export default function AdminDashboardPage() {
         return <AdminBlogContentPage />;
       case "cost-guide":
         return <AdminCostGuidePage />;
+      case "sectors":
+        return <AdminSectorsPage />;
+      case "categories":
+        return <AdminCategoriesPage />;
       default:
         return (
           <AdminGenericPage

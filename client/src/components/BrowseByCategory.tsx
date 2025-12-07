@@ -12,13 +12,16 @@ import {
   PartyPopper, 
   PawPrint, 
   Car,
-  Package
+  Package,
+  Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { sectors } from "./unifiedCategoriesData";
+import { useSectors } from "../hooks/useSectorsAndCategories";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import type { Sector } from "../hooks/useSectorsAndCategories";
 
 export default function BrowseByCategory() {
+  const { sectors, loading } = useSectors(true, true); // Include categories and subcategories
   // Icon mapping for sectors - Each sector now has a unique icon
   const iconMap: Record<string, any> = {
     "Home & Garden": Home,
@@ -93,9 +96,9 @@ export default function BrowseByCategory() {
   };
 
   // Calculate service count for each sector and get top 6
-  const sectorsWithCount = sectors.map(sector => ({
+  const sectorsWithCount = sectors.map((sector: Sector) => ({
     ...sector,
-    serviceCount: sector.categories.length
+    serviceCount: (sector.categories || []).length
   }));
 
   // Sort by service count (descending) and take top 6
@@ -103,20 +106,35 @@ export default function BrowseByCategory() {
     .sort((a, b) => b.serviceCount - a.serviceCount)
     .slice(0, 6);
 
-  const categories = topSectors.map(sector => {
+  const categories = topSectors.map((sector: Sector) => {
     const IconComponent = iconMap[sector.name] || Home;
     const styles = categoryStyles[sector.name] || categoryStyles["Home & Garden"];
     
     return {
-      id: sector.id,
-      name: sector.displayName,
+      id: sector._id,
+      name: sector.displayName || sector.name,
       subtitle: sector.subtitle,
       icon: IconComponent,
       styles: styles,
       categoryName: sector.name,
-      sectorSlug: sector.sectorValue,
+      sectorSlug: sector.slug,
     };
   });
+
+  if (loading) {
+    return (
+      <div className="w-full">
+        <div className="flex items-center justify-between mb-8 md:mb-10">
+          <h2 className="font-['Poppins',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
+            Browse Service by Category
+          </h2>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-[#3D78CB]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

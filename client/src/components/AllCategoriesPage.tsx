@@ -16,12 +16,15 @@ import {
   PawPrint,
   Sparkles,
   FileText,
+  Loader2,
 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { sectors } from "./unifiedCategoriesData";
+import { useSectors } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category } from "../hooks/useSectorsAndCategories";
 
 export default function AllCategoriesPage() {
+  const { sectors, loading, error } = useSectors(true, true); // Include categories and subcategories
   const sectorIcons: Record<string, any> = {
     "Home & Garden": Home,
     "Business Services": Briefcase,
@@ -91,75 +94,119 @@ export default function AllCategoriesPage() {
 
       {/* Sectors and Categories */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 md:-mt-16 pb-16 md:pb-24 relative z-20">
-        <div className="space-y-8 md:space-y-12">
-          {sectors.map((sector) => {
-            const IconComponent = sectorIcons[sector.name] || Home;
-            const color = sectorColors[sector.name] || "#3F51B5";
-            
-            return (
-              <div 
-                key={sector.id} 
-                id={`sector-${sector.id}`}
-                className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8 scroll-mt-[180px]"
-              >
-                {/* Sector Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-14 h-14 rounded-[12px] flex items-center justify-center"
-                      style={{ backgroundColor: `${color}15` }}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-[#3D78CB]" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-red-500 font-['Poppins',sans-serif]">{error}</p>
+          </div>
+        ) : (
+          <div className="space-y-8 md:space-y-12">
+            {sectors.map((sector) => {
+              const IconComponent = sectorIcons[sector.name] || Home;
+              const color = sectorColors[sector.name] || "#3F51B5";
+              const categories = (sector.categories || []) as Category[];
+              
+              return (
+                <div 
+                  key={sector._id} 
+                  id={`sector-${sector.slug}`}
+                  className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8 scroll-mt-[180px]"
+                >
+                  {/* Sector Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="w-14 h-14 rounded-[12px] flex items-center justify-center"
+                        style={{ backgroundColor: `${color}15` }}
+                      >
+                        <IconComponent
+                          className="w-7 h-7"
+                          style={{ color: color }}
+                        />
+                      </div>
+                      <div>
+                        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[22px] md:text-[26px]">
+                          {sector.name}
+                        </h2>
+                        <p className="font-['Poppins',sans-serif] text-[#8d8d8d] text-[13px]">
+                          {categories.length} categories available
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to={`/sector/${sector.slug}`}
+                      className="hidden md:flex items-center gap-2 text-[#3D78CB] hover:text-[#2d68bb] font-['Poppins',sans-serif] text-[14px] transition-colors cursor-pointer"
                     >
-                      <IconComponent
-                        className="w-7 h-7"
-                        style={{ color: color }}
-                      />
-                    </div>
-                    <div>
-                      <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[22px] md:text-[26px]">
-                        {sector.name}
-                      </h2>
-                      <p className="font-['Poppins',sans-serif] text-[#8d8d8d] text-[13px]">
-                        {sector.categories.length} categories available
-                      </p>
-                    </div>
+                      View all
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
                   </div>
+
+                  {/* Categories Grid */}
+                  {categories.length > 0 ? (
+                    <div className="space-y-4">
+                      {categories.map((category) => {
+                        const subCategories = (category.subCategories || []) as any[];
+                        return (
+                          <div key={category._id} className="space-y-2">
+                            <Link
+                              to={`/services?category=${encodeURIComponent(sector.name)}&subcategory=${encodeURIComponent(category.name)}`}
+                              className="group flex items-center justify-between p-3 bg-gray-50 hover:bg-white rounded-[8px] border border-gray-100 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 cursor-pointer"
+                            >
+                              <div>
+                                <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-semibold group-hover:text-[#3D78CB] transition-colors">
+                                  {category.name}
+                                </span>
+                                {subCategories.length > 0 && (
+                                  <p className="text-[11px] text-gray-500 font-['Poppins',sans-serif] mt-1">
+                                    {subCategories.length} services available
+                                  </p>
+                                )}
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all" />
+                            </Link>
+                            {/* Subcategories */}
+                            {subCategories.length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 ml-4">
+                                {subCategories.map((subCategory) => (
+                                  <Link
+                                    key={subCategory._id}
+                                    to={`/services?category=${encodeURIComponent(sector.name)}&subcategory=${encodeURIComponent(category.name)}&service=${encodeURIComponent(subCategory.name)}`}
+                                    className="group bg-white hover:bg-gray-50 rounded-[6px] border border-gray-100 hover:border-[#3D78CB] transition-all duration-200 p-2 flex items-center justify-between cursor-pointer"
+                                  >
+                                    <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[12px] group-hover:text-[#3D78CB] transition-colors">
+                                      {subCategory.name}
+                                    </span>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
+                      No categories available
+                    </p>
+                  )}
+
+                  {/* View All Link for Mobile */}
                   <Link
-                    to={`/sector/${sector.name.toLowerCase().replace(/\s+&\s+/g, "-").replace(/\s+/g, "-")}`}
-                    className="hidden md:flex items-center gap-2 text-[#3D78CB] hover:text-[#2d68bb] font-['Poppins',sans-serif] text-[14px] transition-colors cursor-pointer"
+                    to={`/sector/${sector.slug}`}
+                    className="md:hidden flex items-center justify-center gap-2 text-[#3D78CB] font-['Poppins',sans-serif] text-[14px] mt-4 pt-4 border-t border-gray-100 cursor-pointer"
                   >
-                    View all
+                    View all {sector.name} services
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
-
-                {/* Categories Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                  {sector.categories.map((category) => (
-                    <Link
-                      key={category}
-                      to={`/services?category=${encodeURIComponent(sector.name)}&subcategory=${encodeURIComponent(category)}`}
-                      className="group bg-gray-50 hover:bg-white rounded-[8px] border border-gray-100 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 p-4 flex items-center justify-between cursor-pointer"
-                    >
-                      <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[13px] group-hover:text-[#3D78CB] transition-colors">
-                        {category}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all" />
-                    </Link>
-                  ))}
-                </div>
-
-                {/* View All Link for Mobile */}
-                <Link
-                  to={`/sector/${sector.name.toLowerCase().replace(/\s+&\s+/g, "-").replace(/\s+/g, "-")}`}
-                  className="md:hidden flex items-center justify-center gap-2 text-[#3D78CB] font-['Poppins',sans-serif] text-[14px] mt-4 pt-4 border-t border-gray-100 cursor-pointer"
-                >
-                  View all {sector.name} services
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <Footer />
