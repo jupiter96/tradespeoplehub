@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import twilio from 'twilio';
 import dotenv from 'dotenv';
+import EmailTemplate from '../models/EmailTemplate.js';
 
 // Load environment variables first
 dotenv.config();
@@ -10,11 +11,23 @@ const {
   SMTP_PORT,
   SMTP_USER,
   SMTP_PASS,
-  EMAIL_FROM = 'no-reply@tradepplhub.com',
+  EMAIL_FROM = 'support@sortars.com',
   TWILIO_ACCOUNT_SID,
   TWILIO_AUTH_TOKEN,
   TWILIO_FROM = process.env.TWILIO_FROM_NUMBER || 'TRADEPPLHUB',
 } = process.env;
+
+// Debug logging for SMTP credentials
+console.log('[Notifier] SMTP configuration check:', {
+  hasHost: !!SMTP_HOST,
+  hasPort: !!SMTP_PORT,
+  hasUser: !!SMTP_USER,
+  hasPass: !!SMTP_PASS,
+  host: SMTP_HOST || 'missing',
+  port: SMTP_PORT || 'missing',
+  user: SMTP_USER || 'missing',
+  emailFrom: EMAIL_FROM
+});
 
 // Debug logging for Twilio credentials
 console.log('[Notifier] Twilio configuration check:', {
@@ -27,14 +40,43 @@ console.log('[Notifier] Twilio configuration check:', {
 
 let mailTransporter;
 if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
-  mailTransporter = nodemailer.createTransport({
+  console.log('[Notifier] Initializing SMTP transporter:', {
     host: SMTP_HOST,
     port: Number(SMTP_PORT),
     secure: Number(SMTP_PORT) === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
+    user: SMTP_USER,
+    hasPassword: !!SMTP_PASS
+  });
+  
+  try {
+    mailTransporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+    });
+    console.log('[Notifier] SMTP transporter created successfully');
+    
+    // Verify connection
+    mailTransporter.verify((error, success) => {
+      if (error) {
+        console.error('[Notifier] SMTP connection verification failed:', error);
+      } else {
+        console.log('[Notifier] SMTP connection verified successfully');
+      }
+    });
+  } catch (error) {
+    console.error('[Notifier] Failed to create SMTP transporter:', error);
+  }
+} else {
+  console.warn('[Notifier] SMTP configuration incomplete:', {
+    hasHost: !!SMTP_HOST,
+    hasPort: !!SMTP_PORT,
+    hasUser: !!SMTP_USER,
+    hasPass: !!SMTP_PASS
   });
 }
 
@@ -59,30 +101,206 @@ const logCode = (channel, to, code) => {
   console.info(`[${channel.toUpperCase()}] Verification code requested for ${to}: ${code}`);
 };
 
-export async function sendEmailVerificationCode(to, code) {
+// Render email template with variables
+export function renderEmailTemplate(templateBody, variables) {
+  let rendered = templateBody;
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    rendered = rendered.replace(regex, value || '');
+  }
+  return rendered;
+}
+
+// Send email using template
+export async function sendTemplatedEmail(to, templateType, variables = {}) {
+  console.log('[EMAIL] sendTemplatedEmail called:', {
+    to: to || 'missing',
+    templateType: templateType || 'missing',
+    variables: Object.keys(variables),
+    timestamp: new Date().toISOString()
+  });
+
+  if (!to || !templateType) {
+    console.error('[EMAIL] Missing required parameters:', {
+      to: to || 'missing',
+      templateType: templateType || 'missing'
+    });
+    return null;
+  }
+
+  try {
+    const template = await EmailTemplate.findOne({ 
+      type: templateType, 
+      isActive: true 
+    });
+
+    if (!template) {
+      console.error('[EMAIL] Template not found:', {
+        templateType,
+        isActive: true
+      });
+      return null;
+    }
+
+    console.log('[EMAIL] Template found:', {
+      templateType,
+      templateId: template._id,
+      hasSubject: !!template.subject,
+      hasBody: !!template.body
+    });
+
+    // Add logo URL to variables if not provided
+    const templateVariables = {
+      ...variables,
+      logoUrl: variables.logoUrl || template.logoUrl || process.env.EMAIL_LOGO_URL || 'https://sortars.com/logo.png',
+    };
+
+    const subject = renderEmailTemplate(template.subject, templateVariables);
+    const htmlBody = renderEmailTemplate(template.body, templateVariables);
+
+    console.log('[EMAIL] Template rendered:', {
+      subject: subject.substring(0, 50) + '...',
+      bodyLength: htmlBody.length
+    });
+
+    if (!mailTransporter) {
+      console.warn('[EMAIL] SMTP is not configured. Email would be sent with template:', {
+        to,
+        subject,
+        templateType
+      });
+      return null;
+    }
+
+    const emailOptions = {
+      from: EMAIL_FROM,
+      to,
+      subject,
+      html: htmlBody,
+    };
+
+    console.log('[EMAIL] Attempting to send templated email:', {
+      from: emailOptions.from,
+      to: emailOptions.to,
+      subject: emailOptions.subject,
+      templateType,
+      timestamp: new Date().toISOString()
+    });
+
+    const result = await mailTransporter.sendMail(emailOptions);
+    console.log('[EMAIL] Templated email sent successfully:', {
+      messageId: result.messageId,
+      response: result.response,
+      accepted: result.accepted,
+      rejected: result.rejected,
+      templateType,
+      timestamp: new Date().toISOString()
+    });
+    return result;
+  } catch (error) {
+    console.error('[EMAIL] Failed to send templated email:', {
+      error: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack,
+      templateType,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
+}
+
+export async function sendEmailVerificationCode(to, code, firstName = 'User') {
+  console.log('[EMAIL] sendEmailVerificationCode called:', {
+    to: to || 'missing',
+    code: code || 'missing',
+    firstName: firstName,
+    hasTo: !!to,
+    hasCode: !!code,
+    codeLength: code?.length || 0,
+    timestamp: new Date().toISOString()
+  });
+
   if (!to || !code) {
+    console.error('[EMAIL] Missing required parameters:', {
+      to: to || 'missing',
+      code: code || 'missing'
+    });
     return;
   }
 
   logCode('email', to, code);
 
+  // Try to use template first
+  try {
+    const result = await sendTemplatedEmail(to, 'verification', {
+      firstName: firstName,
+      code: code,
+    });
+    if (result) {
+      return result;
+    }
+  } catch (templateError) {
+    console.warn('[EMAIL] Template email failed, falling back to simple email:', templateError.message);
+  }
+
+  // Fallback to simple email if template fails
+  console.log('[EMAIL] Checking mail transporter:', {
+    hasMailTransporter: !!mailTransporter,
+    transporterType: mailTransporter ? typeof mailTransporter : 'null'
+  });
+
   if (!mailTransporter) {
     console.warn('[EMAIL] SMTP is not configured. Code logged for manual verification.');
+    console.warn('[EMAIL] SMTP configuration status:', {
+      SMTP_HOST: SMTP_HOST || 'missing',
+      SMTP_PORT: SMTP_PORT || 'missing',
+      SMTP_USER: SMTP_USER || 'missing',
+      SMTP_PASS: SMTP_PASS ? '***' : 'missing',
+      EMAIL_FROM: EMAIL_FROM
+    });
     return;
   }
 
-  try {
-  await mailTransporter.sendMail({
+  const emailOptions = {
     from: EMAIL_FROM,
     to,
-    subject: 'Your TradePplHub verification code',
+    subject: 'Your Sortars verification code',
     text: `Your verification code is ${code}`,
     html: `<p>Your verification code is <strong>${code}</strong></p>`,
+  };
+
+  console.log('[EMAIL] Attempting to send email:', {
+    from: emailOptions.from,
+    to: emailOptions.to,
+    subject: emailOptions.subject,
+    timestamp: new Date().toISOString()
   });
+
+  try {
+    const result = await mailTransporter.sendMail(emailOptions);
+    console.log('[EMAIL] Email sent successfully:', {
+      messageId: result.messageId,
+      response: result.response,
+      accepted: result.accepted,
+      rejected: result.rejected,
+      pending: result.pending,
+      timestamp: new Date().toISOString()
+    });
+    return result;
   } catch (error) {
-    console.error('[EMAIL] Failed to send verification email:', error);
-    // Don't throw error - allow flow to continue even if email sending fails
-    // This is useful when SMTP is not yet configured in production
+    console.error('[EMAIL] Failed to send verification email:', {
+      error: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
   }
 }
 

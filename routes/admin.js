@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Admin from '../models/Admin.js';
 import SEOContent from '../models/SEOContent.js';
+import EmailTemplate from '../models/EmailTemplate.js';
 
 const sanitizeUser = (user) => user.toSafeObject();
 
@@ -925,6 +926,30 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
 
     await user.save();
 
+    // Check if professional user is fully verified and send email
+    if (user.role === 'professional') {
+      const isFullyVerified = 
+        user.verification?.email?.status === 'verified' &&
+        user.verification?.phone?.status === 'verified' &&
+        user.verification?.address?.status === 'verified' &&
+        user.verification?.idCard?.status === 'verified' &&
+        user.verification?.paymentMethod?.status === 'verified' &&
+        user.verification?.publicLiabilityInsurance?.status === 'verified';
+
+      if (isFullyVerified) {
+        try {
+          const { sendTemplatedEmail } = await import('../services/notifier.js');
+          await sendTemplatedEmail(user.email, 'fully-verified', {
+            firstName: user.firstName,
+          });
+          console.log('[Admin] Fully verified email sent to:', user.email);
+        } catch (emailError) {
+          console.error('[Admin] Failed to send fully verified email:', emailError);
+          // Don't fail the request if email fails
+        }
+      }
+    }
+
     return res.json({ 
       verification: user.verification[type],
       message: `Verification status updated to ${finalStatus}`
@@ -1175,6 +1200,113 @@ router.put('/seo-content/:type', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Update SEO content error', error);
     return res.status(500).json({ error: 'Failed to update SEO content' });
+  }
+});
+
+// Email Template Management Routes
+router.get('/email-templates', requireAdmin, async (req, res) => {
+  try {
+    const templates = await EmailTemplate.find().sort({ type: 1 });
+    return res.json({ templates });
+  } catch (error) {
+    console.error('Get email templates error', error);
+    return res.status(500).json({ error: 'Failed to fetch email templates' });
+  }
+});
+
+router.get('/email-templates/:type', requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const template = await EmailTemplate.findOne({ type });
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    return res.json({ template });
+  } catch (error) {
+    console.error('Get email template error', error);
+    return res.status(500).json({ error: 'Failed to fetch email template' });
+  }
+});
+
+router.post('/email-templates', requireAdmin, async (req, res) => {
+  try {
+    const { type, subject, body, variables, logoUrl } = req.body;
+
+    if (!type || !subject || !body) {
+      return res.status(400).json({ error: 'Type, subject, and body are required' });
+    }
+
+    const validTypes = ['verification', 'welcome', 'reminder-verification', 'reminder-identity', 'fully-verified'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid template type' });
+    }
+
+    const existing = await EmailTemplate.findOne({ type });
+    if (existing) {
+      return res.status(409).json({ error: 'Template with this type already exists' });
+    }
+
+    const template = await EmailTemplate.create({
+      type,
+      subject,
+      body,
+      variables: variables || [],
+      logoUrl: logoUrl || '',
+      isActive: true,
+    });
+
+    return res.status(201).json({ message: 'Email template created successfully', template });
+  } catch (error) {
+    console.error('Create email template error', error);
+    return res.status(500).json({ error: 'Failed to create email template' });
+  }
+});
+
+router.put('/email-templates/:type', requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { subject, body, variables, logoUrl, isActive } = req.body;
+
+    const template = await EmailTemplate.findOne({ type });
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    const updateData = {};
+    if (subject !== undefined) updateData.subject = subject;
+    if (body !== undefined) updateData.body = body;
+    if (variables !== undefined) updateData.variables = variables;
+    if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const updated = await EmailTemplate.findOneAndUpdate(
+      { type },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    return res.json({ message: 'Email template updated successfully', template: updated });
+  } catch (error) {
+    console.error('Update email template error', error);
+    return res.status(500).json({ error: 'Failed to update email template' });
+  }
+});
+
+router.delete('/email-templates/:type', requireAdmin, async (req, res) => {
+  try {
+    const { type } = req.params;
+    
+    const template = await EmailTemplate.findOneAndDelete({ type });
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    return res.json({ message: 'Email template deleted successfully' });
+  } catch (error) {
+    console.error('Delete email template error', error);
+    return res.status(500).json({ error: 'Failed to delete email template' });
   }
 });
 

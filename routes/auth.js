@@ -15,6 +15,7 @@ import {
   sendEmailVerificationCode,
   sendSmsVerificationCode,
   sendPasswordResetEmail,
+  sendTemplatedEmail,
 } from '../services/notifier.js';
 
 // Load environment variables
@@ -105,8 +106,16 @@ const verificationUpload = multer({
 
 const verificationUploadMiddleware = verificationUpload.single('document');
 
-const generateCode = () =>
-  Math.floor(10 ** (CODE_LENGTH - 1) + Math.random() * 9 * 10 ** (CODE_LENGTH - 1)).toString();
+const generateCode = () => {
+  const code = Math.floor(10 ** (CODE_LENGTH - 1) + Math.random() * 9 * 10 ** (CODE_LENGTH - 1)).toString();
+  console.log('[Code Generation] Generated verification code:', {
+    code: code,
+    codeLength: code.length,
+    expectedLength: CODE_LENGTH,
+    timestamp: new Date().toISOString()
+  });
+  return code;
+};
 const codeExpiryDate = () => new Date(Date.now() + CODE_EXPIRATION_MINUTES * 60 * 1000);
 const isValidCode = (code) =>
   typeof code === 'string' && code.length === CODE_LENGTH && /^\d+$/.test(code);
@@ -468,8 +477,24 @@ router.post('/register/initiate', async (req, res) => {
         
         // Generate new email code if not already verified
         if (!existingPending.emailVerified) {
+          console.log('[Registration] Generating new email code for existing pending registration:', {
+            email: normalizedEmail,
+            pendingId: existingPending._id
+          });
+          
           const emailCode = generateCode();
+          console.log('[Registration] Email code generated:', {
+            code: emailCode,
+            codeLength: emailCode.length,
+            timestamp: new Date().toISOString()
+          });
+          
           const emailCodeHash = await bcrypt.hash(emailCode, 10);
+          console.log('[Registration] Email code hash created:', {
+            hasHash: !!emailCodeHash,
+            hashLength: emailCodeHash?.length || 0
+          });
+          
           existingPending.emailCodeHash = emailCodeHash;
           existingPending.emailCodeExpiresAt = codeExpiryDate();
           existingPending.emailVerified = false;
@@ -481,14 +506,45 @@ router.post('/register/initiate', async (req, res) => {
           // Reset expiration
           existingPending.expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
           
+          console.log('[Registration] Saving updated pending registration:', {
+            email: normalizedEmail,
+            hasEmailCodeHash: !!existingPending.emailCodeHash,
+            emailCodeExpiresAt: existingPending.emailCodeExpiresAt,
+            expiresAt: existingPending.expiresAt
+          });
+          
           await existingPending.save();
+          console.log('[Registration] Pending registration saved successfully');
+          
+          console.log('[Registration] Calling sendEmailVerificationCode:', {
+            email: normalizedEmail,
+            code: emailCode,
+            timestamp: new Date().toISOString()
+          });
           
           try {
-            await sendEmailVerificationCode(normalizedEmail, emailCode);
+            const emailResult = await sendEmailVerificationCode(normalizedEmail, emailCode, existingPending.firstName || 'User');
+            console.log('[Registration] Email verification code sent successfully:', {
+              email: normalizedEmail,
+              result: emailResult ? {
+                messageId: emailResult.messageId,
+                response: emailResult.response
+              } : 'no result',
+              timestamp: new Date().toISOString()
+            });
           } catch (notificationError) {
-            console.error('Failed to send verification email', notificationError);
+            console.error('[Registration] Failed to send verification email:', {
+              error: notificationError.message,
+              code: notificationError.code,
+              command: notificationError.command,
+              response: notificationError.response,
+              responseCode: notificationError.responseCode,
+              stack: notificationError.stack,
+              email: normalizedEmail,
+              timestamp: new Date().toISOString()
+            });
             if (isProduction) {
-              console.warn('Continuing registration flow despite email send failure (production mode)');
+              console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
             } else {
               return res.status(502).json({ error: 'Failed to send verification email' });
             }
@@ -543,9 +599,30 @@ router.post('/register/initiate', async (req, res) => {
     }
 
     // Create new pending registration
+    console.log('[Registration] Creating new pending registration:', {
+      email: normalizedEmail,
+      userType: userType,
+      timestamp: new Date().toISOString()
+    });
+    
     const passwordHash = await bcrypt.hash(password, 12);
+    console.log('[Registration] Password hash created:', {
+      hasHash: !!passwordHash,
+      hashLength: passwordHash?.length || 0
+    });
+    
     const emailCode = generateCode();
+    console.log('[Registration] Email code generated:', {
+      code: emailCode,
+      codeLength: emailCode.length,
+      timestamp: new Date().toISOString()
+    });
+    
     const emailCodeHash = await bcrypt.hash(emailCode, 10);
+    console.log('[Registration] Email code hash created:', {
+      hasHash: !!emailCodeHash,
+      hashLength: emailCodeHash?.length || 0
+    });
 
     const pendingRegistrationData = {
       firstName,
@@ -634,16 +711,43 @@ router.post('/register/initiate', async (req, res) => {
       throw createError;
     }
 
+    console.log('[Registration] Calling sendEmailVerificationCode for new registration:', {
+      email: normalizedEmail,
+      code: emailCode,
+      pendingRegistrationId: pendingRegistration._id,
+      timestamp: new Date().toISOString()
+    });
+    
     try {
-      await sendEmailVerificationCode(normalizedEmail, emailCode);
+      const emailResult = await sendEmailVerificationCode(normalizedEmail, emailCode, firstName || 'User');
+      console.log('[Registration] Email verification code sent successfully:', {
+        email: normalizedEmail,
+        result: emailResult ? {
+          messageId: emailResult.messageId,
+          response: emailResult.response,
+          accepted: emailResult.accepted,
+          rejected: emailResult.rejected
+        } : 'no result',
+        timestamp: new Date().toISOString()
+      });
     } catch (notificationError) {
-      console.error('Failed to send verification email', notificationError);
+      console.error('[Registration] Failed to send verification email:', {
+        error: notificationError.message,
+        code: notificationError.code,
+        command: notificationError.command,
+        response: notificationError.response,
+        responseCode: notificationError.responseCode,
+        stack: notificationError.stack,
+        email: normalizedEmail,
+        timestamp: new Date().toISOString()
+      });
       // In production, continue even if email sending fails (SMTP may not be configured yet)
       if (isProduction) {
-        console.warn('Continuing registration flow despite email send failure (production mode)');
+        console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
       } else {
-      await pendingRegistration.deleteOne();
-      return res.status(502).json({ error: 'Failed to send verification email' });
+        console.error('[Registration] Deleting pending registration due to email send failure');
+        await pendingRegistration.deleteOne();
+        return res.status(502).json({ error: 'Failed to send verification email' });
       }
     }
 
@@ -934,6 +1038,18 @@ router.post('/register/verify-phone', async (req, res) => {
       travelDistance: user.travelDistance,
     });
 
+    // Send welcome email
+    try {
+      console.log('[Welcome Email] Sending welcome email to:', user.email);
+      await sendTemplatedEmail(user.email, 'welcome', {
+        firstName: user.firstName,
+      });
+      console.log('[Welcome Email] Welcome email sent successfully');
+    } catch (welcomeEmailError) {
+      console.error('[Welcome Email] Failed to send welcome email:', welcomeEmailError);
+      // Don't fail registration if welcome email fails
+    }
+
     // Verify the saved data by fetching from database
     const savedUser = await User.findById(user._id);
     console.log('[Phone Verification] Registration - Verified saved user data:', {
@@ -1197,20 +1313,67 @@ router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
       return res.status(409).json({ error: 'Email is already in use' });
     }
 
+    console.log('[Email Change] Generating OTP code for email change:', {
+      currentEmail: user.email,
+      newEmail: normalizedEmail,
+      timestamp: new Date().toISOString()
+    });
+    
     const otpCode = generateCode();
+    console.log('[Email Change] OTP code generated:', {
+      code: otpCode,
+      codeLength: otpCode.length,
+      timestamp: new Date().toISOString()
+    });
+    
     const otpHash = await bcrypt.hash(otpCode, 10);
+    console.log('[Email Change] OTP hash created:', {
+      hasHash: !!otpHash,
+      hashLength: otpHash?.length || 0
+    });
+    
     req.session[emailChangeOTPKey] = {
       email: normalizedEmail,
       otpHash,
       expiresAt: codeExpiryDate(),
     };
+    
+    console.log('[Email Change] Session updated with OTP:', {
+      email: normalizedEmail,
+      expiresAt: req.session[emailChangeOTPKey].expiresAt
+    });
 
+    console.log('[Email Change] Calling sendEmailVerificationCode:', {
+      email: normalizedEmail,
+      code: otpCode,
+      timestamp: new Date().toISOString()
+    });
+    
     try {
-      await sendEmailVerificationCode(normalizedEmail, otpCode);
+      const emailResult = await sendEmailVerificationCode(normalizedEmail, otpCode, user.firstName || 'User');
+      console.log('[Email Change] Email verification code sent successfully:', {
+        email: normalizedEmail,
+        result: emailResult ? {
+          messageId: emailResult.messageId,
+          response: emailResult.response,
+          accepted: emailResult.accepted,
+          rejected: emailResult.rejected
+        } : 'no result',
+        timestamp: new Date().toISOString()
+      });
     } catch (notificationError) {
-      console.error('Failed to send email OTP', notificationError);
+      console.error('[Email Change] Failed to send email OTP:', {
+        error: notificationError.message,
+        code: notificationError.code,
+        command: notificationError.command,
+        response: notificationError.response,
+        responseCode: notificationError.responseCode,
+        stack: notificationError.stack,
+        email: normalizedEmail,
+        timestamp: new Date().toISOString()
+      });
       if (isProduction) {
-        console.warn('Continuing despite email send failure (production mode)');
+        console.warn('[Email Change] Continuing despite email send failure (production mode)');
       } else {
         delete req.session[emailChangeOTPKey];
         return res.status(502).json({ error: 'Failed to send verification email' });

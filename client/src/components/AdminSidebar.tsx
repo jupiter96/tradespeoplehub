@@ -177,6 +177,13 @@ const menuItems: MenuItem[] = [
     children: [],
   },
   {
+    key: "email-campaign",
+    label: "Email Campaign",
+    icon: Mail,
+    path: "/admin/email-campaign",
+    children: [],
+  },
+  {
     key: "payment-finance",
     label: "Payment & Finance",
     icon: Settings,

@@ -59,6 +59,7 @@ import AdminBlogContentPage from "./admin/AdminBlogContentPage";
 import AdminCostGuidePage from "./admin/AdminCostGuidePage";
 import AdminSectorsPage from "./admin/AdminSectorsPage";
 import AdminCategoriesPage from "./admin/AdminCategoriesPage";
+import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -214,6 +215,8 @@ export default function AdminDashboardPage() {
         return <AdminSectorsPage />;
       case "categories":
         return <AdminCategoriesPage />;
+      case "email-campaign":
+        return <AdminEmailCampaignPage />;
       default:
         return (
           <AdminGenericPage
