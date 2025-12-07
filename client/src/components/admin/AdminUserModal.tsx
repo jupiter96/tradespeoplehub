@@ -81,6 +81,7 @@ export default function AdminUserModal({
         password: "",
         postcode: user.postcode || "",
         townCity: user.townCity || "",
+        county: user.county || "",
         address: user.address || "",
         travelDistance: user.travelDistance || "",
         sector: user.sector || "",
@@ -97,6 +98,7 @@ export default function AdminUserModal({
         password: "",
         postcode: "",
         townCity: "",
+        county: "",
         address: "",
         travelDistance: "",
         sector: "",
@@ -170,6 +172,9 @@ export default function AdminUserModal({
         payload.tradingName = formData.tradingName.trim();
         payload.townCity = formData.townCity.trim();
         payload.address = formData.address.trim();
+        if (formData.county) {
+          payload.county = formData.county.trim();
+        }
         payload.travelDistance = formData.travelDistance.trim();
         if (formData.sector) {
           payload.sector = formData.sector.trim();
@@ -355,26 +360,32 @@ export default function AdminUserModal({
               )}
             </div>
 
-            {/* Address Autocomplete - Postcode, Full Address */}
+            {/* Address Autocomplete - Postcode, Address, Town/City, County */}
             <div className="md:col-span-2">
               <AddressAutocomplete
                 postcode={formData.postcode}
                 onPostcodeChange={(value) => setFormData({ ...formData, postcode: value })}
                 address={formData.address}
                 onAddressChange={(value) => setFormData({ ...formData, address: value })}
+                townCity={formData.townCity}
+                onTownCityChange={(value) => setFormData({ ...formData, townCity: value })}
+                county={formData.county}
+                onCountyChange={(value) => setFormData({ ...formData, county: value })}
                 onAddressSelect={(address) => {
                   setFormData({
                     ...formData,
-                    postcode: address.postcode,
-                    address: address.address,
-                    townCity: address.townCity || formData.townCity,
+                    postcode: address.postcode || "",
+                    address: address.address || "",
+                    townCity: address.townCity || "",
+                    county: address.county || "",
                   });
                 }}
                 label="Postcode"
                 required
                 showAddressField={true}
-                showTownCityField={false}
-                addressLabel="Full Address"
+                showTownCityField={true}
+                showCountyField={true}
+                addressLabel="Address"
               />
             </div>
 

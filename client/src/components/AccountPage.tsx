@@ -1604,6 +1604,7 @@ function DetailsSection() {
         tradingName: userInfo?.tradingName || "",
         address: userInfo?.address || "",
         townCity: userInfo?.townCity || "",
+        county: userInfo?.county || "",
         postcode: userInfo?.postcode || "",
         travelDistance: userInfo?.travelDistance || "10 miles",
         sector: userInfo?.sector || "",
@@ -1834,6 +1835,7 @@ function DetailsSection() {
       postcode: formData.postcode.trim(),
       address: formData.address.trim() || undefined,
       townCity: formData.townCity.trim() || undefined,
+      ...(formData.county && { county: formData.county.trim() }),
     };
 
     if (userRole === "professional") {
@@ -2284,18 +2286,25 @@ function DetailsSection() {
               onPostcodeChange={(value) => setFormData({...formData, postcode: value})}
               address={formData.address}
               onAddressChange={(value) => setFormData({...formData, address: value})}
+              townCity={formData.townCity}
+              onTownCityChange={(value) => setFormData({...formData, townCity: value})}
+              county={formData.county}
+              onCountyChange={(value) => setFormData({...formData, county: value})}
               onAddressSelect={(address) => {
                 setFormData({
                   ...formData,
-                  postcode: address.postcode,
-                  address: address.address,
+                  postcode: address.postcode || "",
+                  address: address.address || "",
+                  townCity: address.townCity || "",
+                  county: address.county || "",
                 });
               }}
               label="Postcode"
               required
               showAddressField={true}
-              showTownCityField={false}
-              addressLabel="Full Address"
+              showTownCityField={true}
+              showCountyField={true}
+              addressLabel="Address"
               className="font-['Poppins',sans-serif]"
             />
           </div>

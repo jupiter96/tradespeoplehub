@@ -112,6 +112,8 @@ export default function CustomOrderModal({
   const [scheduledTime, setScheduledTime] = useState("");
   const [address, setAddress] = useState("");
   const [postcode, setPostcode] = useState("");
+  const [townCity, setTownCity] = useState("");
+  const [county, setCounty] = useState("");
   const [notes, setNotes] = useState("");
 
   const services = mockProfessionalServices[professionalId as keyof typeof mockProfessionalServices] || [];
@@ -126,6 +128,8 @@ export default function CustomOrderModal({
     setScheduledTime("");
     setAddress("");
     setPostcode("");
+    setTownCity("");
+    setCounty("");
     setNotes("");
     onClose();
   };
@@ -572,15 +576,22 @@ export default function CustomOrderModal({
                     onPostcodeChange={(value) => setPostcode(value)}
                     address={address}
                     onAddressChange={(value) => setAddress(value)}
+                    townCity={townCity}
+                    onTownCityChange={(value) => setTownCity(value)}
+                    county={county}
+                    onCountyChange={(value) => setCounty(value)}
                     onAddressSelect={(addressData) => {
-                      setPostcode(addressData.postcode);
-                      setAddress(addressData.address);
+                      setPostcode(addressData.postcode || "");
+                      setAddress(addressData.address || "");
+                      setTownCity(addressData.townCity || "");
+                      setCounty(addressData.county || "");
                     }}
                     label="Postcode"
                     required
                     showAddressField={true}
-                    showTownCityField={false}
-                    addressLabel="Service Address"
+                    showTownCityField={true}
+                    showCountyField={true}
+                    addressLabel="Address"
                     className="font-['Poppins',sans-serif]"
                   />
                 </div>

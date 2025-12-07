@@ -243,6 +243,8 @@ export default function PostJobPage() {
   // Step 4: Postcode & Timing
   const [postcode, setPostcode] = useState("SW1A 1AA");
   const [address, setAddress] = useState("");
+  const [townCity, setTownCity] = useState("");
+  const [county, setCounty] = useState("");
   const [urgency, setUrgency] = useState("");
   const [preferredStartDate, setPreferredStartDate] = useState("");
   
@@ -734,15 +736,22 @@ export default function PostJobPage() {
                     onPostcodeChange={(value) => setPostcode(value)}
                     address={address}
                     onAddressChange={(value) => setAddress(value)}
+                    townCity={townCity}
+                    onTownCityChange={(value) => setTownCity(value)}
+                    county={county}
+                    onCountyChange={(value) => setCounty(value)}
                     onAddressSelect={(addressData) => {
-                      setPostcode(addressData.postcode);
-                      setAddress(addressData.address);
+                      setPostcode(addressData.postcode || "");
+                      setAddress(addressData.address || "");
+                      setTownCity(addressData.townCity || "");
+                      setCounty(addressData.county || "");
                     }}
                     label="Postcode"
                     required
                     showAddressField={true}
-                    showTownCityField={false}
-                    addressLabel="Full Address"
+                    showTownCityField={true}
+                    showCountyField={true}
+                    addressLabel="Address"
                     className="font-['Poppins',sans-serif]"
                   />
                 </div>

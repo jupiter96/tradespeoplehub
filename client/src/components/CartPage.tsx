@@ -164,9 +164,12 @@ export default function CartPage() {
     addressLine1: "",
     addressLine2: "",
     address: "",
+    city: "",
     postcode: "",
     phone: ""
   });
+  const [newAddressTownCity, setNewAddressTownCity] = useState("");
+  const [newAddressCounty, setNewAddressCounty] = useState("");
 
   // Toggle states for mobile collapsible sections
   const [showAddressSection, setShowAddressSection] = useState(true);
@@ -568,18 +571,29 @@ export default function CartPage() {
                                   onPostcodeChange={(value) => setNewAddress({...newAddress, postcode: value})}
                                   address={newAddress.address || ""}
                                   onAddressChange={(value) => setNewAddress({...newAddress, address: value})}
+                                  townCity={newAddressTownCity}
+                                  onTownCityChange={(value) => {
+                                    setNewAddressTownCity(value);
+                                    setNewAddress({...newAddress, city: value});
+                                  }}
+                                  county={newAddressCounty}
+                                  onCountyChange={(value) => setNewAddressCounty(value)}
                                   onAddressSelect={(address) => {
                                     setNewAddress({
                                       ...newAddress,
-                                      postcode: address.postcode,
-                                      address: address.address,
+                                      postcode: address.postcode || "",
+                                      address: address.address || "",
+                                      city: address.townCity || "",
                                     });
+                                    setNewAddressTownCity(address.townCity || "");
+                                    setNewAddressCounty(address.county || "");
                                   }}
                                   label="Postcode"
                                   required
                                   showAddressField={true}
-                                  showTownCityField={false}
-                                  addressLabel="Full Address"
+                                  showTownCityField={true}
+                                  showCountyField={true}
+                                  addressLabel="Address"
                                   className="font-['Poppins',sans-serif]"
                                 />
                               </div>

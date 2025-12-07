@@ -27,6 +27,8 @@ interface AddressAutocompleteProps {
   onAddressChange?: (value: string) => void;
   townCity?: string;
   onTownCityChange?: (value: string) => void;
+  county?: string;
+  onCountyChange?: (value: string) => void;
   onAddressSelect?: (address: {
     postcode: string;
     address: string;
@@ -38,6 +40,7 @@ interface AddressAutocompleteProps {
   className?: string;
   showAddressField?: boolean;
   showTownCityField?: boolean;
+  showCountyField?: boolean;
   combinedAddressMode?: boolean; // New prop for combined address + town/city in one field
   addressLabel?: string; // Custom label for address field
 }
@@ -51,12 +54,15 @@ export default function AddressAutocomplete({
   onAddressChange,
   townCity,
   onTownCityChange,
+  county,
+  onCountyChange,
   onAddressSelect,
   label = "Postcode",
   required = false,
   className = "",
   showAddressField = true,
   showTownCityField = true,
+  showCountyField = false,
   combinedAddressMode = false,
   addressLabel = "Address",
 }: AddressAutocompleteProps) {
@@ -93,7 +99,7 @@ export default function AddressAutocomplete({
     setManualAddress(updated);
     
     // Build combined address in format: [address line, city, county, postcode]
-    const addressParts = [];
+    const addressParts: string[] = [];
     const addressLine = [updated.line1, updated.line2].filter(Boolean).join(', ');
     if (addressLine) addressParts.push(addressLine);
     if (updated.townCity) addressParts.push(updated.townCity);
@@ -360,11 +366,13 @@ export default function AddressAutocomplete({
 
     // Also include cities from postcode addresses if available
     if (postcodeAddresses.length > 0) {
-      const postcodeCities = Array.from(
-        new Set(postcodeAddresses.map((addr) => addr.town_or_city).filter(Boolean))
-      ).filter((city) => city.toLowerCase().includes(searchTerm));
+      const validCities = postcodeAddresses
+        .map((addr) => addr.town_or_city)
+        .filter((city): city is string => Boolean(city));
+      const uniqueCities: string[] = Array.from(new Set(validCities));
+      const postcodeCities = uniqueCities.filter((city: string) => city.toLowerCase().includes(searchTerm));
       
-      const combined = Array.from(new Set([...filtered, ...postcodeCities])).slice(0, 10);
+      const combined: string[] = Array.from(new Set([...filtered, ...postcodeCities])).slice(0, 10);
       setCitySuggestions(combined);
     } else {
       setCitySuggestions(filtered);
@@ -373,8 +381,20 @@ export default function AddressAutocomplete({
     setShowCitySuggestions(filtered.length > 0 || (postcodeAddresses.length > 0 && postcodeAddresses.some(addr => addr.town_or_city?.toLowerCase().includes(searchTerm))));
   };
 
+  // Check if all address fields are filled (address is selected)
+  const isAddressFilled = postcode && postcode.trim().length > 0 && 
+                          address && address.trim().length > 0 && 
+                          townCity && townCity.trim().length > 0;
+
   // Debounced postcode change handler
   useEffect(() => {
+    // Don't fetch suggestions if address is already filled (unless user is clearing it)
+    if (isAddressFilled && postcode && postcode.trim().length > 0) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -394,12 +414,19 @@ export default function AddressAutocomplete({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [postcode]);
+  }, [postcode, isAddressFilled]);
 
   // Debounced address line change handler
   useEffect(() => {
     // Don't show suggestions if address was just selected
-    if (addressJustSelected) {
+    if (addressJustSelected || postcodeJustSelected) {
+      return;
+    }
+
+    // Don't fetch suggestions if address is already filled (unless user is clearing it)
+    if (isAddressFilled && address && address.trim().length > 0) {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
       return;
     }
 
@@ -424,7 +451,7 @@ export default function AddressAutocomplete({
         clearTimeout(addressDebounceTimerRef.current);
       }
     };
-  }, [address, postcode, postcodeAddresses, combinedAddressMode, addressJustSelected]);
+  }, [address, postcode, postcodeAddresses, combinedAddressMode, addressJustSelected, postcodeJustSelected, isAddressFilled]);
 
   // Debounced city change handler
   useEffect(() => {
@@ -461,64 +488,187 @@ export default function AddressAutocomplete({
 
   // Handle selection from postcode suggestions - update postcode and address field
   const handleSelectPostcodeSuggestion = (suggestion: AddressSuggestion) => {
-    const fullAddress = formatAddressDisplay(suggestion);
+    // Build address field from line_1 and streetName
+    // If line_1 already contains streetName, use line_1 as is
+    // Otherwise, combine buildingNumber + streetName or line_1 + streetName
+    let addressLine = suggestion.line_1 || "";
     
-    onPostcodeChange(suggestion.postcode);
-    
-    if (onAddressChange) {
-      onAddressChange(fullAddress);
+    if (suggestion.streetName && suggestion.streetName.trim()) {
+      const line1Lower = (addressLine || "").toLowerCase();
+      const streetNameLower = suggestion.streetName.toLowerCase();
+      
+      // Check if streetName is already included in line_1
+      if (!line1Lower.includes(streetNameLower)) {
+        // If we have buildingNumber, combine buildingNumber + streetName
+        if (suggestion.buildingNumber && suggestion.buildingNumber.trim()) {
+          addressLine = `${suggestion.buildingNumber} ${suggestion.streetName}`.trim();
+        } else {
+          // Otherwise, combine line_1 + streetName
+          addressLine = `${addressLine} ${suggestion.streetName}`.trim();
+        }
+      }
+      // If streetName is already in line_1, use line_1 as is
+    } else if (suggestion.buildingNumber && suggestion.buildingNumber.trim()) {
+      // If we only have buildingNumber, use it with line_1 if available
+      if (addressLine && !addressLine.includes(suggestion.buildingNumber)) {
+        addressLine = `${suggestion.buildingNumber} ${addressLine}`.trim();
+      } else if (!addressLine) {
+        addressLine = suggestion.buildingNumber;
+      }
     }
     
+    const townCity = suggestion.town_or_city || "";
+    const county = suggestion.county || "";
+    
+    // Set flags to prevent dropdown from showing
+    setPostcodeJustSelected(true);
+    setAddressJustSelected(true);
+    
+    // Update all fields - call individual callbacks first, then onAddressSelect
+    onPostcodeChange(suggestion.postcode);
+    
+    // Update address field
+    if (onAddressChange) {
+      onAddressChange(addressLine);
+    }
+    
+    // Update town/city field - ensure this is called
+    if (onTownCityChange) {
+      onTownCityChange(townCity);
+    }
+    
+    // Update county field
+    if (onCountyChange) {
+      onCountyChange(county);
+    }
+    
+    // Call onAddressSelect if provided (for parent component updates)
+    // This should be called after individual callbacks to ensure all fields are updated
     if (onAddressSelect) {
       onAddressSelect({
         postcode: suggestion.postcode,
-        address: fullAddress,
-        townCity: suggestion.town_or_city,
-        county: suggestion.county,
+        address: addressLine,
+        townCity: townCity,
+        county: county,
       });
     }
     
+    // Close all dropdowns
     setShowSuggestions(false);
     setSuggestions([]);
     setSelectedIndex(-1);
-    setPostcodeJustSelected(true);
-    
-    // Reset flag after a short delay to allow for future input
-    setTimeout(() => {
-      setPostcodeJustSelected(false);
-    }, 500);
-  };
-
-  // Handle selection from address suggestions - only update address field
-  const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
-    const fullAddress = formatAddressDisplay(suggestion);
-
-    // Set flag before updating address to prevent dropdown from showing
-    setAddressJustSelected(true);
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
     setSelectedAddressIndex(-1);
+    
+    // Don't reset flags if address is filled - keep search disabled
+    // Only reset if user clears the fields (checked via isAddressFilled in next render)
+    setTimeout(() => {
+      // Check if address is still filled after delay
+      const stillFilled = postcode && postcode.trim().length > 0 && 
+                          addressLine && addressLine.trim().length > 0 && 
+                          townCity && townCity.trim().length > 0;
+      if (!stillFilled) {
+        setPostcodeJustSelected(false);
+        setAddressJustSelected(false);
+      }
+    }, 1000);
+  };
 
+  // Handle selection from address suggestions - update all fields
+  const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
+    // Build address field from line_1 and streetName
+    // If line_1 already contains streetName, use line_1 as is
+    // Otherwise, combine buildingNumber + streetName or line_1 + streetName
+    let addressLine = suggestion.line_1 || "";
+    
+    if (suggestion.streetName && suggestion.streetName.trim()) {
+      const line1Lower = (addressLine || "").toLowerCase();
+      const streetNameLower = suggestion.streetName.toLowerCase();
+      
+      // Check if streetName is already included in line_1
+      if (!line1Lower.includes(streetNameLower)) {
+        // If we have buildingNumber, combine buildingNumber + streetName
+        if (suggestion.buildingNumber && suggestion.buildingNumber.trim()) {
+          addressLine = `${suggestion.buildingNumber} ${suggestion.streetName}`.trim();
+        } else {
+          // Otherwise, combine line_1 + streetName
+          addressLine = `${addressLine} ${suggestion.streetName}`.trim();
+        }
+      }
+      // If streetName is already in line_1, use line_1 as is
+    } else if (suggestion.buildingNumber && suggestion.buildingNumber.trim()) {
+      // If we only have buildingNumber, use it with line_1 if available
+      if (addressLine && !addressLine.includes(suggestion.buildingNumber)) {
+        addressLine = `${suggestion.buildingNumber} ${addressLine}`.trim();
+      } else if (!addressLine) {
+        addressLine = suggestion.buildingNumber;
+      }
+    }
+    
+    const townCity = suggestion.town_or_city || "";
+    const county = suggestion.county || "";
+
+    // Set flags to prevent dropdown from showing
+    setAddressJustSelected(true);
+    setPostcodeJustSelected(true);
+    
+    // Close all dropdowns immediately
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    setSelectedAddressIndex(-1);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setSelectedIndex(-1);
+
+    // Update postcode if it changed
+    if (suggestion.postcode && suggestion.postcode !== postcode) {
+      onPostcodeChange(suggestion.postcode);
+    }
+
+    // Update postcode if it changed
+    if (suggestion.postcode && suggestion.postcode !== postcode) {
+      onPostcodeChange(suggestion.postcode);
+    }
+
+    // Update address field
+    if (onAddressChange) {
+      onAddressChange(addressLine);
+    }
+
+    // Update town/city field - ensure this is called
+    if (onTownCityChange) {
+      onTownCityChange(townCity);
+    }
+
+    // Update county field (even if empty)
+    if (onCountyChange) {
+      onCountyChange(county);
+    }
+
+    // Call onAddressSelect if provided (for parent component updates)
+    // This should be called after individual callbacks to ensure all fields are updated
     if (onAddressSelect) {
       onAddressSelect({
         postcode: suggestion.postcode,
-        address: fullAddress,
-        townCity: suggestion.town_or_city,
-        county: suggestion.county,
+        address: addressLine,
+        townCity: townCity,
+        county: county,
       });
-    } else {
-      if (onAddressChange) {
-        onAddressChange(fullAddress);
-      }
-      if (onTownCityChange) {
-        onTownCityChange(suggestion.town_or_city);
-      }
     }
 
-    // Reset flag after a longer delay to prevent dropdown from reappearing
+    // Don't reset flags if address is filled - keep search disabled
+    // Only reset if user clears the fields (checked via isAddressFilled in next render)
     setTimeout(() => {
-      setAddressJustSelected(false);
-    }, 1000);
+      // Check if address is still filled after delay
+      const stillFilled = suggestion.postcode && suggestion.postcode.trim().length > 0 && 
+                          addressLine && addressLine.trim().length > 0 && 
+                          townCity && townCity.trim().length > 0;
+      if (!stillFilled) {
+        setAddressJustSelected(false);
+        setPostcodeJustSelected(false);
+      }
+    }, 1500);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -578,8 +728,8 @@ export default function AddressAutocomplete({
             onChange={handlePostcodeChange}
             onKeyDown={handleKeyDown}
             onFocus={() => {
-              // Don't show suggestions if postcode was just selected
-              if (postcodeJustSelected) {
+              // Don't show suggestions if postcode was just selected or address is filled
+              if (postcodeJustSelected || addressJustSelected || isAddressFilled) {
                 return;
               }
               if (suggestions.length > 0) {
@@ -588,6 +738,14 @@ export default function AddressAutocomplete({
                 // Trigger search on focus if we have input
                 fetchSuggestions(postcode);
               }
+            }}
+            onBlur={() => {
+              // Close dropdown when field loses focus (with a small delay to allow click)
+              setTimeout(() => {
+                if (!postcodeJustSelected && !addressJustSelected) {
+                  setShowSuggestions(false);
+                }
+              }, 200);
             }}
             placeholder="e.g., SW1A 1AA"
             required={required}
@@ -623,7 +781,7 @@ export default function AddressAutocomplete({
       </div>
 
       {/* Address Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && !postcodeJustSelected && (
+      {showSuggestions && suggestions.length > 0 && !postcodeJustSelected && !isAddressFilled && (
         <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <button
@@ -665,16 +823,20 @@ export default function AddressAutocomplete({
                 : address || ""}
               onChange={(e) => {
                 const newValue = e.target.value;
-                onAddressChange?.(newValue);
-                setSelectedAddressIndex(-1);
-                // Reset the flag when user starts typing again (actively editing)
-                if (addressJustSelected && newValue.length > 0) {
-                  setAddressJustSelected(false);
+                // Only update if the value actually changed (not from selection)
+                if (newValue !== address) {
+                  onAddressChange?.(newValue);
+                  setSelectedAddressIndex(-1);
+                  // Reset the flag when user manually types (actively editing)
+                  if (addressJustSelected || postcodeJustSelected) {
+                    setAddressJustSelected(false);
+                    setPostcodeJustSelected(false);
+                  }
                 }
               }}
               onFocus={() => {
-                // Don't show suggestions if address was just selected
-                if (addressJustSelected) {
+                // Don't show suggestions if address was just selected or address is filled
+                if (addressJustSelected || postcodeJustSelected || isAddressFilled) {
                   return;
                 }
                 // Only show suggestions if user is actively interacting with the address field
@@ -695,6 +857,14 @@ export default function AddressAutocomplete({
                   // Fetch addresses if postcode is available but not loaded
                   fetchAddressSuggestions("");
                 }
+              }}
+              onBlur={() => {
+                // Close dropdown when field loses focus (with a small delay to allow click)
+                setTimeout(() => {
+                  if (!addressJustSelected && !postcodeJustSelected) {
+                    setShowAddressSuggestions(false);
+                  }
+                }, 200);
               }}
               onKeyDown={(e) => {
                 if (!showAddressSuggestions || addressSuggestions.length === 0) return;
@@ -754,7 +924,7 @@ export default function AddressAutocomplete({
           )}
           
           {/* Address Suggestions Dropdown - Same style as postcode suggestions */}
-          {showAddressSuggestions && addressSuggestions.length > 0 && !addressJustSelected && (
+          {showAddressSuggestions && addressSuggestions.length > 0 && !addressJustSelected && !isAddressFilled && (
             <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
               {addressSuggestions.map((suggestion, index) => (
                 <button
@@ -785,7 +955,7 @@ export default function AddressAutocomplete({
       {showTownCityField && !showManualEntry && (
         <div ref={cityWrapperRef} className="mt-4 relative">
           <Label htmlFor="townCity" className="text-black dark:text-white">
-            Town/City
+            Town/City {required && <span className="text-red-500">*</span>}
           </Label>
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
@@ -794,8 +964,14 @@ export default function AddressAutocomplete({
               type="text"
               value={townCity || ""}
               onChange={(e) => {
-                onTownCityChange?.(e.target.value);
+                const newValue = e.target.value;
+                onTownCityChange?.(newValue);
                 setSelectedCityIndex(-1);
+                // Reset flags when user manually types or clears the field
+                if (addressJustSelected || postcodeJustSelected) {
+                  setAddressJustSelected(false);
+                  setPostcodeJustSelected(false);
+                }
               }}
               onFocus={() => {
                 if (citySuggestions.length > 0) {
@@ -862,6 +1038,28 @@ export default function AddressAutocomplete({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* County Field (optional) */}
+      {showCountyField && !showManualEntry && (
+        <div className="mt-4 relative">
+          <Label htmlFor="county" className="text-black dark:text-white">
+            County
+          </Label>
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
+            <Input
+              id="county"
+              type="text"
+              value={county || ""}
+              onChange={(e) => {
+                onCountyChange?.(e.target.value);
+              }}
+              placeholder="County (optional)"
+              className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+            />
+          </div>
         </div>
       )}
 

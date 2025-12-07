@@ -129,6 +129,7 @@ export default function LoginPage() {
   // Register form state - Professional only fields
   const [registerTradingName, setRegisterTradingName] = useState("");
   const [registerTownCity, setRegisterTownCity] = useState("");
+  const [registerCounty, setRegisterCounty] = useState("");
   const [registerAddress, setRegisterAddress] = useState("");
   const [registerTravelDistance, setRegisterTravelDistance] = useState("");
   const [registerError, setRegisterError] = useState<string | null>(null);
@@ -186,6 +187,9 @@ export default function LoginPage() {
     if (!registerAddress.trim()) {
       errors.address = "Address is required";
     }
+    if (!registerTownCity.trim()) {
+      errors.townCity = "Town/City is required";
+    }
     if (!registerPostcode.trim()) {
       errors.postcode = "Postcode is required";
     }
@@ -238,7 +242,7 @@ export default function LoginPage() {
       referralCode: registerReferralCode,
       userType,
       address: registerAddress.trim(), // Address is required for both client and professional
-      ...(registerTownCity && { townCity: registerTownCity.trim() }), // Include townCity if available
+      townCity: registerTownCity.trim(), // Town/City is required for both client and professional
       ...(userType === "professional" && {
         tradingName: registerTradingName.trim(),
         travelDistance: registerTravelDistance,
@@ -882,6 +886,7 @@ export default function LoginPage() {
                           });
                         }
                       }}
+                      townCity={registerTownCity}
                       onTownCityChange={(value) => {
                         setRegisterTownCity(value);
                         if (fieldErrors.townCity) {
@@ -892,12 +897,15 @@ export default function LoginPage() {
                           });
                         }
                       }}
+                      county={registerCounty}
+                      onCountyChange={(value) => {
+                        setRegisterCounty(value);
+                      }}
                       onAddressSelect={(address) => {
                         setRegisterPostcode(address.postcode || "");
                         setRegisterAddress(address.address || "");
-                        if (address.townCity) {
-                          setRegisterTownCity(address.townCity);
-                        }
+                        setRegisterTownCity(address.townCity || "");
+                        setRegisterCounty(address.county || "");
                         // Clear any related errors
                         setFieldErrors(prev => {
                           const newErrors = { ...prev };
@@ -910,8 +918,9 @@ export default function LoginPage() {
                       label="Postcode"
                       required
                       showAddressField={true}
-                      showTownCityField={false}
-                      addressLabel="Full Address"
+                      showTownCityField={true}
+                      showCountyField={true}
+                      addressLabel="Address"
                       className="font-['Poppins',sans-serif]"
                     />
                     {fieldErrors.postcode && (
@@ -924,7 +933,7 @@ export default function LoginPage() {
                         {fieldErrors.address}
                       </p>
                     )}
-                    {fieldErrors.townCity && userType === "professional" && (
+                    {fieldErrors.townCity && (
                       <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                         {fieldErrors.townCity}
                       </p>

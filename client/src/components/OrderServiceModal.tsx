@@ -38,6 +38,8 @@ export default function OrderServiceModal({
   const [selectedTime, setSelectedTime] = useState("");
   const [address, setAddress] = useState("");
   const [postcode, setPostcode] = useState("");
+  const [townCity, setTownCity] = useState("");
+  const [county, setCounty] = useState("");
   const [notes, setNotes] = useState("");
 
   const basePrice = parseFloat((servicePrice || "£0").toString().replace(/[^0-9.]/g, "")) || 0;
@@ -227,15 +229,22 @@ export default function OrderServiceModal({
               onPostcodeChange={(value) => setPostcode(value)}
               address={address}
               onAddressChange={(value) => setAddress(value)}
+              townCity={townCity}
+              onTownCityChange={(value) => setTownCity(value)}
+              county={county}
+              onCountyChange={(value) => setCounty(value)}
               onAddressSelect={(addressData) => {
-                setPostcode(addressData.postcode);
-                setAddress(addressData.address);
+                setPostcode(addressData.postcode || "");
+                setAddress(addressData.address || "");
+                setTownCity(addressData.townCity || "");
+                setCounty(addressData.county || "");
               }}
               label="Postcode"
               required
               showAddressField={true}
-              showTownCityField={false}
-              addressLabel="Service Address"
+              showTownCityField={true}
+              showCountyField={true}
+              addressLabel="Address"
               className="font-['Poppins',sans-serif]"
             />
           </div>
