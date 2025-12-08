@@ -40,6 +40,7 @@ interface VerificationModalProps {
   onClose: () => void;
   userId: string;
   userName: string;
+  onOpen?: () => void;
 }
 
 const verificationTypes = [
@@ -56,8 +57,10 @@ export default function AdminVerificationModal({
   onClose,
   userId,
   userName,
+  onOpen,
 }: VerificationModalProps) {
   const [loading, setLoading] = useState(false);
+  const [updatingType, setUpdatingType] = useState<string | null>(null); // Track which type is being updated
   const [verificationData, setVerificationData] = useState<any>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState<Record<string, string>>({});
@@ -66,9 +69,17 @@ export default function AdminVerificationModal({
 
   useEffect(() => {
     if (open && userId) {
+      // Call onOpen callback when modal opens
+      if (onOpen) {
+        onOpen();
+      }
       fetchVerificationData();
+      // Reset form states when modal opens
+      setNewStatus({});
+      setRejectionReason({});
+      setUpdatingType(null);
     }
-  }, [open, userId]);
+  }, [open, userId]); // Remove onOpen from dependencies to prevent unnecessary re-renders
 
   const fetchVerificationData = async () => {
     setLoading(true);
@@ -103,6 +114,8 @@ export default function AdminVerificationModal({
       return;
     }
 
+    // Set updating type to show loading state only for this specific type
+    setUpdatingType(type);
     setLoading(true);
     try {
       const response = await fetch(
@@ -127,6 +140,7 @@ export default function AdminVerificationModal({
 
       toast.success("Verification status updated successfully");
       await fetchVerificationData();
+      // Clear the status and reason for this type only
       setNewStatus(prev => {
         const updated = { ...prev };
         delete updated[type];
@@ -142,6 +156,7 @@ export default function AdminVerificationModal({
       toast.error(error instanceof Error ? error.message : "Failed to update verification status");
     } finally {
       setLoading(false);
+      setUpdatingType(null);
     }
   };
 
@@ -359,11 +374,11 @@ export default function AdminVerificationModal({
                       {currentStatus && (
                         <Button
                           onClick={() => handleStatusChange(type.id)}
-                          disabled={loading || !currentStatus || (currentStatus === "rejected" && !currentRejectionReason.trim())}
+                          disabled={(updatingType !== null && updatingType !== type.id) || !currentStatus || (currentStatus === "rejected" && !currentRejectionReason.trim())}
                           className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white disabled:opacity-50 disabled:cursor-not-allowed h-7 text-xs"
                           size="sm"
                         >
-                          {loading ? "Updating..." : currentStatus === "rejected" ? "Reject" : "Update"}
+                          {updatingType === type.id ? "Updating..." : currentStatus === "rejected" ? "Reject" : "Update"}
                         </Button>
                       )}
                     </div>

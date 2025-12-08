@@ -27,6 +27,12 @@ const adminSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Track which dashboard cards have been viewed by this admin
+    dashboardCardViews: {
+      type: Map,
+      of: Date,
+      default: {},
+    },
   },
   {
     timestamps: true,

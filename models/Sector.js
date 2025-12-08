@@ -60,7 +60,6 @@ const sectorSchema = new mongoose.Schema(
     order: {
       type: Number,
       default: 0,
-      unique: true,
       // Display order (lower numbers appear first) - must be unique
     },
     isActive: {

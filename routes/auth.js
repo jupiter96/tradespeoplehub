@@ -2279,11 +2279,31 @@ router.post(
         uploadStream.end(req.file.buffer);
       });
 
-      // Update user verification status
-      user.verification[type].status = 'pending';
+      // Update only the specific verification type being uploaded
+      // When re-submitting a rejected document, change status from 'rejected' to 'pending'
+      // Do NOT modify any other verification types (e.g., if ID is verified, keep it verified)
+      const currentStatus = user.verification[type].status;
+      
+      // Only update status if it's not already verified
+      // If it's rejected or pending, set to pending (new document submitted)
+      // If it's verified, keep it verified (don't reset verified statuses)
+      if (currentStatus !== 'verified') {
+        user.verification[type].status = 'pending';
+      }
+      
+      // Update document information for this type only
       user.verification[type].documentUrl = uploadResult.secure_url;
       user.verification[type].documentName = req.file.originalname;
-      user.verification[type].rejectionReason = undefined;
+      
+      // Clear rejection reason only for this type (since new document is being submitted)
+      if (currentStatus === 'rejected') {
+        user.verification[type].rejectionReason = undefined;
+      }
+      
+      // Preserve verifiedAt timestamp if status was already verified
+      // (Don't overwrite it when re-submitting a different document type)
+      // Note: We use markModified to ensure Mongoose properly saves nested object changes
+      user.markModified(`verification.${type}`);
 
       await user.save();
 

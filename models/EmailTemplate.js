@@ -5,7 +5,6 @@ const emailTemplateSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      unique: true,
       enum: [
         'verification',
         'welcome',
@@ -41,7 +40,9 @@ const emailTemplateSchema = new mongoose.Schema(
   }
 );
 
-emailTemplateSchema.index({ type: 1 });
+// Indexes
+// type field has unique index (defined below)
+emailTemplateSchema.index({ type: 1 }, { unique: true });
 emailTemplateSchema.index({ isActive: 1 });
 
 const EmailTemplate = mongoose.model('EmailTemplate', emailTemplateSchema);

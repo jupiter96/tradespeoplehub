@@ -47,7 +47,11 @@ interface VerificationItem {
   rejectionReason?: string;
 }
 
-export default function AccountVerificationSection() {
+interface AccountVerificationSectionProps {
+  onVerificationStatusChange?: () => void;
+}
+
+export default function AccountVerificationSection({ onVerificationStatusChange }: AccountVerificationSectionProps = {}) {
   const { userInfo, refreshUserInfo } = useAccount();
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -263,6 +267,10 @@ export default function AccountVerificationSection() {
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
         setVerificationData(statusData.verification);
+        // Notify parent component of status change
+        if (onVerificationStatusChange) {
+          onVerificationStatusChange();
+        }
       }
 
       toast.success("Document uploaded successfully! Under review...");
@@ -329,6 +337,10 @@ export default function AccountVerificationSection() {
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
         setVerificationData(statusData.verification);
+        // Notify parent component of status change
+        if (onVerificationStatusChange) {
+          onVerificationStatusChange();
+        }
       }
 
       toast.success("Verification successful!");

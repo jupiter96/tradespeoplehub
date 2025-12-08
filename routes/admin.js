@@ -451,21 +451,37 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const subadminCount = await User.countDocuments({ role: 'subadmin' });
 
     // Count verification documents pending (total document count, not user count)
+    // Only count documents that have been submitted (have documentUrl) and are pending
     const professionalsWithPendingDocs = await User.find({
       role: 'professional',
       $or: [
-        { 'verification.address.status': 'pending' },
-        { 'verification.idCard.status': 'pending' },
-        { 'verification.publicLiabilityInsurance.status': 'pending' },
+        { 
+          'verification.address.status': 'pending',
+          'verification.address.documentUrl': { $exists: true, $ne: null }
+        },
+        { 
+          'verification.idCard.status': 'pending',
+          'verification.idCard.documentUrl': { $exists: true, $ne: null }
+        },
+        { 
+          'verification.publicLiabilityInsurance.status': 'pending',
+          'verification.publicLiabilityInsurance.documentUrl': { $exists: true, $ne: null }
+        },
       ],
     });
     
     // Count total pending documents (not users)
     let verificationDocsPendingCount = 0;
     professionalsWithPendingDocs.forEach(user => {
-      if (user.verification?.address?.status === 'pending') verificationDocsPendingCount++;
-      if (user.verification?.idCard?.status === 'pending') verificationDocsPendingCount++;
-      if (user.verification?.publicLiabilityInsurance?.status === 'pending') verificationDocsPendingCount++;
+      if (user.verification?.address?.status === 'pending' && user.verification?.address?.documentUrl) {
+        verificationDocsPendingCount++;
+      }
+      if (user.verification?.idCard?.status === 'pending' && user.verification?.idCard?.documentUrl) {
+        verificationDocsPendingCount++;
+      }
+      if (user.verification?.publicLiabilityInsurance?.status === 'pending' && user.verification?.publicLiabilityInsurance?.documentUrl) {
+        verificationDocsPendingCount++;
+      }
     });
 
     // Count total users who have submitted verification documents (any document with documentUrl)
@@ -491,26 +507,41 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       ],
     });
 
+    // Count users with pending verification documents (submitted but not yet reviewed)
+    // This counts users who have documents with pending status AND documentUrl exists
     const verificationDocsNew = await User.countDocuments({
       role: 'professional',
       $or: [
-        { 'verification.address.status': 'pending' },
-        { 'verification.idCard.status': 'pending' },
-        { 'verification.publicLiabilityInsurance.status': 'pending' },
-      ],
-      $or: [
-        { 'verification.address.verifiedAt': { $gte: last7Days } },
-        { 'verification.idCard.verifiedAt': { $gte: last7Days } },
-        { 'verification.publicLiabilityInsurance.verifiedAt': { $gte: last7Days } },
+        { 
+          'verification.address.status': 'pending',
+          'verification.address.documentUrl': { $exists: true, $ne: null }
+        },
+        { 
+          'verification.idCard.status': 'pending',
+          'verification.idCard.documentUrl': { $exists: true, $ne: null }
+        },
+        { 
+          'verification.publicLiabilityInsurance.status': 'pending',
+          'verification.publicLiabilityInsurance.documentUrl': { $exists: true, $ne: null }
+        },
       ],
     });
     const verificationDocsToday = await User.countDocuments({
       role: 'professional',
       createdAt: { $gte: today },
       $or: [
-        { 'verification.address.status': 'pending' },
-        { 'verification.idCard.status': 'pending' },
-        { 'verification.publicLiabilityInsurance.status': 'pending' },
+        { 
+          'verification.address.status': 'pending',
+          'verification.address.documentUrl': { $exists: true, $ne: null }
+        },
+        { 
+          'verification.idCard.status': 'pending',
+          'verification.idCard.documentUrl': { $exists: true, $ne: null }
+        },
+        { 
+          'verification.publicLiabilityInsurance.status': 'pending',
+          'verification.publicLiabilityInsurance.documentUrl': { $exists: true, $ne: null }
+        },
       ],
     });
 
@@ -751,10 +782,62 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       totalSubCategoryDailyChange: totalSubCategoryDailyChange || 0,
     };
 
-    return res.json({ statistics });
+    // Get admin's viewed cards
+    const admin = await Admin.findById(req.adminUser.id);
+    let viewedCards = {};
+    if (admin?.dashboardCardViews) {
+      // Convert Map to plain object for JSON serialization
+      if (admin.dashboardCardViews instanceof Map) {
+        viewedCards = Object.fromEntries(admin.dashboardCardViews);
+      } else {
+        viewedCards = admin.dashboardCardViews;
+      }
+      // Convert Date objects to ISO strings
+      Object.keys(viewedCards).forEach(key => {
+        if (viewedCards[key] instanceof Date) {
+          viewedCards[key] = viewedCards[key].toISOString();
+        }
+      });
+    }
+
+    // Add viewed status to statistics
+    const statisticsWithViews = {
+      ...statistics,
+      viewedCards,
+    };
+
+    return res.json({ statistics: statisticsWithViews });
   } catch (error) {
     console.error('Get dashboard statistics error', error);
     return res.status(500).json({ error: 'Failed to get dashboard statistics' });
+  }
+});
+
+// Mark dashboard card as viewed
+router.post('/dashboard/card-viewed', requireAdmin, async (req, res) => {
+  try {
+    const { cardKey } = req.body;
+    
+    if (!cardKey) {
+      return res.status(400).json({ error: 'Card key is required' });
+    }
+
+    const admin = await Admin.findById(req.adminUser.id);
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    // Update the viewed timestamp for this card
+    if (!admin.dashboardCardViews) {
+      admin.dashboardCardViews = new Map();
+    }
+    admin.dashboardCardViews.set(cardKey, new Date());
+    await admin.save();
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Mark card as viewed error', error);
+    return res.status(500).json({ error: 'Failed to mark card as viewed' });
   }
 });
 

@@ -79,6 +79,7 @@ import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
+import API_BASE_URL from "../config/api";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +130,8 @@ export default function AccountPage() {
   const { userRole, userInfo, logout, isLoggedIn } = useAccount();
   const [activeSection, setActiveSection] = useState<string>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [verificationData, setVerificationData] = useState<any>(null);
+  const [verificationPendingCount, setVerificationPendingCount] = useState(0);
 
   // Check for URL parameters to navigate to specific section/order
   useEffect(() => {
@@ -165,22 +168,27 @@ export default function AccountPage() {
     { id: "invite", label: "Invite & Earn", icon: Gift },
   ];
 
-  // Menu items for Professional
-  const professionalMenu = [
+  // Menu items for Professional (dynamically generated to include verification badge)
+  const professionalMenu = useMemo(() => [
     { id: "overview", label: "Overview", icon: User },
     { id: "profile", label: "Profile", icon: User },
     { id: "services", label: "Services", icon: Briefcase },
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "my-jobs", label: "My Jobs", icon: FileText },
     { id: "promo-code", label: "Promo Code", icon: Ticket },
-    { id: "verification", label: "Verification", icon: Shield },
+    { 
+      id: "verification", 
+      label: "Verification", 
+      icon: Shield,
+      badge: verificationPendingCount > 0 ? verificationPendingCount.toString() : undefined
+    },
     { id: "details", label: "My Details", icon: Settings },
     { id: "withdraw", label: "Withdraw", icon: Wallet },
     { id: "security", label: "Security", icon: Lock },
     { id: "messenger", label: "Messenger", icon: MessageCircle, badge: "3" },
     { id: "support", label: "Support Center", icon: HelpCircle },
     { id: "invite", label: "Invite & Earn", icon: Gift },
-  ];
+  ], [verificationPendingCount]);
 
   const menuItems = userRole === "client" ? clientMenu : professionalMenu;
 
@@ -329,7 +337,32 @@ export default function AccountPage() {
               {activeSection === "my-jobs" && userRole === "professional" && <ProfessionalJobsSection />}
               {/* Promo Code (Professional only) */}
               {activeSection === "promo-code" && userRole === "professional" && <PromoCodeSection />}
-              {activeSection === "verification" && <AccountVerificationSection />}
+              {activeSection === "verification" && (
+                <AccountVerificationSection 
+                  onVerificationStatusChange={() => {
+                    // Refresh verification status when status changes
+                    if (userRole === "professional" && isLoggedIn) {
+                      fetch(`${API_BASE_URL}/api/auth/verification`, {
+                        credentials: "include",
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          setVerificationData(data.verification);
+                          let pendingCount = 0;
+                          const documentTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+                          documentTypes.forEach(type => {
+                            const doc = data.verification?.[type];
+                            if (doc && doc.status === 'pending' && doc.documentUrl) {
+                              pendingCount++;
+                            }
+                          });
+                          setVerificationPendingCount(pendingCount);
+                        })
+                        .catch(err => console.error("Error refreshing verification:", err));
+                    }
+                  }}
+                />
+              )}
               {activeSection === "details" && <DetailsSection />}
               {activeSection === "billing" && <BillingSection />}
               {activeSection === "withdraw" && <WithdrawSection />}

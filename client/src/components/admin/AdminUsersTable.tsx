@@ -420,7 +420,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     let count = 0;
     const documentTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
     documentTypes.forEach(type => {
-      if (verification[type]?.status === 'pending') {
+      const doc = verification[type];
+      // Only count documents that have documentUrl and are pending
+      // documentUrl must exist to show count badge
+      if (doc?.status === 'pending' && doc?.documentUrl) {
         count++;
       }
     });
@@ -583,25 +586,33 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                             const verification = verificationStatuses[user.id];
                             if (!verification) return false;
                             
-                            // Check if any verification document exists (pending or has documentUrl)
+                            // Check if any verification document exists (pending status with documentUrl)
                             const documentTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
                             return documentTypes.some(type => {
                               const doc = verification[type];
-                              return doc && (doc.status === 'pending' || doc.documentUrl);
+                              // Document must have documentUrl and be pending to show verify badge
+                              return doc && doc.documentUrl && doc.status === 'pending';
                             });
                           })();
                           
-                          // Show verify badge if verification documents exist, otherwise show new badge if not viewed
+                          // Show verify badge if verification documents exist (pending with documentUrl)
+                          // viewedByAdmin only affects count badges, not the verify badge itself
                           if (hasVerificationDocuments) {
                             return (
                               <Badge
-                                className="bg-red-500 hover:bg-red-600 text-white border-0 flex items-center gap-1 px-2 py-0.5"
+                                className="bg-red-500 hover:bg-red-600 text-white border-0 flex items-center gap-1 px-2 py-0.5 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarkAsViewed(user.id);
+                                  setSelectedUserForVerification(user);
+                                }}
+                                title="Click to view verification documents"
                               >
                                 <Shield className="w-3 h-3" />
                                 Verify
                               </Badge>
                             );
-                          } else if (!user.viewedByAdmin) {
+                          } else if (!hasVerificationDocuments && !user.viewedByAdmin) {
                             return (
                               <Badge
                                 className="bg-blue-500 hover:bg-blue-600 text-white border-0 flex items-center gap-1 px-2 py-0.5 cursor-pointer"
@@ -691,7 +702,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setSelectedUserForVerification(user)}
+                            onClick={() => {
+                              handleMarkAsViewed(user.id);
+                              setSelectedUserForVerification(user);
+                            }}
                             className="h-8 w-8 hover:bg-[#FE8A0F]/10 relative"
                             title={getVerificationTooltip(getVerificationStatus(user.id))}
                           >
@@ -728,7 +742,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           )}
                           {showVerification && role === "professional" && (
                             <DropdownMenuItem
-                              onClick={() => setSelectedUserForVerification(user)}
+                              onClick={() => {
+                                handleMarkAsViewed(user.id);
+                                setSelectedUserForVerification(user);
+                              }}
                               className="text-[#FE8A0F] dark:text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
                             >
                               <Shield className="h-4 w-4 mr-2" />
@@ -842,6 +859,12 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             }}
             userId={selectedUserForVerification.id}
             userName={selectedUserForVerification.name || `${selectedUserForVerification.firstName} ${selectedUserForVerification.lastName}`.trim()}
+            onOpen={() => {
+              // Mark as viewed when modal opens
+              if (selectedUserForVerification) {
+                handleMarkAsViewed(selectedUserForVerification.id);
+              }
+            }}
           />
         )}
 
