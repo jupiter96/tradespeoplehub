@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, Suspense } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { 
   Users, 
@@ -77,9 +77,8 @@ export default function AdminDashboardPage() {
   const { hasRouteAccess, loading: permissionsLoading } = useAdminPermissions();
   const [statistics, setStatistics] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const isInitialLoadRef = useRef(true);
   const [dashboardTab, setDashboardTab] = useState("statistics");
-  const [viewedCards, setViewedCards] = useState<Record<string, string>>({});
-  
   // Get active section from URL, default to "dashboard"
   // URL section is already in the correct format (clients, professionals, etc.)
   const activeSection = params.section || "dashboard";
@@ -95,45 +94,51 @@ export default function AdminDashboardPage() {
     }
   }, [location.pathname, hasRouteAccess, permissionsLoading, navigate]);
 
-  // Handle card click - mark as viewed
-  const handleCardClick = async (cardKey: string) => {
-    try {
-      await fetch(`${API_BASE_URL}/api/admin/dashboard/card-viewed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ cardKey }),
-      });
-      setViewedCards(prev => ({ ...prev, [cardKey]: new Date().toISOString() }));
-    } catch (error) {
-      console.error('Error marking card as viewed:', error);
-    }
-  };
-
   // Fetch dashboard statistics
-  useEffect(() => {
-    const fetchStatistics = async () => {
-      try {
+  const fetchStatistics = useCallback(async (showLoading = false) => {
+    try {
+      // Only show loading indicator on initial load or when explicitly requested
+      if (showLoading || isInitialLoadRef.current) {
         setLoadingStats(true);
-        const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/statistics`, {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setStatistics(data.statistics);
-          setViewedCards(data.statistics.viewedCards || {});
-        }
-      } catch (error) {
-        console.error("Error fetching statistics:", error);
-      } finally {
-        setLoadingStats(false);
       }
-    };
+      const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/statistics`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStatistics(data.statistics);
+      }
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    } finally {
+      if (showLoading || isInitialLoadRef.current) {
+        setLoadingStats(false);
+        isInitialLoadRef.current = false;
+      }
+    }
+  }, []);
 
+
+  // Fetch dashboard statistics on mount and when activeSection changes
+  useEffect(() => {
     if (activeSection === "dashboard") {
       fetchStatistics();
     }
-  }, [activeSection]);
+  }, [activeSection, fetchStatistics]);
+
+  // Real-time updates: Poll statistics every 30 seconds when on dashboard
+  // Update silently in background without showing loading indicator
+  useEffect(() => {
+    if (activeSection !== "dashboard") {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchStatistics(false); // Don't show loading indicator for background updates
+    }, 30000); // Update every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [activeSection, fetchStatistics]);
 
   // Get section label from URL
   const getSectionLabel = (section: string): string => {
@@ -539,10 +544,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.professionals || 0}
                       color="orange"
                       dailyChange={statistics?.professionalsDailyChange}
-                      cardKey="professionals"
                       badge={statistics?.professionalsDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
@@ -551,10 +553,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.totalJob || 0}
                       color="orange"
                       dailyChange={statistics?.totalJobDailyChange}
-                      cardKey="totalJob"
                       badge={statistics?.totalJobDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/job-manage")}
                     />
                     <StatCard
@@ -563,10 +562,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.totalCategory || 0}
                       color="orange"
                       dailyChange={statistics?.totalCategoryDailyChange}
-                      cardKey="totalCategory"
                       badge={statistics?.totalCategoryDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/sectors")}
                     />
                     <StatCard
@@ -576,9 +572,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.accountVerificationDocumentNew || 0}
                       color="orange"
                       dailyChange={statistics?.accountVerificationDocumentDailyChange}
-                      cardKey="accountVerificationDocument"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
@@ -586,9 +579,6 @@ export default function AdminDashboardPage() {
                       title="TOTAL VERIFICATION USERS"
                       value={statistics?.totalVerificationUsers || 0}
                       color="orange"
-                      cardKey="totalVerificationUsers"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
@@ -596,9 +586,6 @@ export default function AdminDashboardPage() {
                       title="VERIFICATION USERS TODAY"
                       value={statistics?.verificationUsersToday || 0}
                       color="orange"
-                      cardKey="verificationUsersToday"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/professionals")}
                     />
                     <StatCard
@@ -607,10 +594,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.professionalsReferrals || 0}
                       color="orange"
                       dailyChange={statistics?.professionalsReferralsDailyChange}
-                      cardKey="professionalsReferrals"
                       badge={statistics?.professionalsReferralsDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/referrals-professional")}
                     />
                     <StatCard
@@ -619,10 +603,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.flagged || 0}
                       color="orange"
                       dailyChange={statistics?.flaggedDailyChange}
-                      cardKey="flagged"
                       badge={statistics?.flaggedDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/flagged")}
                     />
                   </div>
@@ -635,10 +616,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.clients || 0}
                       color="red"
                       dailyChange={statistics?.clientsDailyChange}
-                      cardKey="clients"
                       badge={statistics?.clientsDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/clients")}
                     />
                     <StatCard
@@ -647,10 +625,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.totalJobInDispute || 0}
                       color="red"
                       dailyChange={statistics?.totalJobInDisputeDailyChange}
-                      cardKey="totalJobInDispute"
                       badge={statistics?.totalJobInDisputeDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/dispute-list")}
                     />
                     <StatCard
@@ -659,10 +634,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.pendingWithdrawalRequest || 0}
                       color="red"
                       dailyChange={statistics?.pendingWithdrawalRequestDailyChange}
-                      cardKey="pendingWithdrawalRequest"
                       badge={statistics?.pendingWithdrawalRequestDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/withdrawal-request")}
                     />
                     <StatCard
@@ -672,9 +644,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.messageCenterNew || 0}
                       color="red"
                       dailyChange={statistics?.messageCenterDailyChange}
-                      cardKey="messageCenter"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/message-center")}
                     />
                     <StatCard
@@ -683,10 +652,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.clientsReferrals || 0}
                       color="red"
                       dailyChange={statistics?.clientsReferralsDailyChange}
-                      cardKey="clientsReferrals"
                       badge={statistics?.clientsReferralsDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/referrals-client")}
                     />
                     <StatCard
@@ -696,9 +662,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.deletedAccountNew || 0}
                       color="red"
                       dailyChange={statistics?.deletedAccountDailyChange}
-                      cardKey="deletedAccount"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/delete-account")}
                     />
                     <StatCard
@@ -708,9 +671,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.ordersNew || 0}
                       color="red"
                       dailyChange={statistics?.ordersDailyChange}
-                      cardKey="orders"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/service-order")}
                     />
                     <StatCard
@@ -719,10 +679,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.approvalPendingService || 0}
                       color="red"
                       dailyChange={statistics?.approvalPendingServiceDailyChange}
-                      cardKey="approvalPendingService"
                       badge={statistics?.approvalPendingServiceDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/approval-pending-service")}
                     />
                   </div>
@@ -735,10 +692,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.subadmin || 0}
                       color="green"
                       dailyChange={statistics?.subadminDailyChange}
-                      cardKey="subadmin"
                       badge={statistics?.subadminDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/sub-admins")}
                     />
                     <StatCard
@@ -747,10 +701,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.totalPlansPackages || 0}
                       color="green"
                       dailyChange={statistics?.totalPlansPackagesDailyChange}
-                      cardKey="totalPlansPackages"
                       badge={statistics?.totalPlansPackagesDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/packages")}
                     />
                     <StatCard
@@ -760,9 +711,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.newContactRequestNew || 0}
                       color="green"
                       dailyChange={statistics?.newContactRequestDailyChange}
-                      cardKey="newContactRequest"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/contact-requests")}
                     />
                     <StatCard
@@ -772,9 +720,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.affiliateNew || 0}
                       color="green"
                       dailyChange={statistics?.affiliateDailyChange}
-                      cardKey="affiliate"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/affiliate")}
                     />
                     <StatCard
@@ -783,10 +728,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.askToStepIn || 0}
                       color="green"
                       dailyChange={statistics?.askToStepInDailyChange}
-                      cardKey="askToStepIn"
                       badge={statistics?.askToStepInDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/ask-step-in")}
                     />
                     <StatCard
@@ -795,10 +737,7 @@ export default function AdminDashboardPage() {
                       value={statistics?.serviceListing || 0}
                       color="green"
                       dailyChange={statistics?.serviceListingDailyChange}
-                      cardKey="serviceListing"
                       badge={statistics?.serviceListingDailyChange}
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/service")}
                     />
                     <StatCard
@@ -808,9 +747,6 @@ export default function AdminDashboardPage() {
                       badge={statistics?.customOrdersNew || 0}
                       color="green"
                       dailyChange={statistics?.customOrdersDailyChange}
-                      cardKey="customOrders"
-                      viewedCards={viewedCards}
-                      onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/custom-order")}
                     />
                     </div>
@@ -835,9 +771,6 @@ function StatCard({
   color,
   onClick,
   dailyChange,
-  cardKey,
-  viewedCards,
-  onCardClick
 }: { 
   icon: React.ComponentType<{ className?: string }>;
   title: string;
@@ -846,37 +779,22 @@ function StatCard({
   color: "orange" | "red" | "green";
   onClick?: () => void;
   dailyChange?: number;
-  cardKey?: string;
-  viewedCards?: Record<string, string>;
-  onCardClick?: (cardKey: string) => void | Promise<void>;
 }) {
-  // Check if card has been viewed
-  const isViewed = cardKey && viewedCards && viewedCards[cardKey];
-  // Only show badge if card has not been viewed and has badge value
-  const shouldShowBadge = !isViewed && ((badge !== undefined && badge > 0) || (dailyChange !== undefined && dailyChange !== 0 && badge === undefined));
-
-  const handleClick = async () => {
-    // Mark card as viewed if cardKey is provided
-    if (cardKey && onCardClick && !isViewed) {
-      await onCardClick(cardKey);
-    }
-    // Navigate if onClick is provided
-    if (onClick) {
-      onClick();
-    }
-  };
+  // Show badge if badge value is provided and greater than 0
+  // Badge displays new count in real-time
+  const shouldShowBadge = badge !== undefined && badge !== null && badge > 0;
 
   return (
     <div 
       className={`relative rounded-2xl bg-white dark:bg-black border border-[#FE8A0F]/20 p-6 shadow-lg shadow-[#FE8A0F]/10 hover:shadow-2xl hover:shadow-[#FE8A0F]/20 transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
-      onClick={handleClick}
+      onClick={onClick}
     >
-      {/* Badge */}
-      {shouldShowBadge ? (
+      {/* Badge - Shows new count in real-time */}
+      {shouldShowBadge && (
         <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-black">
-          {badge !== undefined && badge > 0 ? badge : (dailyChange !== undefined && dailyChange !== 0 ? Math.abs(dailyChange) : 0)}
+          {badge}
         </div>
-      ) : null}
+      )}
 
       <div className="flex items-start justify-between gap-4">
         {/* Left side - Content */}
@@ -887,8 +805,8 @@ function StatCard({
           <p className="text-3xl font-bold text-[#FE8A0F]">
             {value.toLocaleString()}
           </p>
-          {dailyChange !== undefined && dailyChange !== 0 && (
-            <p className={`text-sm font-medium ${dailyChange > 0 ? "text-green-600" : "text-red-600"}`}>
+          {dailyChange !== undefined && (
+            <p className={`text-sm font-medium ${dailyChange > 0 ? "text-green-600" : dailyChange < 0 ? "text-red-600" : "text-gray-500"}`}>
               {dailyChange > 0 ? "+" : ""}{dailyChange} today
             </p>
           )}

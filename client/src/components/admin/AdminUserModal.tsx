@@ -89,6 +89,10 @@ export default function AdminUserModal({
         referralCode: user.referralCode || "",
         role: user.role || role,
       });
+      // Mark user as viewed by admin when modal opens
+      if (user.id && open) {
+        markUserAsViewed(user.id);
+      }
     } else {
       setFormData({
         firstName: "",
@@ -108,6 +112,25 @@ export default function AdminUserModal({
       });
     }
   }, [user, open, role]);
+
+  const markUserAsViewed = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/viewed`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        // Silently fail - don't show error to user
+        console.error("Failed to mark user as viewed");
+      }
+    } catch (error) {
+      // Silently fail - don't show error to user
+      console.error("Error marking user as viewed:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

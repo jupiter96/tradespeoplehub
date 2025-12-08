@@ -162,6 +162,10 @@ const userSchema = new mongoose.Schema(
         uploadedAt: {
           type: Date,
         },
+        viewedByAdmin: {
+          type: Boolean,
+          default: false,
+        },
       },
       idCard: {
         status: {
@@ -186,6 +190,10 @@ const userSchema = new mongoose.Schema(
         },
         uploadedAt: {
           type: Date,
+        },
+        viewedByAdmin: {
+          type: Boolean,
+          default: false,
         },
       },
       paymentMethod: {
@@ -225,6 +233,10 @@ const userSchema = new mongoose.Schema(
         },
         uploadedAt: {
           type: Date,
+        },
+        viewedByAdmin: {
+          type: Boolean,
+          default: false,
         },
       },
     },

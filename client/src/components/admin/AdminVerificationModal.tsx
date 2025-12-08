@@ -74,12 +74,29 @@ export default function AdminVerificationModal({
         onOpen();
       }
       fetchVerificationData();
+      // Mark verification documents as viewed by admin when modal opens
+      markDocumentsAsViewed();
       // Reset form states when modal opens
       setNewStatus({});
       setRejectionReason({});
       setUpdatingType(null);
     }
   }, [open, userId]); // Remove onOpen from dependencies to prevent unnecessary re-renders
+
+  const markDocumentsAsViewed = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/verification/mark-viewed`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to mark documents as viewed');
+      }
+    } catch (error) {
+      console.error('Error marking documents as viewed:', error);
+      // Don't show error toast to user, as this is a background operation
+    }
+  };
 
   const fetchVerificationData = async () => {
     setLoading(true);

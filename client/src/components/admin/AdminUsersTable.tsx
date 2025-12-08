@@ -733,7 +733,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                         <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                           {onEdit && (
                             <DropdownMenuItem
-                              onClick={() => onEdit(user)}
+                              onClick={() => {
+                                handleMarkAsViewed(user.id);
+                                onEdit(user);
+                              }}
                               className="text-black dark:text-white hover:bg-[#FE8A0F]/10 cursor-pointer"
                             >
                               <Edit className="h-4 w-4 mr-2" />

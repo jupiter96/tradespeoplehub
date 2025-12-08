@@ -421,37 +421,73 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     yesterday.setDate(yesterday.getDate() - 1);
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // Count users by role
-    const professionalsCount = await User.countDocuments({ role: 'professional', isBlocked: { $ne: true } });
+    // Count users by role - only count users NOT viewed by admin
+    const professionalsCount = await User.countDocuments({ 
+      role: 'professional', 
+      isBlocked: { $ne: true },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
+    });
     const professionalsToday = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: today }
+      createdAt: { $gte: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const professionalsYesterday = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: yesterday, $lt: today }
+      createdAt: { $gte: yesterday, $lt: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const professionalsDailyChange = professionalsToday - professionalsYesterday;
 
-    const clientsCount = await User.countDocuments({ role: 'client', isBlocked: { $ne: true } });
+    const clientsCount = await User.countDocuments({ 
+      role: 'client', 
+      isBlocked: { $ne: true },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
+    });
     const clientsToday = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: today }
+      createdAt: { $gte: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const clientsYesterday = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: yesterday, $lt: today }
+      createdAt: { $gte: yesterday, $lt: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const clientsDailyChange = clientsToday - clientsYesterday;
 
-    const subadminCount = await User.countDocuments({ role: 'subadmin' });
+    const subadminCount = await User.countDocuments({ 
+      role: 'subadmin',
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
+    });
 
     // Count verification documents pending (total document count, not user count)
-    // Only count documents that have been submitted (have documentUrl) and are pending
+    // Only count documents that have been submitted (have documentUrl), are pending, and NOT viewed by admin
     const professionalsWithPendingDocs = await User.find({
       role: 'professional',
       $or: [
@@ -470,69 +506,32 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       ],
     });
     
-    // Count total pending documents (not users)
+    // Count total pending documents that are NOT viewed by admin (not users)
     let verificationDocsPendingCount = 0;
     professionalsWithPendingDocs.forEach(user => {
-      if (user.verification?.address?.status === 'pending' && user.verification?.address?.documentUrl) {
+      // Count address document if pending, has documentUrl, and NOT viewed by admin
+      if (user.verification?.address?.status === 'pending' && 
+          user.verification?.address?.documentUrl &&
+          !user.verification?.address?.viewedByAdmin) {
         verificationDocsPendingCount++;
       }
-      if (user.verification?.idCard?.status === 'pending' && user.verification?.idCard?.documentUrl) {
+      // Count idCard document if pending, has documentUrl, and NOT viewed by admin
+      if (user.verification?.idCard?.status === 'pending' && 
+          user.verification?.idCard?.documentUrl &&
+          !user.verification?.idCard?.viewedByAdmin) {
         verificationDocsPendingCount++;
       }
-      if (user.verification?.publicLiabilityInsurance?.status === 'pending' && user.verification?.publicLiabilityInsurance?.documentUrl) {
+      // Count publicLiabilityInsurance document if pending, has documentUrl, and NOT viewed by admin
+      if (user.verification?.publicLiabilityInsurance?.status === 'pending' && 
+          user.verification?.publicLiabilityInsurance?.documentUrl &&
+          !user.verification?.publicLiabilityInsurance?.viewedByAdmin) {
         verificationDocsPendingCount++;
       }
     });
 
-    // Get admin's viewed timestamp for accountVerificationDocument card
-    const admin = await Admin.findById(req.adminUser.id);
-    let viewedTimestamp = null;
-    if (admin?.dashboardCardViews) {
-      const cardViews = admin.dashboardCardViews instanceof Map 
-        ? Object.fromEntries(admin.dashboardCardViews)
-        : admin.dashboardCardViews;
-      const cardViewDate = cardViews['accountVerificationDocument'];
-      if (cardViewDate) {
-        viewedTimestamp = cardViewDate instanceof Date ? cardViewDate : new Date(cardViewDate);
-      }
-    }
-
-    // Count new documents uploaded after the admin viewed the card
-    // If admin hasn't viewed the card yet, count all pending documents
-    let verificationDocsNew = 0;
-    if (viewedTimestamp) {
-      // Count documents uploaded after the viewed timestamp
-      // If uploadedAt exists, use it; otherwise, if documentUrl exists, count it (for backward compatibility)
-      professionalsWithPendingDocs.forEach(user => {
-        // Address verification
-        if (user.verification?.address?.status === 'pending' && 
-            user.verification?.address?.documentUrl) {
-          const uploadedAt = user.verification.address.uploadedAt;
-          if (!uploadedAt || new Date(uploadedAt) > viewedTimestamp) {
-            verificationDocsNew++;
-          }
-        }
-        // ID Card verification
-        if (user.verification?.idCard?.status === 'pending' && 
-            user.verification?.idCard?.documentUrl) {
-          const uploadedAt = user.verification.idCard.uploadedAt;
-          if (!uploadedAt || new Date(uploadedAt) > viewedTimestamp) {
-            verificationDocsNew++;
-          }
-        }
-        // Public Liability Insurance verification
-        if (user.verification?.publicLiabilityInsurance?.status === 'pending' && 
-            user.verification?.publicLiabilityInsurance?.documentUrl) {
-          const uploadedAt = user.verification.publicLiabilityInsurance.uploadedAt;
-          if (!uploadedAt || new Date(uploadedAt) > viewedTimestamp) {
-            verificationDocsNew++;
-          }
-        }
-      });
-    } else {
-      // If admin hasn't viewed the card, count all pending documents
-      verificationDocsNew = verificationDocsPendingCount;
-    }
+    // Count new verification documents (pending documents with documentUrl that are NOT viewed by admin)
+    // Badge shows new count in real-time, excluding documents already viewed by admin
+    const verificationDocsNew = verificationDocsPendingCount;
 
     // Count total users who have submitted verification documents (any document with documentUrl)
     const totalVerificationUsers = await User.countDocuments({
@@ -601,44 +600,76 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const flaggedDailyChange = flaggedToday - flaggedYesterday;
 
-    // Count deleted accounts (soft delete - accounts marked as deleted)
+    // Count deleted accounts (soft delete - accounts marked as deleted) - only count NOT viewed by admin
     const deletedAccountsCount = await User.countDocuments({
       isBlocked: true,
       blockedAt: { $exists: true },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const deletedAccountsNew = await User.countDocuments({
       isBlocked: true,
       blockedAt: { $gte: last7Days },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const deletedAccountsToday = await User.countDocuments({
       isBlocked: true,
       blockedAt: { $gte: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const deletedAccountsYesterday = await User.countDocuments({
       isBlocked: true,
       blockedAt: { $gte: yesterday, $lt: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const deletedAccountsDailyChange = deletedAccountsToday - deletedAccountsYesterday;
 
-    // Count affiliates (using referralCode as proxy)
+    // Count affiliates (using referralCode as proxy) - only count NOT viewed by admin
     const affiliateCount = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const affiliateNew = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
       createdAt: { $gte: last7Days },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const affiliateToday = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
       createdAt: { $gte: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const affiliateYesterday = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
       createdAt: { $gte: yesterday, $lt: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const affiliateDailyChange = affiliateToday - affiliateYesterday;
 
@@ -733,14 +764,22 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const clientsReferralsDailyChange = clientsReferralsToday - clientsReferralsYesterday;
 
-    // Calculate subadmin daily change
+    // Calculate subadmin daily change - only count NOT viewed by admin
     const subadminToday = await User.countDocuments({ 
       role: 'subadmin',
-      createdAt: { $gte: today }
+      createdAt: { $gte: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const subadminYesterday = await User.countDocuments({ 
       role: 'subadmin',
-      createdAt: { $gte: yesterday, $lt: today }
+      createdAt: { $gte: yesterday, $lt: today },
+      $or: [
+        { viewedByAdmin: { $exists: false } },
+        { viewedByAdmin: false }
+      ]
     });
     const subadminDailyChange = subadminToday - subadminYesterday;
 
@@ -814,30 +853,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       totalSubCategoryDailyChange: totalSubCategoryDailyChange || 0,
     };
 
-    // Convert viewedCards Map to plain object for JSON serialization (admin already fetched above)
-    let viewedCards = {};
-    if (admin?.dashboardCardViews) {
-      // Convert Map to plain object for JSON serialization
-      if (admin.dashboardCardViews instanceof Map) {
-        viewedCards = Object.fromEntries(admin.dashboardCardViews);
-      } else {
-        viewedCards = admin.dashboardCardViews;
-      }
-      // Convert Date objects to ISO strings
-      Object.keys(viewedCards).forEach(key => {
-        if (viewedCards[key] instanceof Date) {
-          viewedCards[key] = viewedCards[key].toISOString();
-        }
-      });
-    }
-
-    // Add viewed status to statistics
-    const statisticsWithViews = {
-      ...statistics,
-      viewedCards,
-    };
-
-    return res.json({ statistics: statisticsWithViews });
+    return res.json({ statistics });
   } catch (error) {
     console.error('Get dashboard statistics error', error);
     return res.status(500).json({ error: 'Failed to get dashboard statistics' });
@@ -1210,6 +1226,49 @@ router.get('/users/:id/verification', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Get verification error', error);
     return res.status(500).json({ error: 'Failed to get verification details' });
+  }
+});
+
+// Mark verification documents as viewed by admin
+router.post('/users/:id/verification/mark-viewed', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
+
+    // Mark all pending documents with documentUrl as viewed by admin
+    const documentTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+    let markedCount = 0;
+
+    documentTypes.forEach(type => {
+      if (user.verification[type] && 
+          user.verification[type].status === 'pending' && 
+          user.verification[type].documentUrl &&
+          !user.verification[type].viewedByAdmin) {
+        user.verification[type].viewedByAdmin = true;
+        markedCount++;
+      }
+    });
+
+    if (markedCount > 0) {
+      await user.save();
+    }
+
+    return res.json({ 
+      message: 'Verification documents marked as viewed',
+      markedCount 
+    });
+  } catch (error) {
+    console.error('Mark verification as viewed error', error);
+    return res.status(500).json({ error: 'Failed to mark verification documents as viewed' });
   }
 });
 

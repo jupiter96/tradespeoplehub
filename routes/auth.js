@@ -2296,6 +2296,8 @@ router.post(
       user.verification[type].documentName = req.file.originalname;
       // Set uploadedAt timestamp when document is uploaded
       user.verification[type].uploadedAt = new Date();
+      // Reset viewedByAdmin to false when new document is uploaded
+      user.verification[type].viewedByAdmin = false;
       
       // Clear rejection reason only for this type (since new document is being submitted)
       if (currentStatus === 'rejected') {
