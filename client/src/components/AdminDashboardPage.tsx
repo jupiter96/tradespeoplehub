@@ -52,6 +52,23 @@ import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
 export default function AdminDashboardPage() {
   const location = useLocation();
@@ -308,32 +325,198 @@ export default function AdminDashboardPage() {
                       return (
                         <div
                           key={index}
-                          className="bg-white dark:bg-black rounded-lg border-0 p-6 shadow-lg shadow-[#FE8A0F]/20 hover:shadow-xl hover:shadow-[#FE8A0F]/30 transition-all relative"
+                          className="relative rounded-2xl bg-white dark:bg-black border border-[#FE8A0F]/20 p-6 shadow-lg shadow-[#FE8A0F]/10 hover:shadow-2xl hover:shadow-[#FE8A0F]/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-black dark:text-white text-xs font-semibold uppercase mb-3 tracking-wide">
+                          <div className="flex items-start justify-between gap-4">
+                            {/* Left side - Content */}
+                            <div className="flex flex-col gap-2 flex-1 min-w-0">
+                              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">
                                 {card.title}
                               </h3>
-                              <p className="text-[#FE8A0F] text-4xl font-bold mb-2 leading-tight">
+                              <p className="text-3xl font-bold text-[#FE8A0F]">
                                 {card.value}
                               </p>
-                              <p className="text-[#FE8A0F] text-sm font-semibold mb-1">
-                                {card.delta}
-                              </p>
+                              {card.delta && card.delta !== "0" && (
+                                <p className={`text-sm font-medium ${card.delta.startsWith("+") ? "text-green-600" : "text-red-600"}`}>
+                                  {card.delta} today
+                                </p>
+                              )}
                               <p className="text-black dark:text-white text-xs text-gray-600 dark:text-gray-400">
                                 {card.description}
                               </p>
                             </div>
+
+                            {/* Right side - Large Icon */}
                             {Icon && (
-                              <div className="ml-4 flex-shrink-0 p-2 bg-[#FE8A0F]/10 rounded border-0 shadow-md shadow-[#FE8A0F]/20 absolute bottom-0 right-6">
-                                <Icon className="w-5 h-5 text-[#FE8A0F]" />
+                              <div className="flex-shrink-0">
+                                <div className="p-4 bg-[#FE8A0F]/10 rounded-xl shadow-md shadow-[#FE8A0F]/20">
+                                  <Icon className="w-12 h-12 text-[#FE8A0F]" />
+                                </div>
                               </div>
                             )}
                           </div>
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Chart Cards Section - Inside Statistics Tab */}
+                  <div className="mt-8 space-y-6">
+                    <h2 className="text-2xl font-bold text-black dark:text-white mb-4">Analytics Overview</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* User Growth Chart */}
+                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">User Growth Trend</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart
+                            data={[
+                              { month: "Jan", users: 120, professionals: 45 },
+                              { month: "Feb", users: 180, professionals: 62 },
+                              { month: "Mar", users: 250, professionals: 85 },
+                              { month: "Apr", users: 320, professionals: 110 },
+                              { month: "May", users: 410, professionals: 135 },
+                              { month: "Jun", users: 520, professionals: 168 },
+                            ]}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="month" stroke="#6b7280" />
+                            <YAxis stroke="#6b7280" />
+                            <Tooltip />
+                            <Legend />
+                            <Area type="monotone" dataKey="users" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
+                            <Area type="monotone" dataKey="professionals" stackId="1" stroke="#FE8A0F" fill="#FE8A0F" fillOpacity={0.6} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Revenue Chart */}
+                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Monthly Revenue</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart
+                            data={[
+                              { month: "Jan", revenue: 12500 },
+                              { month: "Feb", revenue: 18900 },
+                              { month: "Mar", revenue: 24500 },
+                              { month: "Apr", revenue: 31200 },
+                              { month: "May", revenue: 38900 },
+                              { month: "Jun", revenue: 45600 },
+                            ]}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="month" stroke="#6b7280" />
+                            <YAxis stroke="#6b7280" />
+                            <Tooltip formatter={(value) => `£${value.toLocaleString()}`} />
+                            <Bar dataKey="revenue" fill="#10B981" radius={[8, 8, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Job Status Distribution */}
+                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Job Status Distribution</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: "Completed", value: 45, color: "#10B981" },
+                                { name: "In Progress", value: 30, color: "#3B82F6" },
+                                { name: "Pending", value: 15, color: "#F59E0B" },
+                                { name: "Cancelled", value: 10, color: "#EF4444" },
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={100}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {[
+                                { name: "Completed", value: 45, color: "#10B981" },
+                                { name: "In Progress", value: 30, color: "#3B82F6" },
+                                { name: "Pending", value: 15, color: "#F59E0B" },
+                                { name: "Cancelled", value: 10, color: "#EF4444" },
+                              ].map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Verification Status */}
+                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Verification Status</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart
+                            data={[
+                              { status: "Verified", count: 320 },
+                              { status: "Pending", count: 85 },
+                              { status: "Rejected", count: 25 },
+                              { status: "Not Started", count: 120 },
+                            ]}
+                            layout="vertical"
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis type="number" stroke="#6b7280" />
+                            <YAxis dataKey="status" type="category" stroke="#6b7280" width={100} />
+                            <Tooltip />
+                            <Bar dataKey="count" fill="#FE8A0F" radius={[0, 8, 8, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Category Popularity */}
+                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Top Categories</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart
+                            data={[
+                              { category: "Plumbing", jobs: 145 },
+                              { category: "Electrical", jobs: 128 },
+                              { category: "Carpentry", jobs: 98 },
+                              { category: "Painting", jobs: 87 },
+                              { category: "Gardening", jobs: 76 },
+                            ]}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="category" stroke="#6b7280" angle={-45} textAnchor="end" height={80} />
+                            <YAxis stroke="#6b7280" />
+                            <Tooltip />
+                            <Bar dataKey="jobs" fill="#8B5CF6" radius={[8, 8, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Monthly Activity */}
+                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Monthly Activity</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart
+                            data={[
+                              { month: "Jan", jobs: 45, messages: 120, reviews: 38 },
+                              { month: "Feb", jobs: 62, messages: 145, reviews: 52 },
+                              { month: "Mar", jobs: 78, messages: 168, reviews: 65 },
+                              { month: "Apr", jobs: 95, messages: 192, reviews: 78 },
+                              { month: "May", jobs: 112, messages: 215, reviews: 92 },
+                              { month: "Jun", jobs: 128, messages: 238, reviews: 105 },
+                            ]}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="month" stroke="#6b7280" />
+                            <YAxis stroke="#6b7280" />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="jobs" stroke="#3B82F6" strokeWidth={2} />
+                            <Line type="monotone" dataKey="messages" stroke="#10B981" strokeWidth={2} />
+                            <Line type="monotone" dataKey="reviews" stroke="#F59E0B" strokeWidth={2} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -630,7 +813,7 @@ export default function AdminDashboardPage() {
                       onCardClick={handleCardClick}
                       onClick={() => navigate("/admin/custom-order")}
                     />
-                  </div>
+                    </div>
                     </section>
                   )}
                 </TabsContent>
@@ -667,12 +850,6 @@ function StatCard({
   viewedCards?: Record<string, string>;
   onCardClick?: (cardKey: string) => void | Promise<void>;
 }) {
-  const bgGradient = {
-    orange: "from-orange-50 to-white dark:from-orange-950 dark:to-black",
-    red: "from-red-50 to-white dark:from-red-950 dark:to-black",
-    green: "from-green-50 to-white dark:from-green-950 dark:to-black",
-  };
-
   // Check if card has been viewed
   const isViewed = cardKey && viewedCards && viewedCards[cardKey];
   // Only show badge if card has not been viewed and has badge value
@@ -691,36 +868,38 @@ function StatCard({
 
   return (
     <div 
-      className={`relative rounded-xl bg-gradient-to-br ${bgGradient[color]} p-4 shadow-lg hover:shadow-xl transition-all h-32 flex flex-col justify-between overflow-hidden ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
+      className={`relative rounded-2xl bg-white dark:bg-black border border-[#FE8A0F]/20 p-6 shadow-lg shadow-[#FE8A0F]/10 hover:shadow-2xl hover:shadow-[#FE8A0F]/20 transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
       onClick={handleClick}
     >
-      {/* Background Icon - Right Side */}
-      <div className="absolute right-2 top-2 opacity-10 text-orange-600 mt-8">
-        <Icon className="w-20 h-20" />
-      </div>
+      {/* Badge */}
+      {shouldShowBadge ? (
+        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-black">
+          {badge !== undefined && badge > 0 ? badge : (dailyChange !== undefined && dailyChange !== 0 ? Math.abs(dailyChange) : 0)}
+        </div>
+      ) : null}
 
-      <div className="flex items-start justify-between mb-2 relative z-10">
-        <div className="flex flex-col gap-1 flex-1 pr-20">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black">
+      <div className="flex items-start justify-between gap-4">
+        {/* Left side - Content */}
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">
             {title}
           </p>
-        </div>
-        {/* Show badge only if card has not been viewed */}
-        {shouldShowBadge ? (
-          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg ring-2 ring-white">
-            {badge !== undefined && badge > 0 ? badge : (dailyChange !== undefined && dailyChange !== 0 ? Math.abs(dailyChange) : 0)}
-          </div>
-        ) : null}
-      </div>
-      <div className="relative z-10">
-        <p className="text-2xl font-bold text-orange-600">
-          {value.toLocaleString()}
-        </p>
-        {dailyChange !== undefined && dailyChange !== 0 && (
-          <p className={`text-xs mt-1 ${dailyChange > 0 ? "text-green-600" : "text-red-600"}`}>
-            {dailyChange > 0 ? "+" : ""}{dailyChange} today
+          <p className="text-3xl font-bold text-[#FE8A0F]">
+            {value.toLocaleString()}
           </p>
-        )}
+          {dailyChange !== undefined && dailyChange !== 0 && (
+            <p className={`text-sm font-medium ${dailyChange > 0 ? "text-green-600" : "text-red-600"}`}>
+              {dailyChange > 0 ? "+" : ""}{dailyChange} today
+            </p>
+          )}
+        </div>
+
+        {/* Right side - Large Icon */}
+        <div className="flex-shrink-0">
+          <div className="p-4 bg-[#FE8A0F]/10 rounded-xl shadow-md shadow-[#FE8A0F]/20">
+            <Icon className="w-12 h-12 text-[#FE8A0F]" />
+          </div>
+        </div>
       </div>
     </div>
   );

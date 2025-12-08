@@ -484,6 +484,56 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       }
     });
 
+    // Get admin's viewed timestamp for accountVerificationDocument card
+    const admin = await Admin.findById(req.adminUser.id);
+    let viewedTimestamp = null;
+    if (admin?.dashboardCardViews) {
+      const cardViews = admin.dashboardCardViews instanceof Map 
+        ? Object.fromEntries(admin.dashboardCardViews)
+        : admin.dashboardCardViews;
+      const cardViewDate = cardViews['accountVerificationDocument'];
+      if (cardViewDate) {
+        viewedTimestamp = cardViewDate instanceof Date ? cardViewDate : new Date(cardViewDate);
+      }
+    }
+
+    // Count new documents uploaded after the admin viewed the card
+    // If admin hasn't viewed the card yet, count all pending documents
+    let verificationDocsNew = 0;
+    if (viewedTimestamp) {
+      // Count documents uploaded after the viewed timestamp
+      // If uploadedAt exists, use it; otherwise, if documentUrl exists, count it (for backward compatibility)
+      professionalsWithPendingDocs.forEach(user => {
+        // Address verification
+        if (user.verification?.address?.status === 'pending' && 
+            user.verification?.address?.documentUrl) {
+          const uploadedAt = user.verification.address.uploadedAt;
+          if (!uploadedAt || new Date(uploadedAt) > viewedTimestamp) {
+            verificationDocsNew++;
+          }
+        }
+        // ID Card verification
+        if (user.verification?.idCard?.status === 'pending' && 
+            user.verification?.idCard?.documentUrl) {
+          const uploadedAt = user.verification.idCard.uploadedAt;
+          if (!uploadedAt || new Date(uploadedAt) > viewedTimestamp) {
+            verificationDocsNew++;
+          }
+        }
+        // Public Liability Insurance verification
+        if (user.verification?.publicLiabilityInsurance?.status === 'pending' && 
+            user.verification?.publicLiabilityInsurance?.documentUrl) {
+          const uploadedAt = user.verification.publicLiabilityInsurance.uploadedAt;
+          if (!uploadedAt || new Date(uploadedAt) > viewedTimestamp) {
+            verificationDocsNew++;
+          }
+        }
+      });
+    } else {
+      // If admin hasn't viewed the card, count all pending documents
+      verificationDocsNew = verificationDocsPendingCount;
+    }
+
     // Count total users who have submitted verification documents (any document with documentUrl)
     const totalVerificationUsers = await User.countDocuments({
       role: 'professional',
@@ -507,25 +557,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       ],
     });
 
-    // Count users with pending verification documents (submitted but not yet reviewed)
-    // This counts users who have documents with pending status AND documentUrl exists
-    const verificationDocsNew = await User.countDocuments({
-      role: 'professional',
-      $or: [
-        { 
-          'verification.address.status': 'pending',
-          'verification.address.documentUrl': { $exists: true, $ne: null }
-        },
-        { 
-          'verification.idCard.status': 'pending',
-          'verification.idCard.documentUrl': { $exists: true, $ne: null }
-        },
-        { 
-          'verification.publicLiabilityInsurance.status': 'pending',
-          'verification.publicLiabilityInsurance.documentUrl': { $exists: true, $ne: null }
-        },
-      ],
-    });
+    // verificationDocsNew is now calculated above based on viewedCards timestamp
     const verificationDocsToday = await User.countDocuments({
       role: 'professional',
       createdAt: { $gte: today },
@@ -722,7 +754,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       totalCategory: totalCategory || 0,
       totalCategoryDailyChange: totalCategoryDailyChange || 0,
       accountVerificationDocument: verificationDocsPendingCount || 0,
-      accountVerificationDocumentNew: verificationDocsNew || 0,
+      accountVerificationDocumentNew: verificationDocsNew || 0, // Count only documents uploaded after admin viewed the card
       accountVerificationDocumentDailyChange: verificationDocsToday || 0,
       totalVerificationUsers: totalVerificationUsers || 0,
       verificationUsersToday: verificationUsersToday || 0,
@@ -782,8 +814,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       totalSubCategoryDailyChange: totalSubCategoryDailyChange || 0,
     };
 
-    // Get admin's viewed cards
-    const admin = await Admin.findById(req.adminUser.id);
+    // Convert viewedCards Map to plain object for JSON serialization (admin already fetched above)
     let viewedCards = {};
     if (admin?.dashboardCardViews) {
       // Convert Map to plain object for JSON serialization

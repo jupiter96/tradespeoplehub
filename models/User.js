@@ -159,6 +159,9 @@ const userSchema = new mongoose.Schema(
         verifiedAt: {
           type: Date,
         },
+        uploadedAt: {
+          type: Date,
+        },
       },
       idCard: {
         status: {
@@ -179,6 +182,9 @@ const userSchema = new mongoose.Schema(
           trim: true,
         },
         verifiedAt: {
+          type: Date,
+        },
+        uploadedAt: {
           type: Date,
         },
       },
@@ -215,6 +221,9 @@ const userSchema = new mongoose.Schema(
           trim: true,
         },
         verifiedAt: {
+          type: Date,
+        },
+        uploadedAt: {
           type: Date,
         },
       },

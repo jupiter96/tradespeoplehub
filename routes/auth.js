@@ -2294,6 +2294,8 @@ router.post(
       // Update document information for this type only
       user.verification[type].documentUrl = uploadResult.secure_url;
       user.verification[type].documentName = req.file.originalname;
+      // Set uploadedAt timestamp when document is uploaded
+      user.verification[type].uploadedAt = new Date();
       
       // Clear rejection reason only for this type (since new document is being submitted)
       if (currentStatus === 'rejected') {
