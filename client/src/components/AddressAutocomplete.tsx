@@ -75,6 +75,9 @@ export default function AddressAutocomplete({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [isHoveringSuggestions, setIsHoveringSuggestions] = useState(false);
+  const [isHoveringAddressSuggestions, setIsHoveringAddressSuggestions] = useState(false);
+  const [isHoveringCitySuggestions, setIsHoveringCitySuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(-1);
   const [selectedCityIndex, setSelectedCityIndex] = useState(-1);
@@ -740,9 +743,9 @@ export default function AddressAutocomplete({
               }
             }}
             onBlur={() => {
-              // Close dropdown when field loses focus (with a small delay to allow click)
+              // Close dropdown when field loses focus, but only if not hovering over suggestions
               setTimeout(() => {
-                if (!postcodeJustSelected && !addressJustSelected) {
+                if (!postcodeJustSelected && !addressJustSelected && !isHoveringSuggestions) {
                   setShowSuggestions(false);
                 }
               }, 200);
@@ -782,7 +785,12 @@ export default function AddressAutocomplete({
 
       {/* Address Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && !postcodeJustSelected && !isAddressFilled && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
+        <div 
+          className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto"
+          onMouseEnter={() => setIsHoveringSuggestions(true)}
+          onMouseLeave={() => setIsHoveringSuggestions(false)}
+          onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking on dropdown
+        >
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.postcode}-${index}`}
@@ -859,9 +867,9 @@ export default function AddressAutocomplete({
                 }
               }}
               onBlur={() => {
-                // Close dropdown when field loses focus (with a small delay to allow click)
+                // Close dropdown when field loses focus, but only if not hovering over suggestions
                 setTimeout(() => {
-                  if (!addressJustSelected && !postcodeJustSelected) {
+                  if (!addressJustSelected && !postcodeJustSelected && !isHoveringAddressSuggestions) {
                     setShowAddressSuggestions(false);
                   }
                 }, 200);
@@ -925,7 +933,12 @@ export default function AddressAutocomplete({
           
           {/* Address Suggestions Dropdown - Same style as postcode suggestions */}
           {showAddressSuggestions && addressSuggestions.length > 0 && !addressJustSelected && !isAddressFilled && (
-            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
+            <div 
+              className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto"
+              onMouseEnter={() => setIsHoveringAddressSuggestions(true)}
+              onMouseLeave={() => setIsHoveringAddressSuggestions(false)}
+              onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking on dropdown
+            >
               {addressSuggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.postcode}-${suggestion.line_1}-${index}`}
@@ -978,6 +991,14 @@ export default function AddressAutocomplete({
                   setShowCitySuggestions(true);
                 }
               }}
+              onBlur={() => {
+                // Close dropdown when field loses focus, but only if not hovering over suggestions
+                setTimeout(() => {
+                  if (!isHoveringCitySuggestions) {
+                    setShowCitySuggestions(false);
+                  }
+                }, 200);
+              }}
               onKeyDown={(e) => {
                 if (!showCitySuggestions || citySuggestions.length === 0) return;
                 switch (e.key) {
@@ -1013,7 +1034,12 @@ export default function AddressAutocomplete({
           
           {/* City Suggestions Dropdown */}
           {showCitySuggestions && citySuggestions.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto">
+            <div 
+              className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto"
+              onMouseEnter={() => setIsHoveringCitySuggestions(true)}
+              onMouseLeave={() => setIsHoveringCitySuggestions(false)}
+              onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking on dropdown
+            >
               {citySuggestions.map((city, index) => (
                 <button
                   key={`city-${city}-${index}`}
