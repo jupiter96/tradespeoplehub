@@ -618,13 +618,19 @@ export default function AdminCategoriesPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
-                              <div className="font-medium">{category.name}</div>
+                              <div className="font-medium truncate" title={category.name}>
+                                {category.name && category.name.length > 25 ? category.name.substring(0, 25) + "..." : category.name}
+                              </div>
                               {category.slug && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400">{category.slug}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 truncate" title={category.slug}>
+                                  {category.slug.length > 25 ? category.slug.substring(0, 25) + "..." : category.slug}
+                                </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-black dark:text-white max-w-xs truncate">
-                              {category.question || "-"}
+                            <TableCell className="text-black dark:text-white max-w-xs">
+                              <span className="truncate block" title={category.question || "-"}>
+                                {category.question && category.question.length > 25 ? category.question.substring(0, 25) + "..." : (category.question || "-")}
+                              </span>
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
                               {(category.subCategories || []).length} subcategories

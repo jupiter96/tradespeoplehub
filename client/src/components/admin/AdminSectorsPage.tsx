@@ -373,15 +373,22 @@ export default function AdminSectorsPage() {
                           {sector.order}
                         </TableCell>
                         <TableCell className="text-black dark:text-white">
-                          <div className="font-medium">{sector.name}</div>
+                          <div className="font-medium truncate" title={sector.name}>
+                            {sector.name && sector.name.length > 25 ? sector.name.substring(0, 25) + "..." : sector.name}
+                          </div>
                           {sector.displayName && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {sector.displayName} {sector.subtitle}
+                            <div className="text-sm text-gray-500 dark:text-gray-400 truncate" title={`${sector.displayName} ${sector.subtitle || ""}`}>
+                              {(() => {
+                                const displayText = `${sector.displayName} ${sector.subtitle || ""}`.trim();
+                                return displayText.length > 25 ? displayText.substring(0, 25) + "..." : displayText;
+                              })()}
                             </div>
                           )}
                         </TableCell>
                         <TableCell className="text-black dark:text-white">
-                          {sector.slug}
+                          <span className="truncate block" title={sector.slug}>
+                            {sector.slug && sector.slug.length > 25 ? sector.slug.substring(0, 25) + "..." : sector.slug}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Badge

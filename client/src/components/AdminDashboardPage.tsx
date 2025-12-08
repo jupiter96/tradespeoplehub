@@ -36,17 +36,6 @@ import {
   List,
   Box,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-} from "recharts";
 import AdminGenericPage from "./admin/AdminGenericPage";
 import AdminClientsPage from "./admin/AdminClientsPage";
 import AdminProfessionalsPage from "./admin/AdminProfessionalsPage";
@@ -268,26 +257,6 @@ export default function AdminDashboardPage() {
     ],
     [statistics],
   );
-
-  // Fixed sample data for charts
-  const trafficData = [
-    { name: "Mon", users: 120 },
-    { name: "Tue", users: 180 },
-    { name: "Wed", users: 150 },
-    { name: "Thu", users: 220 },
-    { name: "Fri", users: 260 },
-    { name: "Sat", users: 190 },
-    { name: "Sun", users: 140 },
-  ];
-
-  const revenueData = [
-    { name: "Jan", value: 18 },
-    { name: "Feb", value: 22 },
-    { name: "Mar", value: 26 },
-    { name: "Apr", value: 31 },
-    { name: "May", value: 29 },
-    { name: "Jun", value: 35 },
-  ];
 
   // Render dashboard content or other sections
   if (activeSection === "dashboard") {
@@ -562,116 +531,6 @@ export default function AdminDashboardPage() {
                   )}
                 </TabsContent>
               </Tabs>
-
-              <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 
-                                shadow-[0_0_20px_rgba(254,138,15,0.2)]
-                                hover:shadow-[0_0_30px_rgba(254,138,15,0.3)]
-                                transition-all duration-300 transform hover:-translate-y-1"
-                     style={{
-                       boxShadow: '0 0 20px rgba(254, 138, 15, 0.2), inset 0 0 10px rgba(254, 138, 15, 0.05)',
-                     }}>
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-black dark:text-white">
-                        Weekly Activity
-                      </p>
-                      <h2 className="mt-2 text-lg font-semibold text-[#FE8A0F]">
-                        New users per day
-                      </h2>
-                    </div>
-                    <span className="rounded-full bg-[#FE8A0F]/20 px-3 py-1 text-xs font-semibold text-[#FE8A0F]">
-                      Live
-                    </span>
-                  </div>
-                  <div className="mt-2 h-64 rounded-2xl bg-white dark:bg-black p-3">
-                    <ResponsiveContainer width="100%" height={256}>
-                      <LineChart data={trafficData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                        <XAxis
-                          dataKey="name"
-                          stroke="#9ca3af"
-                          tick={{ fill: "#9ca3af", fontSize: 11 }}
-                          style={{ fontFamily: "Poppins, sans-serif" }}
-                        />
-                        <YAxis
-                          stroke="#9ca3af"
-                          tick={{ fill: "#9ca3af", fontSize: 11 }}
-                          style={{ fontFamily: "Poppins, sans-serif" }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#1f2937",
-                            border: "1px solid #374151",
-                            borderRadius: "8px",
-                            color: "#f9fafb",
-                            fontFamily: "Poppins, sans-serif",
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="users"
-                          stroke="#3B82F6"
-                          strokeWidth={3}
-                          dot={{ r: 5, fill: "#3B82F6" }}
-                          activeDot={{ r: 7, fill: "#60A5FA" }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 
-                                shadow-[0_0_20px_rgba(254,138,15,0.2)]
-                                hover:shadow-[0_0_30px_rgba(254,138,15,0.3)]
-                                transition-all duration-300 transform hover:-translate-y-1"
-                     style={{
-                       boxShadow: '0 0 20px rgba(254, 138, 15, 0.2), inset 0 0 10px rgba(254, 138, 15, 0.05)',
-                     }}>
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-black dark:text-white">
-                        Revenue
-                      </p>
-                      <h2 className="mt-2 text-lg font-semibold text-[#FE8A0F]">
-                        Monthly performance
-                      </h2>
-                    </div>
-                    <span className="rounded-full bg-[#FE8A0F]/20 px-3 py-1 text-xs font-semibold text-[#FE8A0F]">
-                      Demo data
-                    </span>
-                  </div>
-                  <div className="mt-2 h-64 rounded-2xl bg-white dark:bg-black p-3">
-                    <ResponsiveContainer width="100%" height={256}>
-                      <BarChart data={revenueData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                        <XAxis
-                          dataKey="name"
-                          stroke="#9ca3af"
-                          tick={{ fill: "#9ca3af", fontSize: 11 }}
-                          style={{ fontFamily: "Poppins, sans-serif" }}
-                        />
-                        <YAxis
-                          stroke="#9ca3af"
-                          tick={{ fill: "#9ca3af", fontSize: 11 }}
-                          style={{ fontFamily: "Poppins, sans-serif" }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#1f2937",
-                            border: "1px solid #374151",
-                            borderRadius: "8px",
-                            color: "#f9fafb",
-                            fontFamily: "Poppins, sans-serif",
-                          }}
-                          formatter={(value: number) => [`${value}%`, "Growth"]}
-                        />
-                        <Bar dataKey="value" fill="#FE8A0F" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </section>
       </div>
     );
   }

@@ -394,6 +394,12 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     });
   };
 
+  const truncateText = (text: string | undefined | null, maxLength: number = 25): string => {
+    if (!text) return "-";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  };
+
   const getRoleBadgeColor = (userRole: string) => {
     switch (userRole) {
       case "admin":
@@ -567,33 +573,70 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   >
                     <TableCell className="text-black dark:text-white font-medium">
                       <div className="flex items-center gap-2">
-                        <span>{user.name || `${user.firstName} ${user.lastName}`.trim()}</span>
-                        {!user.viewedByAdmin && (
-                          <Badge
-                            className="bg-blue-500 hover:bg-blue-600 text-white border-0 flex items-center gap-1 px-2 py-0.5 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsViewed(user.id);
-                            }}
-                            title="Click to mark as viewed"
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            New
-                          </Badge>
-                        )}
+                        <span className="truncate" title={user.name || `${user.firstName} ${user.lastName}`.trim()}>
+                          {truncateText(user.name || `${user.firstName} ${user.lastName}`.trim())}
+                        </span>
+                        {(() => {
+                          // Check if user has verification documents
+                          const hasVerificationDocuments = (() => {
+                            if (role !== "professional" || !showVerification) return false;
+                            const verification = verificationStatuses[user.id];
+                            if (!verification) return false;
+                            
+                            // Check if any verification document exists (pending or has documentUrl)
+                            const documentTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+                            return documentTypes.some(type => {
+                              const doc = verification[type];
+                              return doc && (doc.status === 'pending' || doc.documentUrl);
+                            });
+                          })();
+                          
+                          // Show verify badge if verification documents exist, otherwise show new badge if not viewed
+                          if (hasVerificationDocuments) {
+                            return (
+                              <Badge
+                                className="bg-red-500 hover:bg-red-600 text-white border-0 flex items-center gap-1 px-2 py-0.5"
+                              >
+                                <Shield className="w-3 h-3" />
+                                Verify
+                              </Badge>
+                            );
+                          } else if (!user.viewedByAdmin) {
+                            return (
+                              <Badge
+                                className="bg-blue-500 hover:bg-blue-600 text-white border-0 flex items-center gap-1 px-2 py-0.5 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarkAsViewed(user.id);
+                                }}
+                                title="Click to mark as viewed"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                New
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell className="text-black dark:text-white">
-                      {user.email}
+                      <span className="truncate block" title={user.email}>
+                        {truncateText(user.email)}
+                      </span>
                     </TableCell>
                     {role === "professional" && (
                       <TableCell className="text-black dark:text-white">
-                        {user.tradingName || "-"}
+                        <span className="truncate block" title={user.tradingName || "-"}>
+                          {truncateText(user.tradingName)}
+                        </span>
                       </TableCell>
                     )}
                     {role !== "subadmin" && (
                       <TableCell className="text-black dark:text-white">
-                        {user.phone}
+                        <span className="truncate block" title={user.phone}>
+                          {truncateText(user.phone)}
+                        </span>
                       </TableCell>
                     )}
                     <TableCell>
@@ -621,21 +664,18 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                       })()}
                     </TableCell>
                     {role !== "subadmin" && (
-                      <TableCell className="text-black dark:text-white max-w-[22px]">
+                      <TableCell className="text-black dark:text-white max-w-[200px]">
                         {(() => {
                           const addressParts = [];
                           if (user.address) addressParts.push(user.address);
                           if (user.townCity) addressParts.push(user.townCity);
                           if (user.postcode) addressParts.push(user.postcode);
                           if (addressParts.length > 0) {
+                            const fullAddress = addressParts.join(", ");
                             return (
-                              <div className="flex flex-col gap-0.5">
-                                {addressParts.map((part, index) => (
-                                  <span key={index} className="text-xs leading-tight break-words whitespace-normal">
-                                    {part}
-                                  </span>
-                                ))}
-                              </div>
+                              <span className="text-xs leading-tight truncate block" title={fullAddress}>
+                                {truncateText(fullAddress, 25)}
+                              </span>
                             );
                           }
                           return "-";
