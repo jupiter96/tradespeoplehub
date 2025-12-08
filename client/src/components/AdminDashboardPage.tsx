@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
                       return (
                         <div
                           key={index}
-                          className="bg-white dark:bg-black rounded-lg border-0 p-6 shadow-lg shadow-[#FE8A0F]/20 hover:shadow-xl hover:shadow-[#FE8A0F]/30 transition-all"
+                          className="bg-white dark:bg-black rounded-lg border-0 p-6 shadow-lg shadow-[#FE8A0F]/20 hover:shadow-xl hover:shadow-[#FE8A0F]/30 transition-all relative"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
@@ -336,7 +336,7 @@ export default function AdminDashboardPage() {
                               </p>
                             </div>
                             {Icon && (
-                              <div className="ml-4 flex-shrink-0 p-2 bg-[#FE8A0F]/10 rounded border-0 shadow-md shadow-[#FE8A0F]/20">
+                              <div className="ml-4 flex-shrink-0 p-2 bg-[#FE8A0F]/10 rounded border-0 shadow-md shadow-[#FE8A0F]/20 absolute bottom-0 right-6">
                                 <Icon className="w-5 h-5 text-[#FE8A0F]" />
                               </div>
                             )}
@@ -710,7 +710,7 @@ function StatCard({
       onClick={onClick}
     >
       {/* Background Icon - Right Side */}
-      <div className="absolute right-2 top-2 opacity-10 text-orange-600">
+      <div className="absolute right-2 top-2 opacity-10 text-orange-600 mt-8">
         <Icon className="w-20 h-20" />
       </div>
 
@@ -720,11 +720,12 @@ function StatCard({
             {title}
           </p>
         </div>
-        {badge !== undefined && badge > 0 && (
+        {/* Show badge if provided, otherwise show dailyChange as badge if available */}
+        {(badge !== undefined && badge > 0) || (dailyChange !== undefined && dailyChange !== 0 && badge === undefined) ? (
           <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg ring-2 ring-white">
-            {badge}
+            {badge !== undefined && badge > 0 ? badge : (dailyChange !== undefined && dailyChange !== 0 ? Math.abs(dailyChange) : 0)}
           </div>
-        )}
+        ) : null}
       </div>
       <div className="relative z-10">
         <p className="text-2xl font-bold text-orange-600">
