@@ -395,6 +395,7 @@ router.post('/register/initiate', async (req, res) => {
       userType,
       tradingName,
       townCity,
+      county,
       address,
       travelDistance,
     } = req.body;
@@ -404,9 +405,12 @@ router.post('/register/initiate', async (req, res) => {
       tradingName: tradingName || '(empty)',
       address: address || '(empty)',
       townCity: townCity || '(empty)',
+      county: county || '(empty)',
       travelDistance: travelDistance || '(empty)',
       hasTradingName: tradingName !== undefined && tradingName !== null,
       hasAddress: address !== undefined && address !== null,
+      hasTownCity: townCity !== undefined && townCity !== null,
+      hasCounty: county !== undefined && county !== null,
       tradingNameType: typeof tradingName,
       addressType: typeof address,
     });
@@ -668,6 +672,12 @@ router.post('/register/initiate', async (req, res) => {
         pendingRegistrationData.townCity = trimmedTownCity;
       }
     }
+    if (county !== undefined && county !== null) {
+      const trimmedCounty = String(county).trim();
+      if (trimmedCounty) {
+        pendingRegistrationData.county = trimmedCounty;
+      }
+    }
 
     console.log('[Registration] Creating pending registration with data:', {
       email: normalizedEmail,
@@ -675,6 +685,7 @@ router.post('/register/initiate', async (req, res) => {
       tradingName: pendingRegistrationData.tradingName,
       address: pendingRegistrationData.address,
       townCity: pendingRegistrationData.townCity,
+      county: pendingRegistrationData.county,
       travelDistance: pendingRegistrationData.travelDistance,
       hasPasswordHash: !!pendingRegistrationData.passwordHash,
       hasEmailCodeHash: !!pendingRegistrationData.emailCodeHash,
@@ -1017,12 +1028,19 @@ router.post('/register/verify-phone', async (req, res) => {
         userData.townCity = trimmedTownCity;
       }
     }
+    if (pendingRegistration.county !== undefined && pendingRegistration.county !== null) {
+      const trimmedCounty = String(pendingRegistration.county).trim();
+      if (trimmedCounty) {
+        userData.county = trimmedCounty;
+      }
+    }
 
     console.log('[Phone Verification] Registration - Creating user with data:', {
       role: userData.role,
       tradingName: userData.tradingName,
       address: userData.address,
       townCity: userData.townCity,
+      county: userData.county,
       travelDistance: userData.travelDistance,
     });
 
@@ -1035,6 +1053,7 @@ router.post('/register/verify-phone', async (req, res) => {
       tradingName: user.tradingName,
       address: user.address,
       townCity: user.townCity,
+      county: user.county,
       travelDistance: user.travelDistance,
     });
 
@@ -1514,6 +1533,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       postcode,
       address,
       townCity,
+      county,
       tradingName,
       travelDistance,
     } = req.body || {};
@@ -1573,6 +1593,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
     
     user.townCity = townCity?.trim() || undefined;
+    user.county = county?.trim() || undefined;
 
     // Initialize verification object if it doesn't exist
     if (!user.verification) {
@@ -2104,10 +2125,9 @@ router.get('/verification', requireAuth, async (req, res) => {
       }
     });
 
-    // Check public liability insurance status
-    if (user.hasPublicLiability === 'yes' && user.verification.publicLiabilityInsurance.status === 'not-started') {
-      user.verification.publicLiabilityInsurance.status = 'pending';
-    }
+    // Note: Insurance verification status should only be set to 'pending' when a document is uploaded
+    // Do not automatically set to 'pending' just because hasPublicLiability === 'yes'
+    // The status will be set to 'pending' when the user uploads the insurance document
 
     await user.save();
 

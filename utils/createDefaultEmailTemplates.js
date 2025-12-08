@@ -284,7 +284,7 @@ async function createDefaultTemplates() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB');
 
-    const logoUrl = process.env.EMAIL_LOGO_URL || 'https://sortars.com/logo.png';
+    const logoUrl = process.env.EMAIL_LOGO_URL || 'https://res.cloudinary.com/drv3pneh8/image/upload/v1765138083/71632be70905a17fd389a8d053249645c4e8a4df_wvs6z6.png';
 
     for (const template of defaultTemplates) {
       const existing = await EmailTemplate.findOne({ type: template.type });

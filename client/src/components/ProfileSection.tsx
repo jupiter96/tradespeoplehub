@@ -894,7 +894,7 @@ export default function ProfileSection() {
                       <Input
                         value={newPortfolioItem.image}
                         onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, image: e.target.value })}
-                        placeholder="https://example.com/image.jpg"
+                        placeholder="https://gmail.com/image.jpg"
                         className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
                       />
                       {newPortfolioItem.image && (

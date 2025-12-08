@@ -18,6 +18,7 @@ interface UserInfo {
   blockReviewInvitation?: boolean;
   address?: string;
   townCity?: string;
+  county?: string;
   postcode?: string;
   travelDistance?: string;
   referralCode?: string;
@@ -62,6 +63,7 @@ interface RegisterPayload {
   referralCode?: string;
   tradingName?: string;
   townCity?: string;
+  county?: string;
   address?: string;
   travelDistance?: string;
 }
@@ -86,6 +88,7 @@ interface ProfileUpdatePayload {
   postcode: string;
   address?: string;
   townCity?: string;
+  county?: string;
   tradingName?: string;
   travelDistance?: string;
   sector?: string;

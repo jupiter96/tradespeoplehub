@@ -939,7 +939,7 @@ function JobsSection() {
       client: "Sarah Johnson",
       clientAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
       clientPhone: "+44 7234 567890",
-      clientEmail: "sarah.johnson@example.com",
+      clientEmail: "sarah.johnson@gmail.com",
       date: "2024-11-08",
       status: "In Progress", 
       amount: "£2,500",
@@ -955,7 +955,7 @@ function JobsSection() {
       client: "Mike Brown",
       clientAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
       clientPhone: "+44 7345 678901",
-      clientEmail: "mike.brown@example.com",
+      clientEmail: "mike.brown@gmail.com",
       date: "2024-11-09", 
       status: "In Progress", 
       amount: "£850",
@@ -971,7 +971,7 @@ function JobsSection() {
       client: "Emma Wilson",
       clientAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
       clientPhone: "+44 7456 789012",
-      clientEmail: "emma.wilson@example.com",
+      clientEmail: "emma.wilson@gmail.com",
       date: "2024-11-10", 
       status: "New", 
       amount: "£1,200",
@@ -987,7 +987,7 @@ function JobsSection() {
       client: "David Lee",
       clientAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
       clientPhone: "+44 7567 890123",
-      clientEmail: "david.lee@example.com",
+      clientEmail: "david.lee@gmail.com",
       date: "2024-11-10", 
       status: "New", 
       amount: "£3,000",
@@ -1019,7 +1019,7 @@ function JobsSection() {
       client: "John Smith",
       clientAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
       clientPhone: "+44 7789 012345",
-      clientEmail: "john.smith@example.com",
+      clientEmail: "john.smith@gmail.com",
       date: "2024-11-03", 
       status: "Completed", 
       amount: "£950",
@@ -1035,7 +1035,7 @@ function JobsSection() {
       client: "Mary Thompson",
       clientAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
       clientPhone: "+44 7890 123456",
-      clientEmail: "mary.thompson@example.com",
+      clientEmail: "mary.thompson@gmail.com",
       date: "2024-10-30", 
       status: "Completed", 
       amount: "£4,200",
@@ -1051,7 +1051,7 @@ function JobsSection() {
       client: "Robert Davis",
       clientAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
       clientPhone: "+44 7901 234567",
-      clientEmail: "robert.davis@example.com",
+      clientEmail: "robert.davis@gmail.com",
       date: "2024-11-07", 
       status: "In Progress", 
       amount: "£1,650",
@@ -1067,7 +1067,7 @@ function JobsSection() {
       client: "Jane Doe",
       clientAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150",
       clientPhone: "+44 7012 345678",
-      clientEmail: "jane.doe@example.com",
+      clientEmail: "jane.doe@gmail.com",
       date: "2024-10-28", 
       status: "Rejected", 
       amount: "£400",
@@ -1083,7 +1083,7 @@ function JobsSection() {
       client: "Lisa Anderson",
       clientAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
       clientPhone: "+44 7123 456780",
-      clientEmail: "lisa.anderson@example.com",
+      clientEmail: "lisa.anderson@gmail.com",
       date: "2024-11-12", 
       status: "New", 
       amount: "£890",
@@ -2723,7 +2723,7 @@ function WithdrawSection() {
     {
       id: 3,
       type: "PayPal",
-      email: "john.doe@example.com",
+      email: "john.doe@gmail.com",
       isVerified: true,
     },
   ];
@@ -3365,7 +3365,7 @@ function WithdrawSection() {
               </label>
               <input
                 type="email"
-                placeholder="your.email@example.com"
+                placeholder="your.email@gmail.com"
                 className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
               />
             </div>

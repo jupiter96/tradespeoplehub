@@ -16,6 +16,7 @@ import categoryRoutes from './routes/categories.js';
 import subCategoryRoutes from './routes/subcategories.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
+import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
 
 dotenv.config();
 
@@ -129,6 +130,8 @@ const initializeDatabase = async () => {
   await connectMongoDB();
   await ensureTestUser();
   await ensureAdminUser();
+  // Start verification reminder scheduler
+  startVerificationReminderScheduler();
 };
 
 

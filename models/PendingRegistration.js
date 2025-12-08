@@ -12,6 +12,7 @@ const pendingRegistrationSchema = new mongoose.Schema(
     referralCode: { type: String, trim: true },
     tradingName: { type: String, trim: true },
     townCity: { type: String, trim: true },
+    county: { type: String, trim: true },
     address: { type: String, trim: true },
     travelDistance: { type: String, trim: true },
     emailCodeHash: {

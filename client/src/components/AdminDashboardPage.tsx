@@ -231,34 +231,42 @@ export default function AdminDashboardPage() {
     () => [
       {
         title: "Total Users",
-        value: "12,480",
-        delta: "+8.2%",
-        description: "vs last month",
+        value: statistics?.totalUsers?.toLocaleString() || "0",
+        delta: statistics?.totalUsersDailyChange 
+          ? (statistics.totalUsersDailyChange >= 0 ? "+" : "") + statistics.totalUsersDailyChange 
+          : "0",
+        description: "total registered users",
         icon: Users,
       },
       {
         title: "Active Clients",
-        value: "4,321",
-        delta: "+3.4%",
-        description: "using the platform weekly",
+        value: statistics?.activeClients?.toLocaleString() || "0",
+        delta: statistics?.clientsDailyChange 
+          ? (statistics.clientsDailyChange >= 0 ? "+" : "") + statistics.clientsDailyChange 
+          : "0",
+        description: "active client accounts",
         icon: UserCheck,
       },
       {
         title: "Professionals",
-        value: "1,204",
-        delta: "+12 new",
-        description: "verified and ready for jobs",
+        value: statistics?.professionals?.toLocaleString() || "0",
+        delta: statistics?.professionalsDailyChange 
+          ? (statistics.professionalsDailyChange >= 0 ? "+" : "") + statistics.professionalsDailyChange 
+          : "0",
+        description: statistics?.verifiedProfessionals 
+          ? `${statistics.verifiedProfessionals} verified` 
+          : "professional accounts",
         icon: BriefcaseBusiness,
       },
       {
         title: "Monthly Revenue",
-        value: "£38,920",
-        delta: "+15.6%",
-        description: "in the last 30 days",
+        value: "£0",
+        delta: "0",
+        description: "revenue tracking not implemented",
         icon: Wallet,
       },
     ],
-    [],
+    [statistics],
   );
 
   // Fixed sample data for charts

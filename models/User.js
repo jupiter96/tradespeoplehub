@@ -67,6 +67,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    county: {
+      type: String,
+      trim: true,
+    },
     address: {
       type: String,
       required() {
@@ -261,6 +265,24 @@ const userSchema = new mongoose.Schema(
     viewedByAdmin: {
       type: Boolean,
       default: false,
+    },
+    // Verification reminder tracking
+    verificationReminder: {
+      lastSentAt: {
+        type: Date,
+      },
+      weeklyRemindersSent: {
+        type: Number,
+        default: 0,
+      },
+      monthlyRemindersSent: {
+        type: Number,
+        default: 0,
+      },
+      reminderStopped: {
+        type: Boolean,
+        default: false,
+      },
     },
     // Public profile fields
     publicProfile: {

@@ -93,7 +93,7 @@ export default function AdminEmailCampaignPage() {
       setFormData({
         subject: "",
         body: "",
-        logoUrl: process.env.REACT_APP_EMAIL_LOGO_URL || "https://sortars.com/logo.png",
+        logoUrl: process.env.REACT_APP_EMAIL_LOGO_URL || "https://res.cloudinary.com/drv3pneh8/image/upload/v1765138083/71632be70905a17fd389a8d053249645c4e8a4df_wvs6z6.png",
         isActive: true,
       });
       setIsEditing(true);
@@ -266,7 +266,7 @@ export default function AdminEmailCampaignPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, logoUrl: e.target.value })
                         }
-                        placeholder="https://sortars.com/logo.png"
+                        placeholder="https://res.cloudinary.com/drv3pneh8/image/upload/v1765138083/71632be70905a17fd389a8d053249645c4e8a4df_wvs6z6.png"
                         className="mt-1"
                       />
                     </div>

@@ -243,6 +243,7 @@ export default function LoginPage() {
       userType,
       address: registerAddress.trim(), // Address is required for both client and professional
       townCity: registerTownCity.trim(), // Town/City is required for both client and professional
+      county: registerCounty.trim(), // County is available for both client and professional
       ...(userType === "professional" && {
         tradingName: registerTradingName.trim(),
         travelDistance: registerTravelDistance,
@@ -587,7 +588,7 @@ export default function LoginPage() {
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="your.email@example.com"
+                        placeholder="your.email@gmail.com"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
@@ -681,7 +682,7 @@ export default function LoginPage() {
                           
                           const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
                           const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-                          const randomEmail = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 1000)}@example.com`;
+                          const randomEmail = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 1000)}@gmail.com`;
                           const randomPhone = `+44${Math.floor(1000000000 + Math.random() * 9000000000)}`;
                           const randomPostcode = postcodes[Math.floor(Math.random() * postcodes.length)];
                           const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
@@ -1789,7 +1790,7 @@ export default function LoginPage() {
                         <Input
                           id="reset-email"
                           type="email"
-                          placeholder="your.email@example.com"
+                          placeholder="your.email@gmail.com"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
                           className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"

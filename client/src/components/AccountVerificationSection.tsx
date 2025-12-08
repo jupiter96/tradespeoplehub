@@ -153,7 +153,7 @@ export default function AccountVerificationSection() {
       title: "Public Liability Insurance",
       description: "Upload proof of public liability insurance coverage",
       icon: Shield,
-      status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || (userInfo?.hasPublicLiability === "yes" ? "pending" : "not-started"),
+      status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || "not-started",
       type: "upload",
       documentUrl: verificationData?.publicLiabilityInsurance?.documentUrl,
       documentName: verificationData?.publicLiabilityInsurance?.documentName,
@@ -874,7 +874,7 @@ export default function AccountVerificationSection() {
                   <Input
                     id={currentItem?.id}
                     type={currentItem?.id === "email" ? "email" : "tel"}
-                    placeholder={currentItem?.id === "email" ? "your.email@example.com" : "+44 7XXX XXXXXX"}
+                    placeholder={currentItem?.id === "email" ? "your.email@gmail.com" : "+44 7XXX XXXXXX"}
                     value={formData[currentItem?.id as keyof typeof formData] || ""}
                     onChange={(e) =>
                       setFormData({ ...formData, [currentItem?.id || ""]: e.target.value })

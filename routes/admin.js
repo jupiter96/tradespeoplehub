@@ -4,6 +4,9 @@ import User from '../models/User.js';
 import Admin from '../models/Admin.js';
 import SEOContent from '../models/SEOContent.js';
 import EmailTemplate from '../models/EmailTemplate.js';
+import Category from '../models/Category.js';
+import Sector from '../models/Sector.js';
+import SubCategory from '../models/SubCategory.js';
 
 const sanitizeUser = (user) => user.toSafeObject();
 
@@ -572,66 +575,176 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const affiliateDailyChange = affiliateToday - affiliateYesterday;
 
-    // Mock data for other statistics (these would come from other models/collections)
-    // For now, returning mock data that matches the image
+    // Calculate Category statistics
+    const totalCategory = await Category.countDocuments({ isActive: { $ne: false } });
+    const categoryToday = await Category.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: today }
+    });
+    const categoryYesterday = await Category.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const totalCategoryDailyChange = categoryToday - categoryYesterday;
+
+    // Calculate SubCategory statistics
+    const totalSubCategory = await SubCategory.countDocuments({ isActive: { $ne: false } });
+    const subCategoryToday = await SubCategory.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: today }
+    });
+    const subCategoryYesterday = await SubCategory.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const totalSubCategoryDailyChange = subCategoryToday - subCategoryYesterday;
+
+    // Calculate Sector statistics
+    const totalSector = await Sector.countDocuments({ isActive: { $ne: false } });
+    const sectorToday = await Sector.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: today }
+    });
+    const sectorYesterday = await Sector.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const totalSectorDailyChange = sectorToday - sectorYesterday;
+
+    // Calculate total users
+    const totalUsers = await User.countDocuments({ isBlocked: { $ne: true } });
+    const totalUsersToday = await User.countDocuments({ 
+      isBlocked: { $ne: true },
+      createdAt: { $gte: today }
+    });
+    const totalUsersYesterday = await User.countDocuments({ 
+      isBlocked: { $ne: true },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const totalUsersDailyChange = totalUsersToday - totalUsersYesterday;
+
+    // Calculate active clients (clients who have logged in recently or have activity)
+    // For now, we'll count all non-blocked clients as active
+    const activeClients = await User.countDocuments({ 
+      role: 'client', 
+      isBlocked: { $ne: true } 
+    });
+
+    // Calculate verified professionals
+    const verifiedProfessionals = await User.countDocuments({
+      role: 'professional',
+      isBlocked: { $ne: true },
+      $and: [
+        { 'verification.email.status': 'verified' },
+        { 'verification.phone.status': 'verified' },
+      ]
+    });
+
+    // Calculate professionals referrals daily change
+    const professionalsReferralsToday = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: today }
+    });
+    const professionalsReferralsYesterday = await User.countDocuments({
+      role: 'professional',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const professionalsReferralsDailyChange = professionalsReferralsToday - professionalsReferralsYesterday;
+
+    // Calculate clients referrals daily change
+    const clientsReferralsToday = await User.countDocuments({
+      role: 'client',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: today }
+    });
+    const clientsReferralsYesterday = await User.countDocuments({
+      role: 'client',
+      referralCode: { $exists: true, $ne: null },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const clientsReferralsDailyChange = clientsReferralsToday - clientsReferralsYesterday;
+
+    // Calculate subadmin daily change
+    const subadminToday = await User.countDocuments({ 
+      role: 'subadmin',
+      createdAt: { $gte: today }
+    });
+    const subadminYesterday = await User.countDocuments({ 
+      role: 'subadmin',
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const subadminDailyChange = subadminToday - subadminYesterday;
+
+    // All statistics with actual calculations or 0 for unimplemented features
     const statistics = {
       // Column 1 - Orange
-      professionals: professionalsCount || 483,
-      professionalsDailyChange: professionalsDailyChange,
-      totalJob: 412, // Would come from Job model
-      totalJobDailyChange: 12, // Mock
-      totalCategory: 177, // Would come from Category model
-      totalCategoryDailyChange: 0, // Mock
+      professionals: professionalsCount || 0,
+      professionalsDailyChange: professionalsDailyChange || 0,
+      totalJob: 0, // Job model not implemented yet
+      totalJobDailyChange: 0,
+      totalCategory: totalCategory || 0,
+      totalCategoryDailyChange: totalCategoryDailyChange || 0,
       accountVerificationDocument: verificationDocsPendingCount || 0,
-      accountVerificationDocumentNew: verificationDocsNew || 20,
-      accountVerificationDocumentDailyChange: verificationDocsToday || 3,
-      // New verification statistics
+      accountVerificationDocumentNew: verificationDocsNew || 0,
+      accountVerificationDocumentDailyChange: verificationDocsToday || 0,
       totalVerificationUsers: totalVerificationUsers || 0,
       verificationUsersToday: verificationUsersToday || 0,
-      professionalsReferrals: professionalsReferrals || 28,
-      professionalsReferralsDailyChange: 0, // Mock
+      professionalsReferrals: professionalsReferrals || 0,
+      professionalsReferralsDailyChange: professionalsReferralsDailyChange || 0,
       flagged: flaggedCount || 0,
-      flaggedDailyChange: flaggedDailyChange,
-      approvalPendingService: 0, // Would come from Service model with pending status
-      approvalPendingServiceDailyChange: 0, // Mock
+      flaggedDailyChange: flaggedDailyChange || 0,
+      approvalPendingService: 0, // Service model not implemented yet
+      approvalPendingServiceDailyChange: 0,
 
       // Column 2 - Red
-      clients: clientsCount || 345,
-      clientsDailyChange: clientsDailyChange,
-      totalJobInDispute: 286, // Would come from Job model with dispute status
-      totalJobInDisputeDailyChange: 5, // Mock
-      pendingWithdrawalRequest: 81, // Would come from Withdrawal model
-      pendingWithdrawalRequestDailyChange: 3, // Mock
-      messageCenter: 54, // Would come from Message model
-      messageCenterNew: 2, // New messages in last 7 days
-      messageCenterDailyChange: 1, // Mock
-      clientsReferrals: clientsReferrals || 28,
-      clientsReferralsDailyChange: 0, // Mock
-      deletedAccount: deletedAccountsCount || 15,
-      deletedAccountNew: deletedAccountsNew || 15,
-      deletedAccountDailyChange: deletedAccountsDailyChange,
-      orders: 865, // Would come from Order model
-      ordersNew: 191, // New orders in last 7 days
-      ordersDailyChange: 25, // Mock
+      clients: clientsCount || 0,
+      clientsDailyChange: clientsDailyChange || 0,
+      totalJobInDispute: 0, // Job/Dispute model not implemented yet
+      totalJobInDisputeDailyChange: 0,
+      pendingWithdrawalRequest: 0, // Withdrawal model not implemented yet
+      pendingWithdrawalRequestDailyChange: 0,
+      messageCenter: 0, // Message model not implemented yet
+      messageCenterNew: 0,
+      messageCenterDailyChange: 0,
+      clientsReferrals: clientsReferrals || 0,
+      clientsReferralsDailyChange: clientsReferralsDailyChange || 0,
+      deletedAccount: deletedAccountsCount || 0,
+      deletedAccountNew: deletedAccountsNew || 0,
+      deletedAccountDailyChange: deletedAccountsDailyChange || 0,
+      orders: 0, // Order model not implemented yet
+      ordersNew: 0,
+      ordersDailyChange: 0,
 
       // Column 3 - Green
       subadmin: subadminCount || 0,
-      subadminDailyChange: 0, // Mock
-      totalPlansPackages: 24, // Would come from Plan/Package model
-      totalPlansPackagesDailyChange: 0, // Mock
-      newContactRequest: 43, // Would come from ContactRequest model
-      newContactRequestNew: 2, // New contact requests in last 7 days
-      newContactRequestDailyChange: 1, // Mock
-      affiliate: affiliateCount || 26,
-      affiliateNew: affiliateNew || 1,
-      affiliateDailyChange: affiliateDailyChange,
-      askToStepIn: 0, // Would come from Dispute model
-      askToStepInDailyChange: 0, // Mock
-      serviceListing: 39, // Would come from Service model
-      serviceListingDailyChange: 2, // Mock
-      customOrders: 409, // Would come from CustomOrder model
-      customOrdersNew: 154, // New custom orders in last 7 days
-      customOrdersDailyChange: 18, // Mock
+      subadminDailyChange: subadminDailyChange || 0,
+      totalPlansPackages: 0, // Plan/Package model not implemented yet
+      totalPlansPackagesDailyChange: 0,
+      newContactRequest: 0, // ContactRequest model not implemented yet
+      newContactRequestNew: 0,
+      newContactRequestDailyChange: 0,
+      affiliate: affiliateCount || 0,
+      affiliateNew: affiliateNew || 0,
+      affiliateDailyChange: affiliateDailyChange || 0,
+      askToStepIn: 0, // Dispute model not implemented yet
+      askToStepInDailyChange: 0,
+      serviceListing: 0, // Service model not implemented yet
+      serviceListingDailyChange: 0,
+      customOrders: 0, // CustomOrder model not implemented yet
+      customOrdersNew: 0,
+      customOrdersDailyChange: 0,
+
+      // Additional calculated statistics
+      totalUsers: totalUsers || 0,
+      totalUsersDailyChange: totalUsersDailyChange || 0,
+      activeClients: activeClients || 0,
+      verifiedProfessionals: verifiedProfessionals || 0,
+      totalSector: totalSector || 0,
+      totalSectorDailyChange: totalSectorDailyChange || 0,
+      totalSubCategory: totalSubCategory || 0,
+      totalSubCategoryDailyChange: totalSubCategoryDailyChange || 0,
     };
 
     return res.json({ statistics });
@@ -1307,6 +1420,18 @@ router.delete('/email-templates/:type', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Delete email template error', error);
     return res.status(500).json({ error: 'Failed to delete email template' });
+  }
+});
+
+// Manually trigger verification reminders (Admin only)
+router.post('/verification-reminders/trigger', requireAdmin, async (req, res) => {
+  try {
+    const { triggerVerificationReminders } = await import('../services/verificationReminderScheduler.js');
+    await triggerVerificationReminders();
+    return res.json({ message: 'Verification reminders processed successfully' });
+  } catch (error) {
+    console.error('Trigger verification reminders error', error);
+    return res.status(500).json({ error: 'Failed to trigger verification reminders' });
   }
 });
 

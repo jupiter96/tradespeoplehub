@@ -279,7 +279,7 @@ export default function AdminHomepageContentPage() {
                 value={homepageData.ogImage}
                 onChange={(e) => setHomepageData({ ...homepageData, ogImage: e.target.value })}
                 className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                placeholder="https://example.com/image.jpg (Recommended: 1200x630px)"
+                placeholder="https://gmail.com/image.jpg (Recommended: 1200x630px)"
               />
             </div>
 
@@ -401,7 +401,7 @@ export default function AdminHomepageContentPage() {
                 value={homepageData.canonicalUrl}
                 onChange={(e) => setHomepageData({ ...homepageData, canonicalUrl: e.target.value })}
                 className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                placeholder="https://example.com (Leave empty if not needed)"
+                placeholder="https://gmail.com (Leave empty if not needed)"
               />
             </div>
 
