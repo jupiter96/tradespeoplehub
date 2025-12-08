@@ -206,6 +206,8 @@ export default function ProfessionalRegistrationSteps() {
           phone: userInfo?.phone || "",
           postcode: userInfo?.postcode || "",
           address: userInfo?.address || "",
+          townCity: userInfo?.townCity || "",
+          county: userInfo?.county || "",
           tradingName: userInfo?.tradingName || "",
         };
 
@@ -286,6 +288,8 @@ export default function ProfessionalRegistrationSteps() {
         phone: userInfo?.phone || "",
         postcode: userInfo?.postcode || "",
         address: userInfo?.address || "",
+        townCity: userInfo?.townCity || "",
+        county: userInfo?.county || "",
         tradingName: userInfo?.tradingName || "",
         services: allServices,
         hasPublicLiability: insurance,
@@ -499,6 +503,9 @@ export default function ProfessionalRegistrationSteps() {
                             email: userInfo?.email || "",
                             phone: userInfo?.phone || "",
                             postcode: userInfo?.postcode || "",
+                            address: userInfo?.address || "",
+                            townCity: userInfo?.townCity || "",
+                            county: userInfo?.county || "",
                           };
                           // Don't save aboutService when skipping
                           await updateProfile(updateData);

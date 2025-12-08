@@ -1653,9 +1653,18 @@ function DetailsSection() {
   const [isVerifyingEmailOTP, setIsVerifyingEmailOTP] = useState(false);
   const [isVerifyingPhoneOTP, setIsVerifyingPhoneOTP] = useState(false);
 
+  // Update formData when userInfo changes (especially when townCity/county are loaded)
   useEffect(() => {
-    setFormData(buildFormState(initialFormState));
-  }, [buildFormState, initialFormState]);
+    if (userInfo) {
+      console.log('[AccountPage] userInfo updated, updating formData:', {
+        townCity: userInfo.townCity,
+        county: userInfo.county,
+        address: userInfo.address,
+        postcode: userInfo.postcode,
+      });
+      setFormData(buildFormState(initialFormState));
+    }
+  }, [userInfo, buildFormState, initialFormState]);
 
   // Sectors and services data (same as ProfessionalProfileSetup)
   const sectors = {

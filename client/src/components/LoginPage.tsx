@@ -433,6 +433,8 @@ export default function LoginPage() {
           phone: newlyRegisteredUser?.phone || "",
           postcode: newlyRegisteredUser?.postcode || "",
           address: newlyRegisteredUser?.address || "",
+          townCity: newlyRegisteredUser?.townCity || "",
+          county: newlyRegisteredUser?.county || "",
           tradingName: newlyRegisteredUser?.tradingName || "",
         };
 

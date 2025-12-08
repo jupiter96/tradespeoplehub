@@ -478,6 +478,12 @@ router.post('/register/initiate', async (req, res) => {
             existingPending.townCity = trimmedTownCity;
           }
         }
+        if (county !== undefined && county !== null) {
+          const trimmedCounty = String(county).trim();
+          if (trimmedCounty) {
+            existingPending.county = trimmedCounty;
+          }
+        }
         
         // Generate new email code if not already verified
         if (!existingPending.emailVerified) {
@@ -961,6 +967,19 @@ router.post('/register/verify-phone', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
+    // Debug: Log pendingRegistration data before creating user
+    console.log('[Phone Verification] Registration - PendingRegistration data:', {
+      id: pendingRegistration._id,
+      email: pendingRegistration.email,
+      address: pendingRegistration.address,
+      townCity: pendingRegistration.townCity,
+      county: pendingRegistration.county,
+      townCityType: typeof pendingRegistration.townCity,
+      countyType: typeof pendingRegistration.county,
+      townCityExists: pendingRegistration.townCity !== undefined && pendingRegistration.townCity !== null,
+      countyExists: pendingRegistration.county !== undefined && pendingRegistration.county !== null,
+    });
+
     // Initialize verification object with email and phone as verified
     const verification = {
       email: {
@@ -1015,24 +1034,59 @@ router.post('/register/verify-phone', async (req, res) => {
     }
 
     // Address fields - available for both client and professional
+    // Convert pendingRegistration to plain object to ensure all fields are accessible
+    const pendingData = pendingRegistration.toObject ? pendingRegistration.toObject() : pendingRegistration;
+    
+    console.log('[Phone Verification] Registration - PendingRegistration raw data:', {
+      hasToObject: typeof pendingRegistration.toObject === 'function',
+      townCity: pendingData.townCity,
+      county: pendingData.county,
+      townCityType: typeof pendingData.townCity,
+      countyType: typeof pendingData.county,
+    });
+    
     // Always set address if it exists (even if empty string, it will be trimmed)
-    if (pendingRegistration.address !== undefined && pendingRegistration.address !== null) {
-      const trimmedAddress = String(pendingRegistration.address).trim();
+    if (pendingData.address !== undefined && pendingData.address !== null) {
+      const trimmedAddress = String(pendingData.address).trim();
       if (trimmedAddress) {
         userData.address = trimmedAddress;
       }
     }
-    if (pendingRegistration.townCity !== undefined && pendingRegistration.townCity !== null) {
-      const trimmedTownCity = String(pendingRegistration.townCity).trim();
+    
+    // Set townCity - check if it exists and is not empty
+    if (pendingData.townCity !== undefined && pendingData.townCity !== null) {
+      const trimmedTownCity = String(pendingData.townCity).trim();
+      console.log('[Phone Verification] Registration - Processing townCity:', {
+        original: pendingData.townCity,
+        trimmed: trimmedTownCity,
+        isEmpty: !trimmedTownCity,
+      });
       if (trimmedTownCity) {
         userData.townCity = trimmedTownCity;
+        console.log('[Phone Verification] Registration - townCity added to userData:', userData.townCity);
+      } else {
+        console.log('[Phone Verification] Registration - townCity is empty after trim, skipping');
       }
+    } else {
+      console.log('[Phone Verification] Registration - townCity is undefined or null in pendingRegistration');
     }
-    if (pendingRegistration.county !== undefined && pendingRegistration.county !== null) {
-      const trimmedCounty = String(pendingRegistration.county).trim();
+    
+    // Set county - check if it exists and is not empty
+    if (pendingData.county !== undefined && pendingData.county !== null) {
+      const trimmedCounty = String(pendingData.county).trim();
+      console.log('[Phone Verification] Registration - Processing county:', {
+        original: pendingData.county,
+        trimmed: trimmedCounty,
+        isEmpty: !trimmedCounty,
+      });
       if (trimmedCounty) {
         userData.county = trimmedCounty;
+        console.log('[Phone Verification] Registration - county added to userData:', userData.county);
+      } else {
+        console.log('[Phone Verification] Registration - county is empty after trim, skipping');
       }
+    } else {
+      console.log('[Phone Verification] Registration - county is undefined or null in pendingRegistration');
     }
 
     console.log('[Phone Verification] Registration - Creating user with data:', {
@@ -1076,7 +1130,10 @@ router.post('/register/verify-phone', async (req, res) => {
       tradingName: savedUser.tradingName,
       address: savedUser.address,
       townCity: savedUser.townCity,
+      county: savedUser.county,
       travelDistance: savedUser.travelDistance,
+      townCityExists: savedUser.townCity !== undefined && savedUser.townCity !== null,
+      countyExists: savedUser.county !== undefined && savedUser.county !== null,
     });
 
     console.log('[Phone Verification] Registration - User created successfully:', {
@@ -1592,8 +1649,17 @@ router.put('/profile', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Address is required' });
     }
     
-    user.townCity = townCity?.trim() || undefined;
-    user.county = county?.trim() || undefined;
+    // Update townCity only if provided, preserve existing value if not
+    if (townCity !== undefined && townCity !== null) {
+      const trimmedTownCity = String(townCity).trim();
+      user.townCity = trimmedTownCity || undefined;
+    }
+    
+    // Update county only if provided, preserve existing value if not
+    if (county !== undefined && county !== null) {
+      const trimmedCounty = String(county).trim();
+      user.county = trimmedCounty || undefined;
+    }
 
     // Initialize verification object if it doesn't exist
     if (!user.verification) {
