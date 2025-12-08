@@ -10,11 +10,6 @@ export default function AdminProfessionalsPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const tableRef = useRef<{ refresh: () => void }>(null);
 
-  const handleCreateNew = () => {
-    setSelectedUser(null);
-    setIsModalOpen(true);
-  };
-
   const handleEdit = (user: any) => {
     setSelectedUser(user);
     setIsModalOpen(true);
@@ -40,7 +35,6 @@ export default function AdminProfessionalsPage() {
           ref={tableRef}
           role="professional"
           title="Professionals"
-          onCreateNew={handleCreateNew}
           onEdit={handleEdit}
           onDelete={handleDelete}
           showVerification={true}

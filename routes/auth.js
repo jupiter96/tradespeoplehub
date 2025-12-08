@@ -1798,8 +1798,10 @@ router.put('/profile', requireAuth, async (req, res) => {
         if (req.body.publicProfile.portfolio !== undefined) {
           user.publicProfile.portfolio = req.body.publicProfile.portfolio || [];
         }
+        // publicProfileUrl is no longer used - profiles are accessed by user ID only
+        // Keeping this for backward compatibility but it won't be used
         if (req.body.publicProfile.publicProfileUrl !== undefined) {
-          user.publicProfile.publicProfileUrl = req.body.publicProfile.publicProfileUrl?.trim() || undefined;
+          // Ignore publicProfileUrl updates - profiles use user ID only
         }
         if (req.body.publicProfile.isPublic !== undefined) {
           user.publicProfile.isPublic = req.body.publicProfile.isPublic;
@@ -2416,46 +2418,44 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Get public profile by ID or publicProfileUrl
+// Get public profile by user ID only
 router.get('/profile/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
+    console.log('[Profile API] Requested identifier:', identifier);
     
-    // Try to find by publicProfileUrl first, then by _id
-    let user = await User.findOne({
-      $or: [
-        { 'publicProfile.publicProfileUrl': identifier },
-        { _id: identifier }
-      ],
-      role: 'professional',
-      isBlocked: { $ne: true },
-      $or: [
-        { 'publicProfile.isPublic': { $ne: false } },
-        { 'publicProfile.isPublic': { $exists: false } }
+    // Find user by ID only (identifier must be user ID)
+    if (!mongoose.Types.ObjectId.isValid(identifier)) {
+      console.log('[Profile API] Invalid user ID format:', identifier);
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const user = await User.findOne({
+      $and: [
+        { _id: new mongoose.Types.ObjectId(identifier) },
+        { role: 'professional' },
+        { isBlocked: { $ne: true } },
+        {
+          $or: [
+            { 'publicProfile.isPublic': { $ne: false } },
+            { 'publicProfile.isPublic': { $exists: false } }
+          ]
+        }
       ]
     });
 
-    // If not found by publicProfileUrl or _id, try MongoDB ObjectId
-    if (!user) {
-      try {
-        const mongoose = require('mongoose');
-        if (mongoose.Types.ObjectId.isValid(identifier)) {
-          user = await User.findOne({
-            _id: identifier,
-            role: 'professional',
-            isBlocked: { $ne: true },
-            $or: [
-              { 'publicProfile.isPublic': { $ne: false } },
-              { 'publicProfile.isPublic': { $exists: false } }
-            ]
-          });
-        }
-      } catch (err) {
-        // Invalid ObjectId, continue
-      }
-    }
+    console.log('[Profile API] Found user:', user ? user._id.toString() : 'none');
 
     if (!user) {
+      console.log('[Profile API] User not found for ID:', identifier);
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // Verify we got the correct user
+    const userId = user._id.toString();
+    
+    if (userId !== identifier) {
+      console.error('[Profile API] ID mismatch! Requested:', identifier, 'Got:', userId);
       return res.status(404).json({ error: 'Profile not found' });
     }
 
@@ -2464,9 +2464,11 @@ router.get('/profile/:identifier', async (req, res) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
+    console.log('[Profile API] Returning profile for user:', userId);
+
     // Return sanitized public profile data
     const profileData = {
-      id: user._id.toString(),
+      id: userId,
       firstName: user.firstName,
       lastName: user.lastName,
       name: `${user.firstName} ${user.lastName}`.trim(),
@@ -2480,6 +2482,7 @@ router.get('/profile/:identifier', async (req, res) => {
       professionalIndemnityAmount: user.professionalIndemnityAmount,
       insuranceExpiryDate: user.insuranceExpiryDate,
       townCity: user.townCity,
+      county: user.county,
       postcode: user.postcode,
       address: user.address,
       travelDistance: user.travelDistance,

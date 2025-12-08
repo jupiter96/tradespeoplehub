@@ -61,7 +61,6 @@ export default function ProfileSection() {
   const [bio, setBio] = useState("");
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [isPublic, setIsPublic] = useState(true);
-  const [publicProfileUrl, setPublicProfileUrl] = useState("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [previewActiveTab, setPreviewActiveTab] = useState("about");
@@ -152,7 +151,6 @@ export default function ProfileSection() {
       setBio(userInfo.publicProfile?.bio || userInfo.aboutService || "");
       setPortfolio(userInfo.publicProfile?.portfolio || []);
       setIsPublic(userInfo.publicProfile?.isPublic !== false);
-      setPublicProfileUrl(userInfo.publicProfile?.publicProfileUrl || generateProfileUrl());
       setSkills(userInfo.services || []);
       setQualifications((userInfo.publicProfile as any)?.qualifications || "");
       setCertifications((userInfo.publicProfile as any)?.certifications || "");
@@ -204,15 +202,6 @@ export default function ProfileSection() {
     }
   }, [isPreviewOpen, displayName]);
 
-  const generateProfileUrl = () => {
-    if (userInfo?.id) {
-      const slug = userInfo.tradingName 
-        ? userInfo.tradingName.toLowerCase().replace(/\s+/g, "-")
-        : `${userInfo.firstName}-${userInfo.lastName}`.toLowerCase().replace(/\s+/g, "-");
-      return `${slug}-${userInfo.id.slice(-6)}`;
-    }
-    return "";
-  };
 
   const handleSave = async () => {
     try {
@@ -223,7 +212,6 @@ export default function ProfileSection() {
         publicProfile: {
           bio,
           portfolio,
-          publicProfileUrl: publicProfileUrl || generateProfileUrl(),
           isPublic,
           qualifications,
           certifications,
@@ -420,13 +408,21 @@ export default function ProfileSection() {
   };
 
   const handleCopyLink = () => {
-    const fullUrl = `${window.location.origin}/profile/${publicProfileUrl || userInfo?.id}`;
+    if (!userInfo?.id) {
+      toast.error("User ID not available");
+      return;
+    }
+    const fullUrl = `${window.location.origin}/profile/${userInfo.id}`;
     navigator.clipboard.writeText(fullUrl);
     toast.success("Profile link copied to clipboard!");
   };
 
   const handleShare = async () => {
-    const fullUrl = `${window.location.origin}/profile/${publicProfileUrl || userInfo?.id}`;
+    if (!userInfo?.id) {
+      toast.error("User ID not available");
+      return;
+    }
+    const fullUrl = `${window.location.origin}/profile/${userInfo.id}`;
     
     if (navigator.share) {
       try {
@@ -447,7 +443,7 @@ export default function ProfileSection() {
     }
   };
 
-  const fullProfileUrl = `${window.location.origin}/profile/${publicProfileUrl || userInfo?.id}`;
+  const fullProfileUrl = userInfo?.id ? `${window.location.origin}/profile/${userInfo.id}` : "";
 
   return (
     <div className="space-y-6">

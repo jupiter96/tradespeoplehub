@@ -10,11 +10,6 @@ export default function AdminClientsPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const tableRef = useRef<{ refresh: () => void }>(null);
 
-  const handleCreateNew = () => {
-    setSelectedUser(null);
-    setIsModalOpen(true);
-  };
-
   const handleEdit = (user: any) => {
     setSelectedUser(user);
     setIsModalOpen(true);
@@ -41,7 +36,6 @@ export default function AdminClientsPage() {
           ref={tableRef}
           role="client"
           title="Clients"
-          onCreateNew={handleCreateNew}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />

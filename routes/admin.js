@@ -253,6 +253,10 @@ router.get('/users', requireAdmin, async (req, res) => {
       userObj.isBlocked = user.isBlocked || false;
       userObj.blockReviewInvitation = user.blockReviewInvitation || false;
       userObj.viewedByAdmin = user.viewedByAdmin || false;
+      // Ensure publicProfile is included for professionals
+      if (user.publicProfile) {
+        userObj.publicProfile = user.publicProfile;
+      }
       return userObj;
     });
 

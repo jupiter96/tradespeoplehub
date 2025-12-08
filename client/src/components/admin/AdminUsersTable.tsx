@@ -489,14 +489,14 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> {title.toLowerCase()}
           </p>
         </div>
-        <div className="relative flex-shrink-0" style={{ width: '200px' }}>
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
           <Input
             type="text"
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+            className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow w-full"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -772,6 +772,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                             <>
                               <DropdownMenuItem
                                 onClick={() => {
+                                  // Use user ID for profile URL
                                   const profileUrl = `${window.location.origin}/profile/${user.id}`;
                                   window.open(profileUrl, '_blank');
                                 }}

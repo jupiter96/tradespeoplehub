@@ -26,7 +26,6 @@ import { Card, CardContent } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { allServices } from "./servicesData";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
@@ -45,9 +44,12 @@ interface ProfileData {
   hasTradeQualification?: string;
   hasPublicLiability?: string;
   townCity?: string;
+  county?: string;
   postcode?: string;
   address?: string;
   travelDistance?: string;
+  professionalIndemnityAmount?: number;
+  insuranceExpiryDate?: string | Date;
   publicProfile?: {
     bio?: string;
     portfolio?: Array<{
@@ -80,7 +82,6 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [professionalServices, setProfessionalServices] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -90,8 +91,14 @@ export default function ProfilePage() {
         return;
       }
 
+      // Reset state when ID changes
+      setProfile(null);
+      setError(null);
+      setActiveTab("about");
+
       try {
         setLoading(true);
+        console.log('[ProfilePage] Fetching profile for ID:', id);
         const response = await fetch(`${API_BASE_URL}/api/auth/profile/${id}`, {
           credentials: "include",
         });
@@ -107,16 +114,21 @@ export default function ProfilePage() {
         }
 
         const data = await response.json();
-        setProfile(data.profile);
-
-        // Fetch professional's services if they have services
-        if (data.profile.services && data.profile.services.length > 0) {
-          // Filter services from allServices by trading name
-          const services = allServices.filter(
-            (service) => service.tradingName === data.profile.tradingName
-          ).slice(0, 10);
-          setProfessionalServices(services);
+        console.log('[ProfilePage] Fetched profile data for ID:', id, data.profile);
+        
+        if (!data.profile || !data.profile.id) {
+          console.error('[ProfilePage] Invalid profile data received:', data);
+          setError("Invalid profile data");
+          setLoading(false);
+          return;
         }
+
+        // Verify the profile ID matches the requested ID
+        if (data.profile.id !== id) {
+          console.warn('[ProfilePage] Profile ID mismatch. Requested:', id, 'Received:', data.profile.id);
+        }
+
+        setProfile(data.profile);
       } catch (err) {
         console.error("Error fetching profile:", err);
         setError("Failed to load profile");
@@ -177,12 +189,21 @@ export default function ProfilePage() {
     profile.name || 
     "Professional";
   const displayTitle = profile.sector || "Professional Service Provider";
-  const displayLocation = profile.townCity || profile.postcode || profile.address || "Location not specified";
+  
+  // Build location string with townCity, county, and postcode
+  const locationParts = [];
+  if (profile.townCity) locationParts.push(profile.townCity);
+  if (profile.county) locationParts.push(profile.county);
+  if (profile.postcode) locationParts.push(profile.postcode);
+  const displayLocation = locationParts.length > 0 
+    ? locationParts.join(", ") 
+    : profile.address || "Location not specified";
+  
   const displayBio = profile.publicProfile?.bio || profile.aboutService || "No bio available.";
   const portfolio = profile.publicProfile?.portfolio || [];
   const memberSince = profile.createdAt 
-    ? new Date(profile.createdAt).getFullYear().toString()
-    : "2022";
+    ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    : "Unknown";
 
   // Get skills from services
   const skills = profile.services && profile.services.length > 0 
@@ -200,30 +221,20 @@ export default function ProfilePage() {
   // Check if profile is blocked
   const isBlocked = false; // Blocked profiles shouldn't be accessible via API
 
-  // Mock reviews data (in real app, fetch from database)
-  const reviews = [
-    {
-      id: "1",
-      author: "John Doe",
-      authorImage: "",
-      rating: 5,
-      date: "2 weeks ago",
-      comment: "Excellent service! Very professional and completed the job on time."
-    },
-    {
-      id: "2",
-      author: "Jane Smith",
-      authorImage: "",
-      rating: 5,
-      date: "1 month ago",
-      comment: "Highly recommend! Great quality work and fair pricing."
-    }
-  ];
+  // Reviews data - empty for now (to be fetched from database in future)
+  const reviews: Array<{
+    id: string;
+    author: string;
+    authorImage: string;
+    rating: number;
+    date: string;
+    comment: string;
+  }> = [];
 
   const reviewCount = reviews.length;
   const rating = reviews.length > 0 
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    : "5.0";
+    : "0.0";
 
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
@@ -510,6 +521,18 @@ export default function ProfilePage() {
                           <span className="text-gray-700">Travel distance: {profile.travelDistance}</span>
                         </div>
                       )}
+                      {profile.professionalIndemnityAmount && (
+                        <div className="flex items-center gap-3">
+                          <ShieldCheck className="w-5 h-5 text-[#FE8A0F]" />
+                          <span className="text-gray-700">Professional Indemnity: £{profile.professionalIndemnityAmount.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {profile.insuranceExpiryDate && (
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-5 h-5 text-[#FE8A0F]" />
+                          <span className="text-gray-700">Insurance Expiry: {new Date(profile.insuranceExpiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -523,38 +546,18 @@ export default function ProfilePage() {
                       My Services
                     </h3>
                     <div className="space-y-4">
-                      {professionalServices.length > 0 ? (
-                        professionalServices.map((service) => (
-                          <Link
-                            key={service.id}
-                            to={`/service/${service.id}`}
-                            className="flex gap-4 p-4 border border-gray-200 rounded-xl hover:border-[#FE8A0F] hover:shadow-md transition-all cursor-pointer"
-                          >
-                            <ImageWithFallback
-                              src={service.image}
-                              alt={service.description}
-                              className="w-20 h-20 rounded-lg object-cover"
-                            />
-                            <div className="flex-1">
-                              <h4 className="text-[#003D82] font-semibold mb-1">
-                                {service.description}
-                              </h4>
-                              <p className="text-gray-600 text-[14px] mb-2 leading-relaxed break-words">
-                                {service.category}
-                              </p>
-                              <div className="flex items-center gap-3">
-                                <span className="text-[#FE8A0F] font-semibold text-[18px]">
-                                  £{service.price}
-                                </span>
-                                {service.badges && service.badges.length > 0 && (
-                                  <Badge className="bg-green-500 text-white">
-                                    {service.badges[0]}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
-                        ))
+                      {profile.services && profile.services.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {profile.services.map((serviceName, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1 text-[14px]"
+                            >
+                              {serviceName}
+                            </Badge>
+                          ))}
+                        </div>
                       ) : (
                         <p className="text-gray-500 text-center py-8">
                           No services available yet
@@ -713,33 +716,21 @@ export default function ProfilePage() {
             </Card>
 
             {/* Services */}
-            {professionalServices.length > 0 && (
+            {profile.services && profile.services.length > 0 && (
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
                     Available Services
                   </h3>
-                  <div className="space-y-3">
-                    {professionalServices.slice(0, 5).map((service) => (
-                      <Link
-                        key={service.id}
-                        to={`/service/${service.id}`}
-                        className="flex gap-3 p-3 border border-gray-200 rounded-lg hover:border-[#FE8A0F] transition-all cursor-pointer"
+                  <div className="flex flex-wrap gap-2">
+                    {profile.services.slice(0, 10).map((serviceName, index) => (
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1 text-[14px]"
                       >
-                        <ImageWithFallback
-                          src={service.image}
-                          alt={service.description}
-                          className="w-16 h-16 rounded-md object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-[#003D82] text-[14px] font-semibold line-clamp-2 mb-1">
-                            {service.description}
-                          </h4>
-                          <span className="text-[#FE8A0F] font-semibold text-[16px]">
-                            £{service.price}
-                          </span>
-                        </div>
-                      </Link>
+                        {serviceName}
+                      </Badge>
                     ))}
                   </div>
                 </CardContent>

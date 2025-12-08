@@ -1349,17 +1349,18 @@ export default function ServiceDetailPage() {
                                 }}
                                 className="w-full flex items-center justify-between gap-3 mb-2 hover:opacity-80 transition-opacity"
                               >
-                                <Link to={`/profile/117`} className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                {/* Profile link removed - provider ID not available in review data */}
+                                <div className="flex items-center gap-3">
                                   <Avatar className="w-8 h-8">
                                     <AvatarImage src={review.professionalResponse.providerImage} alt={review.professionalResponse.providerName} />
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[11px]">
                                       {review.professionalResponse.providerName.split(" ").map(n => n[0]).join("").toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors">
+                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                     {review.professionalResponse.providerName}'s Response
                                   </span>
-                                </Link>
+                                </div>
                                 {isResponseExpanded ? (
                                   <ChevronUp className="w-4 h-4 text-[#6b6b6b]" />
                                 ) : (

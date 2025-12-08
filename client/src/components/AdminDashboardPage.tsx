@@ -392,14 +392,6 @@ export default function AdminDashboardPage() {
                       dailyChange={statistics?.flaggedDailyChange}
                       onClick={() => navigate("/admin/flagged")}
                     />
-                    <StatCard
-                      icon={Clock}
-                      title="APPROVAL PENDING SERVICE"
-                      value={statistics?.approvalPendingService || 0}
-                      color="orange"
-                      dailyChange={statistics?.approvalPendingServiceDailyChange}
-                      onClick={() => navigate("/admin/approval-pending-service")}
-                    />
                   </div>
 
                   {/* Column 2 - Red Cards */}
@@ -462,6 +454,14 @@ export default function AdminDashboardPage() {
                       color="red"
                       dailyChange={statistics?.ordersDailyChange}
                       onClick={() => navigate("/admin/service-order")}
+                    />
+                    <StatCard
+                      icon={Clock}
+                      title="APPROVAL PENDING SERVICE"
+                      value={statistics?.approvalPendingService || 0}
+                      color="red"
+                      dailyChange={statistics?.approvalPendingServiceDailyChange}
+                      onClick={() => navigate("/admin/approval-pending-service")}
                     />
                   </div>
 
