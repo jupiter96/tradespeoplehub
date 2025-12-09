@@ -264,12 +264,6 @@ const handleSocialCallback = (provider) => (req, res, next) => {
       return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_deleted');
     }
 
-    // Check if user is deleted
-    if (result.isDeleted) {
-      clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_deleted');
-    }
-
     // Reject admin users - they must use admin login
     if (result.role === 'admin' || result.role === 'subadmin') {
       clearPendingSocialProfile(req);
@@ -445,7 +439,14 @@ router.post('/register/initiate', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    // Check for deleted users first - they cannot re-register
+    const deletedUser = await User.findOne({ email: normalizedEmail, isDeleted: true });
+    if (deletedUser) {
+      return res.status(403).json({ error: 'This account has been deleted and cannot be re-registered' });
+    }
+
+    // Check if user already exists (active users only)
+    const existingUser = await User.findOne({ email: normalizedEmail, isDeleted: { $ne: true } });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
@@ -1240,10 +1241,25 @@ router.post('/social/complete', async (req, res) => {
     } = mergedPayload;
 
     const normalizedEmail = normalizeEmail(email);
-    const existingUser =
-      (await User.findOne({ email: normalizedEmail })) ||
+    
+    // Check for deleted users first - they cannot re-register
+    const deletedUser =
+      (await User.findOne({ email: normalizedEmail, isDeleted: true })) ||
       (await User.findOne({
         [pending.provider === 'google' ? 'googleId' : 'facebookId']: pending.providerId,
+        isDeleted: true,
+      }));
+
+    if (deletedUser) {
+      return res.status(403).json({ error: 'This account has been deleted and cannot be re-registered' });
+    }
+    
+    // Check for existing active users
+    const existingUser =
+      (await User.findOne({ email: normalizedEmail, isDeleted: { $ne: true } })) ||
+      (await User.findOne({
+        [pending.provider === 'google' ? 'googleId' : 'facebookId']: pending.providerId,
+        isDeleted: { $ne: true },
       }));
 
     if (existingUser) {

@@ -37,16 +37,22 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
     const lastName = profile.name?.familyName || '';
 
     const providerField = provider === 'google' ? 'googleId' : 'facebookId';
+    
+    // First, check for deleted users (including deleted ones)
+    const deletedUser = 
+      (await User.findOne({ [providerField]: providerId, isDeleted: true })) ||
+      (email ? await User.findOne({ email, isDeleted: true }) : null);
+    
+    if (deletedUser) {
+      return done(null, false, { message: 'This account has been deleted and cannot be re-registered' });
+    }
+    
+    // Then check for active users
     let user =
       (await User.findOne({ [providerField]: providerId, isDeleted: { $ne: true } })) ||
       (email ? await User.findOne({ email, isDeleted: { $ne: true } }) : null);
 
     if (user) {
-      // Check if user is deleted
-      if (user.isDeleted) {
-        return done(null, false, { message: 'This account has been deleted' });
-      }
-      
       if (!user[providerField]) {
         user[providerField] = providerId;
         await user.save();

@@ -148,8 +148,14 @@ export default function AccountPage() {
   useEffect(() => {
     if (!isLoggedIn) {
       navigate("/login");
+      return;
     }
-  }, [isLoggedIn, navigate]);
+    
+    // Redirect professional users without sector to registration steps
+    if (userInfo?.role === "professional" && !userInfo?.sector) {
+      navigate("/professional-registration-steps", { replace: true });
+    }
+  }, [isLoggedIn, navigate, userInfo]);
 
   const handleLogout = () => {
     logout();
