@@ -86,6 +86,15 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
     checkAuth();
   }, [navigate]);
 
+  // Update avatar preview when currentAdmin changes
+  useEffect(() => {
+    if (currentAdmin?.avatar) {
+      setAvatarPreview(currentAdmin.avatar);
+    } else {
+      setAvatarPreview(null);
+    }
+  }, [currentAdmin]);
+
   // Initialize theme from localStorage or system preference
   // For admin pages, default to light theme if no saved preference
   useEffect(() => {
@@ -433,6 +442,8 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                       fullname: currentAdmin.fullname || "",
                       email: currentAdmin.email || "",
                     });
+                    // Initialize avatar preview with current admin's avatar
+                    setAvatarPreview(currentAdmin.avatar || null);
                   }
                 }}
                 className="cursor-pointer text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -564,7 +575,10 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                   <Label className="text-black dark:text-white">Avatar</Label>
                   <div className="relative">
                     <Avatar className="w-24 h-24">
-                      <AvatarImage src={avatarPreview || undefined} alt="Admin Avatar" />
+                      <AvatarImage 
+                        src={avatarPreview || currentAdmin?.avatar || undefined} 
+                        alt="Admin Avatar" 
+                      />
                       <AvatarFallback className="bg-[#FE8A0F] text-white text-2xl">
                         {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
                       </AvatarFallback>
