@@ -2221,7 +2221,7 @@ router.post(
   async (req, res) => {
     try {
       const { type } = req.params;
-      const allowedTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+      const allowedTypes = ['address', 'idCard', 'publicLiabilityInsurance', 'paymentMethod'];
       
       if (!allowedTypes.includes(type)) {
         return res.status(400).json({ error: 'Invalid verification type' });
@@ -2279,6 +2279,39 @@ router.post(
         uploadStream.end(req.file.buffer);
       });
 
+      // For paymentMethod, also save account details from form data
+      if (type === 'paymentMethod') {
+        const { firstName, lastName, address, sortCode, accountNumber, bankStatementDate } = req.body;
+        
+        if (!firstName || !lastName || !address || !sortCode || !accountNumber || !bankStatementDate) {
+          return res.status(400).json({ error: 'All payment method fields are required' });
+        }
+
+        // Validate bank statement date (must be within 3 months)
+        const statementDate = new Date(bankStatementDate);
+        const today = new Date();
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(today.getMonth() - 3);
+        
+        if (statementDate > today) {
+          return res.status(400).json({ error: 'Bank statement date cannot be in the future' });
+        }
+        if (statementDate < threeMonthsAgo) {
+          return res.status(400).json({ error: 'Bank statement must be issued within the last 3 months' });
+        }
+
+        // Store account details in verification object
+        if (!user.verification[type]) {
+          user.verification[type] = { status: 'not-started' };
+        }
+        user.verification[type].firstName = firstName.trim();
+        user.verification[type].lastName = lastName.trim();
+        user.verification[type].address = address.trim();
+        user.verification[type].sortCode = sortCode.replace(/\D/g, ''); // Store as digits only
+        user.verification[type].accountNumber = accountNumber.replace(/\D/g, ''); // Store as digits only
+        user.verification[type].bankStatementDate = new Date(bankStatementDate);
+      }
+
       // Update only the specific verification type being uploaded
       // When re-submitting a rejected document, change status from 'rejected' to 'pending'
       // Do NOT modify any other verification types (e.g., if ID is verified, keep it verified)
@@ -2328,7 +2361,7 @@ router.post(
 router.put('/verification/:type', requireAuth, async (req, res) => {
   try {
     const { type } = req.params;
-    const allowedTypes = ['email', 'phone', 'paymentMethod'];
+    const allowedTypes = ['email', 'phone'];
     
     if (!allowedTypes.includes(type)) {
       return res.status(400).json({ error: 'Invalid verification type' });
@@ -2345,15 +2378,6 @@ router.put('/verification/:type', requireAuth, async (req, res) => {
     }
     if (!user.verification[type]) {
       user.verification[type] = { status: 'not-started' };
-    }
-
-    // For payment method, save masked card
-    if (type === 'paymentMethod') {
-      const { maskedCard } = req.body;
-      if (!maskedCard) {
-        return res.status(400).json({ error: 'Masked card is required' });
-      }
-      user.verification[type].maskedCard = maskedCard;
     }
 
     // Update status to verified
@@ -2376,7 +2400,7 @@ router.put('/verification/:type', requireAuth, async (req, res) => {
 router.delete('/verification/:type', requireAuth, async (req, res) => {
   try {
     const { type } = req.params;
-    const allowedTypes = ['address', 'idCard', 'publicLiabilityInsurance'];
+    const allowedTypes = ['address', 'idCard', 'publicLiabilityInsurance', 'paymentMethod'];
     
     if (!allowedTypes.includes(type)) {
       return res.status(400).json({ error: 'Invalid verification type' });

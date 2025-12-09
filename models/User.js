@@ -203,12 +203,50 @@ const userSchema = new mongoose.Schema(
           enum: ['not-started', 'pending', 'verified', 'rejected'],
           default: 'not-started',
         },
-        maskedCard: {
+        documentUrl: {
+          type: String,
+          trim: true,
+        },
+        documentName: {
+          type: String,
+          trim: true,
+        },
+        firstName: {
+          type: String,
+          trim: true,
+        },
+        lastName: {
+          type: String,
+          trim: true,
+        },
+        address: {
+          type: String,
+          trim: true,
+        },
+        sortCode: {
+          type: String,
+          trim: true,
+        },
+        accountNumber: {
+          type: String,
+          trim: true,
+        },
+        bankStatementDate: {
+          type: Date,
+        },
+        rejectionReason: {
           type: String,
           trim: true,
         },
         verifiedAt: {
           type: Date,
+        },
+        uploadedAt: {
+          type: Date,
+        },
+        viewedByAdmin: {
+          type: Boolean,
+          default: false,
         },
       },
       publicLiabilityInsurance: {

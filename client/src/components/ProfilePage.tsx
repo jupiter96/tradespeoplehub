@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useParams } from "react-router";
 import Nav from "../imports/Nav";
@@ -62,6 +62,7 @@ interface ProfileData {
     }>;
     publicProfileUrl?: string;
     isPublic?: boolean;
+    qualifications?: string;
   };
   verification?: {
     email?: { status: string; verifiedAt?: Date };
@@ -98,6 +99,47 @@ export default function ProfilePage() {
     undefined,
     true // include subcategories to convert IDs to names
   );
+
+  // Convert service IDs to category/subcategory names - must be defined before conditional returns
+  // Use useCallback to memoize the function
+  const convertServiceIdsToNames = useCallback((serviceIds: string[]): string[] => {
+    if (!serviceIds || serviceIds.length === 0 || availableCategories.length === 0) {
+      return [];
+    }
+
+    const categoryMap = new Map<string, string>();
+    const subcategoryMap = new Map<string, string>();
+
+    // Build maps of ID -> name for categories and subcategories
+    availableCategories.forEach((cat: Category) => {
+      categoryMap.set(cat._id, cat.name);
+      if (cat.subCategories) {
+        cat.subCategories.forEach((subcat: SubCategory) => {
+          subcategoryMap.set(subcat._id, subcat.name);
+        });
+      }
+    });
+
+    // Convert IDs to names
+    return serviceIds.map((id: string) => {
+      // Try category first, then subcategory
+      return categoryMap.get(id) || subcategoryMap.get(id) || id; // Fallback to ID if not found
+    }).filter(Boolean);
+  }, [availableCategories]);
+
+  // Get skills from services - convert IDs to names
+  // Must be called before any conditional returns (React Hooks rules)
+  const skills = useMemo(() => {
+    if (!profile?.services || profile.services.length === 0) {
+      return [];
+    }
+
+    if (availableCategories.length === 0) {
+      return []; // Return empty until categories are loaded
+    }
+
+    return convertServiceIdsToNames(profile.services).slice(0, 10);
+  }, [profile?.services, availableCategories, convertServiceIdsToNames]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -200,40 +242,14 @@ export default function ProfilePage() {
 
   // Format profile data for display
   // For professionals, prioritize tradingName over firstName/lastName
-  const displayName = profile.tradingName || 
-    (profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : null) || 
-    profile.name || 
+  const displayName = profile?.tradingName || 
+    (profile?.firstName && profile?.lastName ? `${profile.firstName} ${profile.lastName}` : null) || 
+    profile?.name || 
     "Professional";
   
-  // Convert service IDs to category/subcategory names
-  const convertServiceIdsToNames = (serviceIds: string[]): string[] => {
-    if (!serviceIds || serviceIds.length === 0 || availableCategories.length === 0) {
-      return [];
-    }
-
-    const categoryMap = new Map<string, string>();
-    const subcategoryMap = new Map<string, string>();
-
-    // Build maps of ID -> name for categories and subcategories
-    availableCategories.forEach((cat: Category) => {
-      categoryMap.set(cat._id, cat.name);
-      if (cat.subCategories) {
-        cat.subCategories.forEach((subcat: SubCategory) => {
-          subcategoryMap.set(subcat._id, subcat.name);
-        });
-      }
-    });
-
-    // Convert IDs to names
-    return serviceIds.map((id: string) => {
-      // Try category first, then subcategory
-      return categoryMap.get(id) || subcategoryMap.get(id) || id; // Fallback to ID if not found
-    }).filter(Boolean);
-  };
-
   // Get first category from services array by matching with actual category names
   const getFirstCategory = () => {
-    if (profile.services && profile.services.length > 0 && availableCategories.length > 0) {
+    if (profile?.services && profile.services.length > 0 && availableCategories.length > 0) {
       const serviceNames = convertServiceIdsToNames(profile.services);
       // Find the first service item that is a category (not subcategory)
       const categoryIds = availableCategories.map((cat: Category) => cat._id);
@@ -250,41 +266,27 @@ export default function ProfilePage() {
       }
     }
     // Fallback: return first service item if categories not loaded yet
-    if (profile.services && profile.services.length > 0) {
+    if (profile?.services && profile.services.length > 0) {
       return profile.services[0];
     }
     return null;
   };
   
-  const displayTitle = getFirstCategory() || profile.sector || "Professional Service Provider";
+  const displayTitle = getFirstCategory() || profile?.sector || "Professional Service Provider";
   
-  // Build location string with townCity, county, and postcode
-  const locationParts = [];
-  if (profile.townCity) locationParts.push(profile.townCity);
-  if (profile.county) locationParts.push(profile.county);
-  if (profile.postcode) locationParts.push(profile.postcode);
+  // Build location string with townCity and county (postcode removed)
+  const locationParts: string[] = [];
+  if (profile?.townCity) locationParts.push(profile.townCity);
+  if (profile?.county) locationParts.push(profile.county);
   const displayLocation = locationParts.length > 0 
     ? locationParts.join(", ") 
-    : profile.address || "Location not specified";
+    : profile?.address || "Location not specified";
   
-  const displayBio = profile.publicProfile?.bio || profile.aboutService || "No bio available.";
-  const portfolio = profile.publicProfile?.portfolio || [];
-  const memberSince = profile.createdAt 
+  const displayBio = profile?.publicProfile?.bio || profile?.aboutService || "No bio available.";
+  const portfolio = profile?.publicProfile?.portfolio || [];
+  const memberSince = profile?.createdAt 
     ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
     : "Unknown";
-
-  // Get skills from services - convert IDs to names
-  // Use useMemo to recalculate when profile.services or availableCategories change
-  const skills = useMemo(() => {
-    if (profile.services && profile.services.length > 0 && availableCategories.length > 0) {
-      return convertServiceIdsToNames(profile.services).slice(0, 10);
-    }
-    // If categories not loaded yet, return empty array (will update when categories load)
-    if (profile.services && profile.services.length > 0 && availableCategories.length === 0) {
-      return []; // Return empty until categories are loaded
-    }
-    return [];
-  }, [profile.services, availableCategories]);
 
   // Verification status
   const verifications = {
@@ -330,11 +332,11 @@ export default function ProfilePage() {
           <div className="flex md:hidden gap-3 items-start">
             {/* First Column: Avatar - 30% */}
             <div className="w-[30%] flex-shrink-0 relative">
-              <Avatar className="w-full aspect-square rounded-xl">
+              <Avatar className="w-full aspect-square rounded-xl h-full">
                 <AvatarImage 
                   src={profile.avatar} 
                   alt={displayName}
-                  className="object-cover"
+                  className="object-cover w-full h-full"
                 />
                 <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[24px] rounded-xl">
                   {(() => {
@@ -351,7 +353,7 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               {/* Online Status */}
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 translate-y-1/2"></div>
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white transform translate-x-[calc(50%-4px)] translate-y-[calc(50%-4px)]"></div>
             </div>
 
             {/* Second Column: Info - 40% */}
@@ -426,7 +428,7 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               {/* Online Status */}
-              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 translate-y-1/2"></div>
+              <div className="absolute bottom-3 right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white transform translate-x-[calc(50%-4px)] translate-y-[calc(50%-4px)]"></div>
             </div>
 
             {/* Profile Info */}
@@ -474,38 +476,9 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-
-              {/* Skills */}
-              {skills.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="bg-blue-50 text-[#003D82] hover:bg-blue-100"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Skills - Mobile */}
-          {skills.length > 0 && (
-            <div className="flex md:hidden flex-wrap gap-2 mt-3">
-              {skills.map((skill, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="bg-blue-50 text-[#003D82] hover:bg-blue-100 text-[10px] px-2 py-0.5"
-                >
-                  {skill}
-                </Badge>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Main Content */}
@@ -542,39 +515,73 @@ export default function ProfilePage() {
 
               {/* About Me Tab */}
               <TabsContent value="about">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-[#003D82] text-[20px] font-semibold mb-4">
-                      About Me
-                    </h3>
-                    <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-wrap break-words text-justify">
-                      {displayBio}
-                    </p>
+                <div className="space-y-6">
+                  <Card>
+                    <CardContent className="p-6">
+                      <h3 className="text-[#003D82] text-[20px] font-semibold mb-4">
+                        About Me
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-wrap break-words text-justify">
+                        {displayBio}
+                      </p>
+                    </CardContent>
+                  </Card>
 
-                    {skills.length > 0 && (
-                      <>
-                        <Separator className="my-6" />
-
-                        {/* Skills Section */}
-                        <h4 className="text-[#003D82] text-[18px] font-semibold mb-4">
-                          Skills & Expertise
-                        </h4>
-                        <div className="flex flex-wrap gap-2 mb-6">
-                          {skills.map((skill, index) => (
-                            <Badge
-                              key={index}
-                              variant="secondary"
-                              className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
+                  {/* Qualifications Card */}
+                  {(profile?.publicProfile?.qualifications || profile?.hasTradeQualification === "yes") && (
+                    <Card className="shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_25px_rgba(0,0,0,0.2)] transition-shadow">
+                      <CardContent className="p-6">
+                        <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
+                          Qualifications
+                        </h3>
+                        <div className="space-y-2">
+                          {profile?.publicProfile?.qualifications ? (
+                            profile.publicProfile.qualifications
+                              .split('\n')
+                              .filter((q: string) => q.trim())
+                              .map((qualification: string, index: number) => (
+                                <p key={index} className="text-gray-700 text-[14px] leading-relaxed">
+                                  {qualification.trim()}
+                                </p>
+                              ))
+                          ) : (
+                            <p className="text-gray-500 text-[14px]">No qualifications listed</p>
+                          )}
                         </div>
-                      </>
-                    )}
+                      </CardContent>
+                    </Card>
+                  )}
 
-                  </CardContent>
-                </Card>
+                  {/* Public Insurance Card */}
+                  {profile?.hasPublicLiability === "yes" && (
+                    <Card className="shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_25px_rgba(0,0,0,0.2)] transition-shadow">
+                      <CardContent className="p-6">
+                        <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
+                          Public Insurance
+                        </h3>
+                        <div className="space-y-2">
+                          {profile?.professionalIndemnityAmount && (
+                            <p className="text-gray-700 text-[14px] leading-relaxed">
+                              Limit of indemnity: £{profile.professionalIndemnityAmount.toLocaleString()}
+                            </p>
+                          )}
+                          {profile?.insuranceExpiryDate && (
+                            <p className="text-gray-700 text-[14px] leading-relaxed">
+                              Valid until: {new Date(profile.insuranceExpiryDate).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          )}
+                          {!profile?.professionalIndemnityAmount && !profile?.insuranceExpiryDate && (
+                            <p className="text-gray-500 text-[14px]">Insurance details not available</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </TabsContent>
 
               {/* My Services Tab */}
@@ -775,6 +782,26 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Service Area */}
+            <Card className="shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_25px_rgba(0,0,0,0.2)] transition-shadow">
+              <CardContent className="p-6">
+                <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
+                  Service area
+                </h3>
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-[#FE8A0F] flex-shrink-0" />
+                  <p className="text-gray-700 text-[14px] leading-relaxed">
+                    {(() => {
+                      const locationParts = [profile?.townCity, profile?.postcode].filter(Boolean);
+                      const location = locationParts.length > 0 ? locationParts.join(", ") : "Not specified";
+                      const distance = profile?.travelDistance ? ` - ${profile.travelDistance}` : "";
+                      return `${location}${distance}`;
+                    })()}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>

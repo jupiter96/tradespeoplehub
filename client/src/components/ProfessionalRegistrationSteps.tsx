@@ -183,6 +183,7 @@ export default function ProfessionalRegistrationSteps() {
           townCity: userInfo?.townCity || "",
           county: userInfo?.county || "",
           tradingName: userInfo?.tradingName || "",
+          travelDistance: userInfo?.travelDistance || "",
         };
 
         // Update about service and qualifications
@@ -264,6 +265,7 @@ export default function ProfessionalRegistrationSteps() {
         townCity: userInfo?.townCity || "",
         county: userInfo?.county || "",
         tradingName: userInfo?.tradingName || "",
+        travelDistance: userInfo?.travelDistance || "",
         services: allServices, // Array of category and subcategory IDs
         hasPublicLiability: insurance,
       };
@@ -530,6 +532,7 @@ export default function ProfessionalRegistrationSteps() {
                             address: userInfo?.address || "",
                             townCity: userInfo?.townCity || "",
                             county: userInfo?.county || "",
+                            travelDistance: userInfo?.travelDistance || "",
                           };
                           // Don't save aboutService when skipping
                           await updateProfile(updateData);

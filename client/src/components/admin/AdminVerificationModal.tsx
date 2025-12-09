@@ -321,6 +321,56 @@ export default function AdminVerificationModal({
                         </div>
                       </div>
                     )}
+
+                    {/* Payment Method Account Details */}
+                    {type.id === "paymentMethod" && info.firstName && (
+                      <div className="mt-2 mb-2 space-y-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                        <div className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1.5">
+                          Bank Account Details
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">First Name:</span>
+                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">{info.firstName}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Last Name:</span>
+                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">{info.lastName}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-600 dark:text-gray-400">Address:</span>
+                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">{info.address}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Sort Code:</span>
+                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                              {info.sortCode ? (info.sortCode.length === 6 
+                                ? `${info.sortCode.slice(0, 2)}-${info.sortCode.slice(2, 4)}-${info.sortCode.slice(4, 6)}`
+                                : info.sortCode) 
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 dark:text-gray-400">Account Number:</span>
+                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                              {info.accountNumber ? `****${info.accountNumber.slice(-4)}` : "N/A"}
+                            </span>
+                          </div>
+                          {info.bankStatementDate && (
+                            <div className="col-span-2">
+                              <span className="text-gray-600 dark:text-gray-400">Statement Date:</span>
+                              <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                                {new Date(info.bankStatementDate).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     
                     {info.rejectionReason && (
                       <p className="text-xs text-red-600 dark:text-red-400 mb-2 mt-1">

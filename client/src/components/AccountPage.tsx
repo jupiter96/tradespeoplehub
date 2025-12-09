@@ -1600,7 +1600,7 @@ function DetailsSection() {
         townCity: userInfo?.townCity || "",
         county: userInfo?.county || "",
         postcode: userInfo?.postcode || "",
-        travelDistance: userInfo?.travelDistance || "10 miles",
+        travelDistance: userInfo?.travelDistance || "",
         sector: userInfo?.sector || "",
         categories: categories || [],
         subcategories: subcategories || [],
@@ -2393,13 +2393,13 @@ function DetailsSection() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5 miles">5 miles</SelectItem>
-                  <SelectItem value="10 miles">10 miles</SelectItem>
-                  <SelectItem value="15 miles">15 miles</SelectItem>
-                  <SelectItem value="20 miles">20 miles</SelectItem>
-                  <SelectItem value="30 miles">30 miles</SelectItem>
-                  <SelectItem value="50 miles">50 miles</SelectItem>
-                  <SelectItem value="100 miles">100 miles</SelectItem>
+                  <SelectItem value="5miles">5 miles</SelectItem>
+                  <SelectItem value="10miles">10 miles</SelectItem>
+                  <SelectItem value="15miles">15 miles</SelectItem>
+                  <SelectItem value="20miles">20 miles</SelectItem>
+                  <SelectItem value="30miles">30 miles</SelectItem>
+                  <SelectItem value="50miles">50 miles</SelectItem>
+                  <SelectItem value="100miles">100 miles</SelectItem>
                   <SelectItem value="Nationwide">Nationwide</SelectItem>
                 </SelectContent>
               </Select>
