@@ -105,15 +105,23 @@ router.get('/', async (req, res) => {
 router.get('/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
-    const { includeCategories = 'false', includeSubCategories = 'false' } = req.query;
+    const { includeCategories = 'false', includeSubCategories = 'false', activeOnly = 'true' } = req.query;
     
     // Try to find by ID first, then by slug
     let sector;
+    const query = {};
     if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
-      sector = await Sector.findById(identifier);
+      query._id = identifier;
     } else {
-      sector = await Sector.findOne({ slug: identifier });
+      query.slug = identifier;
     }
+    
+    // Only return active sectors for frontend (unless explicitly requested)
+    if (activeOnly === 'true') {
+      query.isActive = true;
+    }
+    
+    sector = await Sector.findOne(query);
     
     if (!sector) {
       return res.status(404).json({ error: 'Sector not found' });

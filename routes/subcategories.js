@@ -52,14 +52,19 @@ router.get('/', async (req, res) => {
 router.get('/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
-    const { includeCategory = 'true' } = req.query;
+    const { includeCategory = 'true', activeOnly = 'true' } = req.query;
     
-    // Try to find by ID first, then by slug
-    let subCategoryQuery = SubCategory.findOne(
-      identifier.match(/^[0-9a-fA-F]{24}$/) 
-        ? { _id: identifier }
-        : { slug: identifier }
-    );
+    // Build query
+    const query = identifier.match(/^[0-9a-fA-F]{24}$/) 
+      ? { _id: identifier }
+      : { slug: identifier };
+    
+    // Only return active subcategories for frontend (unless explicitly requested)
+    if (activeOnly === 'true') {
+      query.isActive = true;
+    }
+    
+    let subCategoryQuery = SubCategory.findOne(query);
     
     if (includeCategory === 'true') {
       subCategoryQuery = subCategoryQuery.populate('category', 'name slug');

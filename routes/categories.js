@@ -122,14 +122,19 @@ router.get('/', async (req, res) => {
 router.get('/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
-    const { includeSector = 'true', includeSubCategories = 'false' } = req.query;
+    const { includeSector = 'true', includeSubCategories = 'false', activeOnly = 'true' } = req.query;
     
-    // Try to find by ID first, then by slug
-    let categoryQuery = Category.findOne(
-      identifier.match(/^[0-9a-fA-F]{24}$/) 
-        ? { _id: identifier }
-        : { slug: identifier }
-    );
+    // Build query
+    const query = identifier.match(/^[0-9a-fA-F]{24}$/) 
+      ? { _id: identifier }
+      : { slug: identifier };
+    
+    // Only return active categories for frontend (unless explicitly requested)
+    if (activeOnly === 'true') {
+      query.isActive = true;
+    }
+    
+    let categoryQuery = Category.findOne(query);
     
     if (includeSector === 'true') {
       categoryQuery = categoryQuery.populate('sector', 'name slug icon bannerImage');
@@ -229,6 +234,7 @@ router.post('/', async (req, res) => {
       order: order !== undefined ? order : 0,
       description,
       icon,
+      bannerImage,
       isActive: isActive !== undefined ? isActive : true,
     });
     
@@ -315,6 +321,7 @@ router.put('/:id', async (req, res) => {
     if (order !== undefined) category.order = order;
     if (description !== undefined) category.description = description;
     if (icon !== undefined) category.icon = icon;
+    if (bannerImage !== undefined) category.bannerImage = bannerImage;
     if (isActive !== undefined) category.isActive = isActive;
     
     await category.save();

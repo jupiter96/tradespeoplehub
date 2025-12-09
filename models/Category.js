@@ -44,6 +44,12 @@ const categorySchema = new mongoose.Schema(
     icon: {
       type: String,
       trim: true,
+      // Icon name or path (e.g., "imgGarden2" or "/icons/garden.svg" or Cloudinary URL)
+    },
+    bannerImage: {
+      type: String,
+      trim: true,
+      // URL to banner image for category detail page (Cloudinary URL)
     },
     isActive: {
       type: Boolean,

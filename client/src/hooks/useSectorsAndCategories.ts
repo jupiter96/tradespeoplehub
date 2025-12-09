@@ -213,8 +213,8 @@ export const useSector = (identifier: string, includeCategories = false) => {
       try {
         setLoading(true);
         const url = includeCategories
-          ? `/api/sectors/${identifier}?includeCategories=true`
-          : `/api/sectors/${identifier}`;
+          ? `/api/sectors/${identifier}?includeCategories=true&activeOnly=true`
+          : `/api/sectors/${identifier}?activeOnly=true`;
         const response = await fetch(resolveApiUrl(url), {
           credentials: 'include',
         });

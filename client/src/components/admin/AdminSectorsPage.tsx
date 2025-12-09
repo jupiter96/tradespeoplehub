@@ -78,16 +78,6 @@ export default function AdminSectorsPage() {
     isActive: true,
   });
 
-  // Combined effect to handle both regular updates and search debouncing
-  // This prevents duplicate API calls on initial load
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      fetchSectors();
-    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
-
-    return () => clearTimeout(debounceTimer);
-  }, [fetchSectors, searchTerm]);
-
   const fetchSectors = useCallback(async () => {
     try {
       setLoading(true);
@@ -118,6 +108,16 @@ export default function AdminSectorsPage() {
       setLoading(false);
     }
   }, [page, limit, sortBy, sortOrder, searchTerm]);
+
+  // Combined effect to handle both regular updates and search debouncing
+  // This prevents duplicate API calls on initial load
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchSectors();
+    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
+
+    return () => clearTimeout(debounceTimer);
+  }, [fetchSectors, searchTerm]);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -185,12 +185,16 @@ export default function AdminSectorsPage() {
       isActive: true,
     });
     setEditingSector(null);
+    setIconPreview(null);
+    setBannerPreview(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (sector: Sector) => {
     setFormData({ ...sector });
     setEditingSector(sector);
+    setIconPreview(sector.icon || null);
+    setBannerPreview(sector.bannerImage || null);
     setIsModalOpen(true);
   };
 
@@ -263,12 +267,77 @@ export default function AdminSectorsPage() {
     }
   };
 
+  const [uploadingImage, setUploadingImage] = useState<{ type: "icon" | "banner" | null; loading: boolean }>({ type: null, loading: false });
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+
   const handleImageUpload = async (file: File, type: "icon" | "banner") => {
-    // For now, we'll just store the file name or URL
-    // In production, you'd upload to Cloudinary or similar
-    const fileName = file.name;
-    handleInputChange(type, fileName);
-    toast.info(`Image selected: ${fileName}. Upload functionality to be implemented.`);
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Unsupported file type. Please upload JPG, PNG, GIF, or WEBP image.");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (type === "icon") {
+        setIconPreview(reader.result as string);
+      } else {
+        setBannerPreview(reader.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    setUploadingImage({ type, loading: true });
+    try {
+      // Get entity ID (editingSector or new sector)
+      const entityId = editingSector?._id;
+      if (!entityId) {
+        toast.error("Please save the sector first before uploading images");
+        setUploadingImage({ type: null, loading: false });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch(
+        resolveApiUrl(`/api/admin/upload-image/${type}/sector/${entityId}`),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload image");
+      }
+
+      const data = await response.json();
+      handleInputChange(type, data.imageUrl);
+      toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload image");
+      // Revert preview on error
+      if (type === "icon") {
+        setIconPreview(formData.icon || null);
+      } else {
+        setBannerPreview(formData.bannerImage || null);
+      }
+    } finally {
+      setUploadingImage({ type: null, loading: false });
+    }
   };
 
   if (loading) {
@@ -351,9 +420,9 @@ export default function AdminSectorsPage() {
                   <TableHeader>
                     <TableRow className="border-0 hover:bg-transparent shadow-sm">
                       <SortableHeader column="order" label="Order" />
-                      <SortableHeader column="name" label="Name" />
-                      <SortableHeader column="slug" label="Slug" />
-                      <TableHead className="text-[#FE8A0F] font-semibold">Status</TableHead>
+                      <SortableHeader column="name" label="Sector Name" />
+                      <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
+                      <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
                       <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -370,30 +439,46 @@ export default function AdminSectorsPage() {
                           <div className="font-medium truncate" title={sector.name}>
                             {sector.name && sector.name.length > 25 ? sector.name.substring(0, 25) + "..." : sector.name}
                           </div>
-                          {sector.displayName && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400 truncate" title={`${sector.displayName} ${sector.subtitle || ""}`}>
-                              {(() => {
-                                const displayText = `${sector.displayName} ${sector.subtitle || ""}`.trim();
-                                return displayText.length > 25 ? displayText.substring(0, 25) + "..." : displayText;
-                              })()}
+                        </TableCell>
+                        <TableCell className="text-black dark:text-white">
+                          {sector.icon ? (
+                            <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                              {sector.icon.startsWith('http') || sector.icon.startsWith('/') ? (
+                                <img
+                                  src={sector.icon}
+                                  alt={sector.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={sector.icon}>
+                                  {sector.icon.length > 10 ? sector.icon.substring(0, 10) + "..." : sector.icon}
+                                </span>
+                              )}
                             </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">No icon</span>
                           )}
                         </TableCell>
                         <TableCell className="text-black dark:text-white">
-                          <span className="truncate block" title={sector.slug}>
-                            {sector.slug && sector.slug.length > 25 ? sector.slug.substring(0, 25) + "..." : sector.slug}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              sector.isActive
-                                ? "bg-green-500 hover:bg-green-600 text-white border-0 flex items-center gap-1.5 px-2.5 py-1 w-fit"
-                                : "bg-red-500 hover:bg-red-600 text-white border-0 flex items-center gap-1.5 px-2.5 py-1 w-fit"
-                            }
-                          >
-                            {sector.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                          {sector.bannerImage ? (
+                            <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                              <img
+                                src={sector.bannerImage}
+                                alt={`${sector.name} banner`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">No image</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -608,8 +693,11 @@ export default function AdminSectorsPage() {
                   <Input
                     id="icon"
                     value={formData.icon || ""}
-                    onChange={(e) => handleInputChange("icon", e.target.value)}
-                    placeholder="imgGarden2 or icon URL"
+                    onChange={(e) => {
+                      handleInputChange("icon", e.target.value);
+                      setIconPreview(e.target.value || null);
+                    }}
+                    placeholder="Icon URL or upload image"
                     className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
@@ -626,22 +714,43 @@ export default function AdminSectorsPage() {
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                    disabled={uploadingImage.loading || !editingSector?._id}
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    title={!editingSector?._id ? "Please save the sector first" : "Upload icon"}
                   >
-                    <Upload className="w-4 h-4" />
+                    {uploadingImage.type === "icon" && uploadingImage.loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
+                {(iconPreview || formData.icon) && (
+                  <div className="mt-2">
+                    <img
+                      src={iconPreview || formData.icon}
+                      alt="Icon preview"
+                      className="h-20 w-20 object-cover rounded border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="bannerImage" className="text-black dark:text-white">
-                  Banner Image URL
+                  Banner Image
                 </Label>
                 <div className="mt-1 flex gap-2">
                   <Input
                     id="bannerImage"
                     value={formData.bannerImage || ""}
-                    onChange={(e) => handleInputChange("bannerImage", e.target.value)}
-                    placeholder="https://..."
+                    onChange={(e) => {
+                      handleInputChange("bannerImage", e.target.value);
+                      setBannerPreview(e.target.value || null);
+                    }}
+                    placeholder="Banner image URL or upload image"
                     className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
@@ -658,15 +767,21 @@ export default function AdminSectorsPage() {
                     type="button"
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                    disabled={uploadingImage.loading || !editingSector?._id}
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    title={!editingSector?._id ? "Please save the sector first" : "Upload banner"}
                   >
-                    <Upload className="w-4 h-4" />
+                    {uploadingImage.type === "banner" && uploadingImage.loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
-                {formData.bannerImage && (
+                {(bannerPreview || formData.bannerImage) && (
                   <div className="mt-2">
                     <img
-                      src={formData.bannerImage}
+                      src={bannerPreview || formData.bannerImage}
                       alt="Banner preview"
                       className="h-20 w-full object-cover rounded border"
                       onError={(e) => {

@@ -64,12 +64,18 @@ export function useAdminPermissions() {
   const hasRouteAccess = (route: string): boolean => {
     if (isSuperAdmin) return true;
     
+    // Sub-admins cannot access sub-admin management (only super admin)
+    if (route === "/admin/sub-admins") {
+      return false;
+    }
+    
     // Map routes to permissions
     const routePermissionMap: Record<string, string> = {
-      "/admin/dashboard": "dashboard", // Dashboard is always accessible
+      "/admin/dashboard": "dashboard", // Dashboard is always accessible (but tabs are super admin only)
+      "/admin/email-campaign": "email-campaign", // Requires email-campaign permission
       "/admin/clients": "clients-management",
       "/admin/professionals": "professionals-management",
-      "/admin/sub-admins": "admin-management", // Only super admin or sub-admin with admin-management permission
+      // "/admin/sub-admins" is handled above - only super admin can access (admin-management permission removed from sub-admins)
       "/admin/delete-account": "user-management",
       "/admin/sectors": "category-management",
       "/admin/categories": "category-management",
@@ -78,8 +84,9 @@ export function useAdminPermissions() {
       "/admin/packages": "package-management",
       "/admin/package-addons": "package-management",
       "/admin/coupon-manage": "coupon-manage",
-      "/admin/client-requests": "contact-management",
-      "/admin/professional-requests": "contact-management",
+      "/admin/client-requests": "clients-management", // Client requests require clients-management
+      "/admin/professional-requests": "professionals-management", // Professional requests require professionals-management
+      "/admin/contact-requests": "contact-management", // General contact requests require contact-management
       "/admin/countries": "region-management",
       "/admin/cities": "region-management",
       "/admin/homepage-content": "content-management",
@@ -102,7 +109,7 @@ export function useAdminPermissions() {
       "/admin/dispute-list": "dispute-management",
       "/admin/ask-step-in": "dispute-management",
       "/admin/rewards": "rewards",
-      "/admin/message-center": "message-center",
+      "/admin/message-center": "message-center", // Also accessible with professionals-management permission
       "/admin/affiliates": "affiliate",
       "/admin/sharable-links": "affiliate",
       "/admin/pay-outs": "affiliate",
@@ -130,6 +137,11 @@ export function useAdminPermissions() {
 
     const requiredPermission = routePermissionMap[route];
     if (!requiredPermission) return true; // Unknown routes are accessible
+    
+    // Special handling for message-center - accessible with message-center or professionals-management permission
+    if (route === "/admin/message-center") {
+      return hasPermission("message-center") || hasPermission("professionals-management");
+    }
     
     return hasPermission(requiredPermission);
   };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -58,6 +58,7 @@ export default function AdminCategoriesPage() {
     order: number;
     description: string;
     icon: string;
+    bannerImage: string;
     isActive: boolean;
     subCategories: { name: string; order: number }[];
   }>({
@@ -68,9 +69,15 @@ export default function AdminCategoriesPage() {
     order: 0,
     description: "",
     icon: "",
+    bannerImage: "",
     isActive: true,
     subCategories: [],
   });
+  const [uploadingImage, setUploadingImage] = useState<{ type: "icon" | "banner" | null; loading: boolean }>({ type: null, loading: false });
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSectors();
@@ -206,6 +213,75 @@ export default function AdminCategoriesPage() {
     });
   };
 
+  const handleImageUpload = async (file: File, type: "icon" | "banner") => {
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Unsupported file type. Please upload JPG, PNG, GIF, or WEBP image.");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (type === "icon") {
+        setIconPreview(reader.result as string);
+      } else {
+        setBannerPreview(reader.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    setUploadingImage({ type, loading: true });
+    try {
+      // Get entity ID (editingCategory or new category)
+      const entityId = editingCategory?._id;
+      if (!entityId) {
+        toast.error("Please save the category first before uploading images");
+        setUploadingImage({ type: null, loading: false });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch(
+        resolveApiUrl(`/api/admin/upload-image/${type}/category/${entityId}`),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload image");
+      }
+
+      const data = await response.json();
+      handleInputChange(type, data.imageUrl);
+      toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload image");
+      // Revert preview on error
+      if (type === "icon") {
+        setIconPreview(formData.icon || null);
+      } else {
+        setBannerPreview(formData.bannerImage || null);
+      }
+    } finally {
+      setUploadingImage({ type: null, loading: false });
+    }
+  };
+
   const handleCreateNew = () => {
     setFormData({
       sector: selectedSectorId,
@@ -215,10 +291,13 @@ export default function AdminCategoriesPage() {
       order: categories.length,
       description: "",
       icon: "",
+      bannerImage: "",
       isActive: true,
       subCategories: [],
     });
     setEditingCategory(null);
+    setIconPreview(null);
+    setBannerPreview(null);
     setIsModalOpen(true);
   };
 
@@ -236,10 +315,13 @@ export default function AdminCategoriesPage() {
       order: category.order,
       description: category.description || "",
       icon: category.icon || "",
+      bannerImage: (category as any).bannerImage || "",
       isActive: category.isActive,
       subCategories: subCategories.length > 0 ? subCategories : [],
     });
     setEditingCategory(category);
+    setIconPreview(category.icon || null);
+    setBannerPreview((category as any).bannerImage || null);
     setIsModalOpen(true);
   };
 
@@ -304,6 +386,7 @@ export default function AdminCategoriesPage() {
         order: formData.order,
         description: formData.description.trim(),
         icon: formData.icon.trim(),
+        bannerImage: formData.bannerImage.trim(),
         isActive: formData.isActive,
       };
 
@@ -576,10 +659,9 @@ export default function AdminCategoriesPage() {
                       <TableHeader>
                         <TableRow className="border-0 hover:bg-transparent shadow-sm">
                           <SortableHeader column="order" label="Order" />
-                          <SortableHeader column="name" label="Name" />
-                          <TableHead className="text-[#FE8A0F] font-semibold">Question</TableHead>
-                          <TableHead className="text-[#FE8A0F] font-semibold">Subcategories</TableHead>
-                          <TableHead className="text-[#FE8A0F] font-semibold">Status</TableHead>
+                          <SortableHeader column="name" label="Category Name" />
+                          <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
+                          <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
                           <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -614,30 +696,46 @@ export default function AdminCategoriesPage() {
                               <div className="font-medium truncate" title={category.name}>
                                 {category.name && category.name.length > 25 ? category.name.substring(0, 25) + "..." : category.name}
                               </div>
-                              {category.slug && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400 truncate" title={category.slug}>
-                                  {category.slug.length > 25 ? category.slug.substring(0, 25) + "..." : category.slug}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white max-w-xs">
-                              <span className="truncate block" title={category.question || "-"}>
-                                {category.question && category.question.length > 25 ? category.question.substring(0, 25) + "..." : (category.question || "-")}
-                              </span>
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
-                              {(category.subCategories || []).length} subcategories
+                              {category.icon ? (
+                                <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                  {category.icon.startsWith('http') || category.icon.startsWith('/') ? (
+                                    <img
+                                      src={category.icon}
+                                      alt={category.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={category.icon}>
+                                      {category.icon.length > 10 ? category.icon.substring(0, 10) + "..." : category.icon}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">No icon</span>
+                              )}
                             </TableCell>
-                            <TableCell>
-                              <Badge
-                                className={
-                                  category.isActive
-                                    ? "bg-green-500 hover:bg-green-600 text-white border-0 flex items-center gap-1.5 px-2.5 py-1 w-fit"
-                                    : "bg-red-500 hover:bg-red-600 text-white border-0 flex items-center gap-1.5 px-2.5 py-1 w-fit"
-                                }
-                              >
-                                {category.isActive ? "Active" : "Inactive"}
-                              </Badge>
+                            <TableCell className="text-black dark:text-white">
+                              {(category as any).bannerImage ? (
+                                <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                  <img
+                                    src={(category as any).bannerImage}
+                                    alt={`${category.name} banner`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                      (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">No image</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
@@ -824,6 +922,116 @@ export default function AdminCategoriesPage() {
                 placeholder="Describe this category..."
                 className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
+            </div>
+
+            {/* Images */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="icon" className="text-black dark:text-white">
+                  Icon
+                </Label>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    id="icon"
+                    value={formData.icon || ""}
+                    onChange={(e) => {
+                      handleInputChange("icon", e.target.value);
+                      setIconPreview(e.target.value || null);
+                    }}
+                    placeholder="Icon URL or upload image"
+                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file, "icon");
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage.loading || !editingCategory?._id}
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    title={!editingCategory?._id ? "Please save the category first" : "Upload icon"}
+                  >
+                    {uploadingImage.type === "icon" && uploadingImage.loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+                {(iconPreview || formData.icon) && (
+                  <div className="mt-2">
+                    <img
+                      src={iconPreview || formData.icon}
+                      alt="Icon preview"
+                      className="h-20 w-20 object-cover rounded border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="bannerImage" className="text-black dark:text-white">
+                  Banner Image
+                </Label>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    id="bannerImage"
+                    value={formData.bannerImage || ""}
+                    onChange={(e) => {
+                      handleInputChange("bannerImage", e.target.value);
+                      setBannerPreview(e.target.value || null);
+                    }}
+                    placeholder="Banner image URL or upload image"
+                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  />
+                  <input
+                    type="file"
+                    ref={bannerInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file, "banner");
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => bannerInputRef.current?.click()}
+                    disabled={uploadingImage.loading || !editingCategory?._id}
+                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    title={!editingCategory?._id ? "Please save the category first" : "Upload banner"}
+                  >
+                    {uploadingImage.type === "banner" && uploadingImage.loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+                {(bannerPreview || formData.bannerImage) && (
+                  <div className="mt-2">
+                    <img
+                      src={bannerPreview || formData.bannerImage}
+                      alt="Banner preview"
+                      className="h-20 w-full object-cover rounded border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Subcategories */}

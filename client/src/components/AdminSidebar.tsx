@@ -644,6 +644,11 @@ export default function AdminSidebar({
                 // Dashboard is always accessible
                 if (menu.key === "dashboard") return true;
                 
+                // Email Campaign - check permission-based access
+                if (menu.key === "email-campaign") {
+                  return hasRouteAccess(menu.path || "");
+                }
+                
                 // Sub Admin menu is only for super admin or admin with admin-management permission
                 if (menu.key === "user-manage") {
                   // Filter children - sub-admin is only for super admin or admin with admin-management permission
@@ -925,6 +930,11 @@ export default function AdminSidebar({
               .filter((menu) => {
                 // Dashboard is always accessible
                 if (menu.key === "dashboard") return true;
+                
+                // Email Campaign - check permission-based access
+                if (menu.key === "email-campaign") {
+                  return hasRouteAccess(menu.path || "");
+                }
                 
                 // Sub Admin menu is only for super admin or admin with admin-management permission
                 if (menu.key === "user-manage") {

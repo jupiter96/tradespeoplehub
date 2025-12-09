@@ -28,8 +28,8 @@ interface AdminSubAdminModalProps {
 }
 
 // Available permissions for sub-admins
+// Note: admin-management is not available for sub-admins (only super admin can manage sub-admins)
 const AVAILABLE_PERMISSIONS = [
-  { value: "admin-management", label: "Admin Management" },
   { value: "professionals-management", label: "Professional Management" },
   { value: "clients-management", label: "Client Management" },
   { value: "category-management", label: "Category Management" },
@@ -53,6 +53,7 @@ const AVAILABLE_PERMISSIONS = [
   { value: "custom-order", label: "Custom Order" },
   { value: "transaction-history", label: "Transaction History" },
   { value: "coupon-manage", label: "Coupon Manage" },
+  { value: "email-campaign", label: "Email Campaign" },
 ];
 
 export default function AdminSubAdminModal({
@@ -73,7 +74,7 @@ export default function AdminSubAdminModal({
   useEffect(() => {
     if (subAdmin) {
       setFormData({
-        name: subAdmin.name || "",
+        name: subAdmin.fullname || subAdmin.name || "",
         email: subAdmin.email || "",
         password: "",
         permissions: subAdmin.permissions || [],
@@ -132,7 +133,7 @@ export default function AdminSubAdminModal({
       }
 
       const payload: any = {
-        name: trimmedName,
+        name: trimmedName, // Backend will map this to fullname
         email: trimmedEmail.toLowerCase(),
         role: "subadmin",
         permissions: formData.permissions,

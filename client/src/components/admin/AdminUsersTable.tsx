@@ -119,7 +119,21 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       }
 
       const data = await response.json();
-      const usersData = role === "subadmin" ? data.admins : data.users;
+      let usersData = role === "subadmin" ? data.admins : data.users;
+      
+      // Normalize subadmin data: map fullname to name for consistency
+      if (role === "subadmin" && usersData) {
+        usersData = usersData.map((admin: any) => ({
+          ...admin,
+          name: admin.fullname || admin.name || "",
+          // Ensure all fields are properly mapped
+          email: admin.email || "",
+          role: admin.role || "subadmin",
+          permissions: admin.permissions || [],
+          avatar: admin.avatar || null,
+        }));
+      }
+      
       setUsers(usersData || []);
       setTotalPages(data.pagination?.totalPages || 1);
       setTotal(data.pagination?.total || 0);
@@ -599,6 +613,9 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   {role !== "subadmin" && (
                     <TableHead className="text-[#FE8A0F] font-semibold">Location</TableHead>
                   )}
+                  {role === "subadmin" && (
+                    <TableHead className="text-[#FE8A0F] font-semibold">Permissions</TableHead>
+                  )}
                   <SortableHeader column="createdAt" label="Joined" />
                   {showVerification && role === "professional" && (
                     <TableHead className="text-[#FE8A0F] font-semibold text-center">Verification</TableHead>
@@ -729,6 +746,29 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           }
                           return "-";
                         })()}
+                      </TableCell>
+                    )}
+                    {role === "subadmin" && (
+                      <TableCell className="text-black dark:text-white max-w-[300px]">
+                        {user.permissions && user.permissions.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {user.permissions.slice(0, 3).map((permission: string, idx: number) => (
+                              <Badge
+                                key={idx}
+                                className="bg-[#FE8A0F]/10 text-[#FE8A0F] border border-[#FE8A0F]/20 text-xs px-2 py-0.5"
+                              >
+                                {permission.replace(/-/g, " ")}
+                              </Badge>
+                            ))}
+                            {user.permissions.length > 3 && (
+                              <Badge className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border border-gray-500/20 text-xs px-2 py-0.5">
+                                +{user.permissions.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </TableCell>
                     )}
                     <TableCell className="text-black dark:text-white">

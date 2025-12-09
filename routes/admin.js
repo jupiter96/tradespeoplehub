@@ -350,6 +350,117 @@ router.delete('/profile/avatar', requireAdmin, async (req, res) => {
   }
 });
 
+// Configure multer for sector/category image uploads
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
+    }
+  },
+});
+
+const imageUploadMiddleware = imageUpload.single('image');
+
+// Upload sector/category icon or banner image
+router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res, next) => {
+  imageUploadMiddleware(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    return next();
+  });
+}, async (req, res) => {
+  try {
+    // Check if Cloudinary is configured
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ 
+        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+      });
+    }
+
+    const { type, entityType, entityId } = req.params; // type: 'icon' or 'banner', entityType: 'sector' or 'category'
+
+    if (!['icon', 'banner'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid image type. Must be "icon" or "banner"' });
+    }
+
+    if (!['sector', 'category'].includes(entityType)) {
+      return res.status(400).json({ error: 'Invalid entity type. Must be "sector" or "category"' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+
+    // Find the entity
+    let entity;
+    if (entityType === 'sector') {
+      entity = await Sector.findById(entityId);
+    } else {
+      entity = await Category.findById(entityId);
+    }
+
+    if (!entity) {
+      return res.status(404).json({ error: `${entityType} not found` });
+    }
+
+    // Delete old image from Cloudinary if exists
+    const oldImageUrl = type === 'icon' ? entity.icon : entity.bannerImage;
+    if (oldImageUrl && (oldImageUrl.startsWith('http') || oldImageUrl.startsWith('https'))) {
+      const oldPublicId = extractPublicId(oldImageUrl);
+      if (oldPublicId) {
+        try {
+          await cloudinary.uploader.destroy(oldPublicId);
+        } catch (error) {
+          console.warn(`Failed to delete old ${type} from Cloudinary:`, error);
+        }
+      }
+    }
+
+    // Upload to Cloudinary
+    const folder = `${entityType}s/${type}s`;
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          public_id: `${entityType}-${type}-${entityId}-${Date.now()}`,
+          transformation: type === 'icon' 
+            ? [{ width: 200, height: 200, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }]
+            : [{ width: 1200, height: 400, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }],
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(req.file.buffer);
+    });
+
+    // Update entity with new image URL
+    if (type === 'icon') {
+      entity.icon = uploadResult.secure_url;
+    } else {
+      entity.bannerImage = uploadResult.secure_url;
+    }
+    await entity.save();
+
+    return res.json({ 
+      imageUrl: uploadResult.secure_url,
+      [type]: uploadResult.secure_url
+    });
+  } catch (error) {
+    console.error('Image upload error', error);
+    return res.status(500).json({ 
+      error: error.message || 'Failed to upload image' 
+    });
+  }
+});
+
 // Get all users (with pagination and filters)
 router.get('/users', requireAdmin, async (req, res) => {
   try {
@@ -1128,11 +1239,10 @@ router.put('/change-password', requireAdmin, async (req, res) => {
 // Get all admin users (sub-admins)
 router.get('/admins', requireAdmin, async (req, res) => {
   try {
-    // Only super admin or admin with admin-management permission can view sub-admins
+    // Only super admin can view sub-admins (admin-management permission removed from sub-admins)
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
-    if (!isSuperAdmin && !hasAdminManagement) {
-      return res.status(403).json({ error: 'Insufficient permissions to view sub-admins' });
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can view sub-admins' });
     }
 
     const page = parseInt(req.query.page) || 1;
@@ -1199,11 +1309,10 @@ router.get('/admins', requireAdmin, async (req, res) => {
 // Create sub-admin
 router.post('/admins', requireAdmin, async (req, res) => {
   try {
-    // Only super admin or admin with admin-management permission can create sub-admins
+    // Only super admin can create sub-admins (admin-management permission removed from sub-admins)
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
-    if (!isSuperAdmin && !hasAdminManagement) {
-      return res.status(403).json({ error: 'Insufficient permissions to create sub-admins' });
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can create sub-admins' });
     }
 
     const { name, email, password, permissions } = req.body || {};
@@ -1249,11 +1358,10 @@ router.post('/admins', requireAdmin, async (req, res) => {
 // Update admin user (sub-admin)
 router.put('/admins/:id', requireAdmin, async (req, res) => {
   try {
-    // Only super admin or admin with admin-management permission can update sub-admins
+    // Only super admin can update sub-admins (admin-management permission removed from sub-admins)
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
-    if (!isSuperAdmin && !hasAdminManagement) {
-      return res.status(403).json({ error: 'Insufficient permissions to update sub-admins' });
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can update sub-admins' });
     }
 
     const adminId = req.params.id;
@@ -1293,11 +1401,10 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
 // Delete admin user (sub-admin)
 router.delete('/admins/:id', requireAdmin, async (req, res) => {
   try {
-    // Only super admin or admin with admin-management permission can delete sub-admins
+    // Only super admin can delete sub-admins (admin-management permission removed from sub-admins)
     const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
-    const hasAdminManagement = req.adminUser.permissions && req.adminUser.permissions.includes('admin-management');
-    if (!isSuperAdmin && !hasAdminManagement) {
-      return res.status(403).json({ error: 'Insufficient permissions to delete sub-admins' });
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can delete sub-admins' });
     }
 
     const adminId = req.params.id;
