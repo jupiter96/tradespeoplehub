@@ -269,8 +269,21 @@ const handleSocialCallback = (provider) => (req, res, next) => {
         console.error(`${provider} login error`, loginErr);
         return res.redirect(SOCIAL_FAILURE_REDIRECT);
       }
+      
+      // Set session role and userId
       req.session.role = result.role;
-      return res.redirect(SOCIAL_SUCCESS_REDIRECT);
+      req.session.userId = result._id ? result._id.toString() : result.id;
+      
+      // Save session before redirecting to ensure session is persisted
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error(`${provider} session save error`, saveErr);
+          return res.redirect(SOCIAL_FAILURE_REDIRECT);
+        }
+        
+        console.log(`${provider} login successful for user:`, result.email || result._id || result.id);
+        return res.redirect(SOCIAL_SUCCESS_REDIRECT);
+      });
     });
   })(req, res, next);
 };
