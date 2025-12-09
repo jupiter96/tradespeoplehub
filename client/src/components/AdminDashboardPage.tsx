@@ -35,6 +35,9 @@ import {
   Handshake,
   List,
   Box,
+  Star,
+  Truck,
+  CheckCircle,
 } from "lucide-react";
 import AdminGenericPage from "./admin/AdminGenericPage";
 import AdminClientsPage from "./admin/AdminClientsPage";
@@ -78,7 +81,7 @@ export default function AdminDashboardPage() {
   const [statistics, setStatistics] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const isInitialLoadRef = useRef(true);
-  const [dashboardTab, setDashboardTab] = useState("statistics");
+  const [dashboardTab, setDashboardTab] = useState("state");
   // Get active section from URL, default to "dashboard"
   // URL section is already in the correct format (clients, professionals, etc.)
   const activeSection = params.section || "dashboard";
@@ -146,7 +149,7 @@ export default function AdminDashboardPage() {
       clients: "Clients",
       professionals: "Professionals",
       "sub-admins": "Sub Admins",
-      "delete-account": "Delete Account",
+      "delete-account": "Deleted Account",
       "category-manage": "Category Manage",
       sectors: "Sectors",
       categories: "Categories",
@@ -309,63 +312,349 @@ export default function AdminDashboardPage() {
               <Tabs value={dashboardTab} onValueChange={setDashboardTab} className="w-full">
                 <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 dark:bg-gray-800">
                   <TabsTrigger 
-                    value="statistics"
+                    value="state"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
                   >
-                    State Cards
+                    State
                   </TabsTrigger>
                   <TabsTrigger 
-                    value="state-cards"
+                    value="statistics"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
                   >
                     Statistics
                   </TabsTrigger>
                 </TabsList>
 
-                {/* State Cards Tab */}
-                <TabsContent value="state-cards" className="mt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {cards.map((card, index) => {
-                      const Icon = card.icon;
-                      return (
-                        <div
-                          key={index}
-                          className="relative rounded-2xl bg-white dark:bg-black border border-[#FE8A0F]/20 p-6 shadow-lg shadow-[#FE8A0F]/10 hover:shadow-2xl hover:shadow-[#FE8A0F]/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            {/* Left side - Content */}
-                            <div className="flex flex-col gap-2 flex-1 min-w-0">
-                              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">
-                                {card.title}
-                              </h3>
-                              <p className="text-3xl font-bold text-[#FE8A0F]">
-                                {card.value}
-                              </p>
-                              {card.delta && card.delta !== "0" && (
-                                <p className={`text-sm font-medium ${card.delta.startsWith("+") ? "text-green-600" : "text-red-600"}`}>
-                                  {card.delta} today
-                                </p>
-                              )}
-                              <p className="text-black dark:text-white text-xs text-gray-600 dark:text-gray-400">
-                                {card.description}
-                              </p>
-                            </div>
-
-                            {/* Right side - Large Icon */}
-                            {Icon && (
-                              <div className="flex-shrink-0">
-                                <div className="p-4 bg-[#FE8A0F]/10 rounded-xl shadow-md shadow-[#FE8A0F]/20">
-                                  <Icon className="w-12 h-12 text-[#FE8A0F]" />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                {/* State Tab */}
+                <TabsContent value="state" className="mt-6">
+                  {loadingStats ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
+                        <p className="text-black dark:text-white">Loading statistics...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <section className="grid gap-4 md:grid-cols-3">
+                  {/* Column 1 - Orange Cards */}
+                  <div className="space-y-4">
+                    <StatCard
+                      icon={Users}
+                      title="PROFESSIONALS"
+                      value={statistics?.professionals || 0}
+                      color="orange"
+                      dailyChange={statistics?.professionalsDailyChange}
+                      badge={statistics?.professionalsNew}
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={Hammer}
+                      title="TOTAL JOB"
+                      value={statistics?.totalJob || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalJobDailyChange}
+                      badge={statistics?.totalJobDailyChange}
+                      onClick={() => navigate("/admin/job-manage")}
+                    />
+                    <StatCard
+                      icon={FolderTree}
+                      title="TOTAL CATEGORY"
+                      value={statistics?.totalCategory || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalCategoryDailyChange}
+                      badge={statistics?.totalCategoryDailyChange}
+                      onClick={() => navigate("/admin/sectors")}
+                    />
+                    <StatCard
+                      icon={ShieldCheck}
+                      title="ACCOUNT VERIFICATION DOCUMENT"
+                      value={statistics?.accountVerificationDocument || 0}
+                      badge={statistics?.accountVerificationDocumentNew || 0}
+                      color="orange"
+                      dailyChange={statistics?.accountVerificationDocumentDailyChange}
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={UserCheck}
+                      title="TOTAL VERIFICATION USERS"
+                      value={statistics?.totalVerificationUsers || 0}
+                      color="orange"
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={Calendar}
+                      title="VERIFICATION USERS TODAY"
+                      value={statistics?.verificationUsersToday || 0}
+                      color="orange"
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    <StatCard
+                      icon={TrendingUp}
+                      title="PROFESSIONAL REFERRALS"
+                      value={statistics?.professionalsReferrals || 0}
+                      color="orange"
+                      dailyChange={statistics?.professionalsReferralsDailyChange}
+                      badge={statistics?.professionalsReferralsDailyChange}
+                      onClick={() => navigate("/admin/referrals-professional")}
+                    />
+                    <StatCard
+                      icon={AlertCircle}
+                      title="FLAGGED"
+                      value={statistics?.flagged || 0}
+                      color="orange"
+                      dailyChange={statistics?.flaggedDailyChange}
+                      badge={statistics?.flaggedDailyChange}
+                      onClick={() => navigate("/admin/flagged")}
+                    />
                   </div>
 
-                  {/* Chart Cards Section - Inside Statistics Tab */}
+                  {/* Column 2 - Red Cards */}
+                  <div className="space-y-4">
+                    <StatCard
+                      icon={Users}
+                      title="CLIENTS"
+                      value={statistics?.clients || 0}
+                      color="red"
+                      dailyChange={statistics?.clientsDailyChange}
+                      badge={statistics?.clientsNew}
+                      onClick={() => navigate("/admin/clients")}
+                    />
+                    <StatCard
+                      icon={Gavel}
+                      title="TOTAL JOB IN DISPUTE"
+                      value={statistics?.totalJobInDispute || 0}
+                      color="red"
+                      dailyChange={statistics?.totalJobInDisputeDailyChange}
+                      badge={statistics?.totalJobInDisputeDailyChange}
+                      onClick={() => navigate("/admin/dispute-list")}
+                    />
+                    <StatCard
+                      icon={CreditCard}
+                      title="PENDING WITHDRAWAL REQUEST"
+                      value={statistics?.pendingWithdrawalRequest || 0}
+                      color="red"
+                      dailyChange={statistics?.pendingWithdrawalRequestDailyChange}
+                      badge={statistics?.pendingWithdrawalRequestDailyChange}
+                      onClick={() => navigate("/admin/withdrawal-request")}
+                    />
+                    <StatCard
+                      icon={MessageCircle}
+                      title="MESSAGE CENTER"
+                      value={statistics?.messageCenter || 0}
+                      badge={statistics?.messageCenterNew || 0}
+                      color="red"
+                      dailyChange={statistics?.messageCenterDailyChange}
+                      onClick={() => navigate("/admin/message-center")}
+                    />
+                    <StatCard
+                      icon={TrendingUp}
+                      title="CLIENT REFERRALS"
+                      value={statistics?.clientsReferrals || 0}
+                      color="red"
+                      dailyChange={statistics?.clientsReferralsDailyChange}
+                      badge={statistics?.clientsReferralsDailyChange}
+                      onClick={() => navigate("/admin/referrals-client")}
+                    />
+                    <StatCard
+                      icon={Archive}
+                      title="DELETED ACCOUNT"
+                      value={statistics?.deletedAccount || 0}
+                      badge={statistics?.deletedAccountNew || 0}
+                      color="red"
+                      dailyChange={statistics?.deletedAccountDailyChange}
+                      onClick={() => navigate("/admin/delete-account")}
+                    />
+                    <StatCard
+                      icon={Package}
+                      title="ORDERS"
+                      value={statistics?.orders || 0}
+                      badge={statistics?.ordersNew || 0}
+                      color="red"
+                      dailyChange={statistics?.ordersDailyChange}
+                      onClick={() => navigate("/admin/service-order")}
+                    />
+                    <StatCard
+                      icon={Clock}
+                      title="APPROVAL PENDING SERVICE"
+                      value={statistics?.approvalPendingService || 0}
+                      color="red"
+                      dailyChange={statistics?.approvalPendingServiceDailyChange}
+                      badge={statistics?.approvalPendingServiceDailyChange}
+                      onClick={() => navigate("/admin/approval-pending-service")}
+                    />
+                  </div>
+
+                  {/* Column 3 - Green Cards */}
+                  <div className="space-y-4">
+                    <StatCard
+                      icon={Users}
+                      title="SUBADMIN"
+                      value={statistics?.subadmin || 0}
+                      color="green"
+                      dailyChange={statistics?.subadminDailyChange}
+                      badge={statistics?.subadminNew}
+                      onClick={() => navigate("/admin/sub-admins")}
+                    />
+                    <StatCard
+                      icon={Package}
+                      title="TOTAL PLANS & PACKAGES"
+                      value={statistics?.totalPlansPackages || 0}
+                      color="green"
+                      dailyChange={statistics?.totalPlansPackagesDailyChange}
+                      badge={statistics?.totalPlansPackagesDailyChange}
+                      onClick={() => navigate("/admin/packages")}
+                    />
+                    <StatCard
+                      icon={Send}
+                      title="NEW CONTACT REQUEST"
+                      value={statistics?.newContactRequest || 0}
+                      badge={statistics?.newContactRequestNew || 0}
+                      color="green"
+                      dailyChange={statistics?.newContactRequestDailyChange}
+                      onClick={() => navigate("/admin/contact-requests")}
+                    />
+                    <StatCard
+                      icon={Gift}
+                      title="AFFILIATE"
+                      value={statistics?.affiliate || 0}
+                      badge={statistics?.affiliateNew || 0}
+                      color="green"
+                      dailyChange={statistics?.affiliateDailyChange}
+                      onClick={() => navigate("/admin/affiliate")}
+                    />
+                    <StatCard
+                      icon={Handshake}
+                      title="ASK TO STEP IN"
+                      value={statistics?.askToStepIn || 0}
+                      color="green"
+                      dailyChange={statistics?.askToStepInDailyChange}
+                      badge={statistics?.askToStepInDailyChange}
+                      onClick={() => navigate("/admin/ask-step-in")}
+                    />
+                    <StatCard
+                      icon={List}
+                      title="SERVICE LISTING"
+                      value={statistics?.serviceListing || 0}
+                      color="green"
+                      dailyChange={statistics?.serviceListingDailyChange}
+                      badge={statistics?.serviceListingDailyChange}
+                      onClick={() => navigate("/admin/service")}
+                    />
+                    <StatCard
+                      icon={Box}
+                      title="CUSTOM ORDERS"
+                      value={statistics?.customOrders || 0}
+                      badge={statistics?.customOrdersNew || 0}
+                      color="green"
+                      dailyChange={statistics?.customOrdersDailyChange}
+                      onClick={() => navigate("/admin/custom-order")}
+                    />
+                    </div>
+                    </section>
+                  )}
+                </TabsContent>
+
+                {/* Statistics Tab */}
+                <TabsContent value="statistics" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Total Users */}
+                    <StatCard
+                      icon={Users}
+                      title="TOTAL USERS"
+                      value={statistics?.totalUsers || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalUsersDailyChange}
+                      onClick={() => navigate("/admin/dashboard")}
+                    />
+                    
+                    {/* Active Clients */}
+                    <StatCard
+                      icon={UserCheck}
+                      title="ACTIVE CLIENTS"
+                      value={statistics?.activeClients || 0}
+                      color="red"
+                      dailyChange={statistics?.clientsDailyChange}
+                      onClick={() => navigate("/admin/clients")}
+                    />
+                    
+                    {/* Professionals */}
+                    <StatCard
+                      icon={BriefcaseBusiness}
+                      title="PROFESSIONALS"
+                      value={statistics?.professionals || 0}
+                      color="green"
+                      dailyChange={statistics?.professionalsDailyChange}
+                      badge={statistics?.professionalsNew}
+                      onClick={() => navigate("/admin/professionals")}
+                    />
+                    
+                    {/* Monthly Revenue */}
+                    <StatCard
+                      icon={Wallet}
+                      title="MONTHLY REVENUE"
+                      value={statistics?.monthlyRevenue || 0}
+                      color="orange"
+                      dailyChange={statistics?.monthlyRevenueDailyChange}
+                      onClick={() => navigate("/admin/payment-finance")}
+                    />
+                    
+                    {/* Total Jobs */}
+                    <StatCard
+                      icon={Hammer}
+                      title="TOTAL JOBS"
+                      value={statistics?.totalJobs || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalJobsDailyChange}
+                      badge={statistics?.totalJobsDailyChange}
+                      onClick={() => navigate("/admin/job-manage")}
+                    />
+                    
+                    {/* Total Services */}
+                    <StatCard
+                      icon={List}
+                      title="TOTAL SERVICES"
+                      value={statistics?.totalServices || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalServicesDailyChange}
+                      badge={statistics?.totalServicesDailyChange}
+                      onClick={() => navigate("/admin/service")}
+                    />
+                    
+                    {/* Total Orders */}
+                    <StatCard
+                      icon={Package}
+                      title="TOTAL ORDERS"
+                      value={statistics?.totalOrders || 0}
+                      color="red"
+                      dailyChange={statistics?.totalOrdersDailyChange}
+                      badge={statistics?.totalOrdersDailyChange}
+                      onClick={() => navigate("/admin/service-order")}
+                    />
+                    
+                    {/* Total Deliveries */}
+                    <StatCard
+                      icon={Truck}
+                      title="TOTAL DELIVERIES"
+                      value={statistics?.totalDeliveries || 0}
+                      color="green"
+                      dailyChange={statistics?.totalDeliveriesDailyChange}
+                      badge={statistics?.totalDeliveriesDailyChange}
+                      onClick={() => navigate("/admin/deliveries")}
+                    />
+                    
+                    {/* Total Reviews */}
+                    <StatCard
+                      icon={Star}
+                      title="TOTAL REVIEWS"
+                      value={statistics?.totalReviews || 0}
+                      color="green"
+                      dailyChange={statistics?.totalReviewsDailyChange}
+                      badge={statistics?.totalReviewsDailyChange}
+                      onClick={() => navigate("/admin/reviews")}
+                    />
+                  </div>
+
+                  {/* Chart Cards Section */}
                   <div className="mt-8 space-y-6">
                     <h2 className="text-2xl font-bold text-black dark:text-white mb-4">Analytics Overview</h2>
                     
@@ -523,235 +812,6 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   </div>
-                </TabsContent>
-
-                {/* Statistics Cards Tab */}
-                <TabsContent value="statistics" className="mt-6">
-                  {loadingStats ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
-                        <p className="text-black dark:text-white">Loading statistics...</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <section className="grid gap-4 md:grid-cols-3">
-                  {/* Column 1 - Orange Cards */}
-                  <div className="space-y-4">
-                    <StatCard
-                      icon={Users}
-                      title="PROFESSIONALS"
-                      value={statistics?.professionals || 0}
-                      color="orange"
-                      dailyChange={statistics?.professionalsDailyChange}
-                      badge={statistics?.professionalsDailyChange}
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={Hammer}
-                      title="TOTAL JOB"
-                      value={statistics?.totalJob || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalJobDailyChange}
-                      badge={statistics?.totalJobDailyChange}
-                      onClick={() => navigate("/admin/job-manage")}
-                    />
-                    <StatCard
-                      icon={FolderTree}
-                      title="TOTAL CATEGORY"
-                      value={statistics?.totalCategory || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalCategoryDailyChange}
-                      badge={statistics?.totalCategoryDailyChange}
-                      onClick={() => navigate("/admin/sectors")}
-                    />
-                    <StatCard
-                      icon={ShieldCheck}
-                      title="ACCOUNT VERIFICATION DOCUMENT"
-                      value={statistics?.accountVerificationDocument || 0}
-                      badge={statistics?.accountVerificationDocumentNew || 0}
-                      color="orange"
-                      dailyChange={statistics?.accountVerificationDocumentDailyChange}
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={UserCheck}
-                      title="TOTAL VERIFICATION USERS"
-                      value={statistics?.totalVerificationUsers || 0}
-                      color="orange"
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={Calendar}
-                      title="VERIFICATION USERS TODAY"
-                      value={statistics?.verificationUsersToday || 0}
-                      color="orange"
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={TrendingUp}
-                      title="PROFESSIONAL REFERRALS"
-                      value={statistics?.professionalsReferrals || 0}
-                      color="orange"
-                      dailyChange={statistics?.professionalsReferralsDailyChange}
-                      badge={statistics?.professionalsReferralsDailyChange}
-                      onClick={() => navigate("/admin/referrals-professional")}
-                    />
-                    <StatCard
-                      icon={AlertCircle}
-                      title="FLAGGED"
-                      value={statistics?.flagged || 0}
-                      color="orange"
-                      dailyChange={statistics?.flaggedDailyChange}
-                      badge={statistics?.flaggedDailyChange}
-                      onClick={() => navigate("/admin/flagged")}
-                    />
-                  </div>
-
-                  {/* Column 2 - Red Cards */}
-                  <div className="space-y-4">
-                    <StatCard
-                      icon={Users}
-                      title="CLIENTS"
-                      value={statistics?.clients || 0}
-                      color="red"
-                      dailyChange={statistics?.clientsDailyChange}
-                      badge={statistics?.clientsDailyChange}
-                      onClick={() => navigate("/admin/clients")}
-                    />
-                    <StatCard
-                      icon={Gavel}
-                      title="TOTAL JOB IN DISPUTE"
-                      value={statistics?.totalJobInDispute || 0}
-                      color="red"
-                      dailyChange={statistics?.totalJobInDisputeDailyChange}
-                      badge={statistics?.totalJobInDisputeDailyChange}
-                      onClick={() => navigate("/admin/dispute-list")}
-                    />
-                    <StatCard
-                      icon={CreditCard}
-                      title="PENDING WITHDRAWAL REQUEST"
-                      value={statistics?.pendingWithdrawalRequest || 0}
-                      color="red"
-                      dailyChange={statistics?.pendingWithdrawalRequestDailyChange}
-                      badge={statistics?.pendingWithdrawalRequestDailyChange}
-                      onClick={() => navigate("/admin/withdrawal-request")}
-                    />
-                    <StatCard
-                      icon={MessageCircle}
-                      title="MESSAGE CENTER"
-                      value={statistics?.messageCenter || 0}
-                      badge={statistics?.messageCenterNew || 0}
-                      color="red"
-                      dailyChange={statistics?.messageCenterDailyChange}
-                      onClick={() => navigate("/admin/message-center")}
-                    />
-                    <StatCard
-                      icon={TrendingUp}
-                      title="CLIENT REFERRALS"
-                      value={statistics?.clientsReferrals || 0}
-                      color="red"
-                      dailyChange={statistics?.clientsReferralsDailyChange}
-                      badge={statistics?.clientsReferralsDailyChange}
-                      onClick={() => navigate("/admin/referrals-client")}
-                    />
-                    <StatCard
-                      icon={Archive}
-                      title="DELETED ACCOUNT"
-                      value={statistics?.deletedAccount || 0}
-                      badge={statistics?.deletedAccountNew || 0}
-                      color="red"
-                      dailyChange={statistics?.deletedAccountDailyChange}
-                      onClick={() => navigate("/admin/delete-account")}
-                    />
-                    <StatCard
-                      icon={Package}
-                      title="ORDERS"
-                      value={statistics?.orders || 0}
-                      badge={statistics?.ordersNew || 0}
-                      color="red"
-                      dailyChange={statistics?.ordersDailyChange}
-                      onClick={() => navigate("/admin/service-order")}
-                    />
-                    <StatCard
-                      icon={Clock}
-                      title="APPROVAL PENDING SERVICE"
-                      value={statistics?.approvalPendingService || 0}
-                      color="red"
-                      dailyChange={statistics?.approvalPendingServiceDailyChange}
-                      badge={statistics?.approvalPendingServiceDailyChange}
-                      onClick={() => navigate("/admin/approval-pending-service")}
-                    />
-                  </div>
-
-                  {/* Column 3 - Green Cards */}
-                  <div className="space-y-4">
-                    <StatCard
-                      icon={Users}
-                      title="SUBADMIN"
-                      value={statistics?.subadmin || 0}
-                      color="green"
-                      dailyChange={statistics?.subadminDailyChange}
-                      badge={statistics?.subadminDailyChange}
-                      onClick={() => navigate("/admin/sub-admins")}
-                    />
-                    <StatCard
-                      icon={Package}
-                      title="TOTAL PLANS & PACKAGES"
-                      value={statistics?.totalPlansPackages || 0}
-                      color="green"
-                      dailyChange={statistics?.totalPlansPackagesDailyChange}
-                      badge={statistics?.totalPlansPackagesDailyChange}
-                      onClick={() => navigate("/admin/packages")}
-                    />
-                    <StatCard
-                      icon={Send}
-                      title="NEW CONTACT REQUEST"
-                      value={statistics?.newContactRequest || 0}
-                      badge={statistics?.newContactRequestNew || 0}
-                      color="green"
-                      dailyChange={statistics?.newContactRequestDailyChange}
-                      onClick={() => navigate("/admin/contact-requests")}
-                    />
-                    <StatCard
-                      icon={Gift}
-                      title="AFFILIATE"
-                      value={statistics?.affiliate || 0}
-                      badge={statistics?.affiliateNew || 0}
-                      color="green"
-                      dailyChange={statistics?.affiliateDailyChange}
-                      onClick={() => navigate("/admin/affiliate")}
-                    />
-                    <StatCard
-                      icon={Handshake}
-                      title="ASK TO STEP IN"
-                      value={statistics?.askToStepIn || 0}
-                      color="green"
-                      dailyChange={statistics?.askToStepInDailyChange}
-                      badge={statistics?.askToStepInDailyChange}
-                      onClick={() => navigate("/admin/ask-step-in")}
-                    />
-                    <StatCard
-                      icon={List}
-                      title="SERVICE LISTING"
-                      value={statistics?.serviceListing || 0}
-                      color="green"
-                      dailyChange={statistics?.serviceListingDailyChange}
-                      badge={statistics?.serviceListingDailyChange}
-                      onClick={() => navigate("/admin/service")}
-                    />
-                    <StatCard
-                      icon={Box}
-                      title="CUSTOM ORDERS"
-                      value={statistics?.customOrders || 0}
-                      badge={statistics?.customOrdersNew || 0}
-                      color="green"
-                      dailyChange={statistics?.customOrdersDailyChange}
-                      onClick={() => navigate("/admin/custom-order")}
-                    />
-                    </div>
-                    </section>
-                  )}
                 </TabsContent>
               </Tabs>
       </div>

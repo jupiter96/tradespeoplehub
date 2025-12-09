@@ -103,6 +103,12 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         ...(searchTerm && { search: searchTerm }),
       });
 
+      // Check if this is the deleted accounts page
+      const isDeletedAccountsPage = window.location.pathname.includes("delete-account");
+      if (isDeletedAccountsPage) {
+        params.append("deleted", "true");
+      }
+
       const endpoint = role === "subadmin" ? "/api/admin/admins" : "/api/admin/users";
       const response = await fetch(`${API_BASE_URL}${endpoint}?${params}`, {
         credentials: "include",
@@ -206,26 +212,64 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   };
 
   const handleDelete = async (user: User) => {
+    console.log("[handleDelete] TRIGGERED - User:", user);
+    console.log("[handleDelete] User ID:", user.id);
+    console.log("[handleDelete] User Role:", user.role);
+    console.log("[handleDelete] Component Role:", role);
+    
     if (!confirm(`Are you sure you want to delete ${user.name}?`)) {
+      console.log("[handleDelete] User cancelled deletion");
       return;
     }
 
+    console.log("[handleDelete] User confirmed deletion, proceeding...");
+
     try {
       const endpoint = role === "subadmin" ? `/api/admin/admins/${user.id}` : `/api/admin/users/${user.id}`;
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const fullUrl = `${API_BASE_URL}${endpoint}`;
+      
+      console.log("[handleDelete] DELETE Request URL:", fullUrl);
+      console.log("[handleDelete] API_BASE_URL:", API_BASE_URL);
+      console.log("[handleDelete] Endpoint:", endpoint);
+      
+      const response = await fetch(fullUrl, {
         method: "DELETE",
         credentials: "include",
       });
 
+      console.log("[handleDelete] Response Status:", response.status);
+      console.log("[handleDelete] Response OK:", response.ok);
+      console.log("[handleDelete] Response Headers:", response.headers);
+
       if (!response.ok) {
-        throw new Error("Failed to delete user");
+        const errorText = await response.text();
+        console.error("[handleDelete] Response not OK - Status:", response.status);
+        console.error("[handleDelete] Response Error Text:", errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+          console.error("[handleDelete] Response Error Data:", errorData);
+        } catch (e) {
+          console.error("[handleDelete] Could not parse error response as JSON");
+        }
+        
+        throw new Error(`Failed to delete user: ${response.status} - ${errorData?.error || errorText}`);
       }
 
+      const responseData = await response.json();
+      console.log("[handleDelete] SUCCESS - Response Data:", responseData);
+
       toast.success("User deleted successfully");
+      console.log("[handleDelete] Calling fetchUsers() to refresh list");
       fetchUsers();
+      console.log("[handleDelete] Calling onDelete callback");
       onDelete?.(user);
     } catch (error) {
-      console.error("Error deleting user:", error);
+      console.error("[handleDelete] ERROR CAUGHT:", error);
+      console.error("[handleDelete] Error Type:", error instanceof Error ? error.constructor.name : typeof error);
+      console.error("[handleDelete] Error Message:", error instanceof Error ? error.message : String(error));
+      console.error("[handleDelete] Error Stack:", error instanceof Error ? error.stack : "No stack trace");
       toast.error("Failed to delete user");
     }
   };

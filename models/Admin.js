@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const adminSchema = new mongoose.Schema(
   {
-    name: {
+    fullname: {
       type: String,
       required: true,
       trim: true,
@@ -27,11 +27,10 @@ const adminSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-    // Track which dashboard cards have been viewed by this admin
-    dashboardCardViews: {
-      type: Map,
-      of: Date,
-      default: {},
+    avatar: {
+      type: String,
+      trim: true,
+      default: null,
     },
   },
   {

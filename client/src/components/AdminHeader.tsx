@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon, Key, ChevronDown, User } from "lucide-react";
+import { Menu, X, LogOut, MessageCircle, Bell, Sun, Moon, Key, ChevronDown, User, Camera, XCircle } from "lucide-react";
 import logoImage from "figma:asset/71632be70905a17fd389a8d053249645c4e8a4df.png";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -22,13 +22,13 @@ import { Label } from "./ui/label";
 import { toast } from "sonner";
 import API_BASE_URL from "../config/api";
 import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface Admin {
   id: string;
-  name: string;
+  fullname: string;
   email: string;
-  phone: string;
-  postcode: string;
+  avatar?: string | null;
   createdAt: string;
   [key: string]: any;
 }
@@ -53,10 +53,13 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: "",
+    fullname: "",
     email: "",
   });
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync with sidebarOpen prop
   useEffect(() => {
@@ -224,8 +227,8 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
   };
 
   const handleUpdateProfile = async () => {
-    if (!profileData.name || !profileData.email) {
-      toast.error("Name and email are required");
+    if (!profileData.fullname || !profileData.email) {
+      toast.error("Full name and email are required");
       return;
     }
 
@@ -245,7 +248,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
         },
         credentials: "include",
         body: JSON.stringify({
-          name: profileData.name.trim(),
+          fullname: profileData.fullname.trim(),
           email: profileData.email.trim(),
         }),
       });
@@ -258,12 +261,74 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
       const data = await response.json();
       setCurrentAdmin(data.user);
+      setAvatarPreview(data.user?.avatar || null);
       toast.success("Profile updated successfully");
       setShowEditProfile(false);
     } catch (error) {
       toast.error("Failed to update profile");
     } finally {
       setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Unsupported file type. Please upload JPG, PNG, GIF, or WEBP image.");
+      event.target.value = "";
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      event.target.value = "";
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const response = await fetch(`${API_BASE_URL}/api/admin/profile/avatar`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload avatar");
+      }
+
+      const data = await response.json();
+      setCurrentAdmin(data.user);
+      setAvatarPreview(data.user?.avatar || null);
+      toast.success("Avatar updated successfully");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload avatar");
+      // Revert preview on error
+      setAvatarPreview(currentAdmin?.avatar || null);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -349,7 +414,13 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                   isDarkMode ? "text-white" : "text-gray-600"
                 }`}
               >
-                {currentAdmin?.name || "Admin"}
+                <Avatar className="w-6 h-6 mr-2">
+                  <AvatarImage src={currentAdmin?.avatar || undefined} alt="Admin Avatar" />
+                  <AvatarFallback className="bg-[#FE8A0F] text-white text-xs">
+                    {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
+                  </AvatarFallback>
+                </Avatar>
+                {currentAdmin?.fullname || "Admin"}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -359,7 +430,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                   setShowEditProfile(true);
                   if (currentAdmin) {
                     setProfileData({
-                      name: currentAdmin.name || "",
+                      fullname: currentAdmin.fullname || "",
                       email: currentAdmin.email || "",
                     });
                   }
@@ -484,23 +555,90 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
               <DialogHeader>
                 <DialogTitle className="text-black dark:text-white">Edit Profile</DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
-                  Update your name and email address.
+                  Update your profile information and avatar.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 mt-4">
+                {/* Avatar Upload Section */}
+                <div className="flex flex-col items-center gap-4">
+                  <Label className="text-black dark:text-white">Avatar</Label>
+                  <div className="relative">
+                    <Avatar className="w-24 h-24">
+                      <AvatarImage src={avatarPreview || undefined} alt="Admin Avatar" />
+                      <AvatarFallback className="bg-[#FE8A0F] text-white text-2xl">
+                        {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isUploadingAvatar && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/webp"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      id="avatar-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingAvatar}
+                      className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      {avatarPreview ? "Change Avatar" : "Upload Avatar"}
+                    </Button>
+                    {avatarPreview && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${API_BASE_URL}/api/admin/profile/avatar`, {
+                              method: "DELETE",
+                              credentials: "include",
+                            });
+                            if (response.ok) {
+                              const data = await response.json();
+                              setCurrentAdmin(data.user);
+                              setAvatarPreview(null);
+                              toast.success("Avatar removed successfully");
+                            } else {
+                              toast.error("Failed to remove avatar");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to remove avatar");
+                          }
+                        }}
+                        className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-red-600 dark:text-red-400"
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
                 <div>
-                  <Label htmlFor="profileName" className="text-black dark:text-white">
-                    Name *
+                  <Label htmlFor="profileFullname" className="text-black dark:text-white">
+                    Full Name *
                   </Label>
                   <Input
-                    id="profileName"
+                    id="profileFullname"
                     type="text"
-                    value={profileData.name}
+                    value={profileData.fullname}
                     onChange={(e) =>
-                      setProfileData({ ...profileData, name: e.target.value })
+                      setProfileData({ ...profileData, fullname: e.target.value })
                     }
                     className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                    placeholder="Enter your name"
+                    placeholder="Enter your full name"
                   />
                 </div>
                 <div>
@@ -525,9 +663,10 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                       setShowEditProfile(false);
                       if (currentAdmin) {
                         setProfileData({
-                          name: currentAdmin.name || "",
+                          fullname: currentAdmin.fullname || "",
                           email: currentAdmin.email || "",
                         });
+                        setAvatarPreview(currentAdmin.avatar || null);
                       }
                     }}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"

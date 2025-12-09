@@ -24,8 +24,8 @@ import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
-import { useSectors } from "../hooks/useSectorsAndCategories";
-import type { Sector } from "../hooks/useSectorsAndCategories";
+import { useSectors, useCategories, useSubCategories } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 
 const STEPS = [
   { id: 1, title: "About Me", icon: User, description: "Tell us about yourself" },
@@ -36,47 +36,7 @@ const STEPS = [
 ];
 
 // SECTORS will be loaded from API
-
-const CATEGORIES = [
-  "Emergency Repairs",
-  "Installation",
-  "Maintenance",
-  "Renovation",
-  "Consultation",
-  "Inspection",
-  "Other",
-];
-
-const SUBCATEGORIES = [
-  "Pipe Repair",
-  "Drain Cleaning",
-  "Boiler Installation",
-  "Radiator Repair",
-  "Wiring",
-  "Fuse Box",
-  "Lighting Installation",
-  "Socket Installation",
-  "Wall Painting",
-  "Ceiling Painting",
-  "Exterior Painting",
-  "Wallpapering",
-  "Kitchen Fitting",
-  "Bathroom Fitting",
-  "Flooring Installation",
-  "Tiling",
-  "Roof Repair",
-  "Gutter Cleaning",
-  "Chimney Repair",
-  "Flat Roofing",
-  "Garden Design",
-  "Lawn Care",
-  "Tree Surgery",
-  "Fencing",
-  "Window Cleaning",
-  "Carpet Cleaning",
-  "Deep Cleaning",
-  "End of Tenancy",
-];
+// CATEGORIES and SUBCATEGORIES will be loaded dynamically based on selected sector
 
 export default function ProfessionalRegistrationSteps() {
   const navigate = useNavigate();
@@ -88,7 +48,7 @@ export default function ProfessionalRegistrationSteps() {
   // Extract sector names for the select dropdown
   const SECTORS = sectorsData.map((s: Sector) => s.name);
   
-  // Form data
+  // Form data - declare state variables first
   const [aboutService, setAboutService] = useState<string>("");
   const [skipAboutMe, setSkipAboutMe] = useState<boolean>(false);
   const [hasTradeQualification, setHasTradeQualification] = useState<"yes" | "no">("no");
@@ -102,6 +62,30 @@ export default function ProfessionalRegistrationSteps() {
   
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Find selected sector object (after sector state is declared)
+  const selectedSectorObj = sectorsData.find((s: Sector) => s.name === sector);
+  const selectedSectorId = selectedSectorObj?._id;
+  
+  // Load categories for selected sector
+  const { categories: availableCategories, loading: categoriesLoading } = useCategories(
+    selectedSectorId,
+    undefined,
+    true // includeSubCategories
+  );
+  
+  // Load subcategories for selected categories
+  const selectedCategoryIds = availableCategories
+    .filter((cat: Category) => categories.includes(cat.name))
+    .map((cat: Category) => cat._id);
+  
+  // Get all subcategories from selected categories
+  const allSubcategories: SubCategory[] = [];
+  availableCategories.forEach((cat: Category) => {
+    if (categories.includes(cat.name) && cat.subCategories) {
+      allSubcategories.push(...cat.subCategories);
+    }
+  });
 
   // Initialize form data from userInfo if available
   useEffect(() => {
@@ -131,13 +115,8 @@ export default function ProfessionalRegistrationSteps() {
     if (userInfo?.sector) {
       setSector(userInfo.sector);
     }
-    if (userInfo?.services && userInfo.services.length > 0) {
-      // Separate categories and subcategories
-      const userCategories = userInfo.services.filter(s => CATEGORIES.includes(s));
-      const userSubcategories = userInfo.services.filter(s => !CATEGORIES.includes(s));
-      setCategories(userCategories);
-      setSubcategories(userSubcategories);
-    }
+    // Services will be loaded after categories are available
+    // This is handled in a separate useEffect below
     if (userInfo?.hasPublicLiability !== undefined) {
       setInsurance(userInfo.hasPublicLiability === true || userInfo.hasPublicLiability === "yes" ? "yes" : "no");
     }
@@ -227,12 +206,9 @@ export default function ProfessionalRegistrationSteps() {
             };
           }
         }
-        // Only update sector if it doesn't already exist
+        // Always update sector if provided (during registration)
         if (currentStep >= 2 && sector) {
-          // If user already has a sector, don't overwrite it
-          if (!userInfo?.sector) {
-            updateData.sector = sector;
-          }
+          updateData.sector = sector;
         }
         if (currentStep >= 3) {
           const allServices = [...categories, ...subcategories];
@@ -313,8 +289,8 @@ export default function ProfessionalRegistrationSteps() {
         updateData.insuranceExpiryDate = null;
       }
 
-      // Only update sector if it doesn't already exist
-      if (sector && !userInfo?.sector) {
+      // Always update sector if provided (during registration)
+      if (sector) {
         updateData.sector = sector;
       }
       
@@ -331,6 +307,9 @@ export default function ProfessionalRegistrationSteps() {
 
   const handleSectorChange = (selectedSector: string) => {
     setSector(selectedSector);
+    // Clear categories and subcategories when sector changes
+    setCategories([]);
+    setSubcategories([]);
     if (errors.sector) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -339,6 +318,32 @@ export default function ProfessionalRegistrationSteps() {
       });
     }
   };
+  
+  // Load user's existing services when sector and categories are loaded (only once)
+  const [hasLoadedUserServices, setHasLoadedUserServices] = useState(false);
+  useEffect(() => {
+    if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0 && sector && !hasLoadedUserServices) {
+      // Match user's services with loaded categories and subcategories
+      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const subcategoryNames = allSubcategories.map((sc: SubCategory) => sc.name);
+      
+      const userCategories = userInfo.services.filter((s: string) => categoryNames.includes(s));
+      const userSubcategories = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
+      
+      if (userCategories.length > 0) {
+        setCategories(userCategories);
+      }
+      if (userSubcategories.length > 0) {
+        setSubcategories(userSubcategories);
+      }
+      setHasLoadedUserServices(true);
+    }
+  }, [userInfo?.services, availableCategories, allSubcategories, sector, hasLoadedUserServices]);
+  
+  // Reset hasLoadedUserServices when sector changes
+  useEffect(() => {
+    setHasLoadedUserServices(false);
+  }, [sector]);
 
   const toggleCategory = (category: string) => {
     setCategories(prev => 
@@ -729,29 +734,61 @@ export default function ProfessionalRegistrationSteps() {
                       (Select all that apply)
                     </span>
                   </Label>
-                  <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {CATEGORIES.map((cat) => (
-                        <label
-                          key={cat}
-                          className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                            categories.includes(cat)
-                              ? 'border-[#FE8A0F] bg-[#FFF5EB]'
-                              : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
-                          } cursor-pointer transition-all`}
-                        >
-                          <Checkbox
-                            checked={categories.includes(cat)}
-                            onCheckedChange={() => toggleCategory(cat)}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                          />
-                          <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
-                            {cat}
-                          </span>
-                        </label>
-                      ))}
+                  {!sector ? (
+                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                        Please select a sector first
+                      </p>
                     </div>
-                  </div>
+                  ) : categoriesLoading ? (
+                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#FE8A0F] mb-2" />
+                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                        Loading categories...
+                      </p>
+                    </div>
+                  ) : availableCategories.length === 0 ? (
+                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                        No categories available for this sector
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availableCategories.map((cat: Category) => (
+                          <label
+                            key={cat._id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                              categories.includes(cat.name)
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                                : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                            } cursor-pointer transition-all`}
+                          >
+                            <Checkbox
+                              checked={categories.includes(cat.name)}
+                              onCheckedChange={() => {
+                                if (categories.includes(cat.name)) {
+                                  setCategories(categories.filter(c => c !== cat.name));
+                                  // Remove subcategories from this category when category is deselected
+                                  if (cat.subCategories) {
+                                    const subcatNames = cat.subCategories.map(sc => sc.name);
+                                    setSubcategories(subcategories.filter(sc => !subcatNames.includes(sc)));
+                                  }
+                                } else {
+                                  setCategories([...categories, cat.name]);
+                                }
+                              }}
+                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                            />
+                            <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                              {cat.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {errors.categories && (
                     <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
                       {errors.categories}
@@ -776,25 +813,49 @@ export default function ProfessionalRegistrationSteps() {
                       (Select all that apply)
                     </span>
                   </Label>
-                  <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {SUBCATEGORIES.map((subcat) => (
-                        <label
-                          key={subcat}
-                          className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB] cursor-pointer transition-all"
-                        >
-                          <Checkbox
-                            checked={subcategories.includes(subcat)}
-                            onCheckedChange={() => toggleSubcategory(subcat)}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                          />
-                          <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
-                            {subcat}
-                          </span>
-                        </label>
-                      ))}
+                  {categories.length === 0 ? (
+                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                        Please select at least one category first
+                      </p>
                     </div>
-                  </div>
+                  ) : allSubcategories.length === 0 ? (
+                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                        No subcategories available for selected categories
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {allSubcategories.map((subcat: SubCategory) => (
+                          <label
+                            key={subcat._id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                              subcategories.includes(subcat.name)
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                                : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                            } cursor-pointer transition-all`}
+                          >
+                            <Checkbox
+                              checked={subcategories.includes(subcat.name)}
+                              onCheckedChange={() => {
+                                if (subcategories.includes(subcat.name)) {
+                                  setSubcategories(subcategories.filter(sc => sc !== subcat.name));
+                                } else {
+                                  setSubcategories([...subcategories, subcat.name]);
+                                }
+                              }}
+                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                            />
+                            <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                              {subcat.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {errors.subcategories && (
                     <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
                       {errors.subcategories}

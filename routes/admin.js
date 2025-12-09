@@ -1,5 +1,8 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
 import User from '../models/User.js';
 import Admin from '../models/Admin.js';
 import SEOContent from '../models/SEOContent.js';
@@ -7,6 +10,45 @@ import EmailTemplate from '../models/EmailTemplate.js';
 import Category from '../models/Category.js';
 import Sector from '../models/Sector.js';
 import SubCategory from '../models/SubCategory.js';
+
+// Load environment variables
+dotenv.config();
+
+// Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+
+if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET,
+  });
+}
+
+// Helper function to extract public ID from Cloudinary URL
+const extractPublicId = (url) => {
+  if (!url) return null;
+  const match = url.match(/\/v\d+\/(.+)\./);
+  return match ? match[1] : null;
+};
+
+// Configure multer for avatar uploads
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
+    }
+  },
+});
+
+const avatarUploadMiddleware = avatarUpload.single('avatar');
 
 const sanitizeUser = (user) => user.toSafeObject();
 
@@ -137,13 +179,13 @@ router.get('/me', requireAdmin, async (req, res) => {
   }
 });
 
-// Update current admin profile (email and name)
+// Update current admin profile (email and fullname)
 router.put('/profile', requireAdmin, async (req, res) => {
   try {
-    const { email, name } = req.body || {};
+    const { email, fullname } = req.body || {};
     
-    if (!email || !name) {
-      return res.status(400).json({ error: 'Email and name are required' });
+    if (!email || !fullname) {
+      return res.status(400).json({ error: 'Email and fullname are required' });
     }
 
     const admin = await Admin.findById(req.session.adminId);
@@ -164,8 +206,8 @@ router.put('/profile', requireAdmin, async (req, res) => {
       admin.email = normalizedEmail;
     }
 
-    // Update name
-    admin.name = name.trim();
+    // Update fullname
+    admin.fullname = fullname.trim();
 
     await admin.save();
 
@@ -176,6 +218,135 @@ router.put('/profile', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Update admin profile error', error);
     return res.status(500).json({ error: error.message || 'Failed to update profile' });
+  }
+});
+
+// Upload admin avatar
+router.post(
+  '/profile/avatar',
+  requireAdmin,
+  (req, res, next) => {
+    avatarUploadMiddleware(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+      return next();
+    });
+  },
+  async (req, res) => {
+    try {
+      // Check if Cloudinary is configured
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+        return res.status(500).json({ 
+          error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'Avatar file is required' });
+      }
+
+      const admin = await Admin.findById(req.session.adminId);
+      if (!admin) {
+        return res.status(401).json({ error: 'Admin not found' });
+      }
+
+      // Delete old avatar from Cloudinary if exists
+      if (admin.avatar) {
+        const oldPublicId = extractPublicId(admin.avatar);
+        if (oldPublicId) {
+          try {
+            await cloudinary.uploader.destroy(oldPublicId);
+          } catch (error) {
+            console.warn('Failed to delete old avatar from Cloudinary:', error);
+          }
+        }
+      }
+
+      // Upload to Cloudinary
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'admin-avatars',
+            public_id: `admin-avatar-${admin._id}-${Date.now()}`,
+            transformation: [
+              { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+              { quality: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(req.file.buffer);
+      });
+
+      // Update only the avatar field to avoid validation issues
+      const updatedAdmin = await Admin.findByIdAndUpdate(
+        admin._id,
+        { avatar: uploadResult.secure_url },
+        { new: true, runValidators: false }
+      );
+
+      if (!updatedAdmin) {
+        return res.status(404).json({ error: 'Admin not found' });
+      }
+
+      return res.json({ user: updatedAdmin.toSafeObject() });
+    } catch (error) {
+      console.error('Avatar upload error', error);
+      return res.status(500).json({ 
+        error: error.message || 'Failed to upload avatar' 
+      });
+    }
+  }
+);
+
+// Delete admin avatar
+router.delete('/profile/avatar', requireAdmin, async (req, res) => {
+  try {
+    // Check if Cloudinary is configured
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ 
+        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
+      });
+    }
+
+    const admin = await Admin.findById(req.session.adminId);
+    if (!admin) {
+      return res.status(401).json({ error: 'Admin not found' });
+    }
+
+    if (admin.avatar) {
+      // Delete from Cloudinary
+      const publicId = extractPublicId(admin.avatar);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.warn('Failed to delete avatar from Cloudinary:', error);
+        }
+      }
+
+      // Update only the avatar field to avoid validation issues
+      const updatedAdmin = await Admin.findByIdAndUpdate(
+        admin._id,
+        { avatar: null },
+        { new: true, runValidators: false }
+      );
+
+      if (!updatedAdmin) {
+        return res.status(404).json({ error: 'Admin not found' });
+      }
+
+      return res.json({ user: updatedAdmin.toSafeObject() });
+    } else {
+      return res.json({ user: admin.toSafeObject() });
+    }
+  } catch (error) {
+    console.error('Avatar removal error', error);
+    return res.status(500).json({ error: 'Failed to remove avatar' });
   }
 });
 
@@ -204,6 +375,17 @@ router.get('/users', requireAdmin, async (req, res) => {
     if (role) {
       query.role = role;
     }
+    
+    // Check if this is a request for deleted accounts
+    const showDeleted = req.query.deleted === 'true';
+    if (showDeleted) {
+      // Show only deleted accounts
+      query.isDeleted = true;
+    } else {
+      // Exclude deleted users from regular user list
+      query.isDeleted = { $ne: true };
+    }
+    
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
@@ -211,7 +393,7 @@ router.get('/users', requireAdmin, async (req, res) => {
         { email: { $regex: search, $options: 'i' } },
       ];
     }
-    // Note: Admin can see all users including blocked ones, but for public APIs, filter out blocked users
+    // Note: Admin can see all users including blocked ones, but exclude deleted users unless explicitly requested
 
     const skip = (page - 1) * limit;
     
@@ -253,6 +435,8 @@ router.get('/users', requireAdmin, async (req, res) => {
       userObj.isBlocked = user.isBlocked || false;
       userObj.blockReviewInvitation = user.blockReviewInvitation || false;
       userObj.viewedByAdmin = user.viewedByAdmin || false;
+      userObj.isDeleted = user.isDeleted || false;
+      userObj.deletedAt = user.deletedAt || null;
       // Ensure publicProfile is included for professionals
       if (user.publicProfile) {
         userObj.publicProfile = user.publicProfile;
@@ -383,7 +567,7 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Delete user
+// Delete user (soft delete - move to deleted accounts)
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
@@ -403,9 +587,12 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
       return res.status(403).json({ error: 'Admin and subadmin users cannot be deleted through this endpoint' });
     }
 
-    await User.findByIdAndDelete(userId);
+    // Soft delete - mark as deleted instead of actually deleting
+    user.isDeleted = true;
+    user.deletedAt = new Date();
+    await user.save();
 
-    return res.json({ message: 'User deleted successfully' });
+    return res.json({ message: 'User moved to deleted accounts successfully', user: sanitizeUser(user) });
   } catch (error) {
     console.error('Delete user error', error);
     return res.status(500).json({ error: 'Failed to delete user' });
@@ -421,10 +608,18 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     yesterday.setDate(yesterday.getDate() - 1);
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // Count users by role - only count users NOT viewed by admin
+    // Count users by role - TOTAL count (all users regardless of viewedByAdmin)
+    // Exclude deleted users
     const professionalsCount = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
+      isDeleted: { $ne: true }
+    });
+    // Count NEW professionals (NOT viewed by admin) for badge
+    const professionalsNew = await User.countDocuments({ 
+      role: 'professional', 
+      isBlocked: { $ne: true },
+      isDeleted: { $ne: true },
       $or: [
         { viewedByAdmin: { $exists: false } },
         { viewedByAdmin: false }
@@ -433,26 +628,28 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const professionalsToday = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true },
+      createdAt: { $gte: today }
     });
     const professionalsYesterday = await User.countDocuments({ 
       role: 'professional', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: yesterday, $lt: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true },
+      createdAt: { $gte: yesterday, $lt: today }
     });
     const professionalsDailyChange = professionalsToday - professionalsYesterday;
 
+    // Count clients - TOTAL count (all clients regardless of viewedByAdmin)
     const clientsCount = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
+      isDeleted: { $ne: true }
+    });
+    // Count NEW clients (NOT viewed by admin) for badge
+    const clientsNew = await User.countDocuments({ 
+      role: 'client', 
+      isBlocked: { $ne: true },
+      isDeleted: { $ne: true },
       $or: [
         { viewedByAdmin: { $exists: false } },
         { viewedByAdmin: false }
@@ -461,35 +658,37 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const clientsToday = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true },
+      createdAt: { $gte: today }
     });
     const clientsYesterday = await User.countDocuments({ 
       role: 'client', 
       isBlocked: { $ne: true },
-      createdAt: { $gte: yesterday, $lt: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true },
+      createdAt: { $gte: yesterday, $lt: today }
     });
     const clientsDailyChange = clientsToday - clientsYesterday;
 
+    // Count subadmin - TOTAL count (all subadmins regardless of viewedByAdmin)
     const subadminCount = await User.countDocuments({ 
       role: 'subadmin',
+      isDeleted: { $ne: true }
+    });
+    // Count NEW subadmins (NOT viewed by admin) for badge
+    const subadminNew = await User.countDocuments({ 
+      role: 'subadmin',
+      isDeleted: { $ne: true },
       $or: [
         { viewedByAdmin: { $exists: false } },
         { viewedByAdmin: false }
       ]
     });
 
-    // Count verification documents pending (total document count, not user count)
-    // Only count documents that have been submitted (have documentUrl), are pending, and NOT viewed by admin
+    // Count verification documents pending - TOTAL count (all pending documents regardless of viewedByAdmin)
+    // Exclude deleted users
     const professionalsWithPendingDocs = await User.find({
       role: 'professional',
+      isDeleted: { $ne: true },
       $or: [
         { 
           'verification.address.status': 'pending',
@@ -506,32 +705,49 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       ],
     });
     
-    // Count total pending documents that are NOT viewed by admin (not users)
+    // Count total pending documents (all pending documents, not users)
     let verificationDocsPendingCount = 0;
+    professionalsWithPendingDocs.forEach(user => {
+      // Count address document if pending and has documentUrl
+      if (user.verification?.address?.status === 'pending' && 
+          user.verification?.address?.documentUrl) {
+        verificationDocsPendingCount++;
+      }
+      // Count idCard document if pending and has documentUrl
+      if (user.verification?.idCard?.status === 'pending' && 
+          user.verification?.idCard?.documentUrl) {
+        verificationDocsPendingCount++;
+      }
+      // Count publicLiabilityInsurance document if pending and has documentUrl
+      if (user.verification?.publicLiabilityInsurance?.status === 'pending' && 
+          user.verification?.publicLiabilityInsurance?.documentUrl) {
+        verificationDocsPendingCount++;
+      }
+    });
+
+    // Count NEW verification documents (pending documents with documentUrl that are NOT viewed by admin)
+    // Badge shows new count in real-time, excluding documents already viewed by admin
+    let verificationDocsNew = 0;
     professionalsWithPendingDocs.forEach(user => {
       // Count address document if pending, has documentUrl, and NOT viewed by admin
       if (user.verification?.address?.status === 'pending' && 
           user.verification?.address?.documentUrl &&
           !user.verification?.address?.viewedByAdmin) {
-        verificationDocsPendingCount++;
+        verificationDocsNew++;
       }
       // Count idCard document if pending, has documentUrl, and NOT viewed by admin
       if (user.verification?.idCard?.status === 'pending' && 
           user.verification?.idCard?.documentUrl &&
           !user.verification?.idCard?.viewedByAdmin) {
-        verificationDocsPendingCount++;
+        verificationDocsNew++;
       }
       // Count publicLiabilityInsurance document if pending, has documentUrl, and NOT viewed by admin
       if (user.verification?.publicLiabilityInsurance?.status === 'pending' && 
           user.verification?.publicLiabilityInsurance?.documentUrl &&
           !user.verification?.publicLiabilityInsurance?.viewedByAdmin) {
-        verificationDocsPendingCount++;
+        verificationDocsNew++;
       }
     });
-
-    // Count new verification documents (pending documents with documentUrl that are NOT viewed by admin)
-    // Badge shows new count in real-time, excluding documents already viewed by admin
-    const verificationDocsNew = verificationDocsPendingCount;
 
     // Count total users who have submitted verification documents (any document with documentUrl)
     const totalVerificationUsers = await User.countDocuments({
@@ -600,53 +816,40 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const flaggedDailyChange = flaggedToday - flaggedYesterday;
 
-    // Count deleted accounts (soft delete - accounts marked as deleted) - only count NOT viewed by admin
+    // Count deleted accounts (soft delete - accounts marked as deleted) - TOTAL count
     const deletedAccountsCount = await User.countDocuments({
-      isBlocked: true,
-      blockedAt: { $exists: true },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: true
     });
+    // Count NEW deleted accounts (NOT viewed by admin) for badge
     const deletedAccountsNew = await User.countDocuments({
-      isBlocked: true,
-      blockedAt: { $gte: last7Days },
+      isDeleted: true,
+      deletedAt: { $gte: last7Days },
       $or: [
         { viewedByAdmin: { $exists: false } },
         { viewedByAdmin: false }
       ]
     });
     const deletedAccountsToday = await User.countDocuments({
-      isBlocked: true,
-      blockedAt: { $gte: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: true,
+      deletedAt: { $gte: today }
     });
     const deletedAccountsYesterday = await User.countDocuments({
-      isBlocked: true,
-      blockedAt: { $gte: yesterday, $lt: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: true,
+      deletedAt: { $gte: yesterday, $lt: today }
     });
     const deletedAccountsDailyChange = deletedAccountsToday - deletedAccountsYesterday;
 
-    // Count affiliates (using referralCode as proxy) - only count NOT viewed by admin
+    // Count affiliates (using referralCode as proxy) - TOTAL count
     const affiliateCount = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true }
     });
+    // Count NEW affiliates (NOT viewed by admin) for badge
     const affiliateNew = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
+      isDeleted: { $ne: true },
       createdAt: { $gte: last7Days },
       $or: [
         { viewedByAdmin: { $exists: false } },
@@ -656,20 +859,12 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const affiliateToday = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
-      createdAt: { $gte: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      createdAt: { $gte: today }
     });
     const affiliateYesterday = await User.countDocuments({
       role: 'professional',
       referralCode: { $exists: true, $ne: null },
-      createdAt: { $gte: yesterday, $lt: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      createdAt: { $gte: yesterday, $lt: today }
     });
     const affiliateDailyChange = affiliateToday - affiliateYesterday;
 
@@ -710,13 +905,18 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const totalSectorDailyChange = sectorToday - sectorYesterday;
 
     // Calculate total users
-    const totalUsers = await User.countDocuments({ isBlocked: { $ne: true } });
+    const totalUsers = await User.countDocuments({ 
+      isBlocked: { $ne: true },
+      isDeleted: { $ne: true }
+    });
     const totalUsersToday = await User.countDocuments({ 
       isBlocked: { $ne: true },
+      isDeleted: { $ne: true },
       createdAt: { $gte: today }
     });
     const totalUsersYesterday = await User.countDocuments({ 
       isBlocked: { $ne: true },
+      isDeleted: { $ne: true },
       createdAt: { $gte: yesterday, $lt: today }
     });
     const totalUsersDailyChange = totalUsersToday - totalUsersYesterday;
@@ -725,13 +925,15 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     // For now, we'll count all non-blocked clients as active
     const activeClients = await User.countDocuments({ 
       role: 'client', 
-      isBlocked: { $ne: true } 
+      isBlocked: { $ne: true },
+      isDeleted: { $ne: true }
     });
 
     // Calculate verified professionals
     const verifiedProfessionals = await User.countDocuments({
       role: 'professional',
       isBlocked: { $ne: true },
+      isDeleted: { $ne: true },
       $and: [
         { 'verification.email.status': 'verified' },
         { 'verification.phone.status': 'verified' },
@@ -764,22 +966,16 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const clientsReferralsDailyChange = clientsReferralsToday - clientsReferralsYesterday;
 
-    // Calculate subadmin daily change - only count NOT viewed by admin
+    // Calculate subadmin daily change - TOTAL count
     const subadminToday = await User.countDocuments({ 
       role: 'subadmin',
-      createdAt: { $gte: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true },
+      createdAt: { $gte: today }
     });
     const subadminYesterday = await User.countDocuments({ 
       role: 'subadmin',
-      createdAt: { $gte: yesterday, $lt: today },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      isDeleted: { $ne: true },
+      createdAt: { $gte: yesterday, $lt: today }
     });
     const subadminDailyChange = subadminToday - subadminYesterday;
 
@@ -806,6 +1002,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
 
       // Column 2 - Red
       clients: clientsCount || 0,
+      clientsNew: clientsNew || 0, // New clients (not viewed by admin) for badge
       clientsDailyChange: clientsDailyChange || 0,
       totalJobInDispute: 0, // Job/Dispute model not implemented yet
       totalJobInDisputeDailyChange: 0,
@@ -817,7 +1014,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       clientsReferrals: clientsReferrals || 0,
       clientsReferralsDailyChange: clientsReferralsDailyChange || 0,
       deletedAccount: deletedAccountsCount || 0,
-      deletedAccountNew: deletedAccountsNew || 0,
+      deletedAccountNew: deletedAccountsNew || 0, // New deleted accounts (not viewed by admin) for badge
       deletedAccountDailyChange: deletedAccountsDailyChange || 0,
       orders: 0, // Order model not implemented yet
       ordersNew: 0,
@@ -825,6 +1022,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
 
       // Column 3 - Green
       subadmin: subadminCount || 0,
+      subadminNew: subadminNew || 0, // New subadmins (not viewed by admin) for badge
       subadminDailyChange: subadminDailyChange || 0,
       totalPlansPackages: 0, // Plan/Package model not implemented yet
       totalPlansPackagesDailyChange: 0,
@@ -832,7 +1030,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       newContactRequestNew: 0,
       newContactRequestDailyChange: 0,
       affiliate: affiliateCount || 0,
-      affiliateNew: affiliateNew || 0,
+      affiliateNew: affiliateNew || 0, // New affiliates (not viewed by admin) for badge
       affiliateDailyChange: affiliateDailyChange || 0,
       askToStepIn: 0, // Dispute model not implemented yet
       askToStepInDailyChange: 0,
@@ -901,7 +1099,7 @@ router.put('/change-password', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const admin = await User.findById(req.session.userId);
+    const admin = await Admin.findById(req.session.adminId);
     if (!admin) {
       return res.status(404).json({ error: 'Admin not found' });
     }
@@ -946,7 +1144,7 @@ router.get('/admins', requireAdmin, async (req, res) => {
     const query = { role: 'subadmin' };
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
+        { fullname: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
       ];
     }
@@ -959,7 +1157,7 @@ router.get('/admins', requireAdmin, async (req, res) => {
     
     // Map frontend sort fields to database fields
     const sortFieldMap = {
-      'name': 'name',
+      'name': 'fullname',
       'email': 'email',
       'createdAt': 'createdAt',
     };
@@ -1025,16 +1223,16 @@ router.post('/admins', requireAdmin, async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const existingAdmin = await Admin.findOne({ email: normalizedEmail });
-    if (existingAdmin) {
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
       return res.status(409).json({ error: 'Email already exists' });
     }
 
     const passwordHash = await bcrypt.hash(password.trim(), 12);
 
-    // Create sub-admin - only admin-related fields
+    // Create sub-admin in Admin collection (not User collection)
     const admin = await Admin.create({
-      name: name.trim(),
+      fullname: name.trim(),
       email: normalizedEmail,
       passwordHash,
       role: 'subadmin',
@@ -1065,10 +1263,10 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
     delete updates.role;
     delete updates.email;
 
-    // Only allow updating name, password, and permissions
+    // Only allow updating fullname, password, and permissions
     const allowedUpdates = {};
-    if (updates.name) {
-      allowedUpdates.name = updates.name.trim();
+    if (updates.name || updates.fullname) {
+      allowedUpdates.fullname = (updates.fullname || updates.name || '').trim();
     }
     if (updates.password) {
       allowedUpdates.passwordHash = await bcrypt.hash(updates.password.trim(), 12);
@@ -1349,7 +1547,11 @@ router.put('/users/:id/viewed', requireAdmin, async (req, res) => {
     }
 
     user.viewedByAdmin = true;
-    await user.save();
+    // For subadmin users, ensure phone is properly handled (optional field)
+    if (user.role === 'subadmin' && !user.phone) {
+      user.phone = undefined; // Explicitly set to undefined for optional field
+    }
+    await user.save({ validateBeforeSave: true });
 
     return res.json({ 
       user: sanitizeUser(user),

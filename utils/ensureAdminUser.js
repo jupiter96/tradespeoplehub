@@ -12,10 +12,12 @@ export async function ensureAdminUser() {
   const passwordHash = await bcrypt.hash('123456', 12);
 
   const createdAdmin = await Admin.create({
-    name: 'Admin User',
+    fullname: 'Admin',
     email: 'admin@gmail.com',
     passwordHash,
     role: 'admin',
+    permissions: [], // Super admin has empty permissions array
+    avatar: null,
   });
 
   console.info(`Seeded default admin user (${createdAdmin.email} / 123456)`);

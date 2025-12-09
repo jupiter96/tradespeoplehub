@@ -30,6 +30,8 @@ import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import API_BASE_URL from "../config/api";
+import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category } from "../hooks/useSectorsAndCategories";
 
 interface ProfileData {
   id: string;
@@ -82,6 +84,20 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Load sectors and categories - must be called before any conditional returns
+  const { sectors: sectorsData } = useSectors();
+  
+  // Get selected sector and categories based on profile (if available)
+  const selectedSectorObj = profile?.sector 
+    ? sectorsData.find((s: Sector) => s.name === profile.sector)
+    : null;
+  const selectedSectorId = selectedSectorObj?._id;
+  const { categories: availableCategories } = useCategories(
+    selectedSectorId,
+    undefined,
+    false // don't need subcategories here
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -188,7 +204,30 @@ export default function ProfilePage() {
     (profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : null) || 
     profile.name || 
     "Professional";
-  const displayTitle = profile.sector || "Professional Service Provider";
+  
+  // Get first category from services array by matching with actual category names
+  const getFirstCategory = () => {
+    if (profile.services && profile.services.length > 0 && availableCategories.length > 0) {
+      // Get category names from available categories
+      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      
+      // Find the first service item that matches a category name
+      const firstCategory = profile.services.find((service: string) => 
+        categoryNames.includes(service)
+      );
+      
+      if (firstCategory) {
+        return firstCategory;
+      }
+    }
+    // Fallback: return first service item if categories not loaded yet
+    if (profile.services && profile.services.length > 0) {
+      return profile.services[0];
+    }
+    return null;
+  };
+  
+  const displayTitle = getFirstCategory() || profile.sector || "Professional Service Provider";
   
   // Build location string with townCity, county, and postcode
   const locationParts = [];

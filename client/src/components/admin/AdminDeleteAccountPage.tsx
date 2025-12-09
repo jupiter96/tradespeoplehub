@@ -1,13 +1,32 @@
-import React from "react";
+import React, { useRef } from "react";
 import AdminPageLayout from "./AdminPageLayout";
+import AdminUsersTable from "./AdminUsersTable";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 
 export default function AdminDeleteAccountPage() {
   useAdminRouteGuard();
+  const tableRef = useRef<{ refresh: () => void }>(null);
+
+  const handleEdit = (user: any) => {
+    // Edit functionality can be added if needed
+    console.log("Edit user:", user);
+  };
+
+  const handleDelete = (user: any) => {
+    // Delete functionality - this would permanently delete
+    console.log("Delete user:", user);
+  };
+
+  const handleSuccess = () => {
+    if (tableRef.current) {
+      tableRef.current.refresh();
+    }
+  };
+
   return (
     <AdminPageLayout
-      title="Delete Account"
-      description="Manage account deletion requests"
+      title="Deleted Account"
+      description="View and manage deleted accounts"
       tabs={[
         { key: "client", label: "Client" },
         { key: "professional", label: "Professional" },
@@ -15,16 +34,14 @@ export default function AdminDeleteAccountPage() {
       defaultTab="client"
     >
       {(activeTab) => (
-        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
-          <div className="text-center py-12">
-            <p className="text-lg font-semibold text-[#FE8A0F] mb-2">
-              Delete Account - {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-            </p>
-            <p className="text-sm text-black dark:text-white">
-              Account deletion requests for {activeTab}s will be displayed here.
-            </p>
-          </div>
-        </div>
+        <AdminUsersTable
+          ref={tableRef}
+          role={activeTab as "client" | "professional"}
+          title={`Deleted ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Accounts`}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          showVerification={false}
+        />
       )}
     </AdminPageLayout>
   );

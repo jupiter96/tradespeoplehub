@@ -59,6 +59,8 @@ import {
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount, ProfileUpdatePayload } from "./AccountContext";
+import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import MyJobsSection from "./MyJobsSection";
@@ -1557,70 +1559,29 @@ function JobsSection() {
 function DetailsSection() {
   const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
   const [isEditing, setIsEditing] = useState(false);
-  // Categories and subcategories from ProfessionalRegistrationSteps
-  const CATEGORIES = [
-    "Emergency Repairs",
-    "Installation",
-    "Maintenance",
-    "Renovation",
-    "Consultation",
-    "Inspection",
-    "Other",
-  ];
-
-  const SUBCATEGORIES = [
-    "Pipe Repair",
-    "Drain Cleaning",
-    "Boiler Installation",
-    "Radiator Repair",
-    "Wiring",
-    "Fuse Box",
-    "Lighting Installation",
-    "Socket Installation",
-    "Wall Painting",
-    "Ceiling Painting",
-    "Exterior Painting",
-    "Wallpapering",
-    "Kitchen Fitting",
-    "Bathroom Fitting",
-    "Flooring Installation",
-    "Tiling",
-    "Roof Repair",
-    "Gutter Cleaning",
-    "Chimney Repair",
-    "Flat Roofing",
-    "Garden Design",
-    "Lawn Care",
-    "Tree Surgery",
-    "Fencing",
-    "Window Cleaning",
-    "Carpet Cleaning",
-    "Deep Cleaning",
-    "End of Tenancy",
-  ];
-
-  // Sectors list (same as ProfessionalRegistrationSteps)
-  const SECTORS = [
-    "Home & Garden",
-    "Plumbing",
-    "Electrical",
-    "Heating & Cooling",
-    "Building & Construction",
-    "Painting & Decorating",
-    "Carpentry & Joinery",
-    "Roofing",
-    "Flooring",
-    "Landscaping",
-    "Cleaning",
-    "Other",
-  ];
+  
+  // Load sectors from API
+  const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
+  
+  // Find selected sector object
+  const selectedSectorObj = sectorsData.find((s: Sector) => s.name === userInfo?.sector);
+  const selectedSectorId = selectedSectorObj?._id;
+  
+  // Load categories for selected sector (with subcategories)
+  const { categories: availableCategories, loading: categoriesLoading } = useCategories(
+    selectedSectorId,
+    undefined,
+    true // includeSubCategories
+  );
 
   const initialFormState = useMemo(
     () => {
       // Extract categories and subcategories from services
+      // Note: We'll match with loaded categories/subcategories dynamically
       const services = userInfo?.services || [];
-      const categories = services.filter(s => CATEGORIES.includes(s));
-      const subcategories = services.filter(s => !CATEGORIES.includes(s));
+      // Initialize as empty - will be populated when categories are loaded
+      const categories: string[] = [];
+      const subcategories: string[] = [];
       
       // Format insurance expiry date for input
       let insuranceExpiryDateFormatted = "";
@@ -1670,6 +1631,17 @@ function DetailsSection() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   
+  // Get all subcategories from selected categories (calculated after formData is defined)
+  const allSubcategories: SubCategory[] = useMemo(() => {
+    const subcats: SubCategory[] = [];
+    availableCategories.forEach((cat: Category) => {
+      if (formData.categories.includes(cat.name) && cat.subCategories) {
+        subcats.push(...cat.subCategories);
+      }
+    });
+    return subcats;
+  }, [availableCategories, formData.categories]);
+  
   // OTP verification states
   const [emailChanged, setEmailChanged] = useState(false);
   const [phoneChanged, setPhoneChanged] = useState(false);
@@ -1686,6 +1658,38 @@ function DetailsSection() {
   const [isVerifyingEmailOTP, setIsVerifyingEmailOTP] = useState(false);
   const [isVerifyingPhoneOTP, setIsVerifyingPhoneOTP] = useState(false);
 
+  // Load user's existing services when categories are loaded
+  const [hasLoadedUserServices, setHasLoadedUserServices] = useState(false);
+  useEffect(() => {
+    if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0 && userInfo?.sector && !hasLoadedUserServices) {
+      // Match user's services with loaded categories and subcategories
+      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const subcategoryNames: string[] = [];
+      availableCategories.forEach((cat: Category) => {
+        if (cat.subCategories) {
+          subcategoryNames.push(...cat.subCategories.map((sc: SubCategory) => sc.name));
+        }
+      });
+      
+      const userCategories = userInfo.services.filter((s: string) => categoryNames.includes(s));
+      const userSubcategories = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
+      
+      if (userCategories.length > 0 || userSubcategories.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          categories: userCategories.length > 0 ? userCategories : prev.categories,
+          subcategories: userSubcategories.length > 0 ? userSubcategories : prev.subcategories,
+        }));
+        setHasLoadedUserServices(true);
+      }
+    }
+  }, [userInfo?.services, availableCategories, userInfo?.sector, hasLoadedUserServices]);
+  
+  // Reset hasLoadedUserServices when sector changes
+  useEffect(() => {
+    setHasLoadedUserServices(false);
+  }, [userInfo?.sector]);
+  
   // Update formData when userInfo changes (especially when townCity/county are loaded)
   useEffect(() => {
     if (userInfo) {
@@ -2422,36 +2426,69 @@ function DetailsSection() {
                     (Select all that apply)
                   </span>
                 </Label>
-                <div className="border-2 border-gray-200 rounded-xl p-4 max-h-[250px] overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {CATEGORIES.map((cat) => (
-                      <label
-                        key={cat}
-                        className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                          formData.categories.includes(cat)
-                            ? 'border-[#FE8A0F] bg-[#FFF5EB]'
-                            : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
-                        } cursor-pointer transition-all`}
-                      >
-                        <Checkbox
-                          checked={formData.categories.includes(cat)}
-                          onCheckedChange={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              categories: prev.categories.includes(cat)
-                                ? prev.categories.filter(c => c !== cat)
-                                : [...prev.categories, cat]
-                            }));
-                          }}
-                          className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                        />
-                        <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
-                          {cat}
-                        </span>
-                      </label>
-                    ))}
+                {!userInfo?.sector ? (
+                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      Please select a sector first
+                    </p>
                   </div>
-                </div>
+                ) : categoriesLoading ? (
+                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FE8A0F] mx-auto mb-2"></div>
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      Loading categories...
+                    </p>
+                  </div>
+                ) : availableCategories.length === 0 ? (
+                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      No categories available for this sector
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border-2 border-gray-200 rounded-xl p-4 max-h-[250px] overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {availableCategories.map((cat: Category) => (
+                        <label
+                          key={cat._id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                            formData.categories.includes(cat.name)
+                              ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                              : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
+                          } cursor-pointer transition-all`}
+                        >
+                          <Checkbox
+                            checked={formData.categories.includes(cat.name)}
+                            onCheckedChange={() => {
+                              setFormData(prev => {
+                                const newCategories = prev.categories.includes(cat.name)
+                                  ? prev.categories.filter(c => c !== cat.name)
+                                  : [...prev.categories, cat.name];
+                                
+                                // Remove subcategories from this category when category is deselected
+                                let newSubcategories = prev.subcategories;
+                                if (!newCategories.includes(cat.name) && cat.subCategories) {
+                                  const subcatNames = cat.subCategories.map(sc => sc.name);
+                                  newSubcategories = prev.subcategories.filter(sc => !subcatNames.includes(sc));
+                                }
+                                
+                                return {
+                                  ...prev,
+                                  categories: newCategories,
+                                  subcategories: newSubcategories,
+                                };
+                              });
+                            }}
+                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                          />
+                          <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                            {cat.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {formData.categories.length > 0 && (
                   <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
                     {formData.categories.length} categor{formData.categories.length !== 1 ? 'ies' : 'y'} selected
@@ -2467,35 +2504,51 @@ function DetailsSection() {
                     (Select all that apply)
                   </span>
                 </Label>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 border-2 border-gray-200 rounded-xl p-4">
-                  {SUBCATEGORIES.map((subcat) => (
-                    <div key={subcat} className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors">
-                      <input
-                        type="checkbox"
-                        id={`subcat-${subcat}`}
-                        checked={formData.subcategories.includes(subcat)}
-                        onChange={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            subcategories: prev.subcategories.includes(subcat)
-                              ? prev.subcategories.filter(s => s !== subcat)
-                              : [...prev.subcategories, subcat]
-                          }));
-                        }}
-                        className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
-                      />
-                      <Label
-                        htmlFor={`subcat-${subcat}`}
-                        className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
-                      >
-                        {subcat}
-                      </Label>
-                      {formData.subcategories.includes(subcat) && (
-                        <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
-                      )}
+                {formData.categories.length === 0 ? (
+                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      Please select at least one category first
+                    </p>
+                  </div>
+                ) : allSubcategories.length === 0 ? (
+                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      No subcategories available for selected categories
+                    </p>
+                  </div>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto pr-2 border-2 border-gray-200 rounded-xl p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {allSubcategories.map((subcat: SubCategory) => (
+                        <div key={subcat._id} className="flex items-start space-x-2 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors border border-gray-100">
+                          <input
+                            type="checkbox"
+                            id={`subcat-${subcat._id}`}
+                            checked={formData.subcategories.includes(subcat.name)}
+                            onChange={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                subcategories: prev.subcategories.includes(subcat.name)
+                                  ? prev.subcategories.filter(s => s !== subcat.name)
+                                  : [...prev.subcategories, subcat.name]
+                              }));
+                            }}
+                            className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F] flex-shrink-0"
+                          />
+                          <Label
+                            htmlFor={`subcat-${subcat._id}`}
+                            className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
+                          >
+                            {subcat.name}
+                          </Label>
+                          {formData.subcategories.includes(subcat.name) && (
+                            <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
                 {formData.subcategories.length > 0 && (
                   <div className="mt-3 p-2.5 bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">

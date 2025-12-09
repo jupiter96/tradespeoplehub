@@ -37,7 +37,8 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       required() {
-        return this.role !== 'admin';
+        // Admin and subadmin don't require phone
+        return this.role !== 'admin' && this.role !== 'subadmin';
       },
       trim: true,
     },
@@ -287,6 +288,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Soft delete fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
     // Verification reminder tracking
     verificationReminder: {
       lastSentAt: {
@@ -357,8 +366,8 @@ userSchema.methods.toSafeObject = function toSafeObject() {
   delete userObject.passwordHash;
   userObject.id = userObject._id.toString();
   userObject.name = `${userObject.firstName} ${userObject.lastName}`.trim();
-  // Include permissions for admin users
-  if (userObject.role === 'admin' && this.permissions) {
+  // Include permissions for admin and subadmin users
+  if ((userObject.role === 'admin' || userObject.role === 'subadmin') && this.permissions) {
     userObject.permissions = this.permissions;
   }
   return userObject;

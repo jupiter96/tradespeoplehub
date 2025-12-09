@@ -83,7 +83,7 @@ const menuItems: MenuItem[] = [
       { key: "client", label: "Client", icon: UserRound, path: "/admin/clients" },
       { key: "professional", label: "Professional", icon: BriefcaseBusiness, path: "/admin/professionals" },
       { key: "sub-admin", label: "Sub Admin", icon: KeyRound, path: "/admin/sub-admins" },
-      { key: "delete-account", label: "Delete Account", icon: UserX, path: "/admin/delete-account" },
+      { key: "delete-account", label: "Deleted Account", icon: UserX, path: "/admin/delete-account" },
     ],
   },
   {

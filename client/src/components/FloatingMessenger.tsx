@@ -67,7 +67,7 @@ export default function FloatingMessenger() {
   const emojis = ["😊", "👍", "❤️", "😂", "🎉", "👏", "🙏", "💯", "✨", "🔥"];
 
   const filteredContacts = contacts.filter((contact) =>
-    contact.name.toLowerCase().includes(searchQuery.toLowerCase())
+    contact.name && contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalUnread = contacts.reduce((sum, contact) => sum + contact.unread, 0);
@@ -274,9 +274,8 @@ export default function FloatingMessenger() {
                               <AvatarImage src={contact.avatar} />
                               <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
                                 {contact.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
+                                  ? contact.name.split(" ").map((n) => n[0]).join("")
+                                  : "U"}
                               </AvatarFallback>
                             </Avatar>
                             {contact.online && (
@@ -332,9 +331,8 @@ export default function FloatingMessenger() {
                           <AvatarImage src={selectedContact.avatar} />
                           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[15px]">
                             {selectedContact.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                              ? selectedContact.name.split(" ").map((n) => n[0]).join("")
+                              : "U"}
                           </AvatarFallback>
                         </Avatar>
                         {selectedContact.online && (

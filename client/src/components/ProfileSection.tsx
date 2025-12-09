@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAccount } from "./AccountContext";
+import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category } from "../hooks/useSectorsAndCategories";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -100,7 +102,40 @@ export default function ProfileSection() {
     (userInfo?.firstName && userInfo?.lastName ? `${userInfo.firstName} ${userInfo.lastName}` : null) || 
     userInfo?.name || 
     "Professional";
-  const displayTitle = userInfo?.sector || "Professional Service Provider";
+  
+  // Load sectors and categories to match with user's services
+  const { sectors: sectorsData } = useSectors();
+  const selectedSectorObj = sectorsData.find((s: Sector) => s.name === userInfo?.sector);
+  const selectedSectorId = selectedSectorObj?._id;
+  const { categories: availableCategories } = useCategories(
+    selectedSectorId,
+    undefined,
+    false // don't need subcategories here
+  );
+  
+  // Get first category from services array by matching with actual category names
+  const getFirstCategory = () => {
+    if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0) {
+      // Get category names from available categories
+      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      
+      // Find the first service item that matches a category name
+      const firstCategory = userInfo.services.find((service: string) => 
+        categoryNames.includes(service)
+      );
+      
+      if (firstCategory) {
+        return firstCategory;
+      }
+    }
+    // Fallback: return first service item if categories not loaded yet
+    if (userInfo?.services && userInfo.services.length > 0) {
+      return userInfo.services[0];
+    }
+    return null;
+  };
+  
+  const displayTitle = getFirstCategory() || userInfo?.sector || "Professional Service Provider";
   // Extract city and county from address field
   // Address format: "address line, city, county, postcode"
   const getCityAndCounty = () => {
