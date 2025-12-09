@@ -21,6 +21,7 @@ import DisputeDiscussionPage from "./components/DisputeDiscussionPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
 import AdminLoginPage from "./components/AdminLoginPage";
 import AdminDashboardPage from "./components/AdminDashboardPage";
+import SocialOnboardingPage from "./components/SocialOnboardingPage";
 import { CartProvider } from "./components/CartContext";
 import { AccountProvider, useAccount } from "./components/AccountContext";
 import { JobsProvider } from "./components/JobsContext";
@@ -45,6 +46,7 @@ function AppContent() {
         <Route path="/category/:categorySlug" element={<SectorPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/social-onboarding" element={<SocialOnboardingPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/professional-setup" element={<ProfessionalProfileSetup />} />
         <Route path="/professional-about" element={<ProfessionalAboutService />} />

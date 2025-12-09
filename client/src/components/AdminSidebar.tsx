@@ -92,7 +92,8 @@ const menuItems: MenuItem[] = [
     icon: FolderTree,
     children: [
       { key: "sector", label: "Sector", icon: FolderTree, path: "/admin/sectors" },
-      { key: "category", label: "Category", icon: FolderTree, path: "/admin/categories" },
+      { key: "category", label: "Job Category", icon: FolderTree, path: "/admin/categories" },
+      { key: "service-category", label: "Service Category", icon: FolderTree, path: "/admin/service-category" },
       { key: "default-content", label: "Default Content", icon: FileText, path: "/admin/default-content" },
       { key: "favourite-categories", label: "Favourite Categories", icon: Star, path: "/admin/favourite-categories" },
     ],
@@ -251,7 +252,6 @@ const menuItems: MenuItem[] = [
     label: "Service",
     icon: ShoppingBag,
     children: [
-      { key: "service-category", label: "Service Category", icon: FolderTree, path: "/admin/service-category" },
       { key: "approval-pending-service", label: "Approval Pending Service", icon: FileCheck, path: "/admin/approval-pending-service" },
       { key: "required-modification-service", label: "Required Modification Service", icon: AlertCircle, path: "/admin/required-modification-service" },
       { key: "approved-service", label: "Approved Service", icon: FileCheck, path: "/admin/approved-service" },

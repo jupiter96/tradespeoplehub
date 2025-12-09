@@ -793,10 +793,20 @@ export default function ProfilePage() {
                   <MapPin className="w-5 h-5 text-[#FE8A0F] flex-shrink-0" />
                   <p className="text-gray-700 text-[14px] leading-relaxed">
                     {(() => {
-                      const locationParts = [profile?.townCity, profile?.postcode].filter(Boolean);
+                      const travelDistance = profile?.travelDistance;
+                      const postcode = profile?.postcode || "";
+                      const city = profile?.townCity || "";
+                      
+                      // Build location string (postcode, city)
+                      const locationParts = [postcode, city].filter(Boolean);
                       const location = locationParts.length > 0 ? locationParts.join(", ") : "Not specified";
-                      const distance = profile?.travelDistance ? ` - ${profile.travelDistance}` : "";
-                      return `${location}${distance}`;
+                      
+                      // Format: "$travelDistance within $postcode, $city"
+                      if (travelDistance) {
+                        return `${travelDistance} within ${location}`;
+                      } else {
+                        return location !== "Not specified" ? `Service area: ${location}` : "Not specified";
+                      }
                     })()}
                   </p>
                 </div>

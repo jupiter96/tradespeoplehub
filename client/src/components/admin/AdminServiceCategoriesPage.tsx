@@ -33,14 +33,35 @@ import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 import { toast } from "sonner";
 import type { Sector, Category, SubCategory } from "../../hooks/useSectorsAndCategories";
 
-export default function AdminCategoriesPage() {
+// Service Category type (similar to Category)
+interface ServiceCategory {
+  _id: string;
+  sector: Sector | string;
+  name: string;
+  slug?: string;
+  question?: string;
+  order: number;
+  description?: string;
+  icon?: string;
+  bannerImage?: string;
+  isActive: boolean;
+  subCategories?: ServiceSubCategory[];
+}
+
+interface ServiceSubCategory {
+  _id: string;
+  name: string;
+  order: number;
+}
+
+export default function AdminServiceCategoriesPage() {
   useAdminRouteGuard();
   const [sectors, setSectors] = useState<Sector[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [selectedSectorId, setSelectedSectorId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingServiceCategory, setEditingServiceCategory] = useState<ServiceCategory | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
@@ -76,8 +97,36 @@ export default function AdminCategoriesPage() {
   const [uploadingImage, setUploadingImage] = useState<{ type: "icon" | "banner" | null; loading: boolean }>({ type: null, loading: false });
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [pendingIconFile, setPendingIconFile] = useState<File | null>(null);
+  const [pendingBannerFile, setPendingBannerFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchSectors();
+  }, []);
+
+  // Handle tab change from AdminPageLayout
+  const handleTabChange = (tab: string) => {
+    if (tab && tab !== selectedSectorId) {
+      setSelectedSectorId(tab);
+    }
+  };
+
+  // Combined effect to handle both regular updates and search debouncing
+  // This prevents duplicate API calls on initial load
+  useEffect(() => {
+    if (!selectedSectorId) {
+      setServiceCategories([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      fetchServiceCategories(selectedSectorId);
+    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
+
+    return () => clearTimeout(debounceTimer);
+  }, [selectedSectorId, page, limit, sortBy, sortOrder, searchTerm]);
 
   const fetchSectors = async () => {
     try {
@@ -100,7 +149,7 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const fetchCategories = useCallback(async (sectorId: string) => {
+  const fetchServiceCategories = useCallback(async (sectorId: string) => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -115,52 +164,31 @@ export default function AdminCategoriesPage() {
       });
 
       const response = await fetch(
-        resolveApiUrl(`/api/categories?${params}`),
+        resolveApiUrl(`/api/service-categories?${params}`),
         {
           credentials: "include",
         }
       );
       if (response.ok) {
         const data = await response.json();
-        setCategories(data.categories || []);
+        // Debug: Log first category to check bannerImage field
+        if (data.serviceCategories && data.serviceCategories.length > 0) {
+          console.log("First service category bannerImage:", data.serviceCategories[0].bannerImage);
+          console.log("First service category full data:", data.serviceCategories[0]);
+        }
+        setServiceCategories(data.serviceCategories || []);
         setTotalPages(data.pagination?.totalPages || 1);
         setTotal(data.pagination?.total || 0);
       } else {
-        toast.error("Failed to fetch categories");
+        toast.error("Failed to fetch service categories");
       }
     } catch (error) {
-      console.error("Error fetching categories:", error);
-      toast.error("Failed to fetch categories");
+      console.error("Error fetching service categories:", error);
+      toast.error("Failed to fetch service categories");
     } finally {
       setLoading(false);
     }
   }, [page, limit, sortBy, sortOrder, searchTerm]);
-
-  useEffect(() => {
-    fetchSectors();
-  }, []);
-
-  // Handle tab change from AdminPageLayout
-  const handleTabChange = (tab: string) => {
-    if (tab && tab !== selectedSectorId) {
-      setSelectedSectorId(tab);
-    }
-  };
-
-  // Combined effect to handle both regular updates and search debouncing
-  // This prevents duplicate API calls on initial load
-  useEffect(() => {
-    if (!selectedSectorId) {
-      setCategories([]);
-      return;
-    }
-
-    const debounceTimer = setTimeout(() => {
-      fetchCategories(selectedSectorId);
-    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
-
-    return () => clearTimeout(debounceTimer);
-  }, [selectedSectorId, page, limit, sortBy, sortOrder, searchTerm, fetchCategories]);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -232,53 +260,63 @@ export default function AdminCategoriesPage() {
     reader.onloadend = () => {
       if (type === "icon") {
         setIconPreview(reader.result as string);
+        setPendingIconFile(file);
       } else {
         setBannerPreview(reader.result as string);
+        setPendingBannerFile(file);
       }
     };
     reader.readAsDataURL(file);
 
-    setUploadingImage({ type, loading: true });
-    try {
-      // Get entity ID (editingCategory or new category)
-      const entityId = editingCategory?._id;
-      if (!entityId) {
-        toast.error("Please save the category first before uploading images");
-        setUploadingImage({ type: null, loading: false });
-        return;
-      }
+    // If editing existing category, upload immediately
+    const entityId = editingServiceCategory?._id;
+    if (entityId) {
+      setUploadingImage({ type, loading: true });
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
 
-      const formData = new FormData();
-      formData.append("image", file);
+        const response = await fetch(
+          resolveApiUrl(`/api/admin/upload-image/${type}/service-category/${entityId}`),
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          }
+        );
 
-      const response = await fetch(
-        resolveApiUrl(`/api/admin/upload-image/${type}/category/${entityId}`),
-        {
-          method: "POST",
-          credentials: "include",
-          body: formData,
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload image");
         }
-      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload image");
+        const data = await response.json();
+        handleInputChange(type, data.imageUrl);
+        // Clear pending file since it's uploaded
+        if (type === "icon") {
+          setPendingIconFile(null);
+        } else {
+          setPendingBannerFile(null);
+        }
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        toast.error(error instanceof Error ? error.message : "Failed to upload image");
+        // Revert preview on error
+        if (type === "icon") {
+          setIconPreview(formData.icon || null);
+          setPendingIconFile(null);
+        } else {
+          setBannerPreview(formData.bannerImage || null);
+          setPendingBannerFile(null);
+        }
+      } finally {
+        setUploadingImage({ type: null, loading: false });
       }
-
-      const data = await response.json();
-      handleInputChange(type, data.imageUrl);
-      toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload image");
-      // Revert preview on error
-      if (type === "icon") {
-        setIconPreview(formData.icon || null);
-      } else {
-        setBannerPreview(formData.bannerImage || null);
-      }
-    } finally {
-      setUploadingImage({ type: null, loading: false });
+    } else {
+      // For new category, just store the file and show preview
+      // The file will be uploaded after the category is saved
+      toast.info("Image will be uploaded when you save the service category");
     }
   };
 
@@ -288,68 +326,70 @@ export default function AdminCategoriesPage() {
       name: "",
       slug: "",
       question: "",
-      order: categories.length,
+      order: serviceCategories.length,
       description: "",
       icon: "",
       bannerImage: "",
       isActive: true,
       subCategories: [],
     });
-    setEditingCategory(null);
+    setEditingServiceCategory(null);
     setIconPreview(null);
     setBannerPreview(null);
+    setPendingIconFile(null);
+    setPendingBannerFile(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (category: Category) => {
-    const subCategories = (category.subCategories || []).map((sub: SubCategory) => ({
+  const handleEdit = (serviceCategory: ServiceCategory) => {
+    const subCategories = (serviceCategory.subCategories || []).map((sub: ServiceSubCategory) => ({
       name: sub.name,
       order: sub.order,
     }));
     
     setFormData({
-      sector: typeof category.sector === "string" ? category.sector : category.sector._id,
-      name: category.name,
-      slug: category.slug || generateSlug(category.name),
-      question: category.question || "",
-      order: category.order,
-      description: category.description || "",
-      icon: category.icon || "",
-      bannerImage: (category as any).bannerImage || "",
-      isActive: category.isActive,
+      sector: typeof serviceCategory.sector === "string" ? serviceCategory.sector : serviceCategory.sector._id,
+      name: serviceCategory.name,
+      slug: serviceCategory.slug || generateSlug(serviceCategory.name),
+      question: serviceCategory.question || "",
+      order: serviceCategory.order,
+      description: serviceCategory.description || "",
+      icon: serviceCategory.icon || "",
+      bannerImage: serviceCategory.bannerImage || "",
+      isActive: serviceCategory.isActive,
       subCategories: subCategories.length > 0 ? subCategories : [],
     });
-    setEditingCategory(category);
-    setIconPreview(category.icon || null);
-    setBannerPreview((category as any).bannerImage || null);
+    setEditingServiceCategory(serviceCategory);
+    setIconPreview(serviceCategory.icon || null);
+    setBannerPreview(serviceCategory.bannerImage || null);
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (category: Category) => {
-    if (!category._id) return;
+  const handleDelete = async (serviceCategory: ServiceCategory) => {
+    if (!serviceCategory._id) return;
     
-    if (!confirm(`Are you sure you want to delete "${category.name}"? This will also delete all associated subcategories.`)) {
+    if (!confirm(`Are you sure you want to delete "${serviceCategory.name}"? This will also delete all associated subcategories.`)) {
       return;
     }
 
     try {
-      const response = await fetch(resolveApiUrl(`/api/categories/${category._id}?hardDelete=true`), {
+      const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}?hardDelete=true`), {
         method: "DELETE",
         credentials: "include",
       });
 
       if (response.ok) {
-        toast.success("Category deleted successfully");
+        toast.success("Service category deleted successfully");
         if (selectedSectorId) {
-          fetchCategories(selectedSectorId);
+          fetchServiceCategories(selectedSectorId);
         }
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to delete category");
+        toast.error(error.error || "Failed to delete service category");
       }
     } catch (error) {
-      console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
+      console.error("Error deleting service category:", error);
+      toast.error("Failed to delete service category");
     }
   };
 
@@ -360,7 +400,7 @@ export default function AdminCategoriesPage() {
     }
 
     if (!formData.name.trim()) {
-      toast.error("Category name is required");
+      toast.error("Service category name is required");
       return;
     }
 
@@ -371,14 +411,14 @@ export default function AdminCategoriesPage() {
     try {
       setIsSaving(true);
       
-      // First, create or update the category
-      const categoryUrl = editingCategory
-        ? resolveApiUrl(`/api/categories/${editingCategory._id}`)
-        : resolveApiUrl("/api/categories");
+      // First, create or update the service category
+      const serviceCategoryUrl = editingServiceCategory
+        ? resolveApiUrl(`/api/service-categories/${editingServiceCategory._id}`)
+        : resolveApiUrl("/api/service-categories");
       
-      const categoryMethod = editingCategory ? "PUT" : "POST";
+      const serviceCategoryMethod = editingServiceCategory ? "PUT" : "POST";
 
-      const categoryPayload = {
+      const serviceCategoryPayload = {
         sector: formData.sector,
         name: formData.name.trim(),
         slug: formData.slug.trim(),
@@ -390,32 +430,109 @@ export default function AdminCategoriesPage() {
         isActive: formData.isActive,
       };
 
-      const categoryResponse = await fetch(categoryUrl, {
-        method: categoryMethod,
+      const serviceCategoryResponse = await fetch(serviceCategoryUrl, {
+        method: serviceCategoryMethod,
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(categoryPayload),
+        body: JSON.stringify(serviceCategoryPayload),
       });
 
-      if (!categoryResponse.ok) {
-        const error = await categoryResponse.json();
-        throw new Error(error.error || "Failed to save category");
+      if (!serviceCategoryResponse.ok) {
+        const error = await serviceCategoryResponse.json();
+        throw new Error(error.error || "Failed to save service category");
       }
 
-      const categoryData = await categoryResponse.json();
-      const savedCategory = categoryData.category;
+      const serviceCategoryData = await serviceCategoryResponse.json();
+      const savedServiceCategory = serviceCategoryData.serviceCategory;
+
+      // Upload pending images if any (for new categories)
+      if (pendingIconFile) {
+        try {
+          const imageFormData = new FormData();
+          imageFormData.append("image", pendingIconFile);
+
+          const imageResponse = await fetch(
+            resolveApiUrl(`/api/admin/upload-image/icon/service-category/${savedServiceCategory._id}`),
+            {
+              method: "POST",
+              credentials: "include",
+              body: imageFormData,
+            }
+          );
+
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json();
+            // Update the saved category with the icon URL
+            await fetch(resolveApiUrl(`/api/service-categories/${savedServiceCategory._id}`), {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ icon: imageData.imageUrl }),
+            });
+            setPendingIconFile(null);
+          }
+        } catch (error) {
+          console.error("Error uploading icon:", error);
+          // Don't fail the whole save operation if image upload fails
+        }
+      }
+
+      if (pendingBannerFile) {
+        try {
+          const imageFormData = new FormData();
+          imageFormData.append("image", pendingBannerFile);
+
+          const imageResponse = await fetch(
+            resolveApiUrl(`/api/admin/upload-image/banner/service-category/${savedServiceCategory._id}`),
+            {
+              method: "POST",
+              credentials: "include",
+              body: imageFormData,
+            }
+          );
+
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json();
+            console.log("Banner image upload response:", imageData);
+            // The bannerImage is already saved by the upload endpoint, but we'll update it to be sure
+            if (imageData.imageUrl) {
+              const updateResponse = await fetch(resolveApiUrl(`/api/service-categories/${savedServiceCategory._id}`), {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ bannerImage: imageData.imageUrl }),
+              });
+              if (updateResponse.ok) {
+                const updatedData = await updateResponse.json();
+                console.log("Updated service category with banner:", updatedData.serviceCategory);
+                // Update the saved category reference
+                savedServiceCategory.bannerImage = imageData.imageUrl;
+              } else {
+                console.error("Failed to update service category with banner URL");
+              }
+            }
+            setPendingBannerFile(null);
+          } else {
+            const errorData = await imageResponse.json();
+            console.error("Banner image upload failed:", errorData);
+          }
+        } catch (error) {
+          console.error("Error uploading banner:", error);
+          // Don't fail the whole save operation if image upload fails
+        }
+      }
 
       // Then, handle subcategories
-      if (editingCategory) {
+      if (editingServiceCategory) {
         // Delete existing subcategories that are not in the new list
-        const existingSubCategories = (editingCategory.subCategories || []) as SubCategory[];
+        const existingSubCategories = (editingServiceCategory.subCategories || []) as ServiceSubCategory[];
         const newSubCategoryNames = formData.subCategories.map((sub) => sub.name.trim()).filter(Boolean);
         
         for (const existingSub of existingSubCategories) {
           if (!newSubCategoryNames.includes(existingSub.name)) {
-            await fetch(resolveApiUrl(`/api/subcategories/${existingSub._id}?hardDelete=true`), {
+            await fetch(resolveApiUrl(`/api/service-subcategories/${existingSub._id}?hardDelete=true`), {
               method: "DELETE",
               credentials: "include",
             });
@@ -430,20 +547,20 @@ export default function AdminCategoriesPage() {
 
         // Check if subcategory already exists
         const existingSubResponse = await fetch(
-          resolveApiUrl(`/api/subcategories?categoryId=${savedCategory._id}&activeOnly=false`),
+          resolveApiUrl(`/api/service-subcategories?serviceCategoryId=${savedServiceCategory._id}&activeOnly=false`),
           { credentials: "include" }
         );
         
         let existingSub = null;
         if (existingSubResponse.ok) {
           const existingData = await existingSubResponse.json();
-          existingSub = existingData.subCategories?.find(
-            (sub: SubCategory) => sub.name === subCategory.name.trim()
+          existingSub = existingData.serviceSubCategories?.find(
+            (sub: ServiceSubCategory) => sub.name === subCategory.name.trim()
           );
         }
 
         const subCategoryPayload = {
-          category: savedCategory._id,
+          serviceCategory: savedServiceCategory._id,
           name: subCategory.name.trim(),
           order: subCategory.order || i + 1,
           isActive: true,
@@ -451,7 +568,7 @@ export default function AdminCategoriesPage() {
 
         if (existingSub) {
           // Update existing subcategory
-          await fetch(resolveApiUrl(`/api/subcategories/${existingSub._id}`), {
+          await fetch(resolveApiUrl(`/api/service-subcategories/${existingSub._id}`), {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -461,7 +578,7 @@ export default function AdminCategoriesPage() {
           });
         } else {
           // Create new subcategory
-          await fetch(resolveApiUrl("/api/subcategories"), {
+          await fetch(resolveApiUrl("/api/service-subcategories"), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -472,14 +589,21 @@ export default function AdminCategoriesPage() {
         }
       }
 
-      toast.success(editingCategory ? "Category updated successfully" : "Category created successfully");
+      toast.success(editingServiceCategory ? "Service category updated successfully" : "Service category created successfully");
       setIsModalOpen(false);
+      // Clear pending files
+      setPendingIconFile(null);
+      setPendingBannerFile(null);
+      // Refresh the list to show updated images
       if (selectedSectorId) {
-        fetchCategories(selectedSectorId);
+        // Small delay to ensure database is updated, especially for pending image uploads
+        setTimeout(() => {
+          fetchServiceCategories(selectedSectorId);
+        }, 1000);
       }
     } catch (error: any) {
-      console.error("Error saving category:", error);
-      toast.error(error.message || "Failed to save category");
+      console.error("Error saving service category:", error);
+      toast.error(error.message || "Failed to save service category");
     } finally {
       setIsSaving(false);
     }
@@ -526,25 +650,25 @@ export default function AdminCategoriesPage() {
     });
   };
 
-  const handleOrderChange = async (category: Category, direction: "up" | "down") => {
-    const currentIndex = categories.findIndex((c) => c._id === category._id);
+  const handleOrderChange = async (serviceCategory: ServiceCategory, direction: "up" | "down") => {
+    const currentIndex = serviceCategories.findIndex((c) => c._id === serviceCategory._id);
     if (currentIndex === -1) return;
 
     const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= categories.length) return;
+    if (newIndex < 0 || newIndex >= serviceCategories.length) return;
 
-    const otherCategory = categories[newIndex];
+    const otherServiceCategory = serviceCategories[newIndex];
     
     try {
       // Swap orders
-      const tempOrder = category.order;
-      await fetch(resolveApiUrl(`/api/categories/${category._id}`), {
+      const tempOrder = serviceCategory.order;
+      await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ order: otherCategory.order }),
+        body: JSON.stringify({ order: otherServiceCategory.order }),
       });
-      await fetch(resolveApiUrl(`/api/categories/${otherCategory._id}`), {
+      await fetch(resolveApiUrl(`/api/service-categories/${otherServiceCategory._id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -553,7 +677,7 @@ export default function AdminCategoriesPage() {
       
       toast.success("Order updated");
       if (selectedSectorId) {
-        fetchCategories(selectedSectorId);
+        fetchServiceCategories(selectedSectorId);
       }
     } catch (error) {
       console.error("Error updating order:", error);
@@ -568,8 +692,8 @@ export default function AdminCategoriesPage() {
   }));
 
   // This will be recalculated inside the render function based on activeTab
-  const getCurrentCategories = (sectorId: string) => {
-    return categories.filter((cat) => {
+  const getCurrentServiceCategories = (sectorId: string) => {
+    return serviceCategories.filter((cat) => {
       const catSectorId = typeof cat.sector === "string" ? cat.sector : cat.sector._id;
       return catSectorId === sectorId;
     });
@@ -577,7 +701,7 @@ export default function AdminCategoriesPage() {
 
   if (loading && sectors.length === 0) {
     return (
-      <AdminPageLayout title="Categories" description="Manage categories and subcategories">
+      <AdminPageLayout title="Service Categories" description="Manage service categories and subcategories">
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
         </div>
@@ -588,15 +712,15 @@ export default function AdminCategoriesPage() {
   return (
     <>
       <AdminPageLayout
-        title="Categories"
-        description="Manage categories and subcategories by sector"
+        title="Service Categories"
+        description="Manage service categories and subcategories by sector"
         tabs={sectorTabs}
         defaultTab={selectedSectorId}
         enableTabSlider={true}
         onTabChange={handleTabChange}
       >
         {(tab) => {
-          const currentCategories = getCurrentCategories(tab);
+          const currentServiceCategories = getCurrentServiceCategories(tab);
 
           return (
             <div className="space-y-6">
@@ -604,7 +728,7 @@ export default function AdminCategoriesPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-black dark:text-white whitespace-nowrap">
-                    Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> categories
+                    Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> service categories
                   </p>
                 </div>
                 <div className="relative flex-shrink-0" style={{ width: '200px' }}>
@@ -649,9 +773,9 @@ export default function AdminCategoriesPage() {
 
               {/* Table */}
               <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-                {currentCategories.length === 0 ? (
+                {currentServiceCategories.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-black dark:text-white">No categories found</p>
+                    <p className="text-black dark:text-white">No service categories found</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -659,32 +783,32 @@ export default function AdminCategoriesPage() {
                       <TableHeader>
                         <TableRow className="border-0 hover:bg-transparent shadow-sm">
                           <SortableHeader column="order" label="Order" />
-                          <SortableHeader column="name" label="Category Name" />
+                          <SortableHeader column="name" label="Service Category Name" />
                           <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
                           <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
                           <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {currentCategories.map((category, index) => (
+                        {currentServiceCategories.map((serviceCategory, index) => (
                           <TableRow
-                            key={category._id}
+                            key={serviceCategory._id}
                             className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
                           >
                             <TableCell className="text-black dark:text-white font-medium">
                               <div className="flex items-center gap-2">
-                                <span>{category.order}</span>
+                                <span>{serviceCategory.order}</span>
                                 <div className="flex flex-col">
                                   <button
-                                    onClick={() => handleOrderChange(category, "up")}
+                                    onClick={() => handleOrderChange(serviceCategory, "up")}
                                     disabled={index === 0}
                                     className="text-[#FE8A0F] hover:text-[#FFB347] disabled:opacity-30 disabled:cursor-not-allowed"
                                   >
                                     <ArrowUp className="w-3 h-3" />
                                   </button>
                                   <button
-                                    onClick={() => handleOrderChange(category, "down")}
-                                    disabled={index === currentCategories.length - 1}
+                                    onClick={() => handleOrderChange(serviceCategory, "down")}
+                                    disabled={index === currentServiceCategories.length - 1}
                                     className="text-[#FE8A0F] hover:text-[#FFB347] disabled:opacity-30 disabled:cursor-not-allowed"
                                   >
                                     <ArrowDown className="w-3 h-3" />
@@ -693,17 +817,17 @@ export default function AdminCategoriesPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
-                              <div className="font-medium truncate" title={category.name}>
-                                {category.name && category.name.length > 25 ? category.name.substring(0, 25) + "..." : category.name}
+                              <div className="font-medium truncate" title={serviceCategory.name}>
+                                {serviceCategory.name && serviceCategory.name.length > 25 ? serviceCategory.name.substring(0, 25) + "..." : serviceCategory.name}
                               </div>
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
-                              {category.icon ? (
+                              {serviceCategory.icon ? (
                                 <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                  {category.icon.startsWith('http') || category.icon.startsWith('/') ? (
+                                  {serviceCategory.icon.startsWith('http') || serviceCategory.icon.startsWith('/') ? (
                                     <img
-                                      src={category.icon}
-                                      alt={category.name}
+                                      src={serviceCategory.icon}
+                                      alt={serviceCategory.name}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
                                         (e.target as HTMLImageElement).style.display = 'none';
@@ -711,8 +835,8 @@ export default function AdminCategoriesPage() {
                                       }}
                                     />
                                   ) : (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={category.icon}>
-                                      {category.icon.length > 10 ? category.icon.substring(0, 10) + "..." : category.icon}
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={serviceCategory.icon}>
+                                      {serviceCategory.icon.length > 10 ? serviceCategory.icon.substring(0, 10) + "..." : serviceCategory.icon}
                                     </span>
                                   )}
                                 </div>
@@ -721,13 +845,14 @@ export default function AdminCategoriesPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
-                              {(category as any).bannerImage ? (
+                              {(serviceCategory as any).bannerImage ? (
                                 <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
                                   <img
-                                    src={(category as any).bannerImage}
-                                    alt={`${category.name} banner`}
+                                    src={(serviceCategory as any).bannerImage}
+                                    alt={`${serviceCategory.name} banner`}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
+                                      console.error("Banner image load error:", (serviceCategory as any).bannerImage);
                                       (e.target as HTMLImageElement).style.display = 'none';
                                       (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
                                     }}
@@ -750,14 +875,14 @@ export default function AdminCategoriesPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                                   <DropdownMenuItem
-                                    onClick={() => handleEdit(category)}
+                                    onClick={() => handleEdit(serviceCategory)}
                                     className="text-black dark:text-white hover:bg-[#FE8A0F]/10 cursor-pointer"
                                   >
                                     <Edit2 className="h-4 w-4 mr-2" />
                                     Edit
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() => handleDelete(category)}
+                                    onClick={() => handleDelete(serviceCategory)}
                                     className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
@@ -814,7 +939,7 @@ export default function AdminCategoriesPage() {
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
           <DialogHeader>
             <DialogTitle className="text-[#FE8A0F] text-2xl">
-              {editingCategory ? "Edit Category" : "Create New Category"}
+              {editingServiceCategory ? "Edit Service Category" : "Create New Service Category"}
             </DialogTitle>
           </DialogHeader>
 
@@ -843,7 +968,7 @@ export default function AdminCategoriesPage() {
               </div>
               <div>
                 <Label htmlFor="name" className="text-black dark:text-white">
-                  Category Name <span className="text-red-500">*</span>
+                  Service Category Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="name"
@@ -899,13 +1024,13 @@ export default function AdminCategoriesPage() {
             {/* Question */}
             <div>
               <Label htmlFor="question" className="text-black dark:text-white">
-                Category Question
+                Service Category Question
               </Label>
               <Input
                 id="question"
                 value={formData.question}
                 onChange={(e) => handleInputChange("question", e.target.value)}
-                placeholder="What type of plumbing service do you need?"
+                placeholder="What type of service do you need?"
                 className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
@@ -919,7 +1044,7 @@ export default function AdminCategoriesPage() {
                 id="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="Describe this category..."
+                placeholder="Describe this service category..."
                 className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
@@ -955,9 +1080,9 @@ export default function AdminCategoriesPage() {
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage.loading || !editingCategory?._id}
+                    disabled={uploadingImage.loading}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title={!editingCategory?._id ? "Please save the category first" : "Upload icon"}
+                    title="Upload icon"
                   >
                     {uploadingImage.type === "icon" && uploadingImage.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1008,9 +1133,9 @@ export default function AdminCategoriesPage() {
                     type="button"
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
-                    disabled={uploadingImage.loading || !editingCategory?._id}
+                    disabled={uploadingImage.loading}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title={!editingCategory?._id ? "Please save the category first" : "Upload banner"}
+                    title="Upload banner"
                   >
                     {uploadingImage.type === "banner" && uploadingImage.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1037,7 +1162,7 @@ export default function AdminCategoriesPage() {
             {/* Subcategories */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Subcategories</Label>
+                <Label className="text-black dark:text-white">Service Subcategories</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -1046,13 +1171,13 @@ export default function AdminCategoriesPage() {
                   className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Subcategory
+                  Add Service Subcategory
                 </Button>
               </div>
               <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
                 {formData.subCategories.length === 0 ? (
                   <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
-                    No subcategories. Click "Add Subcategory" to add one.
+                    No service subcategories. Click "Add Service Subcategory" to add one.
                   </p>
                 ) : (
                   formData.subCategories.map((subCategory, index) => (
@@ -1064,7 +1189,7 @@ export default function AdminCategoriesPage() {
                             onChange={(e) =>
                               handleSubCategoryChange(index, "name", e.target.value)
                             }
-                            placeholder="Subcategory name"
+                            placeholder="Service subcategory name"
                             className="text-sm bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
@@ -1144,7 +1269,7 @@ export default function AdminCategoriesPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  {editingCategory ? "Update" : "Create"}
+                  {editingServiceCategory ? "Update" : "Create"}
                 </>
               )}
             </Button>

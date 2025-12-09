@@ -79,6 +79,7 @@ export function useAdminPermissions() {
       "/admin/delete-account": "user-management",
       "/admin/sectors": "category-management",
       "/admin/categories": "category-management",
+      "/admin/service-category": "category-management",
       "/admin/default-content": "category-management",
       "/admin/favourite-categories": "category-management",
       "/admin/packages": "package-management",

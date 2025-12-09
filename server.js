@@ -14,6 +14,8 @@ import addressRoutes from './routes/address.js';
 import sectorRoutes from './routes/sectors.js';
 import categoryRoutes from './routes/categories.js';
 import subCategoryRoutes from './routes/subcategories.js';
+import serviceCategoryRoutes from './routes/service-categories.js';
+import serviceSubCategoryRoutes from './routes/service-subcategories.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
@@ -149,6 +151,8 @@ app.use('/api/address', addressRoutes);
 app.use('/api/sectors', sectorRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subCategoryRoutes);
+app.use('/api/service-categories', serviceCategoryRoutes);
+app.use('/api/service-subcategories', serviceSubCategoryRoutes);
 
 // API catch-all handler
 app.get('/api/*', (req, res) => {

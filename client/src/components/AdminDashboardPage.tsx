@@ -51,6 +51,7 @@ import AdminBlogContentPage from "./admin/AdminBlogContentPage";
 import AdminCostGuidePage from "./admin/AdminCostGuidePage";
 import AdminSectorsPage from "./admin/AdminSectorsPage";
 import AdminCategoriesPage from "./admin/AdminCategoriesPage";
+import AdminServiceCategoriesPage from "./admin/AdminServiceCategoriesPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
@@ -262,6 +263,8 @@ export default function AdminDashboardPage() {
         return <AdminSectorsPage />;
       case "categories":
         return <AdminCategoriesPage />;
+      case "service-category":
+        return <AdminServiceCategoriesPage />;
       case "email-campaign":
         // Check permission-based access for email campaign
         if (!hasRouteAccess("/admin/email-campaign")) {

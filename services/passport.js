@@ -1,7 +1,11 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
+import dotenv from 'dotenv';
 import User from '../models/User.js';
+
+// Load environment variables
+dotenv.config();
 
 const {
   GOOGLE_CLIENT_ID,
@@ -60,6 +64,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
 
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
   passport.use(
+    'google',
     new GoogleStrategy(
       {
         clientID: GOOGLE_CLIENT_ID,
@@ -69,10 +74,17 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
       handleSocialVerify('google')
     )
   );
+  console.log('✅ Google OAuth strategy registered');
+} else {
+  console.warn('⚠️ Google OAuth not configured. Missing environment variables:');
+  if (!GOOGLE_CLIENT_ID) console.warn('   - GOOGLE_CLIENT_ID');
+  if (!GOOGLE_CLIENT_SECRET) console.warn('   - GOOGLE_CLIENT_SECRET');
+  if (!GOOGLE_CALLBACK_URL) console.warn('   - GOOGLE_CALLBACK_URL');
 }
 
 if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET && FACEBOOK_CALLBACK_URL) {
   passport.use(
+    'facebook',
     new FacebookStrategy(
       {
         clientID: FACEBOOK_CLIENT_ID,
@@ -83,6 +95,12 @@ if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET && FACEBOOK_CALLBACK_URL) {
       handleSocialVerify('facebook')
     )
   );
+  console.log('✅ Facebook OAuth strategy registered');
+} else {
+  console.warn('⚠️ Facebook OAuth not configured. Missing environment variables:');
+  if (!FACEBOOK_CLIENT_ID) console.warn('   - FACEBOOK_CLIENT_ID');
+  if (!FACEBOOK_CLIENT_SECRET) console.warn('   - FACEBOOK_CLIENT_SECRET');
+  if (!FACEBOOK_CALLBACK_URL) console.warn('   - FACEBOOK_CALLBACK_URL');
 }
 
 export default passport;

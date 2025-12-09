@@ -389,8 +389,8 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
       return res.status(400).json({ error: 'Invalid image type. Must be "icon" or "banner"' });
     }
 
-    if (!['sector', 'category'].includes(entityType)) {
-      return res.status(400).json({ error: 'Invalid entity type. Must be "sector" or "category"' });
+    if (!['sector', 'category', 'service-category'].includes(entityType)) {
+      return res.status(400).json({ error: 'Invalid entity type. Must be "sector", "category", or "service-category"' });
     }
 
     if (!req.file) {
@@ -401,8 +401,11 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
     let entity;
     if (entityType === 'sector') {
       entity = await Sector.findById(entityId);
-    } else {
+    } else if (entityType === 'category') {
       entity = await Category.findById(entityId);
+    } else if (entityType === 'service-category') {
+      const ServiceCategory = (await import('../models/ServiceCategory.js')).default;
+      entity = await ServiceCategory.findById(entityId);
     }
 
     if (!entity) {
