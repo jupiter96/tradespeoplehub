@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { 
   Mail, 
   Lock, 
@@ -36,6 +36,7 @@ import API_BASE_URL from "../config/api";
 import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     login,
     register: initiateRegistration,
@@ -113,7 +114,17 @@ export default function LoginPage() {
       setRememberMe(true);
       setLoginEmail(savedEmail);
     }
-  }, []);
+
+    // Check for error messages from URL params
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'account_deleted') {
+      setLoginError('This account has been deleted');
+    } else if (errorParam === 'admin_not_allowed') {
+      setLoginError('Admin users must login through admin panel');
+    } else if (searchParams.get('social') === 'failed') {
+      setLoginError('Social login failed. Please try again.');
+    }
+  }, [searchParams]);
 
   // Register form state - Common fields
   const [registerFirstName, setRegisterFirstName] = useState("");

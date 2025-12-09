@@ -551,6 +551,9 @@ router.get('/users', requireAdmin, async (req, res) => {
       userObj.viewedByAdmin = user.viewedByAdmin || false;
       userObj.isDeleted = user.isDeleted || false;
       userObj.deletedAt = user.deletedAt || null;
+      // Include social login information
+      userObj.googleId = user.googleId || null;
+      userObj.facebookId = user.facebookId || null;
       // Ensure publicProfile is included for professionals
       if (user.publicProfile) {
         userObj.publicProfile = user.publicProfile;

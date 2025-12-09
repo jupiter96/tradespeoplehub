@@ -38,10 +38,15 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
 
     const providerField = provider === 'google' ? 'googleId' : 'facebookId';
     let user =
-      (await User.findOne({ [providerField]: providerId })) ||
-      (email ? await User.findOne({ email }) : null);
+      (await User.findOne({ [providerField]: providerId, isDeleted: { $ne: true } })) ||
+      (email ? await User.findOne({ email, isDeleted: { $ne: true } }) : null);
 
     if (user) {
+      // Check if user is deleted
+      if (user.isDeleted) {
+        return done(null, false, { message: 'This account has been deleted' });
+      }
+      
       if (!user[providerField]) {
         user[providerField] = providerId;
         await user.save();

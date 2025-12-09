@@ -258,6 +258,18 @@ const handleSocialCallback = (provider) => (req, res, next) => {
       return res.redirect(SOCIAL_ONBOARDING_REDIRECT);
     }
 
+    // Check if user is deleted
+    if (result.isDeleted) {
+      clearPendingSocialProfile(req);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_deleted');
+    }
+
+    // Check if user is deleted
+    if (result.isDeleted) {
+      clearPendingSocialProfile(req);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_deleted');
+    }
+
     // Reject admin users - they must use admin login
     if (result.role === 'admin' || result.role === 'subadmin') {
       clearPendingSocialProfile(req);
@@ -2110,10 +2122,15 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email: normalizeEmail(email) });
+    const user = await User.findOne({ email: normalizeEmail(email), isDeleted: { $ne: true } });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Check if user is deleted
+    if (user.isDeleted) {
+      return res.status(403).json({ error: 'This account has been deleted' });
     }
 
     // Reject admin and subadmin users - they must use admin panel login
