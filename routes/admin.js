@@ -781,18 +781,16 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const clientsDailyChange = clientsToday - clientsYesterday;
 
     // Count subadmin - TOTAL count (all subadmins regardless of viewedByAdmin)
-    const subadminCount = await User.countDocuments({ 
-      role: 'subadmin',
-      isDeleted: { $ne: true }
+    // Subadmins are now in Admin collection, not User collection
+    const subadminCount = await Admin.countDocuments({ 
+      role: 'subadmin'
     });
     // Count NEW subadmins (NOT viewed by admin) for badge
-    const subadminNew = await User.countDocuments({ 
+    // Note: Admin model doesn't have viewedByAdmin field, so we'll use createdAt to determine new subadmins
+    // Count subadmins created in the last 7 days as "new"
+    const subadminNew = await Admin.countDocuments({ 
       role: 'subadmin',
-      isDeleted: { $ne: true },
-      $or: [
-        { viewedByAdmin: { $exists: false } },
-        { viewedByAdmin: false }
-      ]
+      createdAt: { $gte: last7Days }
     });
 
     // Count verification documents pending - TOTAL count (all pending documents regardless of viewedByAdmin)
@@ -1078,14 +1076,12 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     const clientsReferralsDailyChange = clientsReferralsToday - clientsReferralsYesterday;
 
     // Calculate subadmin daily change - TOTAL count
-    const subadminToday = await User.countDocuments({ 
+    const subadminToday = await Admin.countDocuments({ 
       role: 'subadmin',
-      isDeleted: { $ne: true },
       createdAt: { $gte: today }
     });
-    const subadminYesterday = await User.countDocuments({ 
+    const subadminYesterday = await Admin.countDocuments({ 
       role: 'subadmin',
-      isDeleted: { $ne: true },
       createdAt: { $gte: yesterday, $lt: today }
     });
     const subadminDailyChange = subadminToday - subadminYesterday;

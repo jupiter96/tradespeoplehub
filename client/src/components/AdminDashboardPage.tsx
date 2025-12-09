@@ -115,7 +115,17 @@ export default function AdminDashboardPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setStatistics(data.statistics);
+        console.log("Statistics data received:", data);
+        if (data.statistics) {
+          setStatistics(data.statistics);
+          console.log("Statistics set:", data.statistics);
+        } else {
+          console.error("No statistics in response:", data);
+        }
+      } else {
+        console.error("Failed to fetch statistics:", response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Error data:", errorData);
       }
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -125,7 +135,7 @@ export default function AdminDashboardPage() {
         isInitialLoadRef.current = false;
       }
     }
-  }, []);
+  }, [isSuperAdmin]);
 
 
   // Fetch dashboard statistics on mount and when activeSection changes
