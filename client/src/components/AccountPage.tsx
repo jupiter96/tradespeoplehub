@@ -1632,10 +1632,11 @@ function DetailsSection() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   
   // Get all subcategories from selected categories (calculated after formData is defined)
+  // formData.categories now stores category IDs
   const allSubcategories: SubCategory[] = useMemo(() => {
     const subcats: SubCategory[] = [];
     availableCategories.forEach((cat: Category) => {
-      if (formData.categories.includes(cat.name) && cat.subCategories) {
+      if (formData.categories.includes(cat._id) && cat.subCategories) {
         subcats.push(...cat.subCategories);
       }
     });
@@ -1659,26 +1660,54 @@ function DetailsSection() {
   const [isVerifyingPhoneOTP, setIsVerifyingPhoneOTP] = useState(false);
 
   // Load user's existing services when categories are loaded
+  // Support both ID-based (new) and name-based (legacy) storage
   const [hasLoadedUserServices, setHasLoadedUserServices] = useState(false);
   useEffect(() => {
     if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0 && userInfo?.sector && !hasLoadedUserServices) {
-      // Match user's services with loaded categories and subcategories
+      // Get category and subcategory IDs and names for matching
+      const categoryIds = availableCategories.map((cat: Category) => cat._id);
       const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const subcategoryIds: string[] = [];
       const subcategoryNames: string[] = [];
       availableCategories.forEach((cat: Category) => {
         if (cat.subCategories) {
+          subcategoryIds.push(...cat.subCategories.map((sc: SubCategory) => sc._id));
           subcategoryNames.push(...cat.subCategories.map((sc: SubCategory) => sc.name));
         }
       });
       
-      const userCategories = userInfo.services.filter((s: string) => categoryNames.includes(s));
-      const userSubcategories = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
+      // Try to match by ID first (new format)
+      const userCategoryIds = userInfo.services.filter((s: string) => categoryIds.includes(s));
+      const userSubcategoryIds = userInfo.services.filter((s: string) => subcategoryIds.includes(s));
       
-      if (userCategories.length > 0 || userSubcategories.length > 0) {
+      // If no IDs found, try matching by name (legacy support)
+      const userCategoryNames = userInfo.services.filter((s: string) => categoryNames.includes(s));
+      const userSubcategoryNames = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
+      
+      // Convert names to IDs if found
+      const categoryIdsFromNames = userCategoryNames.map((name: string) => {
+        const cat = availableCategories.find((c: Category) => c.name === name);
+        return cat?._id;
+      }).filter(Boolean) as string[];
+      
+      const subcategoryIdsFromNames = userSubcategoryNames.map((name: string) => {
+        for (const cat of availableCategories) {
+          if (cat.subCategories) {
+            const subcat = cat.subCategories.find((sc: SubCategory) => sc.name === name);
+            if (subcat) return subcat._id;
+          }
+        }
+        return null;
+      }).filter(Boolean) as string[];
+      
+      const finalCategoryIds = userCategoryIds.length > 0 ? userCategoryIds : categoryIdsFromNames;
+      const finalSubcategoryIds = userSubcategoryIds.length > 0 ? userSubcategoryIds : subcategoryIdsFromNames;
+      
+      if (finalCategoryIds.length > 0 || finalSubcategoryIds.length > 0) {
         setFormData(prev => ({
           ...prev,
-          categories: userCategories.length > 0 ? userCategories : prev.categories,
-          subcategories: userSubcategories.length > 0 ? userSubcategories : prev.subcategories,
+          categories: finalCategoryIds.length > 0 ? finalCategoryIds : prev.categories,
+          subcategories: finalSubcategoryIds.length > 0 ? finalSubcategoryIds : prev.subcategories,
         }));
         setHasLoadedUserServices(true);
       }
@@ -2452,24 +2481,24 @@ function DetailsSection() {
                         <label
                           key={cat._id}
                           className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                            formData.categories.includes(cat.name)
+                            formData.categories.includes(cat._id)
                               ? 'border-[#FE8A0F] bg-[#FFF5EB]'
                               : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
                           } cursor-pointer transition-all`}
                         >
                           <Checkbox
-                            checked={formData.categories.includes(cat.name)}
+                            checked={formData.categories.includes(cat._id)}
                             onCheckedChange={() => {
                               setFormData(prev => {
-                                const newCategories = prev.categories.includes(cat.name)
-                                  ? prev.categories.filter(c => c !== cat.name)
-                                  : [...prev.categories, cat.name];
+                                const newCategories = prev.categories.includes(cat._id)
+                                  ? prev.categories.filter(c => c !== cat._id)
+                                  : [...prev.categories, cat._id];
                                 
                                 // Remove subcategories from this category when category is deselected
                                 let newSubcategories = prev.subcategories;
-                                if (!newCategories.includes(cat.name) && cat.subCategories) {
-                                  const subcatNames = cat.subCategories.map(sc => sc.name);
-                                  newSubcategories = prev.subcategories.filter(sc => !subcatNames.includes(sc));
+                                if (!newCategories.includes(cat._id) && cat.subCategories) {
+                                  const subcatIds = cat.subCategories.map(sc => sc._id);
+                                  newSubcategories = prev.subcategories.filter(sc => !subcatIds.includes(sc));
                                 }
                                 
                                 return {
@@ -2524,13 +2553,13 @@ function DetailsSection() {
                           <input
                             type="checkbox"
                             id={`subcat-${subcat._id}`}
-                            checked={formData.subcategories.includes(subcat.name)}
+                            checked={formData.subcategories.includes(subcat._id)}
                             onChange={() => {
                               setFormData(prev => ({
                                 ...prev,
-                                subcategories: prev.subcategories.includes(subcat.name)
-                                  ? prev.subcategories.filter(s => s !== subcat.name)
-                                  : [...prev.subcategories, subcat.name]
+                                subcategories: prev.subcategories.includes(subcat._id)
+                                  ? prev.subcategories.filter(s => s !== subcat._id)
+                                  : [...prev.subcategories, subcat._id]
                               }));
                             }}
                             className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F] flex-shrink-0"
@@ -2541,7 +2570,7 @@ function DetailsSection() {
                           >
                             {subcat.name}
                           </Label>
-                          {formData.subcategories.includes(subcat.name) && (
+                          {formData.subcategories.includes(subcat._id) && (
                             <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                           )}
                         </div>

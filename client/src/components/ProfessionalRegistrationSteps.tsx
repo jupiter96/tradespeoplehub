@@ -54,8 +54,8 @@ export default function ProfessionalRegistrationSteps() {
   const [hasTradeQualification, setHasTradeQualification] = useState<"yes" | "no">("no");
   const [qualifications, setQualifications] = useState<string[]>([]);
   const [sector, setSector] = useState<string>("");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [subcategories, setSubcategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]); // Store category IDs
+  const [subcategories, setSubcategories] = useState<string[]>([]); // Store subcategory IDs
   const [insurance, setInsurance] = useState<"yes" | "no">("no");
   const [professionalIndemnityAmount, setProfessionalIndemnityAmount] = useState<string>("");
   const [insuranceExpiryDate, setInsuranceExpiryDate] = useState<string>("");
@@ -74,15 +74,10 @@ export default function ProfessionalRegistrationSteps() {
     true // includeSubCategories
   );
   
-  // Load subcategories for selected categories
-  const selectedCategoryIds = availableCategories
-    .filter((cat: Category) => categories.includes(cat.name))
-    .map((cat: Category) => cat._id);
-  
-  // Get all subcategories from selected categories
+  // Get all subcategories from selected categories (by ID)
   const allSubcategories: SubCategory[] = [];
   availableCategories.forEach((cat: Category) => {
-    if (categories.includes(cat.name) && cat.subCategories) {
+    if (categories.includes(cat._id) && cat.subCategories) {
       allSubcategories.push(...cat.subCategories);
     }
   });
@@ -211,6 +206,7 @@ export default function ProfessionalRegistrationSteps() {
           updateData.sector = sector;
         }
         if (currentStep >= 3) {
+          // Store category and subcategory IDs in services array
           const allServices = [...categories, ...subcategories];
           updateData.services = allServices;
         }
@@ -255,6 +251,7 @@ export default function ProfessionalRegistrationSteps() {
 
     setIsSaving(true);
     try {
+      // Store category and subcategory IDs in services array
       const allServices = [...categories, ...subcategories];
       
       const updateData: any = {
@@ -267,7 +264,7 @@ export default function ProfessionalRegistrationSteps() {
         townCity: userInfo?.townCity || "",
         county: userInfo?.county || "",
         tradingName: userInfo?.tradingName || "",
-        services: allServices,
+        services: allServices, // Array of category and subcategory IDs
         hasPublicLiability: insurance,
       };
 
@@ -324,17 +321,39 @@ export default function ProfessionalRegistrationSteps() {
   useEffect(() => {
     if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0 && sector && !hasLoadedUserServices) {
       // Match user's services with loaded categories and subcategories
+      // Support both ID-based (new) and name-based (legacy) storage
+      const categoryIds = availableCategories.map((cat: Category) => cat._id);
       const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const subcategoryIds = allSubcategories.map((sc: SubCategory) => sc._id);
       const subcategoryNames = allSubcategories.map((sc: SubCategory) => sc.name);
       
-      const userCategories = userInfo.services.filter((s: string) => categoryNames.includes(s));
-      const userSubcategories = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
+      // Try to match by ID first (new format)
+      const userCategoryIds = userInfo.services.filter((s: string) => categoryIds.includes(s));
+      const userSubcategoryIds = userInfo.services.filter((s: string) => subcategoryIds.includes(s));
       
-      if (userCategories.length > 0) {
-        setCategories(userCategories);
+      // If no IDs found, try matching by name (legacy support)
+      const userCategoryNames = userInfo.services.filter((s: string) => categoryNames.includes(s));
+      const userSubcategoryNames = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
+      
+      // Convert names to IDs if found
+      const categoryIdsFromNames = userCategoryNames.map((name: string) => {
+        const cat = availableCategories.find((c: Category) => c.name === name);
+        return cat?._id;
+      }).filter(Boolean) as string[];
+      
+      const subcategoryIdsFromNames = userSubcategoryNames.map((name: string) => {
+        const subcat = allSubcategories.find((sc: SubCategory) => sc.name === name);
+        return subcat?._id;
+      }).filter(Boolean) as string[];
+      
+      const finalCategoryIds = userCategoryIds.length > 0 ? userCategoryIds : categoryIdsFromNames;
+      const finalSubcategoryIds = userSubcategoryIds.length > 0 ? userSubcategoryIds : subcategoryIdsFromNames;
+      
+      if (finalCategoryIds.length > 0) {
+        setCategories(finalCategoryIds);
       }
-      if (userSubcategories.length > 0) {
-        setSubcategories(userSubcategories);
+      if (finalSubcategoryIds.length > 0) {
+        setSubcategories(finalSubcategoryIds);
       }
       setHasLoadedUserServices(true);
     }
@@ -345,11 +364,11 @@ export default function ProfessionalRegistrationSteps() {
     setHasLoadedUserServices(false);
   }, [sector]);
 
-  const toggleCategory = (category: string) => {
+  const toggleCategory = (categoryId: string) => {
     setCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
+      prev.includes(categoryId) 
+        ? prev.filter(c => c !== categoryId)
+        : [...prev, categoryId]
     );
     if (errors.categories) {
       setErrors(prev => {
@@ -360,11 +379,11 @@ export default function ProfessionalRegistrationSteps() {
     }
   };
 
-  const toggleSubcategory = (subcat: string) => {
+  const toggleSubcategory = (subcatId: string) => {
     setSubcategories(prev => 
-      prev.includes(subcat) 
-        ? prev.filter(s => s !== subcat)
-        : [...prev, subcat]
+      prev.includes(subcatId) 
+        ? prev.filter(s => s !== subcatId)
+        : [...prev, subcatId]
     );
     if (errors.subcategories) {
       setErrors(prev => {
@@ -760,23 +779,23 @@ export default function ProfessionalRegistrationSteps() {
                           <label
                             key={cat._id}
                             className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                              categories.includes(cat.name)
+                              categories.includes(cat._id)
                                 ? 'border-[#FE8A0F] bg-[#FFF5EB]'
                                 : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
                             } cursor-pointer transition-all`}
                           >
                             <Checkbox
-                              checked={categories.includes(cat.name)}
+                              checked={categories.includes(cat._id)}
                               onCheckedChange={() => {
-                                if (categories.includes(cat.name)) {
-                                  setCategories(categories.filter(c => c !== cat.name));
+                                if (categories.includes(cat._id)) {
+                                  setCategories(categories.filter(c => c !== cat._id));
                                   // Remove subcategories from this category when category is deselected
                                   if (cat.subCategories) {
-                                    const subcatNames = cat.subCategories.map(sc => sc.name);
-                                    setSubcategories(subcategories.filter(sc => !subcatNames.includes(sc)));
+                                    const subcatIds = cat.subCategories.map(sc => sc._id);
+                                    setSubcategories(subcategories.filter(sc => !subcatIds.includes(sc)));
                                   }
                                 } else {
-                                  setCategories([...categories, cat.name]);
+                                  setCategories([...categories, cat._id]);
                                 }
                               }}
                               className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
@@ -832,18 +851,18 @@ export default function ProfessionalRegistrationSteps() {
                           <label
                             key={subcat._id}
                             className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                              subcategories.includes(subcat.name)
+                              subcategories.includes(subcat._id)
                                 ? 'border-[#FE8A0F] bg-[#FFF5EB]'
                                 : 'border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]'
                             } cursor-pointer transition-all`}
                           >
                             <Checkbox
-                              checked={subcategories.includes(subcat.name)}
+                              checked={subcategories.includes(subcat._id)}
                               onCheckedChange={() => {
-                                if (subcategories.includes(subcat.name)) {
-                                  setSubcategories(subcategories.filter(sc => sc !== subcat.name));
+                                if (subcategories.includes(subcat._id)) {
+                                  setSubcategories(subcategories.filter(sc => sc !== subcat._id));
                                 } else {
-                                  setSubcategories([...subcategories, subcat.name]);
+                                  setSubcategories([...subcategories, subcat._id]);
                                 }
                               }}
                               className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"

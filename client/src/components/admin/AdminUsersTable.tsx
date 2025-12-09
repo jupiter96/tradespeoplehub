@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles, User, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -91,7 +91,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -154,7 +154,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, role, limit, sortBy, sortOrder, searchTerm, showVerification]);
 
   useImperativeHandle(ref, () => ({
     refresh: () => {
@@ -162,21 +162,15 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     },
   }));
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, role, limit, sortBy, sortOrder]);
-
+  // Combined effect to handle both regular updates and search debouncing
+  // This prevents duplicate API calls on initial load
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (page === 1) {
-        fetchUsers();
-      } else {
-        setPage(1);
-      }
-    }, 500);
+      fetchUsers();
+    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm]);
+  }, [fetchUsers, searchTerm]);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {

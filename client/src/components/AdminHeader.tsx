@@ -79,6 +79,8 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
         }
         const data = await response.json();
         setCurrentAdmin(data.user);
+        // Initialize avatar preview when admin data is loaded
+        setAvatarPreview(data.user?.avatar || null);
       } catch (error) {
         navigate("/admin-login");
       }
@@ -90,7 +92,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
   useEffect(() => {
     if (currentAdmin?.avatar) {
       setAvatarPreview(currentAdmin.avatar);
-    } else {
+    } else if (currentAdmin && !currentAdmin.avatar) {
       setAvatarPreview(null);
     }
   }, [currentAdmin]);
@@ -442,7 +444,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                       fullname: currentAdmin.fullname || "",
                       email: currentAdmin.email || "",
                     });
-                    // Initialize avatar preview with current admin's avatar
+                    // Initialize avatar preview with current admin's avatar from database
                     setAvatarPreview(currentAdmin.avatar || null);
                   }
                 }}
@@ -575,10 +577,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                   <Label className="text-black dark:text-white">Avatar</Label>
                   <div className="relative">
                     <Avatar className="w-24 h-24">
-                      <AvatarImage 
-                        src={avatarPreview || currentAdmin?.avatar || undefined} 
-                        alt="Admin Avatar" 
-                      />
+                      <AvatarImage src={avatarPreview || currentAdmin?.avatar || undefined} alt="Admin Avatar" />
                       <AvatarFallback className="bg-[#FE8A0F] text-white text-2xl">
                         {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
                       </AvatarFallback>

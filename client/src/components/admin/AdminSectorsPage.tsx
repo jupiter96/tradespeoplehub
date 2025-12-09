@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Edit2, Trash2, Save, X, Upload, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
@@ -78,23 +78,17 @@ export default function AdminSectorsPage() {
     isActive: true,
   });
 
-  useEffect(() => {
-    fetchSectors();
-  }, [page, limit, sortBy, sortOrder]);
-
+  // Combined effect to handle both regular updates and search debouncing
+  // This prevents duplicate API calls on initial load
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (page === 1) {
-        fetchSectors();
-      } else {
-        setPage(1);
-      }
-    }, 500);
+      fetchSectors();
+    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm]);
+  }, [fetchSectors, searchTerm]);
 
-  const fetchSectors = async () => {
+  const fetchSectors = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -123,7 +117,7 @@ export default function AdminSectorsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, sortBy, sortOrder, searchTerm]);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
