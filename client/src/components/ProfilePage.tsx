@@ -31,7 +31,7 @@ import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import API_BASE_URL from "../config/api";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
-import type { Sector, Category } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 
 interface ProfileData {
   id: string;
@@ -96,7 +96,7 @@ export default function ProfilePage() {
   const { categories: availableCategories } = useCategories(
     selectedSectorId,
     undefined,
-    false // don't need subcategories here
+    true // include subcategories to convert IDs to names
   );
 
   useEffect(() => {
@@ -205,19 +205,48 @@ export default function ProfilePage() {
     profile.name || 
     "Professional";
   
+  // Convert service IDs to category/subcategory names
+  const convertServiceIdsToNames = (serviceIds: string[]): string[] => {
+    if (!serviceIds || serviceIds.length === 0 || availableCategories.length === 0) {
+      return [];
+    }
+
+    const categoryMap = new Map<string, string>();
+    const subcategoryMap = new Map<string, string>();
+
+    // Build maps of ID -> name for categories and subcategories
+    availableCategories.forEach((cat: Category) => {
+      categoryMap.set(cat._id, cat.name);
+      if (cat.subCategories) {
+        cat.subCategories.forEach((subcat: SubCategory) => {
+          subcategoryMap.set(subcat._id, subcat.name);
+        });
+      }
+    });
+
+    // Convert IDs to names
+    return serviceIds.map((id: string) => {
+      // Try category first, then subcategory
+      return categoryMap.get(id) || subcategoryMap.get(id) || id; // Fallback to ID if not found
+    }).filter(Boolean);
+  };
+
   // Get first category from services array by matching with actual category names
   const getFirstCategory = () => {
     if (profile.services && profile.services.length > 0 && availableCategories.length > 0) {
-      // Get category names from available categories
-      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const serviceNames = convertServiceIdsToNames(profile.services);
+      // Find the first service item that is a category (not subcategory)
+      const categoryIds = availableCategories.map((cat: Category) => cat._id);
+      const firstCategoryId = profile.services.find((id: string) => categoryIds.includes(id));
       
-      // Find the first service item that matches a category name
-      const firstCategory = profile.services.find((service: string) => 
-        categoryNames.includes(service)
-      );
+      if (firstCategoryId) {
+        const category = availableCategories.find((cat: Category) => cat._id === firstCategoryId);
+        return category?.name || null;
+      }
       
-      if (firstCategory) {
-        return firstCategory;
+      // Fallback: return first service name
+      if (serviceNames.length > 0) {
+        return serviceNames[0];
       }
     }
     // Fallback: return first service item if categories not loaded yet
@@ -244,9 +273,9 @@ export default function ProfilePage() {
     ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
     : "Unknown";
 
-  // Get skills from services
+  // Get skills from services - convert IDs to names
   const skills = profile.services && profile.services.length > 0 
-    ? profile.services.slice(0, 10)
+    ? convertServiceIdsToNames(profile.services).slice(0, 10)
     : [];
 
   // Verification status
@@ -587,7 +616,7 @@ export default function ProfilePage() {
                     <div className="space-y-4">
                       {profile.services && profile.services.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                          {profile.services.map((serviceName, index) => (
+                          {convertServiceIdsToNames(profile.services).map((serviceName, index) => (
                             <Badge
                               key={index}
                               variant="secondary"
@@ -762,7 +791,7 @@ export default function ProfilePage() {
                     Available Services
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {profile.services.slice(0, 10).map((serviceName, index) => (
+                    {convertServiceIdsToNames(profile.services).slice(0, 10).map((serviceName, index) => (
                       <Badge
                         key={index}
                         variant="secondary"

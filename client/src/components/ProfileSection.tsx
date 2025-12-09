@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAccount } from "./AccountContext";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
-import type { Sector, Category } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -110,22 +110,74 @@ export default function ProfileSection() {
   const { categories: availableCategories } = useCategories(
     selectedSectorId,
     undefined,
-    false // don't need subcategories here
+    true // include subcategories to convert IDs to names
   );
   
+  // Convert service IDs to category/subcategory names
+  const convertServiceIdsToNames = (serviceIds: string[]): string[] => {
+    if (!serviceIds || serviceIds.length === 0 || availableCategories.length === 0) {
+      return [];
+    }
+
+    const categoryMap = new Map<string, string>();
+    const subcategoryMap = new Map<string, string>();
+
+    // Build maps of ID -> name for categories and subcategories
+    availableCategories.forEach((cat: Category) => {
+      categoryMap.set(cat._id, cat.name);
+      if (cat.subCategories) {
+        cat.subCategories.forEach((subcat: SubCategory) => {
+          subcategoryMap.set(subcat._id, subcat.name);
+        });
+      }
+    });
+
+    // Convert IDs to names
+    return serviceIds.map((id: string) => {
+      // Try category first, then subcategory
+      return categoryMap.get(id) || subcategoryMap.get(id) || id; // Fallback to ID if not found
+    }).filter(Boolean);
+  };
+
+  // Convert service names back to IDs (for saving)
+  const convertServiceNamesToIds = (serviceNames: string[]): string[] => {
+    if (!serviceNames || serviceNames.length === 0 || availableCategories.length === 0) {
+      return [];
+    }
+
+    const nameToIdMap = new Map<string, string>();
+
+    // Build maps of name -> ID for categories and subcategories
+    availableCategories.forEach((cat: Category) => {
+      nameToIdMap.set(cat.name, cat._id);
+      if (cat.subCategories) {
+        cat.subCategories.forEach((subcat: SubCategory) => {
+          nameToIdMap.set(subcat.name, subcat._id);
+        });
+      }
+    });
+
+    // Convert names to IDs, fallback to original value if not found (might already be an ID)
+    return serviceNames.map((nameOrId: string) => {
+      return nameToIdMap.get(nameOrId) || nameOrId;
+    }).filter(Boolean);
+  };
+
   // Get first category from services array by matching with actual category names
   const getFirstCategory = () => {
     if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0) {
-      // Get category names from available categories
-      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const categoryIds = availableCategories.map((cat: Category) => cat._id);
+      const firstCategoryId = userInfo.services.find((id: string) => categoryIds.includes(id));
       
-      // Find the first service item that matches a category name
-      const firstCategory = userInfo.services.find((service: string) => 
-        categoryNames.includes(service)
-      );
+      if (firstCategoryId) {
+        const category = availableCategories.find((cat: Category) => cat._id === firstCategoryId);
+        return category?.name || null;
+      }
       
-      if (firstCategory) {
-        return firstCategory;
+      // Fallback: return first service name
+      const serviceNames = convertServiceIdsToNames(userInfo.services);
+      if (serviceNames.length > 0) {
+        return serviceNames[0];
       }
     }
     // Fallback: return first service item if categories not loaded yet
@@ -186,7 +238,11 @@ export default function ProfileSection() {
       setBio(userInfo.publicProfile?.bio || userInfo.aboutService || "");
       setPortfolio(userInfo.publicProfile?.portfolio || []);
       setIsPublic(userInfo.publicProfile?.isPublic !== false);
-      setSkills(userInfo.services || []);
+      // Convert service IDs to names for display
+      const serviceNames = userInfo.services && availableCategories.length > 0
+        ? convertServiceIdsToNames(userInfo.services)
+        : (userInfo.services || []);
+      setSkills(serviceNames);
       setQualifications((userInfo.publicProfile as any)?.qualifications || "");
       setCertifications((userInfo.publicProfile as any)?.certifications || "");
       setCompanyDetails((userInfo.publicProfile as any)?.companyDetails || "");
@@ -240,8 +296,11 @@ export default function ProfileSection() {
 
   const handleSave = async () => {
     try {
+      // Convert skill names back to IDs for saving
+      const serviceIds = convertServiceNamesToIds(skills);
+      
       const profileData: any = {
-        services: skills,
+        services: serviceIds, // Save as IDs
         professionalIndemnityAmount: professionalIndemnityAmount || undefined,
         insuranceExpiryDate: insuranceExpiryDate ? new Date(insuranceExpiryDate).toISOString() : undefined,
         publicProfile: {
@@ -507,7 +566,11 @@ export default function ProfileSection() {
                   // Reset to original values
                   setBio(userInfo?.publicProfile?.bio || userInfo?.aboutService || "");
                   setPortfolio(userInfo?.publicProfile?.portfolio || []);
-                  setSkills(userInfo?.services || []);
+                  // Convert service IDs to names for display
+                  const serviceNames = userInfo?.services && availableCategories.length > 0
+                    ? convertServiceIdsToNames(userInfo.services)
+                    : (userInfo?.services || []);
+                  setSkills(serviceNames);
                   setQualifications((userInfo?.publicProfile as any)?.qualifications || "");
                   setCertifications((userInfo?.publicProfile as any)?.certifications || "");
                   setCompanyDetails((userInfo?.publicProfile as any)?.companyDetails || "");
