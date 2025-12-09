@@ -274,9 +274,17 @@ export default function ProfilePage() {
     : "Unknown";
 
   // Get skills from services - convert IDs to names
-  const skills = profile.services && profile.services.length > 0 
-    ? convertServiceIdsToNames(profile.services).slice(0, 10)
-    : [];
+  // Use useMemo to recalculate when profile.services or availableCategories change
+  const skills = useMemo(() => {
+    if (profile.services && profile.services.length > 0 && availableCategories.length > 0) {
+      return convertServiceIdsToNames(profile.services).slice(0, 10);
+    }
+    // If categories not loaded yet, return empty array (will update when categories load)
+    if (profile.services && profile.services.length > 0 && availableCategories.length === 0) {
+      return []; // Return empty until categories are loaded
+    }
+    return [];
+  }, [profile.services, availableCategories]);
 
   // Verification status
   const verifications = {
@@ -303,6 +311,11 @@ export default function ProfilePage() {
   const rating = reviews.length > 0 
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : "0.0";
+  const reviewText = reviewCount === 0 
+    ? "(0 review)" 
+    : reviewCount === 1 
+    ? "(1 review)" 
+    : `(${reviewCount} reviews)`;
 
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
@@ -357,12 +370,11 @@ export default function ProfilePage() {
                 <span>Joined {memberSince}</span>
               </div>
 
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className="w-3 h-3 fill-[#FE8A0F] text-[#FE8A0F]" />
-                ))}
-                <span className="text-gray-600 text-[10px] ml-1">
-                  ({reviewCount})
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3 fill-[#FE8A0F] text-[#FE8A0F]" />
+                <span className="font-semibold text-[10px]">{rating}</span>
+                <span className="text-gray-600 text-[10px]">
+                  {reviewText}
                 </span>
               </div>
             </div>
@@ -440,7 +452,7 @@ export default function ProfilePage() {
                       <Star className="w-5 h-5 fill-[#FE8A0F] text-[#FE8A0F]" />
                       <span className="font-semibold text-[16px]">{rating}</span>
                       <span className="text-gray-500 text-[14px]">
-                        ({reviewCount} reviews)
+                        {reviewText}
                       </span>
                     </div>
                     <div className="text-[14px] text-gray-600">
@@ -561,47 +573,6 @@ export default function ProfilePage() {
                       </>
                     )}
 
-                    <Separator className="my-6" />
-
-                    <h4 className="text-[#003D82] text-[18px] font-semibold mb-4">
-                      Professional Details
-                    </h4>
-                    <div className="space-y-3">
-                      {profile.hasTradeQualification === 'yes' && (
-                        <div className="flex items-center gap-3">
-                          <Award className="w-5 h-5 text-[#FE8A0F]" />
-                          <span className="text-gray-700">Trade Qualified</span>
-                        </div>
-                      )}
-                      {profile.hasPublicLiability === 'yes' && (
-                        <div className="flex items-center gap-3">
-                          <ShieldCheck className="w-5 h-5 text-[#FE8A0F]" />
-                          <span className="text-gray-700">Public Liability Insurance</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3">
-                        <MapPin className="w-5 h-5 text-[#FE8A0F]" />
-                        <span className="text-gray-700">Service area: {displayLocation}</span>
-                      </div>
-                      {profile.travelDistance && (
-                        <div className="flex items-center gap-3">
-                          <Briefcase className="w-5 h-5 text-[#FE8A0F]" />
-                          <span className="text-gray-700">Travel distance: {profile.travelDistance}</span>
-                        </div>
-                      )}
-                      {profile.professionalIndemnityAmount && (
-                        <div className="flex items-center gap-3">
-                          <ShieldCheck className="w-5 h-5 text-[#FE8A0F]" />
-                          <span className="text-gray-700">Professional Indemnity: £{profile.professionalIndemnityAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {profile.insuranceExpiryDate && (
-                        <div className="flex items-center gap-3">
-                          <Calendar className="w-5 h-5 text-[#FE8A0F]" />
-                          <span className="text-gray-700">Insurance Expiry: {new Date(profile.insuranceExpiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                        </div>
-                      )}
-                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

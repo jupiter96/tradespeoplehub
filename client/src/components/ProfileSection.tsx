@@ -225,7 +225,12 @@ export default function ProfileSection() {
       })()
     : "Jan, 2024";
   const reviewCount = 0;
-  const rating = 5.0;
+  const rating = 0.0;
+  const reviewText = reviewCount === 0 
+    ? "(0 review)" 
+    : reviewCount === 1 
+    ? "(1 review)" 
+    : `(${reviewCount} reviews)`;
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
   const [portfolioImageFile, setPortfolioImageFile] = useState<File | null>(null);
@@ -239,6 +244,7 @@ export default function ProfileSection() {
       setPortfolio(userInfo.publicProfile?.portfolio || []);
       setIsPublic(userInfo.publicProfile?.isPublic !== false);
       // Convert service IDs to names for display
+      // Re-convert whenever availableCategories changes
       const serviceNames = userInfo.services && availableCategories.length > 0
         ? convertServiceIdsToNames(userInfo.services)
         : (userInfo.services || []);
@@ -255,7 +261,7 @@ export default function ProfileSection() {
       setProfessionalIndemnityAmount(userInfo.professionalIndemnityAmount || null);
       setAvatarPreview(userInfo.avatar || null);
     }
-  }, [userInfo]);
+  }, [userInfo, availableCategories]);
 
   // Adjust font size dynamically for display name in preview modal
   useEffect(() => {
@@ -1185,28 +1191,19 @@ export default function ProfileSection() {
                     >
                       {displayName}
                     </h1>
-                    <p className="text-gray-600 text-[11px] md:text-[13px] mb-0.5 md:mb-1 line-clamp-1">
+                    <p className="text-gray-600 text-[21px] md:text-[23px] mb-0.5 md:mb-1 line-clamp-1">
                       {displayTitle}
                     </p>
-                    <div className="flex items-center gap-1.5 text-gray-500 text-[10px] md:text-[12px] mb-0.5 md:mb-1">
-                      <MapPin className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0" />
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[12px] md:text-[14px] mb-0.5 md:mb-1 mt-1 md:mt-1.5">
+                      <MapPin className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                       <span className="truncate">{displayLocation}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-auto">
                     <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-3 h-3 md:w-4 md:h-4 ${
-                            star <= Math.round(rating)
-                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                              : "fill-gray-300 text-gray-300"
-                          }`}
-                        />
-                      ))}
-                      <span className="font-semibold text-[11px] md:text-[13px] ml-0.5">{rating.toFixed(1)}</span>
-                      <span className="text-gray-500 text-[9px] md:text-[11px]">({reviewCount})</span>
+                      <Star className="w-3 h-3 md:w-4 md:h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
+                      <span className="font-semibold text-[11px] md:text-[13px]">{rating.toFixed(1)}</span>
+                      <span className="text-gray-500 text-[9px] md:text-[11px]">{reviewText}</span>
                     </div>
                     <div className="text-[9px] md:text-[11px] text-gray-600">
                       <Calendar className="w-2.5 h-2.5 md:w-3 md:h-3 inline mr-0.5" />
@@ -1260,37 +1257,7 @@ export default function ProfileSection() {
                           {displayBio}
                         </p>
 
-                        <Separator className="my-4 md:my-6" />
-
-                        <h4 className="text-[#003D82] text-[14px] md:text-[18px] font-semibold mb-3 md:mb-4">
-                          Professional Details
-                        </h4>
-                        <div className="space-y-2 md:space-y-3">
-                          {userInfo?.hasTradeQualification === 'yes' && (
-                            <div className="flex items-center gap-2 md:gap-3">
-                              <Award className="w-4 h-4 md:w-5 md:h-5 text-[#FE8A0F] flex-shrink-0" />
-                              <span className="text-gray-700 text-[12px] md:text-[14px]">Trade Qualified</span>
-                            </div>
-                          )}
-                          {userInfo?.hasPublicLiability === 'yes' && (
-                            <div className="flex items-center gap-2 md:gap-3">
-                              <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-[#FE8A0F] flex-shrink-0" />
-                              <span className="text-gray-700 text-[12px] md:text-[14px]">Public Liability Insurance</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <MapPin className="w-4 h-4 md:w-5 md:h-5 text-[#FE8A0F] flex-shrink-0" />
-                            <span className="text-gray-700 text-[12px] md:text-[14px]">
-                              Service area: {displayLocation}
-                            </span>
-                          </div>
-                          {userInfo?.travelDistance && (
-                            <div className="flex items-center gap-2 md:gap-3">
-                              <Briefcase className="w-4 h-4 md:w-5 md:h-5 text-[#FE8A0F] flex-shrink-0" />
-                              <span className="text-gray-700 text-[12px] md:text-[14px]">Travel distance: {userInfo.travelDistance}</span>
-                            </div>
-                          )}
-                          {qualifications && (
+                        {qualifications && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Qualifications</h5>
                               <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
@@ -1331,7 +1298,6 @@ export default function ProfileSection() {
                               </div>
                             </div>
                           )}
-                        </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
