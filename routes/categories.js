@@ -201,12 +201,6 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Sector not found' });
     }
     
-    // Generate slug if not provided
-    const categorySlug = slug || name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    
     // Check if category with same name already exists in this sector
     const existingCategory = await Category.findOne({ 
       sector: sectorDoc._id, 
@@ -250,12 +244,9 @@ router.post('/', async (req, res) => {
     const category = await Category.create({
       sector: sectorDoc._id,
       name: name.trim(),
-      slug: categorySlug,
-      question,
       order: finalOrder,
-      description,
-      icon,
-      bannerImage,
+      icon: icon || undefined,
+      bannerImage: bannerImage || undefined,
       isActive: isActive !== undefined ? isActive : true,
     });
     

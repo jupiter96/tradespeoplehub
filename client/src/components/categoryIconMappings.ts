@@ -567,3 +567,11 @@ export const getCategoryIcon = (categoryName: string): LucideIcon => {
   }
   return Home; // Default fallback
 };
+
+// Helper function to get a single icon for subcategory
+export const getSubCategoryIcon = (subCategoryName: string): LucideIcon => {
+  if (subCategoryToolIcons[subCategoryName]) {
+    return subCategoryToolIcons[subCategoryName].leftIcon;
+  }
+  return Home; // Default fallback
+};

@@ -50,6 +50,8 @@ import { Label } from "./ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { allServices, type Service } from "./servicesData";
 import { categoryTreeForServicesPage } from "./unifiedCategoriesData";
+import { useSectors } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 
 // Helper function to calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -479,8 +481,40 @@ export default function ServicesPage() {
     }[];
   };
 
-  // Use unified category data
-  const categoryTree: CategoryTree[] = categoryTreeForServicesPage;
+  // Load sectors and categories from API
+  const { sectors: apiSectors, loading: sectorsLoading } = useSectors(true, true);
+  
+  // Convert API data to categoryTree format, sorted by order
+  const categoryTree: CategoryTree[] = useMemo(() => {
+    if (apiSectors.length > 0) {
+      // Use API data, sorted by order
+      const sortedSectors = [...apiSectors].sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      return sortedSectors.map((sector: Sector) => {
+        // Sort categories by order
+        const sortedCategories = ((sector.categories || []) as Category[])
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        return {
+          sector: sector.name,
+          sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
+          mainCategories: sortedCategories.map((category: Category) => {
+            // Sort subcategories by order
+            const sortedSubCategories = ((category.subCategories || []) as SubCategory[])
+              .sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            return {
+              name: category.name,
+              value: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
+              subCategories: sortedSubCategories.map((subCat: SubCategory) => subCat.name)
+            };
+          })
+        };
+      });
+    }
+    // Fallback to static data if API data is not available
+    return categoryTreeForServicesPage;
+  }, [apiSectors]);
 
   // Selected filters - new approach with type and value
   type SelectedFilter = {

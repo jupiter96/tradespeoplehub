@@ -1,63 +1,67 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import {
-  Home,
-  Briefcase,
-  User,
-  GraduationCap,
-  Car,
-  Package,
   ChevronRight,
-  Wrench,
-  Laptop,
-  Heart,
-  Stethoscope,
-  Scale,
-  Camera,
-  PawPrint,
-  Sparkles,
-  FileText,
+  ChevronLeft,
+  ArrowLeft,
   Loader2,
 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useSectors } from "../hooks/useSectorsAndCategories";
-import type { Sector, Category } from "../hooks/useSectorsAndCategories";
-import { getSectorIcon, getCategoryIcon } from "./categoryIconMappings";
+import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
+import { getSectorIcon, getCategoryIcon, getSubCategoryIcon } from "./categoryIconMappings";
+
+type ViewMode = "sectors" | "categories" | "subcategories";
 
 export default function AllCategoriesPage() {
   const { sectors, loading, error } = useSectors(true, true); // Include categories and subcategories
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const sectorIcons: Record<string, any> = {
-    "Home & Garden": Home,
-    "Business Services": Briefcase,
-    "Personal Services": User,
-    "Repair & Maintenance": Wrench,
-    "Technology Services": Laptop,
-    "Education & Tutoring": GraduationCap,
-    "Beauty & Wellness": Heart,
-    "Health & Wellness": Stethoscope,
-    "Legal & Financial": Scale,
-    "Event Services": Camera,
-    "Pet Services": PawPrint,
-    "Automotive": Car,
-    "Moving & Storage": Package,
+  const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("sectors");
+
+  // Sort sectors by order
+  const sortedSectors = [...sectors].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  // Get categories for selected sector, sorted by order
+  const getCategoriesForSector = (sector: Sector): Category[] => {
+    const categories = ((sector.categories || []) as Category[])
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    return categories;
   };
 
-  const sectorColors: Record<string, string> = {
-    "Home & Garden": "#3F51B5",
-    "Business Services": "#E91E63",
-    "Personal Services": "#9C27B0",
-    "Repair & Maintenance": "#FF5722",
-    "Technology Services": "#2196F3",
-    "Education & Tutoring": "#FF9800",
-    "Beauty & Wellness": "#E91E63",
-    "Health & Wellness": "#4CAF50",
-    "Legal & Financial": "#795548",
-    "Event Services": "#9C27B0",
-    "Pet Services": "#FF9800",
-    "Automotive": "#00BCD4",
-    "Moving & Storage": "#4CAF50",
+  // Get subcategories for selected category, sorted by order
+  const getSubCategoriesForCategory = (category: Category): SubCategory[] => {
+    const subCategories = ((category.subCategories || []) as SubCategory[])
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    return subCategories;
+  };
+
+  const handleSectorClick = (sector: Sector) => {
+    setSelectedSector(sector);
+    setSelectedCategory(null);
+    setViewMode("categories");
+  };
+
+  const handleCategoryClick = (category: Category) => {
+    setSelectedCategory(category);
+    setViewMode("subcategories");
+  };
+
+  const handleBackToSectors = () => {
+    setSelectedSector(null);
+    setSelectedCategory(null);
+    setViewMode("sectors");
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedCategory(null);
+    setViewMode("categories");
+  };
+
+  const handleImageError = (key: string) => {
+    setImageErrors(prev => ({ ...prev, [key]: true }));
   };
 
   return (
@@ -95,7 +99,7 @@ export default function AllCategoriesPage() {
         </div>
       </div>
 
-      {/* Sectors and Categories */}
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 md:-mt-16 pb-16 md:pb-24 relative z-20">
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -106,146 +110,212 @@ export default function AllCategoriesPage() {
             <p className="text-red-500 font-['Poppins',sans-serif]">{error}</p>
           </div>
         ) : (
-          <div className="space-y-8 md:space-y-12">
-            {sectors.map((sector) => {
-              const IconComponent = sectorIcons[sector.name] || Home;
-              const color = sectorColors[sector.name] || "#3F51B5";
-              // Sort categories by order
-              const categories = ((sector.categories || []) as Category[])
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-              
-              return (
-                <div 
-                  key={sector._id} 
-                  id={`sector-${sector.slug}`}
-                  className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8 scroll-mt-[180px]"
+          <div className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8">
+            {/* Breadcrumb Navigation */}
+            {(viewMode === "categories" || viewMode === "subcategories") && (
+              <div className="mb-6 flex items-center gap-2 text-sm text-gray-600">
+                <button
+                  onClick={handleBackToSectors}
+                  className="flex items-center gap-1 hover:text-[#3D78CB] transition-colors"
                 >
-                  {/* Sector Header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-14 h-14 rounded-[12px] flex items-center justify-center overflow-hidden"
-                        style={{ backgroundColor: `${color}15` }}
-                      >
-                        {sector.icon && !imageErrors[`sector-${sector._id}`] ? (
-                          <img 
-                            src={sector.icon} 
-                            alt={sector.name}
-                            className="w-full h-full object-contain p-2"
-                            onError={() => {
-                              // Mark image as failed to load
-                              setImageErrors(prev => ({ ...prev, [`sector-${sector._id}`]: true }));
-                            }}
-                          />
-                        ) : (
-                          <IconComponent
-                            className="w-7 h-7"
-                            style={{ color: color }}
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[22px] md:text-[26px]">
-                          {sector.name}
-                        </h2>
-                        <p className="font-['Poppins',sans-serif] text-[#8d8d8d] text-[13px]">
-                          {categories.length} categories available
-                        </p>
-                      </div>
-                    </div>
-                    <Link
-                      to={`/sector/${sector.slug}`}
-                      className="hidden md:flex items-center gap-2 text-[#3D78CB] hover:text-[#2d68bb] font-['Poppins',sans-serif] text-[14px] transition-colors cursor-pointer"
-                    >
-                      View all
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
-                  </div>
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>All Sectors</span>
+                </button>
+                {selectedSector && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className="text-[#3D78CB] font-medium">{selectedSector.name}</span>
+                  </>
+                )}
+                {selectedCategory && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className="text-[#3D78CB] font-medium">{selectedCategory.name}</span>
+                  </>
+                )}
+              </div>
+            )}
 
-                  {/* Categories Grid */}
-                  {categories.length > 0 ? (
-                    <div className="space-y-4">
+            {/* Sectors View */}
+            {viewMode === "sectors" && (
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-6">
+                  Select a Sector
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sortedSectors.map((sector) => {
+                    const IconComponent = getSectorIcon(sector.name);
+                    const hasIcon = sector.icon && !imageErrors[`sector-${sector._id}`];
+                    const categories = getCategoriesForSector(sector);
+                    
+                    return (
+                      <button
+                        key={sector._id}
+                        onClick={() => handleSectorClick(sector)}
+                        className="group flex items-center gap-4 p-4 bg-gray-50 hover:bg-white rounded-[12px] border border-gray-200 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 text-left w-full"
+                      >
+                        {/* Sector Icon */}
+                        <div className="w-14 h-14 rounded-[10px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex-shrink-0">
+                          {hasIcon ? (
+                            <img 
+                              src={sector.icon} 
+                              alt={sector.name}
+                              className="w-full h-full object-contain p-2"
+                              onError={() => handleImageError(`sector-${sector._id}`)}
+                            />
+                          ) : (
+                            <IconComponent
+                              className="w-7 h-7 text-[#3D78CB]"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[16px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
+                            {sector.name}
+                          </h3>
+                          <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
+                            {categories.length} {categories.length === 1 ? 'category' : 'categories'} available
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Categories View */}
+            {viewMode === "categories" && selectedSector && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
+                      {selectedSector.name}
+                    </h2>
+                    <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
+                      Select a category to view services
+                    </p>
+                  </div>
+                </div>
+                {(() => {
+                  const categories = getCategoriesForSector(selectedSector);
+                  return categories.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {categories.map((category) => {
-                        // Sort subcategories by order
-                        const subCategories = ((category.subCategories || []) as any[])
-                          .sort((a, b) => (a.order || 0) - (b.order || 0));
                         const CategoryIconComponent = getCategoryIcon(category.name);
+                        const hasIcon = category.icon && !imageErrors[`category-${category._id}`];
+                        const subCategories = getSubCategoriesForCategory(category);
+                        
                         return (
-                          <div key={category._id} className="space-y-2">
-                            <Link
-                              to={`/services?category=${encodeURIComponent(sector.name)}&subcategory=${encodeURIComponent(category.name)}`}
-                              className="group flex items-center justify-between p-3 bg-gray-50 hover:bg-white rounded-[8px] border border-gray-100 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3">
-                                {/* Category Icon */}
-                                <div className="w-10 h-10 rounded-[8px] flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${color}15` }}>
-                                  {category.icon && !imageErrors[`category-${category._id}`] ? (
-                                    <img 
-                                      src={category.icon} 
-                                      alt={category.name}
-                                      className="w-full h-full object-contain p-1.5"
-                                      onError={() => {
-                                        // Mark image as failed to load
-                                        setImageErrors(prev => ({ ...prev, [`category-${category._id}`]: true }));
-                                      }}
-                                    />
-                                  ) : (
-                                    <CategoryIconComponent
-                                      className="w-5 h-5"
-                                      style={{ color: color }}
-                                    />
-                                  )}
-                                </div>
-                                <div>
-                                  <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-semibold group-hover:text-[#3D78CB] transition-colors">
-                                    {category.name}
-                                  </span>
-                                  {subCategories.length > 0 && (
-                                    <p className="text-[11px] text-gray-500 font-['Poppins',sans-serif] mt-1">
-                                      {subCategories.length} services available
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all" />
-                            </Link>
-                            {/* Subcategories */}
-                            {subCategories.length > 0 && (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 ml-4">
-                                {subCategories.map((subCategory) => (
-                                  <Link
-                                    key={subCategory._id}
-                                    to={`/services?category=${encodeURIComponent(sector.name)}&subcategory=${encodeURIComponent(category.name)}&service=${encodeURIComponent(subCategory.name)}`}
-                                    className="group bg-white hover:bg-gray-50 rounded-[6px] border border-gray-100 hover:border-[#3D78CB] transition-all duration-200 p-2 flex items-center justify-between cursor-pointer"
-                                  >
-                                    <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[12px] group-hover:text-[#3D78CB] transition-colors">
-                                      {subCategory.name}
-                                    </span>
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          <button
+                            key={category._id}
+                            onClick={() => handleCategoryClick(category)}
+                            className="group flex items-center gap-4 p-4 bg-gray-50 hover:bg-white rounded-[12px] border border-gray-200 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 text-left w-full"
+                          >
+                            {/* Category Icon */}
+                            <div className="w-12 h-12 rounded-[10px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex-shrink-0">
+                              {hasIcon ? (
+                                <img 
+                                  src={category.icon} 
+                                  alt={category.name}
+                                  className="w-full h-full object-contain p-1.5"
+                                  onError={() => handleImageError(`category-${category._id}`)}
+                                />
+                              ) : (
+                                <CategoryIconComponent
+                                  className="w-6 h-6 text-[#3D78CB]"
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[15px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
+                                {category.name}
+                              </h3>
+                              {subCategories.length > 0 && (
+                                <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
+                                  {subCategories.length} {subCategories.length === 1 ? 'service' : 'services'} available
+                                </p>
+                              )}
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                          </button>
                         );
                       })}
                     </div>
                   ) : (
-                    <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
-                      No categories available
-                    </p>
-                  )}
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
+                        No categories available in this sector
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
-                  {/* View All Link for Mobile */}
-                  <Link
-                    to={`/sector/${sector.slug}`}
-                    className="md:hidden flex items-center justify-center gap-2 text-[#3D78CB] font-['Poppins',sans-serif] text-[14px] mt-4 pt-4 border-t border-gray-100 cursor-pointer"
-                  >
-                    View all {sector.name} services
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
+            {/* Subcategories View */}
+            {viewMode === "subcategories" && selectedCategory && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
+                      {selectedCategory.name}
+                    </h2>
+                    <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
+                      Available services in this category
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
+                {(() => {
+                  const subCategories = getSubCategoriesForCategory(selectedCategory);
+                  return subCategories.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {subCategories.map((subCategory) => {
+                        const SubCategoryIconComponent = getSubCategoryIcon(subCategory.name);
+                        const hasIcon = (subCategory as any).icon && !imageErrors[`subcategory-${subCategory._id}`];
+                        
+                        return (
+                          <Link
+                            key={subCategory._id}
+                            to={`/services?category=${encodeURIComponent(selectedSector?.name || '')}&subcategory=${encodeURIComponent(selectedCategory.name)}&service=${encodeURIComponent(subCategory.name)}`}
+                            className="group flex items-center gap-3 p-3 bg-gray-50 hover:bg-white rounded-[10px] border border-gray-200 hover:border-[#3D78CB] hover:shadow-[0px_2px_8px_rgba(61,120,203,0.12)] transition-all duration-200"
+                          >
+                            {/* SubCategory Icon */}
+                            <div className="w-10 h-10 rounded-[8px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex-shrink-0">
+                              {hasIcon ? (
+                                <img 
+                                  src={(subCategory as any).icon} 
+                                  alt={subCategory.name}
+                                  className="w-full h-full object-contain p-1"
+                                  onError={() => handleImageError(`subcategory-${subCategory._id}`)}
+                                />
+                              ) : (
+                                <SubCategoryIconComponent
+                                  className="w-5 h-5 text-[#3D78CB]"
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-medium group-hover:text-[#3D78CB] transition-colors">
+                                {subCategory.name}
+                              </span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
+                        No services available in this category
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
       </div>

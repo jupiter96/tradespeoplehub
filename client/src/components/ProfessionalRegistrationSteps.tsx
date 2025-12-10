@@ -45,8 +45,11 @@ export default function ProfessionalRegistrationSteps() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Extract sector names for the select dropdown
-  const SECTORS = sectorsData.map((s: Sector) => s.name);
+  // Sort sectors by order
+  const sortedSectors = [...sectorsData].sort((a, b) => (a.order || 0) - (b.order || 0));
+  
+  // Extract sector names for the select dropdown (sorted by order)
+  const SECTORS = sortedSectors.map((s: Sector) => s.name);
   
   // Form data - declare state variables first
   const [aboutService, setAboutService] = useState<string>("");
@@ -64,7 +67,7 @@ export default function ProfessionalRegistrationSteps() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Find selected sector object (after sector state is declared)
-  const selectedSectorObj = sectorsData.find((s: Sector) => s.name === sector);
+  const selectedSectorObj = sortedSectors.find((s: Sector) => s.name === sector);
   const selectedSectorId = selectedSectorObj?._id;
   
   // Load categories for selected sector
@@ -74,9 +77,12 @@ export default function ProfessionalRegistrationSteps() {
     true // includeSubCategories
   );
   
+  // Sort categories by order
+  const sortedCategories = [...availableCategories].sort((a, b) => (a.order || 0) - (b.order || 0));
+  
   // Get all subcategories from selected categories (by ID)
   const allSubcategories: SubCategory[] = [];
-  availableCategories.forEach((cat: Category) => {
+  sortedCategories.forEach((cat: Category) => {
     if (categories.includes(cat._id) && cat.subCategories) {
       allSubcategories.push(...cat.subCategories);
     }
@@ -323,11 +329,11 @@ export default function ProfessionalRegistrationSteps() {
   // Load user's existing services when sector and categories are loaded (only once)
   const [hasLoadedUserServices, setHasLoadedUserServices] = useState(false);
   useEffect(() => {
-    if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0 && sector && !hasLoadedUserServices) {
+    if (userInfo?.services && userInfo.services.length > 0 && sortedCategories.length > 0 && sector && !hasLoadedUserServices) {
       // Match user's services with loaded categories and subcategories
       // Support both ID-based (new) and name-based (legacy) storage
-      const categoryIds = availableCategories.map((cat: Category) => cat._id);
-      const categoryNames = availableCategories.map((cat: Category) => cat.name);
+      const categoryIds = sortedCategories.map((cat: Category) => cat._id);
+      const categoryNames = sortedCategories.map((cat: Category) => cat.name);
       const subcategoryIds = allSubcategories.map((sc: SubCategory) => sc._id);
       const subcategoryNames = allSubcategories.map((sc: SubCategory) => sc.name);
       
@@ -341,7 +347,7 @@ export default function ProfessionalRegistrationSteps() {
       
       // Convert names to IDs if found
       const categoryIdsFromNames = userCategoryNames.map((name: string) => {
-        const cat = availableCategories.find((c: Category) => c.name === name);
+        const cat = sortedCategories.find((c: Category) => c.name === name);
         return cat?._id;
       }).filter(Boolean) as string[];
       
@@ -771,7 +777,7 @@ export default function ProfessionalRegistrationSteps() {
                         Loading categories...
                       </p>
                     </div>
-                  ) : availableCategories.length === 0 ? (
+                  ) : sortedCategories.length === 0 ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
                       <p className="text-gray-500 font-['Poppins',sans-serif]">
                         No categories available for this sector
@@ -780,7 +786,7 @@ export default function ProfessionalRegistrationSteps() {
                   ) : (
                     <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {availableCategories.map((cat: Category) => (
+                        {sortedCategories.map((cat: Category) => (
                           <label
                             key={cat._id}
                             className={`flex items-center gap-3 p-3 rounded-lg border-2 ${

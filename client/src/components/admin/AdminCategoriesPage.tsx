@@ -21,7 +21,6 @@ import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import {
   Table,
@@ -149,10 +148,10 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
           <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
             <DropdownMenuItem
               onClick={() => {
-                if (category.slug) {
-                  window.open(`/category/${category.slug}`, '_blank');
+                if (category._id) {
+                  window.open(`/category/${category._id}`, '_blank');
                 } else {
-                  toast.error("Category slug not available");
+                  toast.error("Category ID not available");
                 }
               }}
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
@@ -232,10 +231,7 @@ export default function AdminCategoriesPage() {
   const [formData, setFormData] = useState<{
     sector: string;
     name: string;
-    slug: string;
-    question: string;
     order: number;
-    description: string;
     icon: string;
     bannerImage: string;
     isActive: boolean;
@@ -243,10 +239,7 @@ export default function AdminCategoriesPage() {
   }>({
     sector: "",
     name: "",
-    slug: "",
-    question: "",
     order: 0,
-    description: "",
     icon: "",
     bannerImage: "",
     isActive: true,
@@ -374,32 +367,9 @@ export default function AdminCategoriesPage() {
     );
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  };
-
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => {
-      const updated = { ...prev, [field]: value };
-      // Auto-generate slug from name when name changes
-      // For new categories (no editingCategory), always auto-generate
-      // For existing categories, only auto-generate if slug is empty or matches the original slug
-      if (field === "name") {
-        if (!editingCategory) {
-          // New category: always auto-generate slug
-          updated.slug = generateSlug(value);
-        } else {
-          // Existing category: only auto-generate if slug is empty or matches original
-          const originalSlug = generateSlug(editingCategory.name);
-          if (!updated.slug || updated.slug === originalSlug) {
-            updated.slug = generateSlug(value);
-          }
-        }
-      }
-      return updated;
+      return { ...prev, [field]: value };
     });
   };
 
@@ -507,10 +477,7 @@ export default function AdminCategoriesPage() {
     setFormData({
       sector: selectedSectorId,
       name: "",
-      slug: "",
-      question: "",
       order: getNextAvailableOrder(),
-      description: "",
       icon: "",
       bannerImage: "",
       isActive: true,
@@ -531,10 +498,7 @@ export default function AdminCategoriesPage() {
     setFormData({
       sector: typeof category.sector === "string" ? category.sector : category.sector._id,
       name: category.name,
-      slug: category.slug || generateSlug(category.name),
-      question: category.question || "",
       order: category.order,
-      description: category.description || "",
       icon: category.icon || "",
       bannerImage: (category as any).bannerImage || "",
       isActive: category.isActive,
@@ -620,10 +584,6 @@ export default function AdminCategoriesPage() {
       return;
     }
 
-    if (!formData.slug.trim()) {
-      formData.slug = generateSlug(formData.name);
-    }
-
     try {
       setIsSaving(true);
       
@@ -637,10 +597,7 @@ export default function AdminCategoriesPage() {
       const categoryPayload = {
         sector: formData.sector,
         name: formData.name.trim(),
-        slug: formData.slug.trim(),
-        question: formData.question.trim(),
         order: formData.order,
-        description: formData.description.trim(),
         icon: formData.icon.trim(),
         bannerImage: formData.bannerImage.trim(),
         isActive: formData.isActive,
@@ -1096,18 +1053,6 @@ export default function AdminCategoriesPage() {
                   className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
-              <div>
-                <Label htmlFor="slug" className="text-black dark:text-white">
-                  Slug <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="slug"
-                  value={formData.slug}
-                  onChange={(e) => handleInputChange("slug", e.target.value)}
-                  placeholder="plumbing"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
-              </div>
               <div className="flex items-center gap-4">
                 <Label htmlFor="isActive" className="text-black dark:text-white">
                   Status
@@ -1125,34 +1070,6 @@ export default function AdminCategoriesPage() {
                   </span>
                 </div>
               </div>
-            </div>
-
-            {/* Question */}
-            <div>
-              <Label htmlFor="question" className="text-black dark:text-white">
-                Category Question
-              </Label>
-              <Input
-                id="question"
-                value={formData.question}
-                onChange={(e) => handleInputChange("question", e.target.value)}
-                placeholder="What type of plumbing service do you need?"
-                className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <Label htmlFor="description" className="text-black dark:text-white">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="Describe this category..."
-                className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-              />
             </div>
 
             {/* Images */}
