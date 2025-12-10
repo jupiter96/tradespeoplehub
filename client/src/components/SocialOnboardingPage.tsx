@@ -32,6 +32,12 @@ export default function SocialOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingProfile, setPendingProfile] = useState<any>(null);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneCodeHint, setPhoneCodeHint] = useState<string | null>(null);
+  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [registrationData, setRegistrationData] = useState<any>(null);
 
   // Form state
   const [userType, setUserType] = useState<"client" | "professional">("client");
