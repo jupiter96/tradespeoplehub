@@ -75,7 +75,7 @@ export default function SocialOnboardingPage() {
         }
 
         setPendingProfile(profile);
-        // Pre-fill form with Google profile data
+        // Pre-fill form with social profile data (Google or Facebook)
         setFirstName(profile.firstName || "");
         setLastName(profile.lastName || "");
         setEmail(profile.email || "");
@@ -233,7 +233,7 @@ export default function SocialOnboardingPage() {
                 </h2>
               </div>
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                We've filled in some information from your Google account. Please complete the rest to finish signing up.
+                We've filled in some information from your {pendingProfile?.provider === 'google' ? 'Google' : 'Facebook'} account. Please complete the rest to finish signing up.
               </p>
             </div>
 

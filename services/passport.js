@@ -33,8 +33,9 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
   try {
     const providerId = profile.id;
     const email = profile.emails?.[0]?.value?.toLowerCase();
-    const firstName = profile.name?.givenName || profile.displayName?.split(' ')?.[0] || '';
-    const lastName = profile.name?.familyName || '';
+    // Handle both Google and Facebook profile structures
+    const firstName = profile.name?.givenName || profile.name?.firstName || profile.displayName?.split(' ')?.[0] || '';
+    const lastName = profile.name?.familyName || profile.name?.lastName || '';
 
     const providerField = provider === 'google' ? 'googleId' : 'facebookId';
     
