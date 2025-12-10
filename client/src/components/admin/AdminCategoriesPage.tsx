@@ -494,15 +494,11 @@ export default function AdminCategoriesPage() {
   };
 
   const getNextAvailableOrder = useCallback(() => {
-    if (categories.length === 0) return 0;
-    const existingOrders = categories.map(c => c.order).sort((a, b) => a - b);
-    // Find the first gap or use max + 1
-    for (let i = 0; i < existingOrders.length; i++) {
-      if (existingOrders[i] !== i) {
-        return i;
-      }
-    }
-    return existingOrders[existingOrders.length - 1] + 1;
+    if (categories.length === 0) return 1; // Minimum order is 1, not 0
+    const existingOrders = categories.map(c => c.order || 0).filter(o => o > 0);
+    if (existingOrders.length === 0) return 1;
+    const maxOrder = Math.max(...existingOrders);
+    return maxOrder + 1; // Always use max + 1 for new items
   }, [categories]);
 
   const handleCreateNew = () => {
@@ -732,8 +728,17 @@ export default function AdminCategoriesPage() {
 
       toast.success(editingCategory ? "Category updated successfully" : "Category created successfully");
       setIsModalOpen(false);
+      // Reset to first page and ensure order desc sorting for new items to appear at top
+      if (!editingCategory) {
+        setPage(1);
+        setSortBy("order");
+        setSortOrder("desc");
+      }
       if (selectedSectorId) {
-        fetchCategories(selectedSectorId);
+        // Small delay to ensure state updates before fetch
+        setTimeout(() => {
+          fetchCategories(selectedSectorId);
+        }, 100);
       }
     } catch (error: any) {
       console.error("Error saving category:", error);

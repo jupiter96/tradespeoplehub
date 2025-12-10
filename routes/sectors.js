@@ -197,39 +197,31 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Sector with this slug already exists' });
     }
     
-    // Find next available order if provided order is taken or not provided
-    let finalOrder = order !== undefined ? order : 0;
-    if (order !== undefined) {
-      const existingOrder = await Sector.findOne({ order });
-      if (existingOrder) {
-        // Find next available order
-        const allSectors = await Sector.find({}).sort({ order: 1 }).select('order').lean();
-        const existingOrders = allSectors.map(s => s.order).sort((a, b) => a - b);
-        // Find first gap or use max + 1
-        finalOrder = existingOrders.length;
-        for (let i = 0; i < existingOrders.length; i++) {
-          if (existingOrders[i] !== i) {
-            finalOrder = i;
-            break;
-          }
-        }
-        if (finalOrder === existingOrders.length && existingOrders.length > 0) {
-          finalOrder = existingOrders[existingOrders.length - 1] + 1;
-        }
+    // Find next available order - always use max + 1, minimum is 1
+    let finalOrder = order;
+    if (order === undefined || order === null || order < 1) {
+      // If no order provided or invalid, find max order + 1
+      const allSectors = await Sector.find({}).sort({ order: -1 }).select('order').limit(1).lean();
+      if (allSectors.length > 0 && allSectors[0].order) {
+        finalOrder = Math.max(allSectors[0].order, 0) + 1;
+      } else {
+        finalOrder = 1; // Minimum order is 1
       }
     } else {
-      // If no order provided, find next available
-      const allSectors = await Sector.find({}).sort({ order: 1 }).select('order').lean();
-      const existingOrders = allSectors.map(s => s.order).sort((a, b) => a - b);
-      finalOrder = existingOrders.length;
-      for (let i = 0; i < existingOrders.length; i++) {
-        if (existingOrders[i] !== i) {
-          finalOrder = i;
-          break;
+      // If order is provided, check if it's taken
+      const existingOrder = await Sector.findOne({ order });
+      if (existingOrder) {
+        // Order is taken, find max + 1
+        const allSectors = await Sector.find({}).sort({ order: -1 }).select('order').limit(1).lean();
+        if (allSectors.length > 0 && allSectors[0].order) {
+          finalOrder = Math.max(allSectors[0].order, 0) + 1;
+        } else {
+          finalOrder = 1; // Minimum order is 1
         }
       }
-      if (finalOrder === existingOrders.length && existingOrders.length > 0) {
-        finalOrder = existingOrders[existingOrders.length - 1] + 1;
+      // Ensure order is at least 1
+      if (finalOrder < 1) {
+        finalOrder = 1;
       }
     }
     

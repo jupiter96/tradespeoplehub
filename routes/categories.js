@@ -216,42 +216,34 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Category with this name already exists in this sector' });
     }
     
-    // Find next available order if provided order is taken or not provided
-    let finalOrder = order !== undefined ? order : 0;
-    if (order !== undefined) {
+    // Find next available order - always use max + 1, minimum is 1
+    let finalOrder = order;
+    if (order === undefined || order === null || order < 1) {
+      // If no order provided or invalid, find max order + 1 within this sector
+      const maxCategory = await Category.findOne({ sector: sectorDoc._id }).sort({ order: -1 }).select('order').lean();
+      if (maxCategory && maxCategory.order) {
+        finalOrder = Math.max(maxCategory.order, 0) + 1;
+      } else {
+        finalOrder = 1; // Minimum order is 1
+      }
+    } else {
+      // If order is provided, check if it's taken
       const existingOrder = await Category.findOne({ 
         sector: sectorDoc._id, 
         order 
       });
       if (existingOrder) {
-        // Find next available order within this sector
-        const allCategories = await Category.find({ sector: sectorDoc._id }).sort({ order: 1 }).select('order').lean();
-        const existingOrders = allCategories.map(c => c.order).sort((a, b) => a - b);
-        // Find first gap or use max + 1
-        finalOrder = existingOrders.length;
-        for (let i = 0; i < existingOrders.length; i++) {
-          if (existingOrders[i] !== i) {
-            finalOrder = i;
-            break;
-          }
-        }
-        if (finalOrder === existingOrders.length && existingOrders.length > 0) {
-          finalOrder = existingOrders[existingOrders.length - 1] + 1;
+        // Order is taken, find max + 1
+        const maxCategory = await Category.findOne({ sector: sectorDoc._id }).sort({ order: -1 }).select('order').lean();
+        if (maxCategory && maxCategory.order) {
+          finalOrder = Math.max(maxCategory.order, 0) + 1;
+        } else {
+          finalOrder = 1; // Minimum order is 1
         }
       }
-    } else {
-      // If no order provided, find next available
-      const allCategories = await Category.find({ sector: sectorDoc._id }).sort({ order: 1 }).select('order').lean();
-      const existingOrders = allCategories.map(c => c.order).sort((a, b) => a - b);
-      finalOrder = existingOrders.length;
-      for (let i = 0; i < existingOrders.length; i++) {
-        if (existingOrders[i] !== i) {
-          finalOrder = i;
-          break;
-        }
-      }
-      if (finalOrder === existingOrders.length && existingOrders.length > 0) {
-        finalOrder = existingOrders[existingOrders.length - 1] + 1;
+      // Ensure order is at least 1
+      if (finalOrder < 1) {
+        finalOrder = 1;
       }
     }
     

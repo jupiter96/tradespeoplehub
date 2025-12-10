@@ -395,15 +395,11 @@ export default function AdminSectorsPage() {
   };
 
   const getNextAvailableOrder = () => {
-    if (sectors.length === 0) return 0;
-    const existingOrders = sectors.map(s => s.order).sort((a, b) => a - b);
-    // Find the first gap or use max + 1
-    for (let i = 0; i < existingOrders.length; i++) {
-      if (existingOrders[i] !== i) {
-        return i;
-      }
-    }
-    return existingOrders[existingOrders.length - 1] + 1;
+    if (sectors.length === 0) return 1; // Minimum order is 1, not 0
+    const existingOrders = sectors.map(s => s.order || 0).filter(o => o > 0);
+    if (existingOrders.length === 0) return 1;
+    const maxOrder = Math.max(...existingOrders);
+    return maxOrder + 1; // Always use max + 1 for new items
   };
 
   const handleCreateNew = () => {
@@ -678,7 +674,16 @@ export default function AdminSectorsPage() {
       if (response.ok) {
         toast.success(editingSector ? "Sector updated successfully" : "Sector created successfully");
         setIsModalOpen(false);
-        fetchSectors();
+        // Reset to first page and ensure order desc sorting for new items to appear at top
+        if (!editingSector) {
+          setPage(1);
+          setSortBy("order");
+          setSortOrder("desc");
+        }
+        // Small delay to ensure state updates before fetch
+        setTimeout(() => {
+          fetchSectors();
+        }, 100);
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to save sector");

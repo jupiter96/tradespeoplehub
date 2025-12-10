@@ -491,15 +491,11 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const getNextAvailableOrder = useCallback(() => {
-    if (serviceCategories.length === 0) return 0;
-    const existingOrders = serviceCategories.map(c => c.order).sort((a, b) => a - b);
-    // Find the first gap or use max + 1
-    for (let i = 0; i < existingOrders.length; i++) {
-      if (existingOrders[i] !== i) {
-        return i;
-      }
-    }
-    return existingOrders[existingOrders.length - 1] + 1;
+    if (serviceCategories.length === 0) return 1; // Minimum order is 1, not 0
+    const existingOrders = serviceCategories.map(c => c.order || 0).filter(o => o > 0);
+    if (existingOrders.length === 0) return 1;
+    const maxOrder = Math.max(...existingOrders);
+    return maxOrder + 1; // Always use max + 1 for new items
   }, [serviceCategories]);
 
   const handleCreateNew = () => {
@@ -811,12 +807,18 @@ export default function AdminServiceCategoriesPage() {
       // Clear pending files
       setPendingIconFile(null);
       setPendingBannerFile(null);
+      // Reset to first page and ensure order desc sorting for new items to appear at top
+      if (!editingServiceCategory) {
+        setPage(1);
+        setSortBy("order");
+        setSortOrder("desc");
+      }
       // Refresh the list to show updated images
       if (selectedSectorId) {
-        // Small delay to ensure database is updated, especially for pending image uploads
+        // Small delay to ensure state updates and database is updated
         setTimeout(() => {
           fetchServiceCategories(selectedSectorId);
-        }, 1000);
+        }, 100);
       }
     } catch (error: any) {
       console.error("Error saving service category:", error);
