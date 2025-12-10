@@ -219,7 +219,7 @@ export default function AdminCategoriesPage() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("order");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
 
   const sensors = useSensors(
@@ -454,7 +454,8 @@ export default function AdminCategoriesPage() {
         }
 
         const data = await response.json();
-        handleInputChange(type, data.imageUrl);
+        const fieldName = type === "icon" ? "icon" : "bannerImage";
+        handleInputChange(fieldName, data.imageUrl);
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       } else {
         // Existing category: Use entity-specific upload endpoint
@@ -476,7 +477,8 @@ export default function AdminCategoriesPage() {
         }
 
         const data = await response.json();
-        handleInputChange(type, data.imageUrl);
+        const fieldName = type === "icon" ? "icon" : "bannerImage";
+        handleInputChange(fieldName, data.imageUrl);
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       }
     } catch (error) {
@@ -855,9 +857,9 @@ export default function AdminCategoriesPage() {
 
       if (response.ok) {
         toast.success('Category order updated successfully');
-        if (sortBy !== 'order' || sortOrder !== 'asc') {
+        if (sortBy !== 'order' || sortOrder !== 'desc') {
           setSortBy('order');
-          setSortOrder('asc');
+          setSortOrder('desc');
         }
         setTimeout(() => {
           if (selectedSectorId) {
@@ -934,7 +936,7 @@ export default function AdminCategoriesPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
                   <Input
                     type="text"
-                    placeholder="Search by name, question, or description..."
+                    placeholder="Search categories..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"

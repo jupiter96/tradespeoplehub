@@ -751,7 +751,8 @@ export default function AdminSectorsPage() {
         }
 
         const data = await response.json();
-        handleInputChange(type, data.imageUrl);
+        const fieldName = type === "icon" ? "icon" : "bannerImage";
+        handleInputChange(fieldName as keyof Sector, data.imageUrl);
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       } else {
         // Existing sector: Use entity-specific upload endpoint
@@ -773,7 +774,8 @@ export default function AdminSectorsPage() {
         }
 
         const data = await response.json();
-        handleInputChange(type, data.imageUrl);
+        const fieldName = type === "icon" ? "icon" : "bannerImage";
+        handleInputChange(fieldName as keyof Sector, data.imageUrl);
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       }
     } catch (error) {
@@ -818,7 +820,7 @@ export default function AdminSectorsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
               <Input
                 type="text"
-                placeholder="Search by name, slug, or description..."
+                placeholder="Search sectors..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"

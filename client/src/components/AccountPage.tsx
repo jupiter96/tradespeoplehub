@@ -1207,7 +1207,7 @@ function JobsSection() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8d8d8d]" />
             <Input
-              placeholder="Search by job title, client, or ID..."
+              placeholder="Search jobs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"

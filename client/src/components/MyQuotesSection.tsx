@@ -194,7 +194,7 @@ export default function MyQuotesSection() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" />
           <Input
-            placeholder="Search by job title or location..."
+            placeholder="Search quotes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 font-['Poppins',sans-serif]"

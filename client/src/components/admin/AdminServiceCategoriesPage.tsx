@@ -220,7 +220,7 @@ export default function AdminServiceCategoriesPage() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("order");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
 
   const sensors = useSensors(
@@ -484,9 +484,50 @@ export default function AdminServiceCategoriesPage() {
         setUploadingImage({ type: null, loading: false });
       }
     } else {
-      // For new category, just store the file and show preview
-      // The file will be uploaded after the category is saved
-      toast.info("Image will be uploaded when you save the service category");
+      // For new service category: Upload directly to Cloudinary and save URL to formData
+      setUploadingImage({ type, loading: true });
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append("image", file);
+
+        const response = await fetch(
+          resolveApiUrl(`/api/admin/upload-image/${type}/service-category/temp`),
+          {
+            method: "POST",
+            credentials: "include",
+            body: uploadFormData,
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload image");
+        }
+
+        const data = await response.json();
+        const fieldName = type === "icon" ? "icon" : "bannerImage";
+        handleInputChange(fieldName, data.imageUrl);
+        // Clear pending file since it's uploaded
+        if (type === "icon") {
+          setPendingIconFile(null);
+        } else {
+          setPendingBannerFile(null);
+        }
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        toast.error(error instanceof Error ? error.message : "Failed to upload image");
+        // Revert preview on error
+        if (type === "icon") {
+          setIconPreview(formData.icon || null);
+          setPendingIconFile(null);
+        } else {
+          setBannerPreview(formData.bannerImage || null);
+          setPendingBannerFile(null);
+        }
+      } finally {
+        setUploadingImage({ type: null, loading: false });
+      }
     }
   };
 
@@ -935,9 +976,9 @@ export default function AdminServiceCategoriesPage() {
 
       if (response.ok) {
         toast.success('Service category order updated successfully');
-        if (sortBy !== 'order' || sortOrder !== 'asc') {
+        if (sortBy !== 'order' || sortOrder !== 'desc') {
           setSortBy('order');
-          setSortOrder('asc');
+          setSortOrder('desc');
         }
         setTimeout(() => {
           if (selectedSectorId) {
@@ -1014,7 +1055,7 @@ export default function AdminServiceCategoriesPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
                   <Input
                     type="text"
-                    placeholder="Search by name, question, or description..."
+                    placeholder="Search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"

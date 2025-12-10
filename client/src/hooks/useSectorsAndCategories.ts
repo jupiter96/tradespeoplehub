@@ -164,7 +164,7 @@ export const useSubCategories = (categoryId?: string, categorySlug?: string) => 
     const fetchSubCategories = async () => {
       try {
         setLoading(true);
-        let url = '/api/subcategories?activeOnly=true';
+        let url = '/api/subcategories?activeOnly=true&sortBy=order&sortOrder=asc';
         if (categoryId) {
           url += `&categoryId=${categoryId}`;
         } else if (categorySlug) {
