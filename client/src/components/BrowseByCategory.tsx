@@ -16,12 +16,14 @@ import {
   Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useSectors } from "../hooks/useSectorsAndCategories";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Sector } from "../hooks/useSectorsAndCategories";
 
 export default function BrowseByCategory() {
   const { sectors, loading } = useSectors(true, true); // Include categories and subcategories
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   // Icon mapping for sectors - Each sector now has a unique icon
   const iconMap: Record<string, any> = {
     "Home & Garden": Home,
@@ -95,15 +97,9 @@ export default function BrowseByCategory() {
     },
   };
 
-  // Calculate service count for each sector and get top 6
-  const sectorsWithCount = sectors.map((sector: Sector) => ({
-    ...sector,
-    serviceCount: (sector.categories || []).length
-  }));
-
-  // Sort by service count (descending) and take top 6
-  const topSectors = sectorsWithCount
-    .sort((a, b) => b.serviceCount - a.serviceCount)
+  // Sort by order field (ascending) and take top 6
+  const topSectors = sectors
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
     .slice(0, 6);
 
   const categories = topSectors.map((sector: Sector) => {
@@ -112,9 +108,10 @@ export default function BrowseByCategory() {
     
     return {
       id: sector._id,
-      name: sector.displayName || sector.name,
-      subtitle: sector.subtitle,
+      name: sector.name,
+      subtitle: undefined,
       icon: IconComponent,
+      iconImage: sector.icon, // Admin uploaded icon image URL
       styles: styles,
       categoryName: sector.name,
       sectorSlug: sector.slug,
@@ -182,11 +179,23 @@ export default function BrowseByCategory() {
                 {/* Content */}
                 <div className="relative z-10 h-full flex flex-col items-center justify-center p-2">
                   {/* Icon Circle */}
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 mb-2 transition-all duration-300 group-hover:scale-110 group-hover:bg-white/30">
-                    <IconComponent 
-                      className="w-4 h-4 text-white"
-                      strokeWidth={2}
-                    />
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 mb-2 transition-all duration-300 group-hover:scale-110 group-hover:bg-white/30 overflow-hidden">
+                    {category.iconImage && !imageErrors[category.id] ? (
+                      <img 
+                        src={category.iconImage} 
+                        alt={category.name}
+                        className="w-full h-full object-contain p-1"
+                        onError={() => {
+                          // Mark image as failed to load
+                          setImageErrors(prev => ({ ...prev, [category.id]: true }));
+                        }}
+                      />
+                    ) : (
+                      <IconComponent 
+                        className="w-4 h-4 text-white"
+                        strokeWidth={2}
+                      />
+                    )}
                   </div>
                   
                   {/* Category Name */}
@@ -194,11 +203,6 @@ export default function BrowseByCategory() {
                     <p className="text-white text-[11px] font-semibold leading-tight drop-shadow-md">
                       {category.name}
                     </p>
-                    {category.subtitle && (
-                      <p className="text-white text-[11px] font-semibold leading-tight drop-shadow-md">
-                        {category.subtitle}
-                      </p>
-                    )}
                   </div>
                   
                   {/* Arrow Icon on Hover */}
@@ -241,11 +245,23 @@ export default function BrowseByCategory() {
               {/* Content */}
               <div className="relative z-10 h-full flex flex-col items-center justify-center p-4">
                 {/* Icon Circle */}
-                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 mb-3 transition-all duration-300 group-hover:scale-110 group-hover:bg-white/30">
-                  <IconComponent 
-                    className="w-7 h-7 text-white"
-                    strokeWidth={2}
-                  />
+                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 mb-3 transition-all duration-300 group-hover:scale-110 group-hover:bg-white/30 overflow-hidden">
+                  {category.iconImage && !imageErrors[category.id] ? (
+                    <img 
+                      src={category.iconImage} 
+                      alt={category.name}
+                      className="w-full h-full object-contain p-1.5"
+                      onError={() => {
+                        // Mark image as failed to load
+                        setImageErrors(prev => ({ ...prev, [category.id]: true }));
+                      }}
+                    />
+                  ) : (
+                    <IconComponent 
+                      className="w-7 h-7 text-white"
+                      strokeWidth={2}
+                    />
+                  )}
                 </div>
                 
                 {/* Category Name */}
@@ -253,11 +269,6 @@ export default function BrowseByCategory() {
                   <p className="text-white text-[14px] font-semibold leading-tight drop-shadow-md">
                     {category.name}
                   </p>
-                  {category.subtitle && (
-                    <p className="text-white text-[14px] font-semibold leading-tight drop-shadow-md">
-                      {category.subtitle}
-                    </p>
-                  )}
                 </div>
                 
                 {/* Arrow Icon on Hover */}

@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, ShoppingCart, Bell, User, Search, Heart, ShoppingBag, Briefcase, CreditCard, Lock, Settings, MessageCircle, HelpCircle, Gift, FileText, Wallet, Shield, Ticket, LogOut } from "lucide-react";
 import { useCart } from "../components/CartContext";
 import { useAccount } from "../components/AccountContext";
+import { useSectors, type Sector, type Category } from "../hooks/useSectorsAndCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../components/ui/alert-dialog";
@@ -30,7 +31,20 @@ const mainCategoryToSlug = (categoryName: string): string => {
 };
 
 // Helper function to get category ID by sector and category name
-const getCategoryId = (sectorName: string, categoryName: string): string => {
+// This will be used as a fallback when API data is not available
+const getCategoryId = (sectorName: string, categoryName: string, sectors?: Sector[]): string => {
+  // Try to find category in API data first
+  if (sectors) {
+    const sector = sectors.find(s => s.name === sectorName);
+    if (sector && sector.categories) {
+      const category = sector.categories.find(cat => cat.name === categoryName);
+      if (category) {
+        return category._id || category.slug || mainCategoryToSlug(categoryName);
+      }
+    }
+  }
+  
+  // Fallback to static data
   const category = mainCategories.find(cat => 
     cat.sectorName === sectorName && cat.name === categoryName
   );
@@ -256,14 +270,7 @@ function Component1() {
   );
 }
 
-// Dropdown data for all categories - Generated from unifiedCategoriesData
-const categoryDropdownData: { [key: string]: { title: string; items: string[] }[] } = categoryTree.reduce((acc, sector) => {
-  acc[sector.name] = sector.mainCategories.map(mainCat => ({
-    title: mainCat.name,
-    items: mainCat.subCategories.slice(0, 4) // Show first 4 subcategories in dropdown
-  }));
-  return acc;
-}, {} as { [key: string]: { title: string; items: string[] }[] });
+// Dropdown data will be generated dynamically from API data
 
 
 
@@ -601,14 +608,60 @@ export default function Nav() {
     }
   };
 
-  // Get categories from unified data
-  const categories = categoryTree.map(sector => sector.name);
+  // Get sectors from API with categories and subcategories, sorted by order
+  const { sectors: apiSectors, loading: sectorsLoading } = useSectors(true, true); // Include categories and subcategories
+  
+  // Use API sectors if available, otherwise fall back to categoryTree
+  const sectorsToUse = apiSectors.length > 0 ? apiSectors : categoryTree.map(s => ({ name: s.name, slug: s.sectorValue, order: s.id }));
+  
+  // Sort by order field (ascending)
+  const sortedSectors = [...sectorsToUse].sort((a, b) => {
+    const orderA = 'order' in a ? a.order : (a as any).id || 0;
+    const orderB = 'order' in b ? b.order : (b as any).id || 0;
+    return orderA - orderB;
+  });
+  
+  const categories = sortedSectors.map(sector => sector.name);
   
   // Create a mapping from sector name to sector slug
-  const sectorNameToSlug: Record<string, string> = categoryTree.reduce((acc, sector) => {
-    acc[sector.name] = sector.sectorValue;
+  const sectorNameToSlug: Record<string, string> = sortedSectors.reduce((acc, sector) => {
+    const slug = 'slug' in sector ? sector.slug : (sector as any).sectorValue || '';
+    acc[sector.name] = slug;
     return acc;
   }, {} as Record<string, string>);
+  
+  // Generate categoryDropdownData from API data, sorted by order
+  const categoryDropdownData: { [key: string]: { title: string; items: string[] }[] } = {};
+  
+  if (apiSectors.length > 0) {
+    // Use API data
+    sortedSectors.forEach((sector: Sector) => {
+      if (sector.categories && sector.categories.length > 0) {
+        // Sort categories by order
+        const sortedCategories = [...sector.categories].sort((a: Category, b: Category) => (a.order || 0) - (b.order || 0));
+        
+        categoryDropdownData[sector.name] = sortedCategories.map((category: Category) => {
+          // Sort subcategories by order and take first 4
+          const sortedSubCategories = category.subCategories 
+            ? [...category.subCategories].sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 4)
+            : [];
+          
+          return {
+            title: category.name,
+            items: sortedSubCategories.map(subCat => subCat.name)
+          };
+        });
+      }
+    });
+  } else {
+    // Fallback to static data
+    categoryTree.forEach(sector => {
+      categoryDropdownData[sector.name] = sector.mainCategories.map(mainCat => ({
+        title: mainCat.name,
+        items: mainCat.subCategories.slice(0, 4) // Show first 4 subcategories in dropdown
+      }));
+    });
+  }
 
   const isServicesPage = location.pathname === '/services';
 
@@ -704,7 +757,7 @@ export default function Nav() {
                       {getSearchSuggestions().map((suggestion, index) => (
                         <Link
                           key={index}
-                          to={`/sector/${suggestion.sectorSlug}?category=${getCategoryId(suggestion.sectorName, suggestion.name)}`}
+                          to={`/sector/${suggestion.sectorSlug}?category=${getCategoryId(suggestion.sectorName, suggestion.name, sortedSectors)}`}
                           onClick={() => {
                             setShowSearchSuggestions(false);
                             setSearchQuery("");
@@ -791,7 +844,7 @@ export default function Nav() {
                     {getSearchSuggestions().map((suggestion, index) => (
                       <Link
                         key={index}
-                        to={`/sector/${suggestion.sectorSlug}?category=${getCategoryId(suggestion.sectorName, suggestion.name)}`}
+                        to={`/sector/${suggestion.sectorSlug}?category=${getCategoryId(suggestion.sectorName, suggestion.name, sortedSectors)}`}
                         onClick={() => {
                           setShowSearchSuggestions(false);
                           setSearchQuery("");
@@ -1086,7 +1139,7 @@ export default function Nav() {
                   {categoryDropdownData[activeDropdown].map((column, colIdx) => (
                     <div key={colIdx} className="min-w-0">
                       <Link
-                        to={`/category/${getCategoryId(activeDropdown, column.title)}`}
+                        to={`/category/${getCategoryId(activeDropdown, column.title, sortedSectors)}`}
                         className="font-['Poppins',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors mb-2.5 block cursor-pointer"
                       >
                         {column.title}
@@ -1147,7 +1200,7 @@ export default function Nav() {
                     className="border-b border-[#E5E5E5] last:border-b-0 pb-4 mb-4 last:mb-0 sm:border-b-0 sm:pb-0"
                   >
                     <Link
-                      to={`/category/${getCategoryId(expandedCategory, column.title)}`}
+                      to={`/category/${getCategoryId(expandedCategory, column.title, sortedSectors)}`}
                       className="font-['Poppins',sans-serif] font-semibold text-[16px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-3 block cursor-pointer"
                       onClick={() => {
                         setMobileDropdownOpen(false);
@@ -1324,7 +1377,7 @@ export default function Nav() {
                               {categoryDropdownData[category].map((column, colIdx) => (
                                 <div key={colIdx} className="border-b border-[#E5E5E5] last:border-b-0 pb-3 last:pb-0">
                                   <Link
-                                    to={`/category/${getCategoryId(category, column.title)}`}
+                                    to={`/category/${getCategoryId(category, column.title, sortedSectors)}`}
                                     className="font-['Poppins',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-2 block cursor-pointer"
                                     onClick={() => {
                                       setMobileMenuOpen(false);

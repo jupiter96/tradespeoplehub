@@ -338,7 +338,11 @@ export default function AdminDashboardPage() {
       "ACCOUNT VERIFICATION DOCUMENT": "professionals-management", // Related to professionals
       "TOTAL VERIFICATION USERS": "professionals-management",
       "VERIFICATION USERS TODAY": "professionals-management",
-      "TOTAL CATEGORY": "category-management",
+      "TOTAL JOB CATEGORY": "category-management",
+      "TOTAL SECTOR": "sector-management",
+      "TOTAL JOB SUB CATEGORY": "category-management",
+      "TOTAL SERVICE CATEGORY": "service-category-management",
+      "TOTAL SERVICE SUB CATEGORY": "service-category-management",
       "TOTAL PLANS & PACKAGES": "package-management",
       "NEW CONTACT REQUEST": "contact-management", // Visible if has contact-management, clients-management, or professionals-management
       "TOTAL JOB": "job-management",
@@ -411,7 +415,11 @@ export default function AdminDashboardPage() {
                 // Orange Cards
                 { title: "PROFESSIONALS", icon: Users, color: "orange" as const, value: statistics?.professionals || 0, dailyChange: statistics?.professionalsDailyChange, badge: statistics?.professionalsNew, onClick: () => navigate("/admin/professionals") },
                 { title: "TOTAL JOB", icon: Hammer, color: "orange" as const, value: statistics?.totalJob || 0, dailyChange: statistics?.totalJobDailyChange, badge: statistics?.totalJobDailyChange, onClick: () => navigate("/admin/job-manage") },
-                { title: "TOTAL CATEGORY", icon: FolderTree, color: "orange" as const, value: statistics?.totalCategory || 0, dailyChange: statistics?.totalCategoryDailyChange, badge: statistics?.totalCategoryDailyChange, onClick: () => navigate("/admin/sectors") },
+                { title: "TOTAL JOB CATEGORY", icon: FolderTree, color: "orange" as const, value: statistics?.totalJobCategory || 0, dailyChange: statistics?.totalJobCategoryDailyChange, badge: statistics?.totalJobCategoryDailyChange, onClick: () => navigate("/admin/categories") },
+                { title: "TOTAL SECTOR", icon: FolderTree, color: "orange" as const, value: statistics?.totalSector || 0, dailyChange: statistics?.totalSectorDailyChange, badge: statistics?.totalSectorDailyChange, onClick: () => navigate("/admin/sectors") },
+                { title: "TOTAL JOB SUB CATEGORY", icon: FolderTree, color: "orange" as const, value: statistics?.totalJobSubCategory || 0, dailyChange: statistics?.totalJobSubCategoryDailyChange, badge: statistics?.totalJobSubCategoryDailyChange, onClick: () => navigate("/admin/categories") },
+                { title: "TOTAL SERVICE CATEGORY", icon: FolderTree, color: "orange" as const, value: statistics?.totalServiceCategory || 0, dailyChange: statistics?.totalServiceCategoryDailyChange, badge: statistics?.totalServiceCategoryDailyChange, onClick: () => navigate("/admin/service-categories") },
+                { title: "TOTAL SERVICE SUB CATEGORY", icon: FolderTree, color: "orange" as const, value: statistics?.totalServiceSubCategory || 0, dailyChange: statistics?.totalServiceSubCategoryDailyChange, badge: statistics?.totalServiceSubCategoryDailyChange, onClick: () => navigate("/admin/service-categories") },
                 { title: "ACCOUNT VERIFICATION DOCUMENT", icon: ShieldCheck, color: "orange" as const, value: statistics?.accountVerificationDocument || 0, dailyChange: statistics?.accountVerificationDocumentDailyChange, badge: statistics?.accountVerificationDocumentNew || 0, onClick: () => navigate("/admin/professionals") },
                 { title: "TOTAL VERIFICATION USERS", icon: UserCheck, color: "orange" as const, value: statistics?.totalVerificationUsers || 0, dailyChange: undefined, badge: undefined, onClick: () => navigate("/admin/professionals") },
                 { title: "VERIFICATION USERS TODAY", icon: Calendar, color: "orange" as const, value: statistics?.verificationUsersToday || 0, dailyChange: undefined, badge: undefined, onClick: () => navigate("/admin/professionals") },
@@ -517,12 +525,48 @@ export default function AdminDashboardPage() {
                     />
                     <StatCard
                       icon={FolderTree}
-                      title="TOTAL CATEGORY"
-                      value={statistics?.totalCategory || 0}
+                      title="TOTAL JOB CATEGORY"
+                      value={statistics?.totalJobCategory || 0}
                       color="orange"
-                      dailyChange={statistics?.totalCategoryDailyChange}
-                      badge={statistics?.totalCategoryDailyChange}
+                      dailyChange={statistics?.totalJobCategoryDailyChange}
+                      badge={statistics?.totalJobCategoryDailyChange}
+                      onClick={() => navigate("/admin/categories")}
+                    />
+                    <StatCard
+                      icon={FolderTree}
+                      title="TOTAL SECTOR"
+                      value={statistics?.totalSector || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalSectorDailyChange}
+                      badge={statistics?.totalSectorDailyChange}
                       onClick={() => navigate("/admin/sectors")}
+                    />
+                    <StatCard
+                      icon={FolderTree}
+                      title="TOTAL JOB SUB CATEGORY"
+                      value={statistics?.totalJobSubCategory || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalJobSubCategoryDailyChange}
+                      badge={statistics?.totalJobSubCategoryDailyChange}
+                      onClick={() => navigate("/admin/categories")}
+                    />
+                    <StatCard
+                      icon={FolderTree}
+                      title="TOTAL SERVICE CATEGORY"
+                      value={statistics?.totalServiceCategory || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalServiceCategoryDailyChange}
+                      badge={statistics?.totalServiceCategoryDailyChange}
+                      onClick={() => navigate("/admin/service-categories")}
+                    />
+                    <StatCard
+                      icon={FolderTree}
+                      title="TOTAL SERVICE SUB CATEGORY"
+                      value={statistics?.totalServiceSubCategory || 0}
+                      color="orange"
+                      dailyChange={statistics?.totalServiceSubCategoryDailyChange}
+                      badge={statistics?.totalServiceSubCategoryDailyChange}
+                      onClick={() => navigate("/admin/service-categories")}
                     />
                     <StatCard
                       icon={ShieldCheck}

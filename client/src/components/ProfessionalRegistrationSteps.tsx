@@ -81,6 +81,8 @@ export default function ProfessionalRegistrationSteps() {
       allSubcategories.push(...cat.subCategories);
     }
   });
+  // Sort subcategories by order
+  allSubcategories.sort((a, b) => (a.order || 0) - (b.order || 0));
 
   // Initialize form data from userInfo if available
   useEffect(() => {

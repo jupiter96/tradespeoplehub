@@ -11,6 +11,8 @@ import {
   nameToSlug,
   mainCategories
 } from "./unifiedCategoriesData";
+import { useSector, useCategories } from "../hooks/useSectorsAndCategories";
+import { resolveApiUrl } from "../config/api";
 import type { SubCategory } from "./unifiedCategoriesData";
 
 // Define MainCategory type for compatibility
@@ -411,39 +413,116 @@ export default function SectorPage() {
   const [showAddToCartModal, setShowAddToCartModal] = useState(false);
   const [selectedServiceForCart, setSelectedServiceForCart] = useState<any>(null);
 
+  // Fetch sector data from API if we have a sectorSlug
+  const { sector: apiSector, loading: sectorLoading } = useSector(sectorSlug || '', true); // Include categories
+  
+  // Fetch category data from API if we have a categorySlug
+  const [apiCategory, setApiCategory] = useState<any>(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  
+  // Fetch categories for the sector if we have apiSector
+  const { categories: apiCategories } = useCategories(
+    apiSector?._id,
+    undefined,
+    true // includeSubCategories
+  );
+  
+  useEffect(() => {
+    if (categorySlug) {
+      const fetchCategory = async () => {
+        try {
+          setCategoryLoading(true);
+          const response = await fetch(
+            resolveApiUrl(`/api/categories/${categorySlug}?includeSector=true&activeOnly=true`),
+            { credentials: 'include' }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setApiCategory(data.category);
+          }
+        } catch (error) {
+          console.error('Error fetching category:', error);
+        } finally {
+          setCategoryLoading(false);
+        }
+      };
+      fetchCategory();
+    }
+  }, [categorySlug]);
+  
   // Determine if we're on a category page or sector page
   let sector;
   let currentMainCategory = null;
   let currentSubCategory = null;
+  let categoryBannerImage: string | null = null;
   
   if (categorySlug) {
     // We're on /category/:categorySlug or /category/:categorySlug/:subCategorySlug route
-    // Find the main category by slug
-    const foundCategory = mainCategories.find(cat => 
-      cat.id === categorySlug || nameToSlug(cat.name) === categorySlug
-    );
-    
-    if (foundCategory) {
-      currentMainCategory = foundCategory;
-      sector = getSectorByName(foundCategory.sectorName);
+    // Use API category data if available
+    if (apiCategory) {
+      currentMainCategory = { 
+        id: apiCategory._id, 
+        name: apiCategory.name,
+        sectorName: typeof apiCategory.sector === 'object' ? apiCategory.sector.name : '',
+        subCategories: []
+      };
+      sector = typeof apiCategory.sector === 'object' ? apiCategory.sector : null;
+      categoryBannerImage = apiCategory.bannerImage || null;
+    } else {
+      // Fallback to static data
+      const foundCategory = mainCategories.find(cat => 
+        cat.id === categorySlug || nameToSlug(cat.name) === categorySlug
+      );
       
-      // If subCategorySlug is provided, find the subcategory
-      if (subCategorySlug) {
-        currentSubCategory = foundCategory.subCategories.find(subCat =>
-          nameToSlug(subCat.name) === subCategorySlug || subCat.id === subCategorySlug
-        );
+      if (foundCategory) {
+        currentMainCategory = foundCategory;
+        sector = getSectorByName(foundCategory.sectorName);
+        
+        // If subCategorySlug is provided, find the subcategory
+        if (subCategorySlug) {
+          currentSubCategory = foundCategory.subCategories.find(subCat =>
+            nameToSlug(subCat.name) === subCategorySlug || subCat.id === subCategorySlug
+          );
+        }
       }
     }
   } else if (sectorSlug) {
     // We're on /sector/:sectorSlug route
-    // Find sector by slug value
-    sector = getSectorBySlug(sectorSlug);
+    // Use API data if available, otherwise fallback to static data
+    if (apiSector) {
+      sector = apiSector;
+    } else if (!sectorLoading) {
+      // Only try static data if API loading is complete
+      sector = getSectorBySlug(sectorSlug);
+    }
   }
   
   // Determine what to show in the categories slider
-  const categoriesToShow = currentMainCategory 
-    ? currentMainCategory.subCategories // Show sub-categories if we're in a main category
-    : (sector ? getMainCategoriesBySector(sector.name) : []); // Show main categories if we're in a sector
+  // If we have API categories, use them (sorted by order), otherwise fallback to static data
+  let categoriesToShow;
+  if (currentMainCategory) {
+    // Show sub-categories if we're in a main category
+    if (apiCategory && apiCategory.subCategories) {
+      // Sort subcategories by order
+      categoriesToShow = [...apiCategory.subCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    } else {
+      categoriesToShow = currentMainCategory.subCategories;
+    }
+  } else if (sector) {
+    // Show main categories if we're in a sector
+    if (apiSector && apiSector.categories && apiSector.categories.length > 0) {
+      // Use API categories, sorted by order
+      categoriesToShow = [...apiSector.categories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    } else if (apiCategories && apiCategories.length > 0) {
+      // Use categories from useCategories hook, sorted by order
+      categoriesToShow = [...apiCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    } else {
+      // Fallback to static data
+      categoriesToShow = getMainCategoriesBySector(sector.name);
+    }
+  } else {
+    categoriesToShow = [];
+  }
   
   // Current page title
   const currentTitle = currentSubCategory 
@@ -453,10 +532,21 @@ export default function SectorPage() {
       : (sector?.name || "");
 
   useEffect(() => {
-    if (!sector) {
-      navigate("/all-categories");
+    // Only redirect if we're not loading and sector is still not found
+    // Wait for both API calls to complete before redirecting
+    if (!sectorLoading && !categoryLoading) {
+      if (sectorSlug && !sector) {
+        // If API didn't find it, try static data one more time
+        const staticSector = getSectorBySlug(sectorSlug);
+        if (!staticSector) {
+          navigate("/all-categories");
+        }
+      } else if (categorySlug && !sector && !apiCategory) {
+        // For category pages, if no category found, redirect
+        navigate("/all-categories");
+      }
     }
-  }, [sector, navigate]);
+  }, [sector, sectorLoading, categoryLoading, sectorSlug, categorySlug, apiCategory, navigate]);
 
   // Filter state
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
@@ -619,8 +709,34 @@ export default function SectorPage() {
     }
   };
 
+  // Show loading state while fetching sector/category data
+  if (sectorLoading || (categoryLoading && categorySlug)) {
+    return (
+      <div className="min-h-screen bg-[#FAFBFC]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
+        </header>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  // Only return null if we're sure the sector doesn't exist (not loading and not found)
   if (!sector) {
-    return null;
+    // Try one more time with static data if we have a sectorSlug and API didn't find it
+    if (sectorSlug && !apiSector) {
+      const staticSector = getSectorBySlug(sectorSlug);
+      if (staticSector) {
+        // Use static sector if found
+        sector = staticSector;
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
   }
 
   return (
@@ -630,10 +746,32 @@ export default function SectorPage() {
         <Nav />
       </header>
 
-      {/* Geometric Gradient Hero Banner */}
-      <div className="relative h-[210px] md:h-[252px] overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#2a4a6f] to-[#1a2f4d] mt-[50px] md:mt-0">
-        {/* Hexagon Pattern Background */}
-        <div className="absolute inset-0 opacity-20">
+      {/* Hero Banner - Use bannerImage if available, otherwise use default geometric gradient */}
+      <div 
+        className="relative h-[210px] md:h-[252px] overflow-hidden mt-[50px] md:mt-0"
+        style={
+          categoryBannerImage || (sector && (sector as any).bannerImage)
+            ? {
+                backgroundImage: `url(${categoryBannerImage || (sector as any).bannerImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              }
+            : {
+                background: 'linear-gradient(to bottom right, #1e3a5f, #2a4a6f, #1a2f4d)',
+              }
+        }
+      >
+        {/* Dark overlay for better text readability when using banner image */}
+        {(categoryBannerImage || (sector && (sector as any).bannerImage)) && (
+          <div className="absolute inset-0 bg-black/30" />
+        )}
+        
+        {/* Default geometric pattern - only show if no banner image */}
+        {!categoryBannerImage && (!sector || !(sector as any).bannerImage) && (
+          <>
+            {/* Hexagon Pattern Background */}
+            <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="hexagons" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="scale(1.2)">
@@ -725,6 +863,8 @@ export default function SectorPage() {
             <rect x="28" y="20" width="56" height="40" fill="url(#darkDots)"/>
           </svg>
         </div>
+          </>
+        )}
 
         {/* Dynamic Tool Icons - Changes based on current page (sector/category/subcategory) */}
         {sector && (() => {

@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
             sector: sector._id,
             isActive: activeOnly === 'true' ? true : { $exists: true }
           })
-            .sort({ order: 1, name: 1 })
+            .sort({ createdAt: 1, name: 1 })
             .lean();
           
           // Include subcategories if requested
@@ -73,7 +73,7 @@ router.get('/', async (req, res) => {
                   category: category._id,
                   isActive: activeOnly === 'true' ? true : { $exists: true }
                 })
-                  .sort({ order: 1, name: 1 })
+                  .sort({ createdAt: 1, name: 1 })
                   .lean();
                 return { ...category, subCategories };
               })
@@ -197,11 +197,39 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Sector with this slug already exists' });
     }
     
-    // Check if order already exists
+    // Find next available order if provided order is taken or not provided
+    let finalOrder = order !== undefined ? order : 0;
     if (order !== undefined) {
       const existingOrder = await Sector.findOne({ order });
       if (existingOrder) {
-        return res.status(409).json({ error: `Sector with order ${order} already exists. Order must be unique.` });
+        // Find next available order
+        const allSectors = await Sector.find({}).sort({ order: 1 }).select('order').lean();
+        const existingOrders = allSectors.map(s => s.order).sort((a, b) => a - b);
+        // Find first gap or use max + 1
+        finalOrder = existingOrders.length;
+        for (let i = 0; i < existingOrders.length; i++) {
+          if (existingOrders[i] !== i) {
+            finalOrder = i;
+            break;
+          }
+        }
+        if (finalOrder === existingOrders.length && existingOrders.length > 0) {
+          finalOrder = existingOrders[existingOrders.length - 1] + 1;
+        }
+      }
+    } else {
+      // If no order provided, find next available
+      const allSectors = await Sector.find({}).sort({ order: 1 }).select('order').lean();
+      const existingOrders = allSectors.map(s => s.order).sort((a, b) => a - b);
+      finalOrder = existingOrders.length;
+      for (let i = 0; i < existingOrders.length; i++) {
+        if (existingOrders[i] !== i) {
+          finalOrder = i;
+          break;
+        }
+      }
+      if (finalOrder === existingOrders.length && existingOrders.length > 0) {
+        finalOrder = existingOrders[existingOrders.length - 1] + 1;
       }
     }
     
@@ -213,9 +241,7 @@ router.post('/', async (req, res) => {
       metaDescription,
       icon,
       bannerImage,
-      displayName,
-      subtitle,
-      order: order !== undefined ? order : 0,
+      order: finalOrder,
       isActive: isActive !== undefined ? isActive : true,
     });
     
@@ -244,8 +270,6 @@ router.put('/:id', async (req, res) => {
       metaDescription,
       icon,
       bannerImage,
-      displayName,
-      subtitle,
       order,
       isActive,
     } = req.body;
@@ -279,8 +303,6 @@ router.put('/:id', async (req, res) => {
     if (metaDescription !== undefined) sector.metaDescription = metaDescription;
     if (icon !== undefined) sector.icon = icon;
     if (bannerImage !== undefined) sector.bannerImage = bannerImage;
-    if (displayName !== undefined) sector.displayName = displayName;
-    if (subtitle !== undefined) sector.subtitle = subtitle;
     if (order !== undefined) sector.order = order;
     if (isActive !== undefined) sector.isActive = isActive;
     
@@ -296,6 +318,106 @@ router.put('/:id', async (req, res) => {
       return res.status(409).json({ error: 'Sector with this name or slug already exists' });
     }
     return res.status(500).json({ error: 'Failed to update sector' });
+  }
+});
+
+// Bulk update sector order
+router.put('/bulk/order', async (req, res) => {
+  try {
+    console.log('=== Bulk Update Sector Order Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { sectors } = req.body; // Array of { id, order }
+    
+    if (!Array.isArray(sectors)) {
+      console.error('Error: sectors is not an array. Received:', typeof sectors, sectors);
+      return res.status(400).json({ error: 'Sectors must be an array' });
+    }
+    
+    console.log(`Processing ${sectors.length} sector order updates`);
+    
+    // Validate each sector update
+    const validatedUpdates = [];
+    for (let i = 0; i < sectors.length; i++) {
+      const { id, order } = sectors[i];
+      
+      if (!id) {
+        console.error(`Error at index ${i}: Missing id`, sectors[i]);
+        return res.status(400).json({ error: `Sector at index ${i} is missing id` });
+      }
+      
+      if (typeof order !== 'number' || isNaN(order)) {
+        console.error(`Error at index ${i}: Invalid order`, sectors[i]);
+        return res.status(400).json({ error: `Sector at index ${i} has invalid order value` });
+      }
+      
+      validatedUpdates.push({ id, order });
+      console.log(`  - Sector ${id}: order = ${order}`);
+    }
+    
+    // Update sectors using a transaction-like approach to avoid unique constraint conflicts
+    // Strategy: Find max order value, use values above max as temporary, then set final values
+    const results = [];
+    
+    // Find the maximum order value in the database to use as offset for temporary values
+    const maxOrderResult = await Sector.findOne({}).sort({ order: -1 }).select('order').lean();
+    const maxOrder = maxOrderResult?.order || 0;
+    const tempOffset = Math.max(maxOrder + 1000, 10000); // Use values well above current max
+    
+    console.log(`Max order in database: ${maxOrder}, using temp offset: ${tempOffset}`);
+    
+    // First pass: Set all orders to temporary values (above max) to free up order slots
+    console.log('Step 1: Setting temporary orders...');
+    for (const { id, order } of validatedUpdates) {
+      try {
+        const tempOrder = tempOffset + order; // Use values above max as temporary
+        await Sector.findByIdAndUpdate(id, { order: tempOrder }, { runValidators: false });
+        console.log(`  ✓ Set temporary order for sector ${id}: ${tempOrder}`);
+      } catch (err) {
+        console.error(`Error setting temporary order for sector ${id}:`, err);
+        throw err;
+      }
+    }
+    
+    // Second pass: Set final order values
+    console.log('Step 2: Setting final orders...');
+    for (const { id, order } of validatedUpdates) {
+      try {
+        const updated = await Sector.findByIdAndUpdate(
+          id, 
+          { order }, 
+          { new: true, runValidators: true }
+        );
+        
+        if (!updated) {
+          console.error(`Warning: Sector with id ${id} not found`);
+          throw new Error(`Sector with id ${id} not found`);
+        }
+        
+        console.log(`  ✓ Updated sector ${id} to order ${order}`);
+        results.push(updated);
+      } catch (err) {
+        console.error(`Error updating sector ${id} to order ${order}:`, err);
+        throw err;
+      }
+    }
+    
+    console.log(`Successfully updated ${results.length} sectors`);
+    console.log('=== Bulk Update Complete ===');
+    
+    return res.json({ 
+      message: 'Sector orders updated',
+      updatedCount: results.length
+    });
+  } catch (error) {
+    console.error('=== Bulk update sector order error ===');
+    console.error('Error details:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    return res.status(500).json({ 
+      error: 'Failed to update sector orders',
+      details: error.message 
+    });
   }
 });
 

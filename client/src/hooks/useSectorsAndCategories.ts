@@ -10,8 +10,6 @@ export interface Sector {
   metaDescription?: string;
   icon?: string;
   bannerImage?: string;
-  displayName?: string;
-  subtitle?: string;
   order: number;
   isActive: boolean;
   categories?: Category[];
@@ -50,7 +48,7 @@ export const useSectors = (includeCategories = false, includeSubCategories = fal
     const fetchSectors = async () => {
       try {
         setLoading(true);
-        let url = '/api/sectors?activeOnly=true';
+        let url = '/api/sectors?activeOnly=true&sortBy=order&sortOrder=asc';
         if (includeCategories) {
           url += '&includeCategories=true';
         }
@@ -121,7 +119,7 @@ export const useCategories = (sectorId?: string, sectorSlug?: string, includeSub
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        let url = '/api/categories?activeOnly=true';
+        let url = '/api/categories?activeOnly=true&sortBy=order&sortOrder=asc';
         if (includeSubCategories) {
           url += '&includeSubCategories=true';
         }

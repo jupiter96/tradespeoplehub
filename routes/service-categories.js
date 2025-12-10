@@ -216,14 +216,42 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
     }
     
-    // Check if order already exists in this sector
+    // Find next available order if provided order is taken or not provided
+    let finalOrder = order !== undefined ? order : 0;
     if (order !== undefined) {
       const existingOrder = await ServiceCategory.findOne({ 
         sector: sectorDoc._id, 
         order 
       });
       if (existingOrder) {
-        return res.status(409).json({ error: `Service category with order ${order} already exists in this sector. Order must be unique within a sector.` });
+        // Find next available order within this sector
+        const allServiceCategories = await ServiceCategory.find({ sector: sectorDoc._id }).sort({ order: 1 }).select('order').lean();
+        const existingOrders = allServiceCategories.map(c => c.order).sort((a, b) => a - b);
+        // Find first gap or use max + 1
+        finalOrder = existingOrders.length;
+        for (let i = 0; i < existingOrders.length; i++) {
+          if (existingOrders[i] !== i) {
+            finalOrder = i;
+            break;
+          }
+        }
+        if (finalOrder === existingOrders.length && existingOrders.length > 0) {
+          finalOrder = existingOrders[existingOrders.length - 1] + 1;
+        }
+      }
+    } else {
+      // If no order provided, find next available
+      const allServiceCategories = await ServiceCategory.find({ sector: sectorDoc._id }).sort({ order: 1 }).select('order').lean();
+      const existingOrders = allServiceCategories.map(c => c.order).sort((a, b) => a - b);
+      finalOrder = existingOrders.length;
+      for (let i = 0; i < existingOrders.length; i++) {
+        if (existingOrders[i] !== i) {
+          finalOrder = i;
+          break;
+        }
+      }
+      if (finalOrder === existingOrders.length && existingOrders.length > 0) {
+        finalOrder = existingOrders[existingOrders.length - 1] + 1;
       }
     }
     
@@ -232,7 +260,7 @@ router.post('/', async (req, res) => {
       name: name.trim(),
       slug: serviceCategorySlug,
       question,
-      order: order !== undefined ? order : 0,
+      order: finalOrder,
       description,
       icon,
       bannerImage,
@@ -373,22 +401,120 @@ router.delete('/:id', async (req, res) => {
 // Bulk update service category order
 router.put('/bulk/order', async (req, res) => {
   try {
+    console.log('=== Bulk Update Service Category Order Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const { serviceCategories } = req.body; // Array of { id, order }
     
     if (!Array.isArray(serviceCategories)) {
+      console.error('Error: serviceCategories is not an array. Received:', typeof serviceCategories, serviceCategories);
       return res.status(400).json({ error: 'Service categories must be an array' });
     }
     
-    const updatePromises = serviceCategories.map(({ id, order }) =>
-      ServiceCategory.findByIdAndUpdate(id, { order }, { new: true })
-    );
+    console.log(`Processing ${serviceCategories.length} service category order updates`);
     
-    await Promise.all(updatePromises);
+    // Validate each service category update and fetch category info to get sector
+    const validatedUpdates = [];
+    const categoryInfoMap = new Map();
     
-    return res.json({ message: 'Service category orders updated' });
+    for (let i = 0; i < serviceCategories.length; i++) {
+      const { id, order } = serviceCategories[i];
+      
+      if (!id) {
+        console.error(`Error at index ${i}: Missing id`, serviceCategories[i]);
+        return res.status(400).json({ error: `Service category at index ${i} is missing id` });
+      }
+      
+      if (typeof order !== 'number' || isNaN(order)) {
+        console.error(`Error at index ${i}: Invalid order`, serviceCategories[i]);
+        return res.status(400).json({ error: `Service category at index ${i} has invalid order value` });
+      }
+      
+      // Fetch service category to get its sector
+      const serviceCategory = await ServiceCategory.findById(id).select('sector order').lean();
+      if (!serviceCategory) {
+        console.error(`Error at index ${i}: Service category not found`, id);
+        return res.status(404).json({ error: `Service category with id ${id} not found` });
+      }
+      
+      validatedUpdates.push({ id, order, sector: serviceCategory.sector });
+      categoryInfoMap.set(id, { sector: serviceCategory.sector, oldOrder: serviceCategory.order });
+      console.log(`  - Service category ${id} (sector: ${serviceCategory.sector}): order = ${order}`);
+    }
+    
+    // Group updates by sector to find max order per sector
+    const sectorMaxOrders = new Map();
+    for (const { sector } of validatedUpdates) {
+      if (!sectorMaxOrders.has(sector.toString())) {
+        const maxOrderResult = await ServiceCategory.findOne({ sector }).sort({ order: -1 }).select('order').lean();
+        const maxOrder = maxOrderResult?.order || 0;
+        sectorMaxOrders.set(sector.toString(), maxOrder);
+        console.log(`Max order for sector ${sector}: ${maxOrder}`);
+      }
+    }
+    
+    // Find global max order to use as base for temporary values
+    const globalMaxOrderResult = await ServiceCategory.findOne({}).sort({ order: -1 }).select('order').lean();
+    const globalMaxOrder = globalMaxOrderResult?.order || 0;
+    const tempOffset = Math.max(globalMaxOrder + 1000, 10000); // Use values well above current max
+    
+    console.log(`Global max order: ${globalMaxOrder}, using temp offset: ${tempOffset}`);
+    
+    // First pass: Set all orders to temporary values (above max) to free up order slots
+    console.log('Step 1: Setting temporary orders...');
+    for (const { id, order, sector } of validatedUpdates) {
+      try {
+        // Use a unique temporary order value for each service category
+        // Add a multiplier based on order to ensure uniqueness
+        const tempOrder = tempOffset + (order * 1000) + parseInt(id.slice(-4), 16) % 1000;
+        await ServiceCategory.findByIdAndUpdate(id, { order: tempOrder }, { runValidators: false });
+        console.log(`  ✓ Set temporary order for service category ${id}: ${tempOrder}`);
+      } catch (err) {
+        console.error(`Error setting temporary order for service category ${id}:`, err);
+        throw err;
+      }
+    }
+    
+    // Second pass: Set final order values
+    console.log('Step 2: Setting final orders...');
+    const results = [];
+    for (const { id, order } of validatedUpdates) {
+      try {
+        const updated = await ServiceCategory.findByIdAndUpdate(
+          id, 
+          { order }, 
+          { new: true, runValidators: true }
+        );
+        
+        if (!updated) {
+          console.error(`Warning: Service category with id ${id} not found`);
+          throw new Error(`Service category with id ${id} not found`);
+        }
+        
+        console.log(`  ✓ Updated service category ${id} to order ${order}`);
+        results.push(updated);
+      } catch (err) {
+        console.error(`Error updating service category ${id} to order ${order}:`, err);
+        throw err;
+      }
+    }
+    
+    console.log(`Successfully updated ${results.length} service categories`);
+    console.log('=== Bulk Update Complete ===');
+    
+    return res.json({ 
+      message: 'Service category orders updated',
+      updatedCount: results.length
+    });
   } catch (error) {
-    console.error('Bulk update service category order error', error);
-    return res.status(500).json({ error: 'Failed to update service category orders' });
+    console.error('=== Bulk update service category order error ===');
+    console.error('Error details:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    return res.status(500).json({ 
+      error: 'Failed to update service category orders',
+      details: error.message 
+    });
   }
 });
 

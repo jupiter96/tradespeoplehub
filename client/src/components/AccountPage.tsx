@@ -1599,20 +1599,20 @@ function DetailsSection() {
       return {
         firstName: userInfo?.firstName || "",
         lastName: userInfo?.lastName || "",
-        email: userInfo?.email || "",
-        phone: userInfo?.phone || "",
-        tradingName: userInfo?.tradingName || "",
-        address: userInfo?.address || "",
-        townCity: userInfo?.townCity || "",
+      email: userInfo?.email || "",
+      phone: userInfo?.phone || "",
+      tradingName: userInfo?.tradingName || "",
+      address: userInfo?.address || "",
+      townCity: userInfo?.townCity || "",
         county: userInfo?.county || "",
-        postcode: userInfo?.postcode || "",
+      postcode: userInfo?.postcode || "",
         travelDistance: userInfo?.travelDistance || "",
         sector: userInfo?.sector || "",
         categories: categories || [],
         subcategories: subcategories || [],
-        aboutService: userInfo?.aboutService || "",
-        hasTradeQualification: userInfo?.hasTradeQualification || "no",
-        hasPublicLiability: userInfo?.hasPublicLiability || "no",
+      aboutService: userInfo?.aboutService || "",
+      hasTradeQualification: userInfo?.hasTradeQualification || "no",
+      hasPublicLiability: userInfo?.hasPublicLiability || "no",
         professionalIndemnityAmount: userInfo?.professionalIndemnityAmount?.toString() || "",
         insuranceExpiryDate: insuranceExpiryDateFormatted,
       };
@@ -1636,7 +1636,7 @@ function DetailsSection() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  
+
   // Get all subcategories from selected categories (calculated after formData is defined)
   // formData.categories now stores category IDs
   const allSubcategories: SubCategory[] = useMemo(() => {
@@ -1646,7 +1646,8 @@ function DetailsSection() {
         subcats.push(...cat.subCategories);
       }
     });
-    return subcats;
+    // Sort subcategories by order
+    return subcats.sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [availableCategories, formData.categories]);
   
   // OTP verification states
@@ -1734,7 +1735,7 @@ function DetailsSection() {
         address: userInfo.address,
         postcode: userInfo.postcode,
       });
-      setFormData(buildFormState(initialFormState));
+    setFormData(buildFormState(initialFormState));
     }
   }, [userInfo, buildFormState, initialFormState]);
 
@@ -1901,7 +1902,7 @@ function DetailsSection() {
       toast.error("Please verify your new email address with the OTP code");
       return;
     }
-    
+
     if (phoneIsChanged && !phoneOTPVerified) {
       toast.error("Please verify your new phone number with the OTP code");
       return;
@@ -2099,15 +2100,15 @@ function DetailsSection() {
               )}
             </Button>
             {userInfo?.avatar && (
-              <Button
-                type="button"
-                variant="outline"
+            <Button
+              type="button"
+              variant="outline"
                 disabled={isUploadingAvatar}
-                onClick={handleRemoveAvatar}
+              onClick={handleRemoveAvatar}
                 className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-60 transition-colors"
-              >
-                Remove Photo
-              </Button>
+            >
+              Remove Photo
+            </Button>
             )}
             <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#8d8d8d] mt-1 text-center sm:text-left">
               JPG, PNG, GIF, or WEBP. Max size 5MB
@@ -2520,7 +2521,7 @@ function DetailsSection() {
                             {cat.name}
                           </span>
                         </label>
-                      ))}
+                    ))}
                     </div>
                   </div>
                 )}
@@ -2556,8 +2557,8 @@ function DetailsSection() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {allSubcategories.map((subcat: SubCategory) => (
                         <div key={subcat._id} className="flex items-start space-x-2 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors border border-gray-100">
-                          <input
-                            type="checkbox"
+                      <input
+                        type="checkbox"
                             id={`subcat-${subcat._id}`}
                             checked={formData.subcategories.includes(subcat._id)}
                             onChange={() => {
@@ -2569,19 +2570,19 @@ function DetailsSection() {
                               }));
                             }}
                             className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F] flex-shrink-0"
-                          />
-                          <Label
+                      />
+                      <Label
                             htmlFor={`subcat-${subcat._id}`}
-                            className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
-                          >
+                        className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
+                      >
                             {subcat.name}
-                          </Label>
+                      </Label>
                           {formData.subcategories.includes(subcat._id) && (
-                            <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
-                          )}
-                        </div>
-                      ))}
+                        <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
+                      )}
                     </div>
+                  ))}
+                </div>
                   </div>
                 )}
                 {formData.subcategories.length > 0 && (

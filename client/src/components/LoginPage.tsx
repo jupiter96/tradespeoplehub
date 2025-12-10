@@ -322,7 +322,7 @@ export default function LoginPage() {
         phone: user.phone,
         role: user.role
       });
-      
+
       // Close verification modal first
       setShowEmailVerification(false);
       setVerificationStep(1);
@@ -680,8 +680,8 @@ export default function LoginPage() {
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-1">
                     <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
-                      Create Account
-                    </h2>
+                    Create Account
+                  </h2>
                     {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
                       <Button
                         type="button"
@@ -950,7 +950,7 @@ export default function LoginPage() {
                         });
                       }}
                       label="Postcode"
-                      required
+                          required
                       showAddressField={true}
                       showTownCityField={true}
                       showCountyField={true}
@@ -971,7 +971,7 @@ export default function LoginPage() {
                       <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                         {fieldErrors.townCity}
                       </p>
-                    )}
+                  )}
                   </div>
 
                   {/* Travel Distance (Professional only) */}
@@ -1224,10 +1224,10 @@ export default function LoginPage() {
 
                   {/* Terms and Conditions */}
                   <div>
-                    <div className="flex items-start space-x-2">
-                      <Checkbox 
-                        id="terms" 
-                        checked={agreeTerms}
+                  <div className="flex items-start space-x-2">
+                    <Checkbox 
+                      id="terms" 
+                      checked={agreeTerms}
                         onCheckedChange={(checked) => {
                           setAgreeTerms(checked as boolean);
                           if (fieldErrors.agreeTerms) {
@@ -1238,21 +1238,21 @@ export default function LoginPage() {
                             });
                           }
                         }}
-                        className="mt-0.5"
-                      />
-                      <Label 
-                        htmlFor="terms" 
-                        className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
-                      >
-                        I agree to the{" "}
-                        <Link to="/terms" className="text-[#3B82F6] hover:text-[#2563EB]">
-                          Terms & Conditions
-                        </Link>
-                        {" "}and{" "}
-                        <Link to="/privacy" className="text-[#3B82F6] hover:text-[#2563EB]">
-                          Privacy Policy
-                        </Link>
-                      </Label>
+                      className="mt-0.5"
+                    />
+                    <Label 
+                      htmlFor="terms" 
+                      className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
+                    >
+                      I agree to the{" "}
+                      <Link to="/terms" className="text-[#3B82F6] hover:text-[#2563EB]">
+                        Terms & Conditions
+                      </Link>
+                      {" "}and{" "}
+                      <Link to="/privacy" className="text-[#3B82F6] hover:text-[#2563EB]">
+                        Privacy Policy
+                      </Link>
+                    </Label>
                     </div>
                     {fieldErrors.agreeTerms && (
                       <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">
@@ -1459,7 +1459,7 @@ export default function LoginPage() {
                         <div className="text-center mb-5">
                           <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                             <Briefcase className="w-7 h-7 text-[#FE8A0F]" />
-                          </div>
+              </div>
                           <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                             Select Your Sector
                           </h2>

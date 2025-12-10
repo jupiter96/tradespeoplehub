@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -54,6 +71,140 @@ interface ServiceSubCategory {
   order: number;
 }
 
+// Sortable Row Component
+function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive }: {
+  serviceCategory: ServiceCategory;
+  onEdit: (serviceCategory: ServiceCategory) => void;
+  onDelete: (serviceCategory: ServiceCategory) => void;
+  onToggleActive: (serviceCategory: ServiceCategory) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: serviceCategory._id || '' });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
+    >
+      <TableCell className="text-black dark:text-white font-medium w-12">
+        <div className="flex items-center gap-2">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#FE8A0F] transition-colors"
+          >
+            <GripVertical className="w-5 h-5" />
+          </button>
+          <span>{serviceCategory.order}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        <div className="font-medium truncate" title={serviceCategory.name}>
+          {serviceCategory.name && serviceCategory.name.length > 25 ? serviceCategory.name.substring(0, 25) + "..." : serviceCategory.name}
+        </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {serviceCategory.icon ? (
+          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            {serviceCategory.icon.startsWith('http') || serviceCategory.icon.startsWith('/') ? (
+              <img
+                src={serviceCategory.icon}
+                alt={serviceCategory.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
+                }}
+              />
+            ) : (
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={serviceCategory.icon}>
+                {serviceCategory.icon.length > 10 ? serviceCategory.icon.substring(0, 10) + "..." : serviceCategory.icon}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No icon</span>
+        )}
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {serviceCategory.bannerImage ? (
+          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <img
+              src={serviceCategory.bannerImage}
+              alt={`${serviceCategory.name} banner`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
+              }}
+            />
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No image</span>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+            <DropdownMenuItem
+              onClick={() => onEdit(serviceCategory)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <Edit2 className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onToggleActive(serviceCategory)}
+              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+            >
+              {serviceCategory.isActive ? (
+                <>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Activate
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDelete(serviceCategory)}
+              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export default function AdminServiceCategoriesPage() {
   useAdminRouteGuard();
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -70,6 +221,14 @@ export default function AdminServiceCategoriesPage() {
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("order");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const [formData, setFormData] = useState<{
     sector: string;
@@ -331,13 +490,25 @@ export default function AdminServiceCategoriesPage() {
     }
   };
 
+  const getNextAvailableOrder = useCallback(() => {
+    if (serviceCategories.length === 0) return 0;
+    const existingOrders = serviceCategories.map(c => c.order).sort((a, b) => a - b);
+    // Find the first gap or use max + 1
+    for (let i = 0; i < existingOrders.length; i++) {
+      if (existingOrders[i] !== i) {
+        return i;
+      }
+    }
+    return existingOrders[existingOrders.length - 1] + 1;
+  }, [serviceCategories]);
+
   const handleCreateNew = () => {
     setFormData({
       sector: selectedSectorId,
       name: "",
       slug: "",
       question: "",
-      order: serviceCategories.length,
+      order: getNextAvailableOrder(),
       description: "",
       icon: "",
       bannerImage: "",
@@ -696,38 +867,98 @@ export default function AdminServiceCategoriesPage() {
     });
   };
 
-  const handleOrderChange = async (serviceCategory: ServiceCategory, direction: "up" | "down") => {
-    const currentIndex = serviceCategories.findIndex((c) => c._id === serviceCategory._id);
-    if (currentIndex === -1) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= serviceCategories.length) return;
+    if (!over || active.id === over.id) {
+      return;
+    }
 
-    const otherServiceCategory = serviceCategories[newIndex];
+    const oldIndex = serviceCategories.findIndex((serviceCategory) => serviceCategory._id === active.id);
+    const newIndex = serviceCategories.findIndex((serviceCategory) => serviceCategory._id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Update local state immediately for better UX
+    const newServiceCategories = arrayMove(serviceCategories, oldIndex, newIndex);
     
+    // Calculate new order values based on new positions
+    const movedServiceCategory = serviceCategories[oldIndex];
+    const targetServiceCategory = serviceCategories[newIndex];
+    
+    const serviceCategoriesToUpdate: { id: string; order: number }[] = [];
+    
+    if (oldIndex < newIndex) {
+      // Moving down: shift orders up for service categories between old and new positions
+      for (let i = oldIndex + 1; i <= newIndex; i++) {
+        serviceCategoriesToUpdate.push({
+          id: serviceCategories[i]._id!,
+          order: serviceCategories[i - 1].order,
+        });
+      }
+      serviceCategoriesToUpdate.push({
+        id: movedServiceCategory._id!,
+        order: targetServiceCategory.order,
+      });
+    } else {
+      // Moving up: shift orders down for service categories between new and old positions
+      for (let i = newIndex; i < oldIndex; i++) {
+        serviceCategoriesToUpdate.push({
+          id: serviceCategories[i]._id!,
+          order: serviceCategories[i + 1].order,
+        });
+      }
+      serviceCategoriesToUpdate.push({
+        id: movedServiceCategory._id!,
+        order: targetServiceCategory.order,
+      });
+    }
+    
+    // Update local state
+    setServiceCategories(newServiceCategories);
+
+    // Save to backend
     try {
-      // Swap orders
-      const tempOrder = serviceCategory.order;
-      await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ order: otherServiceCategory.order }),
+      setIsUpdatingOrder(true);
+      const response = await fetch(resolveApiUrl('/api/service-categories/bulk/order'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ serviceCategories: serviceCategoriesToUpdate }),
       });
-      await fetch(resolveApiUrl(`/api/service-categories/${otherServiceCategory._id}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ order: tempOrder }),
-      });
-      
-      toast.success("Order updated");
-      if (selectedSectorId) {
-        fetchServiceCategories(selectedSectorId);
+
+      if (response.ok) {
+        toast.success('Service category order updated successfully');
+        if (sortBy !== 'order' || sortOrder !== 'asc') {
+          setSortBy('order');
+          setSortOrder('asc');
+        }
+        setTimeout(() => {
+          if (selectedSectorId) {
+            fetchServiceCategories(selectedSectorId);
+          }
+        }, 100);
+      } else {
+        const errorText = await response.text();
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch (e) {
+          error = { error: errorText || 'Failed to update service category order' };
+        }
+        
+        setServiceCategories(serviceCategories);
+        toast.error(error.error || error.details || 'Failed to update service category order');
       }
     } catch (error) {
-      console.error("Error updating order:", error);
-      toast.error("Failed to update order");
+      setServiceCategories(serviceCategories);
+      toast.error('Failed to update service category order');
+    } finally {
+      setIsUpdatingOrder(false);
     }
   };
 
@@ -824,160 +1055,41 @@ export default function AdminServiceCategoriesPage() {
                     <p className="text-black dark:text-white">No service categories found</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-0 hover:bg-transparent shadow-sm">
-                          <SortableHeader column="order" label="Order" />
-                          <SortableHeader column="name" label="Service Category Name" />
-                          <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
-                          <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
-                          <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {currentServiceCategories.map((serviceCategory, index) => (
-                          <TableRow
-                            key={serviceCategory._id}
-                            className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <TableCell className="text-black dark:text-white font-medium">
-                              <div className="flex items-center gap-2">
-                                <span>{serviceCategory.order}</span>
-                                <div className="flex flex-col">
-                                  <button
-                                    onClick={() => handleOrderChange(serviceCategory, "up")}
-                                    disabled={index === 0}
-                                    className="text-[#FE8A0F] hover:text-[#FFB347] disabled:opacity-30 disabled:cursor-not-allowed"
-                                  >
-                                    <ArrowUp className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderChange(serviceCategory, "down")}
-                                    disabled={index === currentServiceCategories.length - 1}
-                                    className="text-[#FE8A0F] hover:text-[#FFB347] disabled:opacity-30 disabled:cursor-not-allowed"
-                                  >
-                                    <ArrowDown className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              <div className="font-medium truncate" title={serviceCategory.name}>
-                                {serviceCategory.name && serviceCategory.name.length > 25 ? serviceCategory.name.substring(0, 25) + "..." : serviceCategory.name}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              {serviceCategory.icon ? (
-                                <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                  {serviceCategory.icon.startsWith('http') || serviceCategory.icon.startsWith('/') ? (
-                                    <img
-                                      src={serviceCategory.icon}
-                                      alt={serviceCategory.name}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                        (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
-                                      }}
-                                    />
-                                  ) : (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={serviceCategory.icon}>
-                                      {serviceCategory.icon.length > 10 ? serviceCategory.icon.substring(0, 10) + "..." : serviceCategory.icon}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-400">No icon</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              {(serviceCategory as any).bannerImage ? (
-                                <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                  <img
-                                    src={(serviceCategory as any).bannerImage}
-                                    alt={`${serviceCategory.name} banner`}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      console.error("Banner image load error:", (serviceCategory as any).bannerImage);
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                      (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-400">No image</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      if (serviceCategory.slug) {
-                                        window.open(`/category/${serviceCategory.slug}`, '_blank');
-                                      } else {
-                                        toast.error("Service category slug not available");
-                                      }
-                                    }}
-                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Category
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEdit(serviceCategory)}
-                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                                  >
-                                    <FolderTree className="h-4 w-4 mr-2" />
-                                    View Child Category
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEdit(serviceCategory)}
-                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                                  >
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleToggleActive(serviceCategory)}
-                                    className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                                  >
-                                    {serviceCategory.isActive ? (
-                                      <>
-                                        <Ban className="h-4 w-4 mr-2" />
-                                        Deactivate
-                                      </>
-                                    ) : (
-                                      <>
-                                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                                        Activate
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDelete(serviceCategory)}
-                                    className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={currentServiceCategories.map(cat => cat._id || '')}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-0 hover:bg-transparent shadow-sm">
+                              <SortableHeader column="order" label="Order" />
+                              <SortableHeader column="name" label="Service Category Name" />
+                              <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
+                              <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
+                              <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {currentServiceCategories.map((serviceCategory) => (
+                              <SortableServiceCategoryRow
+                                key={serviceCategory._id}
+                                serviceCategory={serviceCategory}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onToggleActive={handleToggleActive}
+                              />
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
 
                 {/* Pagination */}
@@ -1069,18 +1181,6 @@ export default function AdminServiceCategoriesPage() {
                   value={formData.slug}
                   onChange={(e) => handleInputChange("slug", e.target.value)}
                   placeholder="plumbing"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
-              </div>
-              <div>
-                <Label htmlFor="order" className="text-black dark:text-white">
-                  Display Order
-                </Label>
-                <Input
-                  id="order"
-                  type="number"
-                  value={formData.order}
-                  onChange={(e) => handleInputChange("order", parseInt(e.target.value) || 0)}
                   className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>

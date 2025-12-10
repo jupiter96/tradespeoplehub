@@ -551,3 +551,19 @@ export const getPageIcons = (sector: any, currentMainCategory: any, currentSubCa
   // Default fallback
   return { leftIcon: Wrench, rightIcon: Settings };
 };
+
+// Helper function to get a single icon for sector or category
+export const getSectorIcon = (sectorName: string): LucideIcon => {
+  if (sectorToolIcons[sectorName]) {
+    return sectorToolIcons[sectorName].leftIcon;
+  }
+  return Home; // Default fallback
+};
+
+// Helper function to get a single icon for category
+export const getCategoryIcon = (categoryName: string): LucideIcon => {
+  if (mainCategoryToolIcons[categoryName]) {
+    return mainCategoryToolIcons[categoryName].leftIcon;
+  }
+  return Home; // Default fallback
+};

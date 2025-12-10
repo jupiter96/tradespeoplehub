@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, Upload, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Eye, Ban, CheckCircle2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, Upload, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Eye, Ban, CheckCircle2, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -41,10 +58,159 @@ interface Sector {
   metaDescription?: string;
   icon?: string;
   bannerImage?: string;
-  displayName?: string;
-  subtitle?: string;
   order: number;
   isActive: boolean;
+}
+
+// Sortable Row Component
+function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
+  sector: Sector;
+  onEdit: (sector: Sector) => void;
+  onDelete: (id: string) => void;
+  onToggleActive: (id: string, currentStatus: boolean) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sector._id || '' });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
+    >
+      <TableCell className="text-black dark:text-white font-medium w-12">
+        <div className="flex items-center gap-2">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#FE8A0F] transition-colors"
+          >
+            <GripVertical className="w-5 h-5" />
+          </button>
+          <span>{sector.order}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        <div className="font-medium truncate" title={sector.name}>
+          {sector.name && sector.name.length > 25 ? sector.name.substring(0, 25) + "..." : sector.name}
+        </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {sector.icon ? (
+          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            {sector.icon.startsWith('http') || sector.icon.startsWith('/') ? (
+              <img
+                src={sector.icon}
+                alt={sector.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
+                }}
+              />
+            ) : (
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={sector.icon}>
+                {sector.icon.length > 10 ? sector.icon.substring(0, 10) + "..." : sector.icon}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No icon</span>
+        )}
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {sector.bannerImage ? (
+          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <img
+              src={sector.bannerImage}
+              alt={`${sector.name} banner`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
+              }}
+            />
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No image</span>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+            <DropdownMenuItem
+              onClick={() => {
+                if (sector.slug) {
+                  window.open(`/sector/${sector.slug}`, '_blank');
+                } else {
+                  toast.error("Sector slug not available");
+                }
+              }}
+              className="text-blue-600 dark:text-blue-400 cursor-pointer"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Sector
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onEdit(sector)}
+              className="text-blue-600 dark:text-blue-400 cursor-pointer"
+            >
+              <Edit2 className="w-4 h-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onToggleActive(sector._id!, sector.isActive)}
+              className={sector.isActive ? "text-red-600 dark:text-red-400 cursor-pointer" : "text-green-600 dark:text-green-400 cursor-pointer"}
+            >
+              {sector.isActive ? (
+                <>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Activate
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to delete "${sector.name}"?`)) {
+                  onDelete(sector._id!);
+                }
+              }}
+              className="text-red-600 dark:text-red-400 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 export default function AdminSectorsPage() {
@@ -60,9 +226,17 @@ export default function AdminSectorsPage() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("order");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const [formData, setFormData] = useState<Sector>({
     name: "",
@@ -70,11 +244,9 @@ export default function AdminSectorsPage() {
     description: "",
     metaTitle: "",
     metaDescription: "",
-    icon: "",
-    bannerImage: "",
-    displayName: "",
-    subtitle: "",
-    order: 0,
+      icon: "",
+      bannerImage: "",
+      order: 0,
     isActive: true,
   });
 
@@ -95,7 +267,48 @@ export default function AdminSectorsPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setSectors(data.sectors || []);
+        let sectorsData = data.sectors || [];
+        
+        // Always sort by order desc for admin display (highest order = newest = first)
+        // This ensures consistent display based on database order values
+        if (sortBy === 'order' && sortOrder === 'desc') {
+          sectorsData = [...sectorsData].sort((a, b) => {
+            // Primary sort: order desc (highest first)
+            if (b.order !== a.order) {
+              return b.order - a.order;
+            }
+            // Secondary sort: name asc for same order values
+            return (a.name || '').localeCompare(b.name || '');
+          });
+        }
+        
+        console.log('=== Fetched Sectors from Database ===');
+        console.log(`Sort: ${sortBy} ${sortOrder}`);
+        console.log(`Total sectors fetched: ${sectorsData.length}`);
+        sectorsData.forEach(s => {
+          console.log(`Sector ${s.name} (${s._id}): order = ${s.order} (from database)`);
+        });
+        
+        // Ensure we're using the actual database order values
+        // Filter out any temporary values (negative or very large positive)
+        const validSectors = sectorsData.filter(s => {
+          // Order should be a reasonable positive number (not temporary values)
+          // Temporary values are typically negative or very large (> 10000)
+          const isValid = s.order > 0 && s.order < 10000;
+          if (!isValid) {
+            console.warn(`Sector ${s.name} has suspicious order value: ${s.order}`);
+          }
+          return isValid;
+        });
+        
+        if (validSectors.length !== sectorsData.length) {
+          console.warn(`Filtered out ${sectorsData.length - validSectors.length} sectors with invalid order values`);
+        }
+        
+        // Use valid sectors or all sectors if filtering removed too many
+        const sectorsToDisplay = validSectors.length > 0 ? validSectors : sectorsData;
+        
+        setSectors(sectorsToDisplay);
         setTotalPages(data.pagination?.totalPages || 1);
         setTotal(data.pagination?.total || 0);
       } else {
@@ -181,6 +394,18 @@ export default function AdminSectorsPage() {
     });
   };
 
+  const getNextAvailableOrder = () => {
+    if (sectors.length === 0) return 0;
+    const existingOrders = sectors.map(s => s.order).sort((a, b) => a - b);
+    // Find the first gap or use max + 1
+    for (let i = 0; i < existingOrders.length; i++) {
+      if (existingOrders[i] !== i) {
+        return i;
+      }
+    }
+    return existingOrders[existingOrders.length - 1] + 1;
+  };
+
   const handleCreateNew = () => {
     setFormData({
       name: "",
@@ -190,9 +415,7 @@ export default function AdminSectorsPage() {
       metaDescription: "",
       icon: "",
       bannerImage: "",
-      displayName: "",
-      subtitle: "",
-      order: sectors.length,
+      order: getNextAvailableOrder(),
       isActive: true,
     });
     setEditingSector(null);
@@ -209,10 +432,166 @@ export default function AdminSectorsPage() {
     setIsModalOpen(true);
   };
 
-  const handleToggleActive = async (sector: Sector) => {
-    if (!sector._id) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    console.log('=== Drag End Event ===');
+    console.log('Active:', event.active);
+    console.log('Over:', event.over);
     
-    const newStatus = !sector.isActive;
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      console.log('Drag cancelled: no over target or same position');
+      return;
+    }
+
+    const oldIndex = sectors.findIndex((sector) => sector._id === active.id);
+    const newIndex = sectors.findIndex((sector) => sector._id === over.id);
+
+    console.log(`Moving sector from index ${oldIndex} to ${newIndex}`);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      console.error('Invalid indices:', { oldIndex, newIndex });
+      return;
+    }
+
+    // Update local state immediately for better UX
+    const newSectors = arrayMove(sectors, oldIndex, newIndex);
+    
+    // Calculate new order values based on new positions
+    // We need to shift order values to reflect the new positions
+    // Use the actual database order values and shift them appropriately
+    const movedSector = sectors[oldIndex];
+    const targetSector = sectors[newIndex];
+    
+    console.log('=== Order Update Calculation ===');
+    console.log(`Moving sector "${movedSector.name}" (order ${movedSector.order}) from index ${oldIndex} to index ${newIndex}`);
+    console.log(`Target sector "${targetSector.name}" (order ${targetSector.order})`);
+    
+    // Calculate new order values by shifting
+    // If moving down (oldIndex < newIndex), shift intermediate sectors up
+    // If moving up (oldIndex > newIndex), shift intermediate sectors down
+    const sectorsToUpdate: { id: string; order: number }[] = [];
+    
+    if (oldIndex < newIndex) {
+      // Moving down: shift orders up for sectors between old and new positions
+      for (let i = oldIndex + 1; i <= newIndex; i++) {
+        sectorsToUpdate.push({
+          id: sectors[i]._id!,
+          order: sectors[i - 1].order, // Take order from previous sector
+        });
+      }
+      // Set moved sector's order to target position's order
+      sectorsToUpdate.push({
+        id: movedSector._id!,
+        order: targetSector.order,
+      });
+    } else {
+      // Moving up: shift orders down for sectors between new and old positions
+      for (let i = newIndex; i < oldIndex; i++) {
+        sectorsToUpdate.push({
+          id: sectors[i]._id!,
+          order: sectors[i + 1].order, // Take order from next sector
+        });
+      }
+      // Set moved sector's order to target position's order
+      sectorsToUpdate.push({
+        id: movedSector._id!,
+        order: targetSector.order,
+      });
+    }
+    
+    console.log('=== Updated Order Values ===');
+    sectorsToUpdate.forEach(({ id, order }) => {
+      const sectorName = sectors.find(s => s._id === id)?.name || 'Unknown';
+      console.log(`Sector ${sectorName} (${id}): order = ${order}`);
+    });
+    
+    // Update local state - but don't modify order values here
+    // Just reorder the array, order values will come from database after update
+    setSectors(newSectors);
+
+    console.log('=== Sectors to Update ===');
+    console.log('Sectors array:', JSON.stringify(sectorsToUpdate, null, 2));
+
+    // Save to backend
+    try {
+      setIsUpdatingOrder(true);
+      const apiUrl = resolveApiUrl('/api/sectors/bulk/order');
+      const requestBody = { sectors: sectorsToUpdate };
+      
+      console.log('=== Sending Bulk Order Update Request ===');
+      console.log('API URL:', apiUrl);
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestBody),
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('=== Bulk Order Update Success ===');
+        console.log('Response data:', responseData);
+        toast.success('Sector order updated successfully');
+        // Refresh to get updated data from database
+        // Ensure we're sorting by order desc to match admin display
+        if (sortBy !== 'order' || sortOrder !== 'desc') {
+          setSortBy('order');
+          setSortOrder('desc');
+        }
+        // Fetch from database to get the actual stored order values
+        setTimeout(() => {
+          fetchSectors();
+        }, 100);
+      } else {
+        // Revert on error
+        console.error('=== Bulk Order Update Failed ===');
+        console.error('Response status:', response.status);
+        const errorText = await response.text();
+        console.error('Response text:', errorText);
+        
+        let error;
+        try {
+          error = JSON.parse(errorText);
+          console.error('Parsed error:', error);
+        } catch (e) {
+          console.error('Could not parse error response as JSON');
+          error = { error: errorText || 'Failed to update sector order' };
+        }
+        
+        setSectors(sectors);
+        toast.error(error.error || error.details || 'Failed to update sector order');
+      }
+    } catch (error) {
+      // Revert on error
+      console.error('=== Exception in Bulk Order Update ===');
+      console.error('Error:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Error stack:', error.stack);
+      }
+      
+      setSectors(sectors);
+      toast.error('Failed to update sector order');
+    } finally {
+      setIsUpdatingOrder(false);
+      console.log('=== Drag End Complete ===');
+    }
+  };
+
+  const handleToggleActive = async (id: string, currentStatus: boolean) => {
+    const sector = sectors.find(s => s._id === id);
+    if (!sector) return;
+    
+    const newStatus = !currentStatus;
     const action = newStatus ? "activate" : "deactivate";
     
     if (!confirm(`Are you sure you want to ${action} "${sector.name}"?`)) {
@@ -220,7 +599,7 @@ export default function AdminSectorsPage() {
     }
 
     try {
-      const response = await fetch(resolveApiUrl(`/api/sectors/${sector._id}`), {
+      const response = await fetch(resolveApiUrl(`/api/sectors/${id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -242,15 +621,16 @@ export default function AdminSectorsPage() {
     }
   };
 
-  const handleDelete = async (sector: Sector) => {
-    if (!sector._id) return;
+  const handleDelete = async (id: string) => {
+    const sector = sectors.find(s => s._id === id);
+    if (!sector) return;
     
     if (!confirm(`Are you sure you want to delete "${sector.name}"? This will also delete all associated categories.`)) {
       return;
     }
 
     try {
-      const response = await fetch(resolveApiUrl(`/api/sectors/${sector._id}?hardDelete=true`), {
+      const response = await fetch(resolveApiUrl(`/api/sectors/${id}?hardDelete=true`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -342,34 +722,55 @@ export default function AdminSectorsPage() {
 
     setUploadingImage({ type, loading: true });
     try {
-      // Get entity ID (editingSector or new sector)
+      // For new sectors (no entityId), upload directly to Cloudinary and save URL to formData
+      // For existing sectors, use the entity-specific upload endpoint
       const entityId = editingSector?._id;
+      
       if (!entityId) {
-        toast.error("Please save the sector first before uploading images");
-        setUploadingImage({ type: null, loading: false });
-        return;
-      }
+        // New sector: Upload directly to Cloudinary
+        const uploadFormData = new FormData();
+        uploadFormData.append("image", file);
 
-      const formData = new FormData();
-      formData.append("image", file);
+        const response = await fetch(
+          resolveApiUrl(`/api/admin/upload-image/${type}/sector/temp`),
+          {
+            method: "POST",
+            credentials: "include",
+            body: uploadFormData,
+          }
+        );
 
-      const response = await fetch(
-        resolveApiUrl(`/api/admin/upload-image/${type}/sector/${entityId}`),
-        {
-          method: "POST",
-          credentials: "include",
-          body: formData,
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload image");
         }
-      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload image");
+        const data = await response.json();
+        handleInputChange(type, data.imageUrl);
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+      } else {
+        // Existing sector: Use entity-specific upload endpoint
+        const uploadFormData = new FormData();
+        uploadFormData.append("image", file);
+
+        const response = await fetch(
+          resolveApiUrl(`/api/admin/upload-image/${type}/sector/${entityId}`),
+          {
+            method: "POST",
+            credentials: "include",
+            body: uploadFormData,
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload image");
+        }
+
+        const data = await response.json();
+        handleInputChange(type, data.imageUrl);
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       }
-
-      const data = await response.json();
-      handleInputChange(type, data.imageUrl);
-      toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload image");
@@ -449,7 +850,7 @@ export default function AdminSectorsPage() {
           </div>
 
           {/* Table */}
-          <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20 relative">
             {loading ? (
               <div className="text-center py-12">
                 <p className="text-black dark:text-white">Loading...</p>
@@ -460,132 +861,47 @@ export default function AdminSectorsPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-0 hover:bg-transparent shadow-sm">
-                      <SortableHeader column="order" label="Order" />
-                      <SortableHeader column="name" label="Sector Name" />
-                      <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
-                      <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
-                      <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sectors.map((sector) => (
-                      <TableRow
-                        key={sector._id}
-                        className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <TableCell className="text-black dark:text-white font-medium">
-                          {sector.order}
-                        </TableCell>
-                        <TableCell className="text-black dark:text-white">
-                          <div className="font-medium truncate" title={sector.name}>
-                            {sector.name && sector.name.length > 25 ? sector.name.substring(0, 25) + "..." : sector.name}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-black dark:text-white">
-                          {sector.icon ? (
-                            <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                              {sector.icon.startsWith('http') || sector.icon.startsWith('/') ? (
-                                <img
-                                  src={sector.icon}
-                                  alt={sector.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
-                                  }}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={sector.icon}>
-                                  {sector.icon.length > 10 ? sector.icon.substring(0, 10) + "..." : sector.icon}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">No icon</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-black dark:text-white">
-                          {sector.bannerImage ? (
-                            <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                              <img
-                                src={sector.bannerImage}
-                                alt={`${sector.name} banner`}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
-                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">No image</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  if (sector.slug) {
-                                    window.open(`/sector/${sector.slug}`, '_blank');
-                                  } else {
-                                    toast.error("Sector slug not available");
-                                  }
-                                }}
-                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Sector
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleEdit(sector)}
-                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                              >
-                                <Edit2 className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleToggleActive(sector)}
-                                className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                              >
-                                {sector.isActive ? (
-                                  <>
-                                    <Ban className="h-4 w-4 mr-2" />
-                                    Deactivate
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                    Activate
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(sector)}
-                                className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-0 hover:bg-transparent shadow-sm">
+                        <TableHead className="text-[#FE8A0F] font-semibold w-24">Order</TableHead>
+                        <SortableHeader column="name" label="Sector Name" />
+                        <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
+                        <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
+                        <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      <SortableContext
+                        items={sectors.map(s => s._id || '')}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {sectors.map((sector) => (
+                          <SortableRow
+                            key={sector._id}
+                            sector={sector}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onToggleActive={handleToggleActive}
+                          />
+                        ))}
+                      </SortableContext>
+                    </TableBody>
+                  </Table>
+                </DndContext>
+                {isUpdatingOrder && (
+                  <div className="absolute inset-0 bg-black/10 dark:bg-white/10 flex items-center justify-center rounded-3xl z-10">
+                    <div className="bg-white dark:bg-black p-4 rounded-lg shadow-lg flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-[#FE8A0F]" />
+                      <span className="text-black dark:text-white">Updating order...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -656,42 +972,6 @@ export default function AdminSectorsPage() {
                   value={formData.slug}
                   onChange={(e) => handleInputChange("slug", e.target.value)}
                   placeholder="home-garden"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
-              </div>
-              <div>
-                <Label htmlFor="displayName" className="text-black dark:text-white">
-                  Display Name
-                </Label>
-                <Input
-                  id="displayName"
-                  value={formData.displayName || ""}
-                  onChange={(e) => handleInputChange("displayName", e.target.value)}
-                  placeholder="Home &"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
-              </div>
-              <div>
-                <Label htmlFor="subtitle" className="text-black dark:text-white">
-                  Subtitle
-                </Label>
-                <Input
-                  id="subtitle"
-                  value={formData.subtitle || ""}
-                  onChange={(e) => handleInputChange("subtitle", e.target.value)}
-                  placeholder="Garden"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
-              </div>
-              <div>
-                <Label htmlFor="order" className="text-black dark:text-white">
-                  Display Order
-                </Label>
-                <Input
-                  id="order"
-                  type="number"
-                  value={formData.order}
-                  onChange={(e) => handleInputChange("order", parseInt(e.target.value) || 0)}
                   className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
@@ -787,9 +1067,9 @@ export default function AdminSectorsPage() {
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage.loading || !editingSector?._id}
+                    disabled={uploadingImage.loading}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title={!editingSector?._id ? "Please save the sector first" : "Upload icon"}
+                    title="Upload icon"
                   >
                     {uploadingImage.type === "icon" && uploadingImage.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -840,9 +1120,9 @@ export default function AdminSectorsPage() {
                     type="button"
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
-                    disabled={uploadingImage.loading || !editingSector?._id}
+                    disabled={uploadingImage.loading}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title={!editingSector?._id ? "Please save the sector first" : "Upload banner"}
+                    title="Upload banner"
                   >
                     {uploadingImage.type === "banner" && uploadingImage.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

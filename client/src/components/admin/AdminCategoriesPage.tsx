@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -33,6 +50,160 @@ import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 import { toast } from "sonner";
 import type { Sector, Category, SubCategory } from "../../hooks/useSectorsAndCategories";
 
+// Sortable Row Component
+function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
+  category: Category;
+  onEdit: (category: Category) => void;
+  onDelete: (category: Category) => void;
+  onToggleActive: (category: Category) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category._id || '' });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
+    >
+      <TableCell className="text-black dark:text-white font-medium w-12">
+        <div className="flex items-center gap-2">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#FE8A0F] transition-colors"
+          >
+            <GripVertical className="w-5 h-5" />
+          </button>
+          <span>{category.order}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        <div className="font-medium truncate" title={category.name}>
+          {category.name && category.name.length > 25 ? category.name.substring(0, 25) + "..." : category.name}
+        </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {category.icon ? (
+          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            {category.icon.startsWith('http') || category.icon.startsWith('/') ? (
+              <img
+                src={category.icon}
+                alt={category.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
+                }}
+              />
+            ) : (
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={category.icon}>
+                {category.icon.length > 10 ? category.icon.substring(0, 10) + "..." : category.icon}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No icon</span>
+        )}
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {(category as any).bannerImage ? (
+          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <img
+              src={(category as any).bannerImage}
+              alt={`${category.name} banner`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
+              }}
+            />
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No image</span>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+            <DropdownMenuItem
+              onClick={() => {
+                if (category.slug) {
+                  window.open(`/category/${category.slug}`, '_blank');
+                } else {
+                  toast.error("Category slug not available");
+                }
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Category
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onEdit(category)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <FolderTree className="h-4 w-4 mr-2" />
+              View Child Category
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onEdit(category)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <Edit2 className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onToggleActive(category)}
+              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+            >
+              {category.isActive ? (
+                <>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Activate
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDelete(category)}
+              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export default function AdminCategoriesPage() {
   useAdminRouteGuard();
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -49,6 +220,14 @@ export default function AdminCategoriesPage() {
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("order");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const [formData, setFormData] = useState<{
     sector: string;
@@ -251,34 +430,55 @@ export default function AdminCategoriesPage() {
 
     setUploadingImage({ type, loading: true });
     try {
-      // Get entity ID (editingCategory or new category)
+      // For new categories (no entityId), upload directly to Cloudinary and save URL to formData
+      // For existing categories, use the entity-specific upload endpoint
       const entityId = editingCategory?._id;
+      
       if (!entityId) {
-        toast.error("Please save the category first before uploading images");
-        setUploadingImage({ type: null, loading: false });
-        return;
-      }
+        // New category: Upload directly to Cloudinary
+        const uploadFormData = new FormData();
+        uploadFormData.append("image", file);
 
-      const formData = new FormData();
-      formData.append("image", file);
+        const response = await fetch(
+          resolveApiUrl(`/api/admin/upload-image/${type}/category/temp`),
+          {
+            method: "POST",
+            credentials: "include",
+            body: uploadFormData,
+          }
+        );
 
-      const response = await fetch(
-        resolveApiUrl(`/api/admin/upload-image/${type}/category/${entityId}`),
-        {
-          method: "POST",
-          credentials: "include",
-          body: formData,
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload image");
         }
-      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload image");
+        const data = await response.json();
+        handleInputChange(type, data.imageUrl);
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+      } else {
+        // Existing category: Use entity-specific upload endpoint
+        const uploadFormData = new FormData();
+        uploadFormData.append("image", file);
+
+        const response = await fetch(
+          resolveApiUrl(`/api/admin/upload-image/${type}/category/${entityId}`),
+          {
+            method: "POST",
+            credentials: "include",
+            body: uploadFormData,
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload image");
+        }
+
+        const data = await response.json();
+        handleInputChange(type, data.imageUrl);
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       }
-
-      const data = await response.json();
-      handleInputChange(type, data.imageUrl);
-      toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload image");
@@ -293,13 +493,25 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const getNextAvailableOrder = useCallback(() => {
+    if (categories.length === 0) return 0;
+    const existingOrders = categories.map(c => c.order).sort((a, b) => a - b);
+    // Find the first gap or use max + 1
+    for (let i = 0; i < existingOrders.length; i++) {
+      if (existingOrders[i] !== i) {
+        return i;
+      }
+    }
+    return existingOrders[existingOrders.length - 1] + 1;
+  }, [categories]);
+
   const handleCreateNew = () => {
     setFormData({
       sector: selectedSectorId,
       name: "",
       slug: "",
       question: "",
-      order: categories.length,
+      order: getNextAvailableOrder(),
       description: "",
       icon: "",
       bannerImage: "",
@@ -572,38 +784,98 @@ export default function AdminCategoriesPage() {
     });
   };
 
-  const handleOrderChange = async (category: Category, direction: "up" | "down") => {
-    const currentIndex = categories.findIndex((c) => c._id === category._id);
-    if (currentIndex === -1) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= categories.length) return;
+    if (!over || active.id === over.id) {
+      return;
+    }
 
-    const otherCategory = categories[newIndex];
+    const oldIndex = categories.findIndex((category) => category._id === active.id);
+    const newIndex = categories.findIndex((category) => category._id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Update local state immediately for better UX
+    const newCategories = arrayMove(categories, oldIndex, newIndex);
     
+    // Calculate new order values based on new positions
+    const movedCategory = categories[oldIndex];
+    const targetCategory = categories[newIndex];
+    
+    const categoriesToUpdate: { id: string; order: number }[] = [];
+    
+    if (oldIndex < newIndex) {
+      // Moving down: shift orders up for categories between old and new positions
+      for (let i = oldIndex + 1; i <= newIndex; i++) {
+        categoriesToUpdate.push({
+          id: categories[i]._id!,
+          order: categories[i - 1].order,
+        });
+      }
+      categoriesToUpdate.push({
+        id: movedCategory._id!,
+        order: targetCategory.order,
+      });
+    } else {
+      // Moving up: shift orders down for categories between new and old positions
+      for (let i = newIndex; i < oldIndex; i++) {
+        categoriesToUpdate.push({
+          id: categories[i]._id!,
+          order: categories[i + 1].order,
+        });
+      }
+      categoriesToUpdate.push({
+        id: movedCategory._id!,
+        order: targetCategory.order,
+      });
+    }
+    
+    // Update local state
+    setCategories(newCategories);
+
+    // Save to backend
     try {
-      // Swap orders
-      const tempOrder = category.order;
-      await fetch(resolveApiUrl(`/api/categories/${category._id}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ order: otherCategory.order }),
+      setIsUpdatingOrder(true);
+      const response = await fetch(resolveApiUrl('/api/categories/bulk/order'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ categories: categoriesToUpdate }),
       });
-      await fetch(resolveApiUrl(`/api/categories/${otherCategory._id}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ order: tempOrder }),
-      });
-      
-      toast.success("Order updated");
-      if (selectedSectorId) {
-        fetchCategories(selectedSectorId);
+
+      if (response.ok) {
+        toast.success('Category order updated successfully');
+        if (sortBy !== 'order' || sortOrder !== 'asc') {
+          setSortBy('order');
+          setSortOrder('asc');
+        }
+        setTimeout(() => {
+          if (selectedSectorId) {
+            fetchCategories(selectedSectorId);
+          }
+        }, 100);
+      } else {
+        const errorText = await response.text();
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch (e) {
+          error = { error: errorText || 'Failed to update category order' };
+        }
+        
+        setCategories(categories);
+        toast.error(error.error || error.details || 'Failed to update category order');
       }
     } catch (error) {
-      console.error("Error updating order:", error);
-      toast.error("Failed to update order");
+      setCategories(categories);
+      toast.error('Failed to update category order');
+    } finally {
+      setIsUpdatingOrder(false);
     }
   };
 
@@ -700,159 +972,41 @@ export default function AdminCategoriesPage() {
                     <p className="text-black dark:text-white">No categories found</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-0 hover:bg-transparent shadow-sm">
-                          <SortableHeader column="order" label="Order" />
-                          <SortableHeader column="name" label="Category Name" />
-                          <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
-                          <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
-                          <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {currentCategories.map((category, index) => (
-                          <TableRow
-                            key={category._id}
-                            className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
-                          >
-                            <TableCell className="text-black dark:text-white font-medium">
-                              <div className="flex items-center gap-2">
-                                <span>{category.order}</span>
-                                <div className="flex flex-col">
-                                  <button
-                                    onClick={() => handleOrderChange(category, "up")}
-                                    disabled={index === 0}
-                                    className="text-[#FE8A0F] hover:text-[#FFB347] disabled:opacity-30 disabled:cursor-not-allowed"
-                                  >
-                                    <ArrowUp className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderChange(category, "down")}
-                                    disabled={index === currentCategories.length - 1}
-                                    className="text-[#FE8A0F] hover:text-[#FFB347] disabled:opacity-30 disabled:cursor-not-allowed"
-                                  >
-                                    <ArrowDown className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              <div className="font-medium truncate" title={category.name}>
-                                {category.name && category.name.length > 25 ? category.name.substring(0, 25) + "..." : category.name}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              {category.icon ? (
-                                <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                  {category.icon.startsWith('http') || category.icon.startsWith('/') ? (
-                                    <img
-                                      src={category.icon}
-                                      alt={category.name}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                        (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
-                                      }}
-                                    />
-                                  ) : (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={category.icon}>
-                                      {category.icon.length > 10 ? category.icon.substring(0, 10) + "..." : category.icon}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-400">No icon</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              {(category as any).bannerImage ? (
-                                <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                  <img
-                                    src={(category as any).bannerImage}
-                                    alt={`${category.name} banner`}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                      (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-400">No image</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      if (category.slug) {
-                                        window.open(`/category/${category.slug}`, '_blank');
-                                      } else {
-                                        toast.error("Category slug not available");
-                                      }
-                                    }}
-                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Category
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEdit(category)}
-                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                                  >
-                                    <FolderTree className="h-4 w-4 mr-2" />
-                                    View Child Category
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEdit(category)}
-                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-                                  >
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleToggleActive(category)}
-                                    className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                                  >
-                                    {category.isActive ? (
-                                      <>
-                                        <Ban className="h-4 w-4 mr-2" />
-                                        Deactivate
-                                      </>
-                                    ) : (
-                                      <>
-                                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                                        Activate
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDelete(category)}
-                                    className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={currentCategories.map(cat => cat._id || '')}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-0 hover:bg-transparent shadow-sm">
+                              <SortableHeader column="order" label="Order" />
+                              <SortableHeader column="name" label="Category Name" />
+                              <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
+                              <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
+                              <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {currentCategories.map((category) => (
+                              <SortableRow
+                                key={category._id}
+                                category={category}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onToggleActive={handleToggleActive}
+                              />
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
 
                 {/* Pagination */}
@@ -947,18 +1101,6 @@ export default function AdminCategoriesPage() {
                   className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
-              <div>
-                <Label htmlFor="order" className="text-black dark:text-white">
-                  Display Order
-                </Label>
-                <Input
-                  id="order"
-                  type="number"
-                  value={formData.order}
-                  onChange={(e) => handleInputChange("order", parseInt(e.target.value) || 0)}
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
-              </div>
               <div className="flex items-center gap-4">
                 <Label htmlFor="isActive" className="text-black dark:text-white">
                   Status
@@ -1037,9 +1179,9 @@ export default function AdminCategoriesPage() {
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage.loading || !editingCategory?._id}
+                    disabled={uploadingImage.loading}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title={!editingCategory?._id ? "Please save the category first" : "Upload icon"}
+                    title="Upload icon"
                   >
                     {uploadingImage.type === "icon" && uploadingImage.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1090,9 +1232,9 @@ export default function AdminCategoriesPage() {
                     type="button"
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
-                    disabled={uploadingImage.loading || !editingCategory?._id}
+                    disabled={uploadingImage.loading}
                     className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title={!editingCategory?._id ? "Please save the category first" : "Upload banner"}
+                    title="Upload banner"
                   >
                     {uploadingImage.type === "banner" && uploadingImage.loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

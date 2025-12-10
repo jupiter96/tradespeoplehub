@@ -216,14 +216,42 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Category with this name already exists in this sector' });
     }
     
-    // Check if order already exists in this sector
+    // Find next available order if provided order is taken or not provided
+    let finalOrder = order !== undefined ? order : 0;
     if (order !== undefined) {
       const existingOrder = await Category.findOne({ 
         sector: sectorDoc._id, 
         order 
       });
       if (existingOrder) {
-        return res.status(409).json({ error: `Category with order ${order} already exists in this sector. Order must be unique within a sector.` });
+        // Find next available order within this sector
+        const allCategories = await Category.find({ sector: sectorDoc._id }).sort({ order: 1 }).select('order').lean();
+        const existingOrders = allCategories.map(c => c.order).sort((a, b) => a - b);
+        // Find first gap or use max + 1
+        finalOrder = existingOrders.length;
+        for (let i = 0; i < existingOrders.length; i++) {
+          if (existingOrders[i] !== i) {
+            finalOrder = i;
+            break;
+          }
+        }
+        if (finalOrder === existingOrders.length && existingOrders.length > 0) {
+          finalOrder = existingOrders[existingOrders.length - 1] + 1;
+        }
+      }
+    } else {
+      // If no order provided, find next available
+      const allCategories = await Category.find({ sector: sectorDoc._id }).sort({ order: 1 }).select('order').lean();
+      const existingOrders = allCategories.map(c => c.order).sort((a, b) => a - b);
+      finalOrder = existingOrders.length;
+      for (let i = 0; i < existingOrders.length; i++) {
+        if (existingOrders[i] !== i) {
+          finalOrder = i;
+          break;
+        }
+      }
+      if (finalOrder === existingOrders.length && existingOrders.length > 0) {
+        finalOrder = existingOrders[existingOrders.length - 1] + 1;
       }
     }
     
@@ -232,7 +260,7 @@ router.post('/', async (req, res) => {
       name: name.trim(),
       slug: categorySlug,
       question,
-      order: order !== undefined ? order : 0,
+      order: finalOrder,
       description,
       icon,
       bannerImage,
@@ -372,22 +400,120 @@ router.delete('/:id', async (req, res) => {
 // Bulk update category order
 router.put('/bulk/order', async (req, res) => {
   try {
+    console.log('=== Bulk Update Category Order Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const { categories } = req.body; // Array of { id, order }
     
     if (!Array.isArray(categories)) {
+      console.error('Error: categories is not an array. Received:', typeof categories, categories);
       return res.status(400).json({ error: 'Categories must be an array' });
     }
     
-    const updatePromises = categories.map(({ id, order }) =>
-      Category.findByIdAndUpdate(id, { order }, { new: true })
-    );
+    console.log(`Processing ${categories.length} category order updates`);
     
-    await Promise.all(updatePromises);
+    // Validate each category update and fetch category info to get sector
+    const validatedUpdates = [];
+    const categoryInfoMap = new Map();
     
-    return res.json({ message: 'Category orders updated' });
+    for (let i = 0; i < categories.length; i++) {
+      const { id, order } = categories[i];
+      
+      if (!id) {
+        console.error(`Error at index ${i}: Missing id`, categories[i]);
+        return res.status(400).json({ error: `Category at index ${i} is missing id` });
+      }
+      
+      if (typeof order !== 'number' || isNaN(order)) {
+        console.error(`Error at index ${i}: Invalid order`, categories[i]);
+        return res.status(400).json({ error: `Category at index ${i} has invalid order value` });
+      }
+      
+      // Fetch category to get its sector
+      const category = await Category.findById(id).select('sector order').lean();
+      if (!category) {
+        console.error(`Error at index ${i}: Category not found`, id);
+        return res.status(404).json({ error: `Category with id ${id} not found` });
+      }
+      
+      validatedUpdates.push({ id, order, sector: category.sector });
+      categoryInfoMap.set(id, { sector: category.sector, oldOrder: category.order });
+      console.log(`  - Category ${id} (sector: ${category.sector}): order = ${order}`);
+    }
+    
+    // Group updates by sector to find max order per sector
+    const sectorMaxOrders = new Map();
+    for (const { sector } of validatedUpdates) {
+      if (!sectorMaxOrders.has(sector.toString())) {
+        const maxOrderResult = await Category.findOne({ sector }).sort({ order: -1 }).select('order').lean();
+        const maxOrder = maxOrderResult?.order || 0;
+        sectorMaxOrders.set(sector.toString(), maxOrder);
+        console.log(`Max order for sector ${sector}: ${maxOrder}`);
+      }
+    }
+    
+    // Find global max order to use as base for temporary values
+    const globalMaxOrderResult = await Category.findOne({}).sort({ order: -1 }).select('order').lean();
+    const globalMaxOrder = globalMaxOrderResult?.order || 0;
+    const tempOffset = Math.max(globalMaxOrder + 1000, 10000); // Use values well above current max
+    
+    console.log(`Global max order: ${globalMaxOrder}, using temp offset: ${tempOffset}`);
+    
+    // First pass: Set all orders to temporary values (above max) to free up order slots
+    console.log('Step 1: Setting temporary orders...');
+    for (const { id, order, sector } of validatedUpdates) {
+      try {
+        // Use a unique temporary order value for each category
+        // Add a multiplier based on order to ensure uniqueness
+        const tempOrder = tempOffset + (order * 1000) + parseInt(id.slice(-4), 16) % 1000;
+        await Category.findByIdAndUpdate(id, { order: tempOrder }, { runValidators: false });
+        console.log(`  ✓ Set temporary order for category ${id}: ${tempOrder}`);
+      } catch (err) {
+        console.error(`Error setting temporary order for category ${id}:`, err);
+        throw err;
+      }
+    }
+    
+    // Second pass: Set final order values
+    console.log('Step 2: Setting final orders...');
+    const results = [];
+    for (const { id, order } of validatedUpdates) {
+      try {
+        const updated = await Category.findByIdAndUpdate(
+          id, 
+          { order }, 
+          { new: true, runValidators: true }
+        );
+        
+        if (!updated) {
+          console.error(`Warning: Category with id ${id} not found`);
+          throw new Error(`Category with id ${id} not found`);
+        }
+        
+        console.log(`  ✓ Updated category ${id} to order ${order}`);
+        results.push(updated);
+      } catch (err) {
+        console.error(`Error updating category ${id} to order ${order}:`, err);
+        throw err;
+      }
+    }
+    
+    console.log(`Successfully updated ${results.length} categories`);
+    console.log('=== Bulk Update Complete ===');
+    
+    return res.json({ 
+      message: 'Category orders updated',
+      updatedCount: results.length
+    });
   } catch (error) {
-    console.error('Bulk update category order error', error);
-    return res.status(500).json({ error: 'Failed to update category orders' });
+    console.error('=== Bulk update category order error ===');
+    console.error('Error details:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    return res.status(500).json({ 
+      error: 'Failed to update category orders',
+      details: error.message 
+    });
   }
 });
 

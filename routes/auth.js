@@ -187,7 +187,7 @@ const loadPendingRegistration = async (req, email = null) => {
   if (registrationId) {
     try {
       console.log('[loadPendingRegistration] Trying to load by session ID:', registrationId);
-      const pending = await PendingRegistration.findById(registrationId);
+    const pending = await PendingRegistration.findById(registrationId);
       if (pending) {
         console.log('[loadPendingRegistration] Found by session ID:', pending._id);
         return pending;
@@ -211,13 +211,13 @@ const loadPendingRegistration = async (req, email = null) => {
         // Update session with found registration
         setPendingRegistrationSession(req, pending.id);
         await saveSession(req);
-        return pending;
+    return pending;
       } else {
         console.log('[loadPendingRegistration] Not found by email:', normalizedEmail);
       }
-    } catch (error) {
+  } catch (error) {
       console.error('[loadPendingRegistration] Failed to load pending registration by email', error);
-    }
+  }
   }
 
   console.log('[loadPendingRegistration] No pending registration found');
@@ -294,7 +294,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
         }
         
         console.log(`${provider} login successful for user:`, result.email || result._id || result.id);
-        return res.redirect(SOCIAL_SUCCESS_REDIRECT);
+      return res.redirect(SOCIAL_SUCCESS_REDIRECT);
       });
     });
   })(req, res, next);
@@ -524,14 +524,14 @@ router.post('/register/initiate', async (req, res) => {
             pendingId: existingPending._id
           });
           
-          const emailCode = generateCode();
+    const emailCode = generateCode();
           console.log('[Registration] Email code generated:', {
             code: emailCode,
             codeLength: emailCode.length,
             timestamp: new Date().toISOString()
           });
           
-          const emailCodeHash = await bcrypt.hash(emailCode, 10);
+    const emailCodeHash = await bcrypt.hash(emailCode, 10);
           console.log('[Registration] Email code hash created:', {
             hasHash: !!emailCodeHash,
             hashLength: emailCodeHash?.length || 0
@@ -795,8 +795,8 @@ router.post('/register/initiate', async (req, res) => {
         console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
       } else {
         console.error('[Registration] Deleting pending registration due to email send failure');
-        await pendingRegistration.deleteOne();
-        return res.status(502).json({ error: 'Failed to send verification email' });
+      await pendingRegistration.deleteOne();
+      return res.status(502).json({ error: 'Failed to send verification email' });
       }
     }
 

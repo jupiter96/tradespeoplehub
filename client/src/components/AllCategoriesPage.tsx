@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import {
   Home,
   Briefcase,
@@ -22,9 +23,11 @@ import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useSectors } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category } from "../hooks/useSectorsAndCategories";
+import { getSectorIcon, getCategoryIcon } from "./categoryIconMappings";
 
 export default function AllCategoriesPage() {
   const { sectors, loading, error } = useSectors(true, true); // Include categories and subcategories
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const sectorIcons: Record<string, any> = {
     "Home & Garden": Home,
     "Business Services": Briefcase,
@@ -107,7 +110,9 @@ export default function AllCategoriesPage() {
             {sectors.map((sector) => {
               const IconComponent = sectorIcons[sector.name] || Home;
               const color = sectorColors[sector.name] || "#3F51B5";
-              const categories = (sector.categories || []) as Category[];
+              // Sort categories by order
+              const categories = ((sector.categories || []) as Category[])
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
               
               return (
                 <div 
@@ -119,13 +124,25 @@ export default function AllCategoriesPage() {
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                       <div
-                        className="w-14 h-14 rounded-[12px] flex items-center justify-center"
+                        className="w-14 h-14 rounded-[12px] flex items-center justify-center overflow-hidden"
                         style={{ backgroundColor: `${color}15` }}
                       >
-                        <IconComponent
-                          className="w-7 h-7"
-                          style={{ color: color }}
-                        />
+                        {sector.icon && !imageErrors[`sector-${sector._id}`] ? (
+                          <img 
+                            src={sector.icon} 
+                            alt={sector.name}
+                            className="w-full h-full object-contain p-2"
+                            onError={() => {
+                              // Mark image as failed to load
+                              setImageErrors(prev => ({ ...prev, [`sector-${sector._id}`]: true }));
+                            }}
+                          />
+                        ) : (
+                          <IconComponent
+                            className="w-7 h-7"
+                            style={{ color: color }}
+                          />
+                        )}
                       </div>
                       <div>
                         <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[22px] md:text-[26px]">
@@ -149,22 +166,46 @@ export default function AllCategoriesPage() {
                   {categories.length > 0 ? (
                     <div className="space-y-4">
                       {categories.map((category) => {
-                        const subCategories = (category.subCategories || []) as any[];
+                        // Sort subcategories by order
+                        const subCategories = ((category.subCategories || []) as any[])
+                          .sort((a, b) => (a.order || 0) - (b.order || 0));
+                        const CategoryIconComponent = getCategoryIcon(category.name);
                         return (
                           <div key={category._id} className="space-y-2">
                             <Link
                               to={`/services?category=${encodeURIComponent(sector.name)}&subcategory=${encodeURIComponent(category.name)}`}
                               className="group flex items-center justify-between p-3 bg-gray-50 hover:bg-white rounded-[8px] border border-gray-100 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 cursor-pointer"
                             >
-                              <div>
-                                <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-semibold group-hover:text-[#3D78CB] transition-colors">
-                                  {category.name}
-                                </span>
-                                {subCategories.length > 0 && (
-                                  <p className="text-[11px] text-gray-500 font-['Poppins',sans-serif] mt-1">
-                                    {subCategories.length} services available
-                                  </p>
-                                )}
+                              <div className="flex items-center gap-3">
+                                {/* Category Icon */}
+                                <div className="w-10 h-10 rounded-[8px] flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${color}15` }}>
+                                  {category.icon && !imageErrors[`category-${category._id}`] ? (
+                                    <img 
+                                      src={category.icon} 
+                                      alt={category.name}
+                                      className="w-full h-full object-contain p-1.5"
+                                      onError={() => {
+                                        // Mark image as failed to load
+                                        setImageErrors(prev => ({ ...prev, [`category-${category._id}`]: true }));
+                                      }}
+                                    />
+                                  ) : (
+                                    <CategoryIconComponent
+                                      className="w-5 h-5"
+                                      style={{ color: color }}
+                                    />
+                                  )}
+                                </div>
+                                <div>
+                                  <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-semibold group-hover:text-[#3D78CB] transition-colors">
+                                    {category.name}
+                                  </span>
+                                  {subCategories.length > 0 && (
+                                    <p className="text-[11px] text-gray-500 font-['Poppins',sans-serif] mt-1">
+                                      {subCategories.length} services available
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                               <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all" />
                             </Link>

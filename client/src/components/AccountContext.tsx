@@ -230,8 +230,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     async (code: string, email?: string) => {
       console.log('[Phone Verification] AccountContext - completeRegistration called with code');
       try {
-        const data = await requestJson("/api/auth/register/verify-phone", {
-          method: "POST",
+      const data = await requestJson("/api/auth/register/verify-phone", {
+        method: "POST",
           body: JSON.stringify({ code, email }),
         });
 
@@ -240,10 +240,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           email: data.user?.email,
           phone: data.user?.phone,
           role: data.user?.role
-        });
+      });
 
-        applyUserSession(data.user);
-        return data.user;
+      applyUserSession(data.user);
+      return data.user;
       } catch (error) {
         console.error('[Phone Verification] AccountContext - completeRegistration error:', error);
         throw error;

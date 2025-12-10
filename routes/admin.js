@@ -10,6 +10,8 @@ import EmailTemplate from '../models/EmailTemplate.js';
 import Category from '../models/Category.js';
 import Sector from '../models/Sector.js';
 import SubCategory from '../models/SubCategory.js';
+import ServiceCategory from '../models/ServiceCategory.js';
+import ServiceSubCategory from '../models/ServiceSubCategory.js';
 
 // Load environment variables
 dotenv.config();
@@ -397,7 +399,34 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
       return res.status(400).json({ error: 'Image file is required' });
     }
 
-    // Find the entity
+    // Handle temporary uploads (for new entities that don't exist yet)
+    if (entityId === 'temp') {
+      // Upload to Cloudinary without saving to entity
+      const folder = `${entityType}s/${type}s`;
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: folder,
+            public_id: `${entityType}-${type}-temp-${Date.now()}`,
+            transformation: type === 'icon' 
+              ? [{ width: 200, height: 200, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }]
+              : [{ width: 1200, height: 400, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(req.file.buffer);
+      });
+
+      return res.json({ 
+        imageUrl: uploadResult.secure_url,
+        [type]: uploadResult.secure_url
+      });
+    }
+
+    // Find the entity for existing entities
     let entity;
     if (entityType === 'sector') {
       entity = await Sector.findById(entityId);
@@ -1044,29 +1073,53 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const affiliateDailyChange = affiliateToday - affiliateYesterday;
 
-    // Calculate Category statistics
-    const totalCategory = await Category.countDocuments({ isActive: { $ne: false } });
-    const categoryToday = await Category.countDocuments({ 
+    // Calculate Job Category statistics (renamed from Category)
+    const totalJobCategory = await Category.countDocuments({ isActive: { $ne: false } });
+    const jobCategoryToday = await Category.countDocuments({ 
       isActive: { $ne: false },
       createdAt: { $gte: today }
     });
-    const categoryYesterday = await Category.countDocuments({ 
+    const jobCategoryYesterday = await Category.countDocuments({ 
       isActive: { $ne: false },
       createdAt: { $gte: yesterday, $lt: today }
     });
-    const totalCategoryDailyChange = categoryToday - categoryYesterday;
+    const totalJobCategoryDailyChange = jobCategoryToday - jobCategoryYesterday;
 
-    // Calculate SubCategory statistics
-    const totalSubCategory = await SubCategory.countDocuments({ isActive: { $ne: false } });
-    const subCategoryToday = await SubCategory.countDocuments({ 
+    // Calculate Job SubCategory statistics
+    const totalJobSubCategory = await SubCategory.countDocuments({ isActive: { $ne: false } });
+    const jobSubCategoryToday = await SubCategory.countDocuments({ 
       isActive: { $ne: false },
       createdAt: { $gte: today }
     });
-    const subCategoryYesterday = await SubCategory.countDocuments({ 
+    const jobSubCategoryYesterday = await SubCategory.countDocuments({ 
       isActive: { $ne: false },
       createdAt: { $gte: yesterday, $lt: today }
     });
-    const totalSubCategoryDailyChange = subCategoryToday - subCategoryYesterday;
+    const totalJobSubCategoryDailyChange = jobSubCategoryToday - jobSubCategoryYesterday;
+
+    // Calculate Service Category statistics
+    const totalServiceCategory = await ServiceCategory.countDocuments({ isActive: { $ne: false } });
+    const serviceCategoryToday = await ServiceCategory.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: today }
+    });
+    const serviceCategoryYesterday = await ServiceCategory.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const totalServiceCategoryDailyChange = serviceCategoryToday - serviceCategoryYesterday;
+
+    // Calculate Service SubCategory statistics
+    const totalServiceSubCategory = await ServiceSubCategory.countDocuments({ isActive: { $ne: false } });
+    const serviceSubCategoryToday = await ServiceSubCategory.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: today }
+    });
+    const serviceSubCategoryYesterday = await ServiceSubCategory.countDocuments({ 
+      isActive: { $ne: false },
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const totalServiceSubCategoryDailyChange = serviceSubCategoryToday - serviceSubCategoryYesterday;
 
     // Calculate Sector statistics
     const totalSector = await Sector.countDocuments({ isActive: { $ne: false } });
@@ -1160,8 +1213,14 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       professionalsDailyChange: professionalsDailyChange || 0,
       totalJob: 0, // Job model not implemented yet
       totalJobDailyChange: 0,
-      totalCategory: totalCategory || 0,
-      totalCategoryDailyChange: totalCategoryDailyChange || 0,
+      totalJobCategory: totalJobCategory || 0,
+      totalJobCategoryDailyChange: totalJobCategoryDailyChange || 0,
+      totalJobSubCategory: totalJobSubCategory || 0,
+      totalJobSubCategoryDailyChange: totalJobSubCategoryDailyChange || 0,
+      totalServiceCategory: totalServiceCategory || 0,
+      totalServiceCategoryDailyChange: totalServiceCategoryDailyChange || 0,
+      totalServiceSubCategory: totalServiceSubCategory || 0,
+      totalServiceSubCategoryDailyChange: totalServiceSubCategoryDailyChange || 0,
       accountVerificationDocument: verificationDocsPendingCount || 0,
       accountVerificationDocumentNew: verificationDocsNew || 0, // Count only documents uploaded after admin viewed the card
       accountVerificationDocumentDailyChange: verificationDocsToday || 0,
@@ -1221,8 +1280,6 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       verifiedProfessionals: verifiedProfessionals || 0,
       totalSector: totalSector || 0,
       totalSectorDailyChange: totalSectorDailyChange || 0,
-      totalSubCategory: totalSubCategory || 0,
-      totalSubCategoryDailyChange: totalSubCategoryDailyChange || 0,
     };
 
     return res.json({ statistics });
