@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2 } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -233,9 +233,20 @@ export default function AdminServiceCategoriesPage() {
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Auto-generate slug from name if slug is empty
-      if (field === "name" && !updated.slug) {
-        updated.slug = generateSlug(value);
+      // Auto-generate slug from name when name changes
+      // For new service categories (no editingServiceCategory), always auto-generate
+      // For existing service categories, only auto-generate if slug is empty or matches the original slug
+      if (field === "name") {
+        if (!editingServiceCategory) {
+          // New service category: always auto-generate slug
+          updated.slug = generateSlug(value);
+        } else {
+          // Existing service category: only auto-generate if slug is empty or matches original
+          const originalSlug = generateSlug(editingServiceCategory.name);
+          if (!updated.slug || updated.slug === originalSlug) {
+            updated.slug = generateSlug(value);
+          }
+        }
       }
       return updated;
     });
@@ -363,6 +374,41 @@ export default function AdminServiceCategoriesPage() {
     setIconPreview(serviceCategory.icon || null);
     setBannerPreview(serviceCategory.bannerImage || null);
     setIsModalOpen(true);
+  };
+
+  const handleToggleActive = async (serviceCategory: ServiceCategory) => {
+    if (!serviceCategory._id) return;
+    
+    const newStatus = !serviceCategory.isActive;
+    const action = newStatus ? "activate" : "deactivate";
+    
+    if (!confirm(`Are you sure you want to ${action} "${serviceCategory.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ isActive: newStatus }),
+      });
+
+      if (response.ok) {
+        toast.success(`Service category ${action}d successfully`);
+        if (selectedSectorId) {
+          fetchServiceCategories(selectedSectorId);
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || `Failed to ${action} service category`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing service category:`, error);
+      toast.error(`Failed to ${action} service category`);
+    }
   };
 
   const handleDelete = async (serviceCategory: ServiceCategory) => {
@@ -875,11 +921,47 @@ export default function AdminServiceCategoriesPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                                   <DropdownMenuItem
+                                    onClick={() => {
+                                      if (serviceCategory.slug) {
+                                        window.open(`/category/${serviceCategory.slug}`, '_blank');
+                                      } else {
+                                        toast.error("Service category slug not available");
+                                      }
+                                    }}
+                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Category
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
                                     onClick={() => handleEdit(serviceCategory)}
-                                    className="text-black dark:text-white hover:bg-[#FE8A0F]/10 cursor-pointer"
+                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                  >
+                                    <FolderTree className="h-4 w-4 mr-2" />
+                                    View Child Category
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(serviceCategory)}
+                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
                                   >
                                     <Edit2 className="h-4 w-4 mr-2" />
                                     Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleActive(serviceCategory)}
+                                    className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                  >
+                                    {serviceCategory.isActive ? (
+                                      <>
+                                        <Ban className="h-4 w-4 mr-2" />
+                                        Deactivate
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                                        Activate
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleDelete(serviceCategory)}

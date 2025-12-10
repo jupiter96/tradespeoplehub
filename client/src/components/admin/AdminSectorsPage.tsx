@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, Upload, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, Upload, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Eye, Ban, CheckCircle2 } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -162,9 +162,20 @@ export default function AdminSectorsPage() {
   const handleInputChange = (field: keyof Sector, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Auto-generate slug from name if slug is empty
-      if (field === "name" && !updated.slug) {
-        updated.slug = generateSlug(value);
+      // Auto-generate slug from name when name changes
+      // For new sectors (no editingSector), always auto-generate
+      // For existing sectors, only auto-generate if slug is empty or matches the original slug
+      if (field === "name") {
+        if (!editingSector) {
+          // New sector: always auto-generate slug
+          updated.slug = generateSlug(value);
+        } else {
+          // Existing sector: only auto-generate if slug is empty or matches original
+          const originalSlug = generateSlug(editingSector.name);
+          if (!updated.slug || updated.slug === originalSlug) {
+            updated.slug = generateSlug(value);
+          }
+        }
       }
       return updated;
     });
@@ -196,6 +207,39 @@ export default function AdminSectorsPage() {
     setIconPreview(sector.icon || null);
     setBannerPreview(sector.bannerImage || null);
     setIsModalOpen(true);
+  };
+
+  const handleToggleActive = async (sector: Sector) => {
+    if (!sector._id) return;
+    
+    const newStatus = !sector.isActive;
+    const action = newStatus ? "activate" : "deactivate";
+    
+    if (!confirm(`Are you sure you want to ${action} "${sector.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(resolveApiUrl(`/api/sectors/${sector._id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ isActive: newStatus }),
+      });
+
+      if (response.ok) {
+        toast.success(`Sector ${action}d successfully`);
+        fetchSectors();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || `Failed to ${action} sector`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing sector:`, error);
+      toast.error(`Failed to ${action} sector`);
+    }
   };
 
   const handleDelete = async (sector: Sector) => {
@@ -493,11 +537,40 @@ export default function AdminSectorsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                               <DropdownMenuItem
+                                onClick={() => {
+                                  if (sector.slug) {
+                                    window.open(`/sector/${sector.slug}`, '_blank');
+                                  } else {
+                                    toast.error("Sector slug not available");
+                                  }
+                                }}
+                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Sector
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 onClick={() => handleEdit(sector)}
-                                className="text-black dark:text-white hover:bg-[#FE8A0F]/10 cursor-pointer"
+                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
                               >
                                 <Edit2 className="h-4 w-4 mr-2" />
                                 Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleActive(sector)}
+                                className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                              >
+                                {sector.isActive ? (
+                                  <>
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    Activate
+                                  </>
+                                )}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDelete(sector)}

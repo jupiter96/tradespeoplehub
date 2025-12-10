@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2 } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -205,9 +205,20 @@ export default function AdminCategoriesPage() {
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Auto-generate slug from name if slug is empty
-      if (field === "name" && !updated.slug) {
-        updated.slug = generateSlug(value);
+      // Auto-generate slug from name when name changes
+      // For new categories (no editingCategory), always auto-generate
+      // For existing categories, only auto-generate if slug is empty or matches the original slug
+      if (field === "name") {
+        if (!editingCategory) {
+          // New category: always auto-generate slug
+          updated.slug = generateSlug(value);
+        } else {
+          // Existing category: only auto-generate if slug is empty or matches original
+          const originalSlug = generateSlug(editingCategory.name);
+          if (!updated.slug || updated.slug === originalSlug) {
+            updated.slug = generateSlug(value);
+          }
+        }
       }
       return updated;
     });
@@ -323,6 +334,41 @@ export default function AdminCategoriesPage() {
     setIconPreview(category.icon || null);
     setBannerPreview((category as any).bannerImage || null);
     setIsModalOpen(true);
+  };
+
+  const handleToggleActive = async (category: Category) => {
+    if (!category._id) return;
+    
+    const newStatus = !category.isActive;
+    const action = newStatus ? "activate" : "deactivate";
+    
+    if (!confirm(`Are you sure you want to ${action} "${category.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(resolveApiUrl(`/api/categories/${category._id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ isActive: newStatus }),
+      });
+
+      if (response.ok) {
+        toast.success(`Category ${action}d successfully`);
+        if (selectedSectorId) {
+          fetchCategories(selectedSectorId);
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || `Failed to ${action} category`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing category:`, error);
+      toast.error(`Failed to ${action} category`);
+    }
   };
 
   const handleDelete = async (category: Category) => {
@@ -750,11 +796,47 @@ export default function AdminCategoriesPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
                                   <DropdownMenuItem
+                                    onClick={() => {
+                                      if (category.slug) {
+                                        window.open(`/category/${category.slug}`, '_blank');
+                                      } else {
+                                        toast.error("Category slug not available");
+                                      }
+                                    }}
+                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Category
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
                                     onClick={() => handleEdit(category)}
-                                    className="text-black dark:text-white hover:bg-[#FE8A0F]/10 cursor-pointer"
+                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                  >
+                                    <FolderTree className="h-4 w-4 mr-2" />
+                                    View Child Category
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(category)}
+                                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
                                   >
                                     <Edit2 className="h-4 w-4 mr-2" />
                                     Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleActive(category)}
+                                    className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                  >
+                                    {category.isActive ? (
+                                      <>
+                                        <Ban className="h-4 w-4 mr-2" />
+                                        Deactivate
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                                        Activate
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleDelete(category)}
