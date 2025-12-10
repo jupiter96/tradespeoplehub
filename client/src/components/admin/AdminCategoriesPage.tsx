@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -95,44 +95,22 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
         </div>
       </TableCell>
       <TableCell className="text-black dark:text-white">
-        {category.icon ? (
-          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-            {category.icon.startsWith('http') || category.icon.startsWith('/') ? (
-              <img
-                src={category.icon}
-                alt={category.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No icon</span>';
-                }}
-              />
-            ) : (
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={category.icon}>
-                {category.icon.length > 10 ? category.icon.substring(0, 10) + "..." : category.icon}
+        <div className="flex flex-col gap-1">
+          {category.subCategories && category.subCategories.length > 0 ? (
+            category.subCategories.slice(0, 3).map((sub: SubCategory, idx: number) => (
+              <span key={idx} className="text-xs text-gray-600 dark:text-gray-400 truncate" title={sub.name}>
+                {sub.name}
               </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-xs text-gray-400">No icon</span>
-        )}
-      </TableCell>
-      <TableCell className="text-black dark:text-white">
-        {(category as any).bannerImage ? (
-          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-            <img
-              src={(category as any).bannerImage}
-              alt={`${category.name} banner`}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-xs text-gray-400">No image</span>';
-              }}
-            />
-          </div>
-        ) : (
-          <span className="text-xs text-gray-400">No image</span>
-        )}
+            ))
+          ) : (
+            <span className="text-xs text-gray-400">No subcategories</span>
+          )}
+          {category.subCategories && category.subCategories.length > 3 && (
+            <span className="text-xs text-[#FE8A0F]">
+              +{category.subCategories.length - 3} more
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
@@ -232,24 +210,15 @@ export default function AdminCategoriesPage() {
     sector: string;
     name: string;
     order: number;
-    icon: string;
-    bannerImage: string;
     isActive: boolean;
     subCategories: { name: string; order: number }[];
   }>({
     sector: "",
     name: "",
     order: 0,
-    icon: "",
-    bannerImage: "",
     isActive: true,
     subCategories: [],
   });
-  const [uploadingImage, setUploadingImage] = useState<{ type: "icon" | "banner" | null; loading: boolean }>({ type: null, loading: false });
-  const [iconPreview, setIconPreview] = useState<string | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const fetchSectors = async () => {
     try {
@@ -373,97 +342,6 @@ export default function AdminCategoriesPage() {
     });
   };
 
-  const handleImageUpload = async (file: File, type: "icon" | "banner") => {
-    // Validate file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Unsupported file type. Please upload JPG, PNG, GIF, or WEBP image.");
-      return;
-    }
-
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size must be less than 5MB");
-      return;
-    }
-
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (type === "icon") {
-        setIconPreview(reader.result as string);
-      } else {
-        setBannerPreview(reader.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
-
-    setUploadingImage({ type, loading: true });
-    try {
-      // For new categories (no entityId), upload directly to Cloudinary and save URL to formData
-      // For existing categories, use the entity-specific upload endpoint
-      const entityId = editingCategory?._id;
-      
-      if (!entityId) {
-        // New category: Upload directly to Cloudinary
-        const uploadFormData = new FormData();
-        uploadFormData.append("image", file);
-
-        const response = await fetch(
-          resolveApiUrl(`/api/admin/upload-image/${type}/category/temp`),
-          {
-            method: "POST",
-            credentials: "include",
-            body: uploadFormData,
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to upload image");
-        }
-
-        const data = await response.json();
-        const fieldName = type === "icon" ? "icon" : "bannerImage";
-        handleInputChange(fieldName, data.imageUrl);
-        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
-      } else {
-        // Existing category: Use entity-specific upload endpoint
-        const uploadFormData = new FormData();
-        uploadFormData.append("image", file);
-
-        const response = await fetch(
-          resolveApiUrl(`/api/admin/upload-image/${type}/category/${entityId}`),
-          {
-            method: "POST",
-            credentials: "include",
-            body: uploadFormData,
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to upload image");
-        }
-
-        const data = await response.json();
-        const fieldName = type === "icon" ? "icon" : "bannerImage";
-        handleInputChange(fieldName, data.imageUrl);
-        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
-      }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to upload image");
-      // Revert preview on error
-      if (type === "icon") {
-        setIconPreview(formData.icon || null);
-      } else {
-        setBannerPreview(formData.bannerImage || null);
-      }
-    } finally {
-      setUploadingImage({ type: null, loading: false });
-    }
-  };
 
   const getNextAvailableOrder = useCallback(() => {
     if (categories.length === 0) return 1; // Minimum order is 1, not 0
@@ -478,14 +356,10 @@ export default function AdminCategoriesPage() {
       sector: selectedSectorId,
       name: "",
       order: getNextAvailableOrder(),
-      icon: "",
-      bannerImage: "",
       isActive: true,
       subCategories: [],
     });
     setEditingCategory(null);
-    setIconPreview(null);
-    setBannerPreview(null);
     setIsModalOpen(true);
   };
 
@@ -499,14 +373,10 @@ export default function AdminCategoriesPage() {
       sector: typeof category.sector === "string" ? category.sector : category.sector._id,
       name: category.name,
       order: category.order,
-      icon: category.icon || "",
-      bannerImage: (category as any).bannerImage || "",
       isActive: category.isActive,
       subCategories: subCategories.length > 0 ? subCategories : [],
     });
     setEditingCategory(category);
-    setIconPreview(category.icon || null);
-    setBannerPreview((category as any).bannerImage || null);
     setIsModalOpen(true);
   };
 
@@ -598,8 +468,6 @@ export default function AdminCategoriesPage() {
         sector: formData.sector,
         name: formData.name.trim(),
         order: formData.order,
-        icon: formData.icon.trim(),
-        bannerImage: formData.bannerImage.trim(),
         isActive: formData.isActive,
       };
 
@@ -951,8 +819,7 @@ export default function AdminCategoriesPage() {
                             <TableRow className="border-0 hover:bg-transparent shadow-sm">
                               <SortableHeader column="order" label="Order" />
                               <SortableHeader column="name" label="Category Name" />
-                              <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
-                              <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
+                              <TableHead className="text-[#FE8A0F] font-semibold">Subcategories</TableHead>
                               <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1069,116 +936,6 @@ export default function AdminCategoriesPage() {
                     {formData.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Images */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="icon" className="text-black dark:text-white">
-                  Icon
-                </Label>
-                <div className="mt-1 flex gap-2">
-                  <Input
-                    id="icon"
-                    value={formData.icon || ""}
-                    onChange={(e) => {
-                      handleInputChange("icon", e.target.value);
-                      setIconPreview(e.target.value || null);
-                    }}
-                    placeholder="Icon URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                  />
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file, "icon");
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title="Upload icon"
-                  >
-                    {uploadingImage.type === "icon" && uploadingImage.loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-                {(iconPreview || formData.icon) && (
-                  <div className="mt-2">
-                    <img
-                      src={iconPreview || formData.icon}
-                      alt="Icon preview"
-                      className="h-20 w-20 object-cover rounded border"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="bannerImage" className="text-black dark:text-white">
-                  Banner Image
-                </Label>
-                <div className="mt-1 flex gap-2">
-                  <Input
-                    id="bannerImage"
-                    value={formData.bannerImage || ""}
-                    onChange={(e) => {
-                      handleInputChange("bannerImage", e.target.value);
-                      setBannerPreview(e.target.value || null);
-                    }}
-                    placeholder="Banner image URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                  />
-                  <input
-                    type="file"
-                    ref={bannerInputRef}
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file, "banner");
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => bannerInputRef.current?.click()}
-                    disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
-                    title="Upload banner"
-                  >
-                    {uploadingImage.type === "banner" && uploadingImage.loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-                {(bannerPreview || formData.bannerImage) && (
-                  <div className="mt-2">
-                    <img
-                      src={bannerPreview || formData.bannerImage}
-                      alt="Banner preview"
-                      className="h-20 w-full object-cover rounded border"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                )}
               </div>
             </div>
 

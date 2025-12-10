@@ -245,8 +245,6 @@ router.post('/', async (req, res) => {
       sector: sectorDoc._id,
       name: name.trim(),
       order: finalOrder,
-      icon: icon || undefined,
-      bannerImage: bannerImage || undefined,
       isActive: isActive !== undefined ? isActive : true,
     });
     
