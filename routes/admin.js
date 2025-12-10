@@ -716,6 +716,67 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Restore deleted user (move back to active accounts)
+router.post('/users/:id/restore', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.isDeleted) {
+      return res.status(400).json({ error: 'User is not deleted' });
+    }
+
+    // Restore user - remove deleted flag
+    user.isDeleted = false;
+    user.deletedAt = null;
+    await user.save();
+
+    return res.json({ message: 'User restored successfully', user: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Restore user error', error);
+    return res.status(500).json({ error: 'Failed to restore user' });
+  }
+});
+
+// Permanently delete user (hard delete - only for deleted accounts)
+router.delete('/users/:id/permanent', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Prevent deleting yourself
+    if (userId === req.session.userId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Only allow permanent delete for already deleted users
+    if (!user.isDeleted) {
+      return res.status(400).json({ error: 'User must be deleted first before permanent deletion' });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'admin' || user.role === 'subadmin') {
+      return res.status(403).json({ error: 'Admin and subadmin users cannot be permanently deleted' });
+    }
+
+    // Permanently delete user from database
+    await User.findByIdAndDelete(userId);
+
+    return res.json({ message: 'User permanently deleted successfully' });
+  } catch (error) {
+    console.error('Permanent delete user error', error);
+    return res.status(500).json({ error: 'Failed to permanently delete user' });
+  }
+});
+
 // Get dashboard statistics
 router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
   try {

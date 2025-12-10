@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from "react";
-import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles, User, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Edit, Trash2, Plus, ChevronLeft, ChevronRight, MoreVertical, Shield, CheckCircle2, XCircle, Clock, AlertCircle, MessageCircle, Ban, StarOff, FileText, Circle, Sparkles, User, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -106,7 +106,6 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       });
 
       // Check if this is the deleted accounts page
-      const isDeletedAccountsPage = window.location.pathname.includes("delete-account");
       if (isDeletedAccountsPage) {
         params.append("deleted", "true");
       }
@@ -221,7 +220,79 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     );
   };
 
+  const handleRestore = async (user: User) => {
+    if (!confirm(`Are you sure you want to restore ${user.name}?`)) {
+      return;
+    }
+
+    try {
+      const endpoint = `/api/admin/users/${user.id}/restore`;
+      const fullUrl = `${API_BASE_URL}${endpoint}`;
+      
+      const response = await fetch(fullUrl, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          // Ignore parse error
+        }
+        throw new Error(`Failed to restore user: ${response.status} - ${errorData?.error || errorText}`);
+      }
+
+      const responseData = await response.json();
+      toast.success("User restored successfully");
+      fetchUsers();
+      onDelete?.(user);
+    } catch (error) {
+      console.error("[handleRestore] ERROR:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to restore user");
+    }
+  };
+
   const handleDelete = async (user: User) => {
+    // If this is the deleted accounts page, use permanent delete
+    if (isDeletedAccountsPage) {
+      if (!confirm(`Are you sure you want to permanently delete ${user.name}? This action cannot be undone and the user will be able to register again.`)) {
+        return;
+      }
+
+      try {
+        const endpoint = `/api/admin/users/${user.id}/permanent`;
+        const fullUrl = `${API_BASE_URL}${endpoint}`;
+        
+        const response = await fetch(fullUrl, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch (e) {
+            // Ignore parse error
+          }
+          throw new Error(`Failed to permanently delete user: ${response.status} - ${errorData?.error || errorText}`);
+        }
+
+        toast.success("User permanently deleted successfully");
+        fetchUsers();
+        onDelete?.(user);
+      } catch (error) {
+        console.error("[handleDelete] ERROR:", error);
+        toast.error(error instanceof Error ? error.message : "Failed to permanently delete user");
+      }
+      return;
+    }
+
+    // Regular soft delete for non-deleted accounts page
     console.log("[handleDelete] TRIGGERED - User:", user);
     console.log("[handleDelete] User ID:", user.id);
     console.log("[handleDelete] User Role:", user.role);
@@ -937,13 +1008,22 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               </DropdownMenuItem>
                             </>
                           )}
+                          {isDeletedAccountsPage && (
+                            <DropdownMenuItem
+                              onClick={() => handleRestore(user)}
+                              className="text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Restore
+                            </DropdownMenuItem>
+                          )}
                           {onDelete && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(user)}
                               className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                              {isDeletedAccountsPage ? "Permanently Delete" : "Delete"}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
