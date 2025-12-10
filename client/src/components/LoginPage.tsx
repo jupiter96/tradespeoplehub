@@ -118,11 +118,13 @@ export default function LoginPage() {
     // Check for error messages from URL params
     const errorParam = searchParams.get('error');
     if (errorParam === 'account_deleted') {
-      setLoginError('This account has been deleted');
+      setLoginError('Your account has been suspended. Please contact support@sortars.com');
+    } else if (errorParam === 'account_blocked') {
+      setLoginError('Your account has been suspended. Please contact support@sortars.com');
     } else if (errorParam === 'admin_not_allowed') {
       setLoginError('Admin users must login through admin panel');
     } else if (searchParams.get('social') === 'failed') {
-      setLoginError('Social login failed. Please try again.');
+      setLoginError('Your account has been suspended. Please contact support@sortars.com');
     }
   }, [searchParams]);
 

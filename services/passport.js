@@ -53,6 +53,11 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
       (email ? await User.findOne({ email, isDeleted: { $ne: true } }) : null);
 
     if (user) {
+      // Check if user is blocked
+      if (user.isBlocked) {
+        return done(null, false, { message: 'Your account has been suspended. Please contact support@sortars.com' });
+      }
+      
       if (!user[providerField]) {
         user[providerField] = providerId;
         await user.save();

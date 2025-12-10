@@ -264,6 +264,12 @@ const handleSocialCallback = (provider) => (req, res, next) => {
       return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_deleted');
     }
 
+    // Check if user is blocked
+    if (result.isBlocked) {
+      clearPendingSocialProfile(req);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_blocked');
+    }
+
     // Reject admin users - they must use admin login
     if (result.role === 'admin' || result.role === 'subadmin') {
       clearPendingSocialProfile(req);
