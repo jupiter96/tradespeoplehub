@@ -569,7 +569,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     const statuses = verificationTypes.map(type => verification[type]?.status || 'not-started');
     
     // Priority: verified > pending > rejected > not-started
-    if (statuses.some(s => s === 'verified' || s === 'completed')) {
+    if (statuses.some(s => s === 'verified')) {
       return 'verified';
     } else if (statuses.some(s => s === 'pending')) {
       return 'pending';
@@ -586,7 +586,6 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     
     switch (status) {
       case 'verified':
-      case 'completed':
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-600" />;
@@ -602,7 +601,6 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     
     switch (status) {
       case 'verified':
-      case 'completed':
         return "Verified";
       case 'pending':
         return "Pending Review";

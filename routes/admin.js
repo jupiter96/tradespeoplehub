@@ -1553,14 +1553,14 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
     const { status, rejectionReason } = req.body;
 
     const allowedTypes = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
-    const allowedStatuses = ['not-started', 'pending', 'verified', 'rejected', 'completed'];
+    const allowedStatuses = ['not-started', 'pending', 'verified', 'rejected'];
 
     if (!allowedTypes.includes(type)) {
       return res.status(400).json({ error: 'Invalid verification type' });
     }
 
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Must be one of: not-started, pending, verified, rejected, completed' });
+      return res.status(400).json({ error: 'Invalid status. Must be one of: not-started, pending, verified, rejected' });
     }
 
     const user = await User.findById(id);
@@ -1577,26 +1577,75 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
     }
 
     // Update verification status
-    // 'completed' is treated as 'verified'
-    const finalStatus = status === 'completed' ? 'verified' : status;
-    user.verification[type].status = finalStatus;
+    user.verification[type].status = status;
 
-    if (finalStatus === 'verified') {
+    if (status === 'verified') {
       user.verification[type].verifiedAt = new Date();
     }
 
     // Handle rejection reason
-    if (finalStatus === 'rejected') {
+    if (status === 'rejected') {
       if (!rejectionReason || !rejectionReason.trim()) {
         return res.status(400).json({ error: 'Rejection reason is required when rejecting verification' });
       }
       user.verification[type].rejectionReason = rejectionReason.trim();
-    } else if (finalStatus !== 'rejected') {
+    } else if (status !== 'rejected') {
       // Clear rejection reason if status is changed from rejected to something else
       user.verification[type].rejectionReason = undefined;
     }
 
     await user.save();
+
+    // Send email for verification step approval/rejection (for professional users)
+    if (user.role === 'professional' && user.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        
+        // Verification type display names
+        const verificationTypeNames = {
+          email: 'Email Verification',
+          phone: 'Phone Verification',
+          address: 'Address Verification',
+          idCard: 'ID Card Verification',
+          paymentMethod: 'Payment Method Verification',
+          publicLiabilityInsurance: 'Public Liability Insurance Verification',
+        };
+
+        const verificationTypeName = verificationTypeNames[type] || type;
+
+        if (status === 'verified') {
+          // Send approval email for this verification step
+          await sendTemplatedEmail(
+            user.email, 
+            'verification-approved', 
+            {
+              firstName: user.firstName,
+              verificationType: verificationTypeName,
+              verificationStep: type,
+            },
+            true // Use verification SMTP transporter
+          );
+          console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName}`);
+        } else if (status === 'rejected') {
+          // Send rejection email
+          await sendTemplatedEmail(
+            user.email, 
+            'verification-rejected', 
+            {
+              firstName: user.firstName,
+              verificationType: verificationTypeName,
+              verificationStep: type,
+              rejectionReason: rejectionReason || 'No reason provided',
+            },
+            true // Use verification SMTP transporter
+          );
+          console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName}`);
+        }
+      } catch (emailError) {
+        console.error('[Admin] Failed to send verification step email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     // Check if professional user is fully verified and send email
     if (user.role === 'professional') {
@@ -1613,7 +1662,7 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
           const { sendTemplatedEmail } = await import('../services/notifier.js');
           await sendTemplatedEmail(user.email, 'fully-verified', {
             firstName: user.firstName,
-          });
+          }, true); // Use verification SMTP transporter for fully verified email
           console.log('[Admin] Fully verified email sent to:', user.email);
         } catch (emailError) {
           console.error('[Admin] Failed to send fully verified email:', emailError);
@@ -1624,7 +1673,7 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
 
     return res.json({ 
       verification: user.verification[type],
-      message: `Verification status updated to ${finalStatus}`
+      message: `Verification status updated to ${status}`
     });
   } catch (error) {
     console.error('Update verification status error', error);

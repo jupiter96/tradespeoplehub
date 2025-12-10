@@ -277,6 +277,114 @@ const defaultTemplates = [
     `,
     variables: ['firstName', 'logoUrl'],
   },
+  {
+    type: 'verification-approved',
+    subject: '✅ Your {{verificationType}} Has Been Approved',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Approved</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">✅</div>
+      <h1 style="color: #27ae60; margin-top: 0;">Great News, {{firstName}}!</h1>
+    </div>
+    
+    <p>We're pleased to inform you that your <strong>{{verificationType}}</strong> has been successfully approved!</p>
+    
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #155724;">✓ Verification Status: Approved</p>
+      <p style="margin: 5px 0 0 0; color: #155724;">Your {{verificationType}} has been reviewed and verified by our team.</p>
+    </div>
+    
+    <p>This is an important step toward completing your professional account verification. You're making great progress!</p>
+    
+    <p>If you have any questions or need assistance with the next steps, please don't hesitate to contact our support team. We're here to help!</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d;"><strong>What's next?</strong></p>
+      <p style="margin: 10px 0 0 0; font-size: 14px; color: #7f8c8d;">Continue completing the remaining verification steps to unlock all features of your professional account.</p>
+    </div>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'verificationType', 'verificationStep', 'logoUrl'],
+  },
+  {
+    type: 'verification-rejected',
+    subject: '⚠️ Action Required: Your {{verificationType}} Needs Attention',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Rejected</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">⚠️</div>
+      <h1 style="color: #e67e22; margin-top: 0;">Hello {{firstName}},</h1>
+    </div>
+    
+    <p>We've reviewed your <strong>{{verificationType}}</strong> submission, and unfortunately, we need some additional information or corrections.</p>
+    
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #856404;">Verification Status: Requires Action</p>
+      <p style="margin: 5px 0 0 0; color: #856404;">Your {{verificationType}} could not be approved at this time.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border: 2px solid #e67e22; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Rejection Reason</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333; line-height: 1.8;">{{rejectionReason}}</p>
+    </div>
+    
+    <p>Please review the reason above and resubmit your {{verificationType}} with the necessary corrections or additional information.</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d;"><strong>What to do next:</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #7f8c8d; font-size: 14px;">
+        <li>Review the rejection reason carefully</li>
+        <li>Make the necessary corrections or gather additional documents</li>
+        <li>Resubmit your {{verificationType}} through your account dashboard</li>
+        <li>If you have questions, contact our support team for assistance</li>
+      </ul>
+    </div>
+    
+    <p>We're here to help you complete the verification process successfully. If you have any questions about the rejection reason or need guidance on what's required, please don't hesitate to reach out to our support team.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'verificationType', 'verificationStep', 'rejectionReason', 'logoUrl'],
+  },
 ];
 
 async function createDefaultTemplates() {

@@ -11,6 +11,8 @@ const emailTemplateSchema = new mongoose.Schema(
         'reminder-verification',
         'reminder-identity',
         'fully-verified',
+        'verification-approved',
+        'verification-rejected',
       ],
     },
     subject: {

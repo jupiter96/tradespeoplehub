@@ -290,10 +290,10 @@ export default function ProfilePage() {
 
   // Verification status
   const verifications = {
-    phone: profile.verification?.phone?.status === 'verified' || profile.verification?.phone?.status === 'completed',
-    identity: profile.verification?.idCard?.status === 'verified' || profile.verification?.idCard?.status === 'completed',
-    address: profile.verification?.address?.status === 'verified' || profile.verification?.address?.status === 'completed',
-    insurance: profile.verification?.publicLiabilityInsurance?.status === 'verified' || profile.verification?.publicLiabilityInsurance?.status === 'completed',
+    phone: profile.verification?.phone?.status === 'verified',
+    identity: profile.verification?.idCard?.status === 'verified',
+    address: profile.verification?.address?.status === 'verified',
+    insurance: profile.verification?.publicLiabilityInsurance?.status === 'verified',
   };
 
   // Check if profile is blocked

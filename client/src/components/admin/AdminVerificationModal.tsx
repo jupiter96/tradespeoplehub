@@ -180,7 +180,6 @@ export default function AdminVerificationModal({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "verified":
-      case "completed":
         return (
           <Badge className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-0.5 h-5">
             <CheckCircle2 className="w-3 h-3 mr-0.5" />
@@ -402,9 +401,6 @@ export default function AdminVerificationModal({
                           <SelectContent className="bg-white dark:bg-black">
                             <SelectItem value="verified" className="text-black dark:text-white text-xs">
                               Verified
-                            </SelectItem>
-                            <SelectItem value="completed" className="text-black dark:text-white text-xs">
-                              Completed
                             </SelectItem>
                             <SelectItem value="pending" className="text-black dark:text-white text-xs">
                               Pending

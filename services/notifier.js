@@ -11,7 +11,7 @@ const {
   SMTP_PORT,
   SMTP_USER,
   SMTP_PASS,
-  EMAIL_FROM = 'support@sortars.com',
+  SMTP_USER_VERIFICATION,
   TWILIO_ACCOUNT_SID,
   TWILIO_AUTH_TOKEN,
   TWILIO_FROM = process.env.TWILIO_FROM_NUMBER || 'TRADEPPLHUB',
@@ -23,10 +23,11 @@ console.log('[Notifier] SMTP configuration check:', {
   hasPort: !!SMTP_PORT,
   hasUser: !!SMTP_USER,
   hasPass: !!SMTP_PASS,
+  hasVerificationUser: !!SMTP_USER_VERIFICATION,
   host: SMTP_HOST || 'missing',
   port: SMTP_PORT || 'missing',
   user: SMTP_USER || 'missing',
-  emailFrom: EMAIL_FROM
+  verificationUser: SMTP_USER_VERIFICATION || 'missing'
 });
 
 // Debug logging for Twilio credentials
@@ -39,6 +40,9 @@ console.log('[Notifier] Twilio configuration check:', {
 });
 
 let mailTransporter;
+let verificationMailTransporter;
+
+// Create default mail transporter
 if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
   console.log('[Notifier] Initializing SMTP transporter:', {
     host: SMTP_HOST,
@@ -80,6 +84,48 @@ if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
   });
 }
 
+// Create verification-specific mail transporter
+if (SMTP_HOST && SMTP_PORT && SMTP_USER_VERIFICATION && SMTP_PASS) {
+  console.log('[Notifier] Initializing verification SMTP transporter:', {
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT),
+    secure: Number(SMTP_PORT) === 465,
+    user: SMTP_USER_VERIFICATION,
+    hasPassword: !!SMTP_PASS
+  });
+  
+  try {
+    verificationMailTransporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,
+      auth: {
+        user: SMTP_USER_VERIFICATION,
+        pass: SMTP_PASS,
+      },
+    });
+    console.log('[Notifier] Verification SMTP transporter created successfully');
+    
+    // Verify connection
+    verificationMailTransporter.verify((error, success) => {
+      if (error) {
+        console.error('[Notifier] Verification SMTP connection verification failed:', error);
+      } else {
+        console.log('[Notifier] Verification SMTP connection verified successfully');
+      }
+    });
+  } catch (error) {
+    console.error('[Notifier] Failed to create verification SMTP transporter:', error);
+  }
+} else {
+  console.warn('[Notifier] Verification SMTP configuration incomplete:', {
+    hasHost: !!SMTP_HOST,
+    hasPort: !!SMTP_PORT,
+    hasUser: !!SMTP_USER_VERIFICATION,
+    hasPass: !!SMTP_PASS
+  });
+}
+
 let twilioClient;
 if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
   try {
@@ -111,8 +157,8 @@ export function renderEmailTemplate(templateBody, variables) {
   return rendered;
 }
 
-// Send email using template
-export async function sendTemplatedEmail(to, templateType, variables = {}) {
+// Send email using template with optional verification transporter
+export async function sendTemplatedEmail(to, templateType, variables = {}, useVerificationTransporter = false) {
   console.log('[EMAIL] sendTemplatedEmail called:', {
     to: to || 'missing',
     templateType: templateType || 'missing',
@@ -163,31 +209,47 @@ export async function sendTemplatedEmail(to, templateType, variables = {}) {
       bodyLength: htmlBody.length
     });
 
-    if (!mailTransporter) {
-      console.warn('[EMAIL] SMTP is not configured. Email would be sent with template:', {
+    // Use verification transporter if requested and available, otherwise use default
+    const transporter = useVerificationTransporter && verificationMailTransporter 
+      ? verificationMailTransporter 
+      : mailTransporter;
+    
+    const transporterType = useVerificationTransporter && verificationMailTransporter 
+      ? 'verification' 
+      : 'default';
+
+    if (!transporter) {
+      console.warn(`[EMAIL] ${transporterType} SMTP is not configured. Email would be sent with template:`, {
         to,
         subject,
-        templateType
+        templateType,
+        useVerificationTransporter
       });
       return null;
     }
 
+    // Use verification email address if using verification transporter, otherwise use default SMTP user
+    const fromEmail = useVerificationTransporter && SMTP_USER_VERIFICATION 
+      ? SMTP_USER_VERIFICATION 
+      : SMTP_USER;
+
     const emailOptions = {
-      from: EMAIL_FROM,
+      from: fromEmail,
       to,
       subject,
       html: htmlBody,
     };
 
-    console.log('[EMAIL] Attempting to send templated email:', {
+    console.log(`[EMAIL] Attempting to send templated email using ${transporterType} transporter:`, {
       from: emailOptions.from,
       to: emailOptions.to,
       subject: emailOptions.subject,
       templateType,
+      useVerificationTransporter,
       timestamp: new Date().toISOString()
     });
 
-    const result = await mailTransporter.sendMail(emailOptions);
+    const result = await transporter.sendMail(emailOptions);
     console.log('[EMAIL] Templated email sent successfully:', {
       messageId: result.messageId,
       response: result.response,
@@ -233,12 +295,12 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
 
   logCode('email', to, code);
 
-  // Try to use template first
+  // Try to use template first (with verification transporter)
   try {
     const result = await sendTemplatedEmail(to, 'verification', {
       firstName: firstName,
       code: code,
-    });
+    }, true); // Use verification SMTP transporter
     if (result) {
       return result;
     }
@@ -246,33 +308,32 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
     console.warn('[EMAIL] Template email failed, falling back to simple email:', templateError.message);
   }
 
-  // Fallback to simple email if template fails
-  console.log('[EMAIL] Checking mail transporter:', {
-    hasMailTransporter: !!mailTransporter,
-    transporterType: mailTransporter ? typeof mailTransporter : 'null'
+  // Fallback to simple email if template fails (use verification transporter)
+  console.log('[EMAIL] Checking verification mail transporter:', {
+    hasVerificationMailTransporter: !!verificationMailTransporter,
+    transporterType: verificationMailTransporter ? typeof verificationMailTransporter : 'null'
   });
 
-  if (!mailTransporter) {
-    console.warn('[EMAIL] SMTP is not configured. Code logged for manual verification.');
-    console.warn('[EMAIL] SMTP configuration status:', {
+  if (!verificationMailTransporter) {
+    console.warn('[EMAIL] Verification SMTP is not configured. Code logged for manual verification.');
+    console.warn('[EMAIL] Verification SMTP configuration status:', {
       SMTP_HOST: SMTP_HOST || 'missing',
       SMTP_PORT: SMTP_PORT || 'missing',
-      SMTP_USER: SMTP_USER || 'missing',
-      SMTP_PASS: SMTP_PASS ? '***' : 'missing',
-      EMAIL_FROM: EMAIL_FROM
+      SMTP_USER_VERIFICATION: SMTP_USER_VERIFICATION || 'missing',
+      SMTP_PASS: SMTP_PASS ? '***' : 'missing'
     });
     return;
   }
 
   const emailOptions = {
-    from: EMAIL_FROM,
+    from: SMTP_USER_VERIFICATION,
     to,
     subject: 'Your Sortars verification code',
     text: `Your verification code is ${code}`,
     html: `<p>Your verification code is <strong>${code}</strong></p>`,
   };
 
-  console.log('[EMAIL] Attempting to send email:', {
+  console.log('[EMAIL] Attempting to send verification email:', {
     from: emailOptions.from,
     to: emailOptions.to,
     subject: emailOptions.subject,
@@ -280,7 +341,7 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
   });
 
   try {
-    const result = await mailTransporter.sendMail(emailOptions);
+    const result = await verificationMailTransporter.sendMail(emailOptions);
     console.log('[EMAIL] Email sent successfully:', {
       messageId: result.messageId,
       response: result.response,
@@ -353,7 +414,7 @@ export async function sendPasswordResetEmail(to, resetUrl) {
   }
 
   await mailTransporter.sendMail({
-    from: EMAIL_FROM,
+    from: SMTP_USER,
     to,
     subject: 'Reset your TradePplHub password',
     text: `You requested to reset your password. Click the link to continue: ${resetUrl}`,
