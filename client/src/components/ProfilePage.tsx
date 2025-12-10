@@ -797,13 +797,23 @@ export default function ProfilePage() {
                       const postcode = profile?.postcode || "";
                       const city = profile?.townCity || "";
                       
-                      // Build location string (postcode, city)
-                      const locationParts = [postcode, city].filter(Boolean);
+                      // Format travelDistance: add space between number and "miles" (e.g., "5miles" -> "5 miles")
+                      let formattedTravelDistance = travelDistance;
+                      if (travelDistance && travelDistance !== "Nationwide") {
+                        // Match pattern like "5miles", "10miles", etc. and add space before "miles"
+                        formattedTravelDistance = travelDistance.replace(/(\d+)(miles)/i, "$1 $2");
+                      }
+                      
+                      // Format postcode: show only the part before the middle space (e.g., "SW1A 1AA" -> "SW1A")
+                      const formattedPostcode = postcode ? postcode.split(" ")[0] : "";
+                      
+                      // Build location string (formatted postcode, city)
+                      const locationParts = [formattedPostcode, city].filter(Boolean);
                       const location = locationParts.length > 0 ? locationParts.join(", ") : "Not specified";
                       
-                      // Format: "$travelDistance within $postcode, $city"
-                      if (travelDistance) {
-                        return `${travelDistance} within ${location}`;
+                      // Format: "$formattedTravelDistance within $location"
+                      if (formattedTravelDistance) {
+                        return `${formattedTravelDistance} within ${location}`;
                       } else {
                         return location !== "Not specified" ? `Service area: ${location}` : "Not specified";
                       }

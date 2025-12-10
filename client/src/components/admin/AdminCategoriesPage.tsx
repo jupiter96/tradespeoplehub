@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -125,19 +125,6 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
             <DropdownMenuItem
-              onClick={() => {
-                if (category._id) {
-                  window.open(`/category/${category._id}`, '_blank');
-                } else {
-                  toast.error("Category ID not available");
-                }
-              }}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Category
-            </DropdownMenuItem>
-            <DropdownMenuItem
               onClick={() => onEdit(category)}
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
             >
@@ -198,6 +185,21 @@ export default function AdminCategoriesPage() {
   const [sortBy, setSortBy] = useState<string>("order");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: "delete" | "deactivate" | "activate" | "deleteSubCategory";
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    itemName?: string;
+    subCategoryIndex?: number;
+  }>({
+    isOpen: false,
+    type: "delete",
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -386,61 +388,73 @@ export default function AdminCategoriesPage() {
     const newStatus = !category.isActive;
     const action = newStatus ? "activate" : "deactivate";
     
-    if (!confirm(`Are you sure you want to ${action} "${category.name}"?`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: newStatus ? "activate" : "deactivate",
+      title: newStatus ? "Activate Category" : "Deactivate Category",
+      message: `Are you sure you want to ${action} "${category.name}"?`,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(resolveApiUrl(`/api/categories/${category._id}`), {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ isActive: newStatus }),
+          });
 
-    try {
-      const response = await fetch(resolveApiUrl(`/api/categories/${category._id}`), {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ isActive: newStatus }),
-      });
-
-      if (response.ok) {
-        toast.success(`Category ${action}d successfully`);
-        if (selectedSectorId) {
-          fetchCategories(selectedSectorId);
+          if (response.ok) {
+            toast.success(`Category ${action}d successfully`);
+            if (selectedSectorId) {
+              fetchCategories(selectedSectorId);
+            }
+          } else {
+            const error = await response.json();
+            toast.error(error.error || `Failed to ${action} category`);
+          }
+        } catch (error) {
+          console.error(`Error ${action}ing category:`, error);
+          toast.error(`Failed to ${action} category`);
         }
-      } else {
-        const error = await response.json();
-        toast.error(error.error || `Failed to ${action} category`);
-      }
-    } catch (error) {
-      console.error(`Error ${action}ing category:`, error);
-      toast.error(`Failed to ${action} category`);
-    }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: category.name,
+    });
   };
 
   const handleDelete = async (category: Category) => {
     if (!category._id) return;
     
-    if (!confirm(`Are you sure you want to delete "${category.name}"? This will also delete all associated subcategories.`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      title: "Delete Category",
+      message: `Are you sure you want to delete "${category.name}"? This will also delete all associated subcategories. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(resolveApiUrl(`/api/categories/${category._id}?hardDelete=true`), {
+            method: "DELETE",
+            credentials: "include",
+          });
 
-    try {
-      const response = await fetch(resolveApiUrl(`/api/categories/${category._id}?hardDelete=true`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        toast.success("Category deleted successfully");
-        if (selectedSectorId) {
-          fetchCategories(selectedSectorId);
+          if (response.ok) {
+            toast.success("Category deleted successfully");
+            if (selectedSectorId) {
+              fetchCategories(selectedSectorId);
+            }
+          } else {
+            const error = await response.json();
+            toast.error(error.error || "Failed to delete category");
+          }
+        } catch (error) {
+          console.error("Error deleting category:", error);
+          toast.error("Failed to delete category");
         }
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to delete category");
-      }
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
-    }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: category.name,
+    });
   };
 
   const handleSave = async () => {
@@ -586,10 +600,24 @@ export default function AdminCategoriesPage() {
   };
 
   const handleRemoveSubCategory = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      subCategories: prev.subCategories.filter((_, i) => i !== index),
-    }));
+    const subCategory = formData.subCategories[index];
+    const subCategoryName = subCategory?.name || `Subcategory #${index + 1}`;
+    
+    setConfirmModal({
+      isOpen: true,
+      type: "deleteSubCategory",
+      title: "Delete Subcategory",
+      message: `Are you sure you want to delete "${subCategoryName}"? This action cannot be undone.`,
+      onConfirm: () => {
+        setFormData((prev) => ({
+          ...prev,
+          subCategories: prev.subCategories.filter((_, i) => i !== index),
+        }));
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: subCategoryName,
+      subCategoryIndex: index,
+    });
   };
 
   const handleSubCategoryChange = (index: number, field: "name" | "order", value: any) => {
@@ -1052,6 +1080,47 @@ export default function AdminCategoriesPage() {
                   {editingCategory ? "Update" : "Create"}
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
+        <DialogContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-black dark:text-white">
+              {confirmModal.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-700 dark:text-gray-300 text-sm">
+              {confirmModal.message}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                confirmModal.onConfirm();
+              }}
+              className={`${
+                confirmModal.type === "delete" || confirmModal.type === "deleteSubCategory"
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+              } border-0 shadow-lg transition-all`}
+            >
+              {confirmModal.type === "delete" || confirmModal.type === "deleteSubCategory"
+                ? "Delete"
+                : confirmModal.type === "activate"
+                ? "Activate"
+                : "Deactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>

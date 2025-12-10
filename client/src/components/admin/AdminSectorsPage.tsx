@@ -228,6 +228,20 @@ export default function AdminSectorsPage() {
   const [sortBy, setSortBy] = useState<string>("order");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: "delete" | "deactivate" | "activate";
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    itemName?: string;
+  }>({
+    isOpen: false,
+    type: "delete",
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -590,58 +604,70 @@ export default function AdminSectorsPage() {
     const newStatus = !currentStatus;
     const action = newStatus ? "activate" : "deactivate";
     
-    if (!confirm(`Are you sure you want to ${action} "${sector.name}"?`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: newStatus ? "activate" : "deactivate",
+      title: newStatus ? "Activate Sector" : "Deactivate Sector",
+      message: `Are you sure you want to ${action} "${sector.name}"?`,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(resolveApiUrl(`/api/sectors/${id}`), {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ isActive: newStatus }),
+          });
 
-    try {
-      const response = await fetch(resolveApiUrl(`/api/sectors/${id}`), {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ isActive: newStatus }),
-      });
-
-      if (response.ok) {
-        toast.success(`Sector ${action}d successfully`);
-        fetchSectors();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || `Failed to ${action} sector`);
-      }
-    } catch (error) {
-      console.error(`Error ${action}ing sector:`, error);
-      toast.error(`Failed to ${action} sector`);
-    }
+          if (response.ok) {
+            toast.success(`Sector ${action}d successfully`);
+            fetchSectors();
+          } else {
+            const error = await response.json();
+            toast.error(error.error || `Failed to ${action} sector`);
+          }
+        } catch (error) {
+          console.error(`Error ${action}ing sector:`, error);
+          toast.error(`Failed to ${action} sector`);
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: sector.name,
+    });
   };
 
   const handleDelete = async (id: string) => {
     const sector = sectors.find(s => s._id === id);
     if (!sector) return;
     
-    if (!confirm(`Are you sure you want to delete "${sector.name}"? This will also delete all associated categories.`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      title: "Delete Sector",
+      message: `Are you sure you want to delete "${sector.name}"? This will also delete all associated categories. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(resolveApiUrl(`/api/sectors/${id}?hardDelete=true`), {
+            method: "DELETE",
+            credentials: "include",
+          });
 
-    try {
-      const response = await fetch(resolveApiUrl(`/api/sectors/${id}?hardDelete=true`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        toast.success("Sector deleted successfully");
-        fetchSectors();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to delete sector");
-      }
-    } catch (error) {
-      console.error("Error deleting sector:", error);
-      toast.error("Failed to delete sector");
-    }
+          if (response.ok) {
+            toast.success("Sector deleted successfully");
+            fetchSectors();
+          } else {
+            const error = await response.json();
+            toast.error(error.error || "Failed to delete sector");
+          }
+        } catch (error) {
+          console.error("Error deleting sector:", error);
+          toast.error("Failed to delete sector");
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: sector.name,
+    });
   };
 
   const handleSave = async () => {
@@ -1179,6 +1205,47 @@ export default function AdminSectorsPage() {
                   {editingSector ? "Update" : "Create"}
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
+        <DialogContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-black dark:text-white">
+              {confirmModal.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-700 dark:text-gray-300 text-sm">
+              {confirmModal.message}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                confirmModal.onConfirm();
+              }}
+              className={`${
+                confirmModal.type === "delete"
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+              } border-0 shadow-lg transition-all`}
+            >
+              {confirmModal.type === "delete"
+                ? "Delete"
+                : confirmModal.type === "activate"
+                ? "Activate"
+                : "Deactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>

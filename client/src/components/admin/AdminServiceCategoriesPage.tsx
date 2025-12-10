@@ -222,6 +222,20 @@ export default function AdminServiceCategoriesPage() {
   const [sortBy, setSortBy] = useState<string>("order");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: "delete" | "deactivate" | "activate";
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    itemName?: string;
+  }>({
+    isOpen: false,
+    type: "delete",
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -590,61 +604,73 @@ export default function AdminServiceCategoriesPage() {
     const newStatus = !serviceCategory.isActive;
     const action = newStatus ? "activate" : "deactivate";
     
-    if (!confirm(`Are you sure you want to ${action} "${serviceCategory.name}"?`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: newStatus ? "activate" : "deactivate",
+      title: newStatus ? "Activate Service Category" : "Deactivate Service Category",
+      message: `Are you sure you want to ${action} "${serviceCategory.name}"?`,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}`), {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ isActive: newStatus }),
+          });
 
-    try {
-      const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}`), {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ isActive: newStatus }),
-      });
-
-      if (response.ok) {
-        toast.success(`Service category ${action}d successfully`);
-        if (selectedSectorId) {
-          fetchServiceCategories(selectedSectorId);
+          if (response.ok) {
+            toast.success(`Service category ${action}d successfully`);
+            if (selectedSectorId) {
+              fetchServiceCategories(selectedSectorId);
+            }
+          } else {
+            const error = await response.json();
+            toast.error(error.error || `Failed to ${action} service category`);
+          }
+        } catch (error) {
+          console.error(`Error ${action}ing service category:`, error);
+          toast.error(`Failed to ${action} service category`);
         }
-      } else {
-        const error = await response.json();
-        toast.error(error.error || `Failed to ${action} service category`);
-      }
-    } catch (error) {
-      console.error(`Error ${action}ing service category:`, error);
-      toast.error(`Failed to ${action} service category`);
-    }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: serviceCategory.name,
+    });
   };
 
   const handleDelete = async (serviceCategory: ServiceCategory) => {
     if (!serviceCategory._id) return;
     
-    if (!confirm(`Are you sure you want to delete "${serviceCategory.name}"? This will also delete all associated subcategories.`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      title: "Delete Service Category",
+      message: `Are you sure you want to delete "${serviceCategory.name}"? This will also delete all associated subcategories. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}?hardDelete=true`), {
+            method: "DELETE",
+            credentials: "include",
+          });
 
-    try {
-      const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}?hardDelete=true`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        toast.success("Service category deleted successfully");
-        if (selectedSectorId) {
-          fetchServiceCategories(selectedSectorId);
+          if (response.ok) {
+            toast.success("Service category deleted successfully");
+            if (selectedSectorId) {
+              fetchServiceCategories(selectedSectorId);
+            }
+          } else {
+            const error = await response.json();
+            toast.error(error.error || "Failed to delete service category");
+          }
+        } catch (error) {
+          console.error("Error deleting service category:", error);
+          toast.error("Failed to delete service category");
         }
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to delete service category");
-      }
-    } catch (error) {
-      console.error("Error deleting service category:", error);
-      toast.error("Failed to delete service category");
-    }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+      itemName: serviceCategory.name,
+    });
   };
 
   const handleSave = async () => {
@@ -1497,6 +1523,47 @@ export default function AdminServiceCategoriesPage() {
                   {editingServiceCategory ? "Update" : "Create"}
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
+        <DialogContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-black dark:text-white">
+              {confirmModal.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-700 dark:text-gray-300 text-sm">
+              {confirmModal.message}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                confirmModal.onConfirm();
+              }}
+              className={`${
+                confirmModal.type === "delete"
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+              } border-0 shadow-lg transition-all`}
+            >
+              {confirmModal.type === "delete"
+                ? "Delete"
+                : confirmModal.type === "activate"
+                ? "Activate"
+                : "Deactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>
