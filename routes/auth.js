@@ -1205,6 +1205,221 @@ router.get('/social/pending', (req, res) => {
   });
 });
 
+// Send phone verification code for social registration
+router.post('/social/send-phone-code', async (req, res) => {
+  try {
+    const pending = getPendingSocialProfile(req);
+    if (!pending) {
+      return res.status(400).json({ error: 'No pending social registration' });
+    }
+
+    const { phone } = req.body;
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
+    const smsCode = generateCode();
+    const smsCodeHash = await bcrypt.hash(smsCode, 10);
+    const expiresAt = codeExpiryDate();
+
+    // Store phone code in session
+    if (!req.session[socialSessionKey]) {
+      req.session[socialSessionKey] = {};
+    }
+    req.session[socialSessionKey].phoneCodeHash = smsCodeHash;
+    req.session[socialSessionKey].phoneCodeExpiresAt = expiresAt;
+    req.session[socialSessionKey].phone = phone.trim();
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve(undefined);
+      });
+    });
+
+    try {
+      await sendSmsVerificationCode(phone.trim(), smsCode);
+    } catch (notificationError) {
+      console.error('Failed to send SMS code', notificationError);
+      if (isProduction) {
+        console.warn('Continuing registration flow despite SMS send failure (production mode)');
+      } else {
+        return res.status(502).json({ error: 'Failed to send SMS code' });
+      }
+    }
+
+    return res.json({
+      message: 'Phone verification code sent',
+      phoneCode: smsCode, // Include in response for development/testing
+    });
+  } catch (error) {
+    console.error('Send phone code error', error);
+    return res.status(500).json({ error: 'Failed to send phone verification code' });
+  }
+});
+
+// Verify phone code and complete social registration
+router.post('/social/verify-phone', async (req, res) => {
+  try {
+    const pending = getPendingSocialProfile(req);
+    if (!pending) {
+      return res.status(400).json({ error: 'No pending social registration' });
+    }
+
+    const { code, ...registrationData } = req.body;
+
+    if (!code || !isValidCode(code)) {
+      return res.status(400).json({ error: 'A valid 4-digit code is required' });
+    }
+
+    // Check phone code from session
+    const sessionData = req.session[socialSessionKey];
+    if (!sessionData || !sessionData.phoneCodeHash) {
+      return res.status(400).json({ error: 'No phone verification code found. Please request a new code.' });
+    }
+
+    if (sessionData.phoneCodeExpiresAt && new Date(sessionData.phoneCodeExpiresAt) < new Date()) {
+      delete req.session[socialSessionKey];
+      return res.status(410).json({ error: 'Phone verification code expired. Please request a new code.' });
+    }
+
+    const phoneMatch = await bcrypt.compare(code, sessionData.phoneCodeHash);
+    if (!phoneMatch) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    // Phone verified, now complete registration
+    const mergedPayload = {
+      ...registrationData,
+      firstName: registrationData.firstName || pending.firstName,
+      lastName: registrationData.lastName || pending.lastName,
+      email: registrationData.email || pending.email,
+      phone: sessionData.phone || registrationData.phone,
+    };
+
+    if (!registrationData.agreeTerms) {
+      return res.status(400).json({ error: 'Terms must be accepted' });
+    }
+
+    const validationError = validateRegistrationPayload(mergedPayload, {
+      requirePassword: false,
+    });
+
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      phone: verifiedPhone,
+      postcode,
+      referralCode,
+      userType,
+      tradingName,
+      townCity,
+      address,
+      travelDistance,
+    } = mergedPayload;
+
+    const normalizedEmail = normalizeEmail(email);
+    
+    // Check for deleted users first - they cannot re-register
+    const deletedUser =
+      (await User.findOne({ email: normalizedEmail, isDeleted: true })) ||
+      (await User.findOne({
+        [pending.provider === 'google' ? 'googleId' : 'facebookId']: pending.providerId,
+        isDeleted: true,
+      }));
+
+    if (deletedUser) {
+      return res.status(403).json({ error: 'This account has been deleted and cannot be re-registered' });
+    }
+    
+    // Check for existing active users
+    const existingUser =
+      (await User.findOne({ email: normalizedEmail, isDeleted: { $ne: true } })) ||
+      (await User.findOne({
+        [pending.provider === 'google' ? 'googleId' : 'facebookId']: pending.providerId,
+        isDeleted: { $ne: true },
+      }));
+
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists for this account' });
+    }
+
+    const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+
+    // Initialize verification object with email and phone as verified (from Google)
+    const verification = {
+      email: {
+        status: 'verified',
+        verifiedAt: new Date(),
+      },
+      phone: {
+        status: 'verified',
+        verifiedAt: new Date(),
+      },
+      address: {
+        status: 'not-started',
+      },
+      idCard: {
+        status: 'not-started',
+      },
+      paymentMethod: {
+        status: 'not-started',
+      },
+      publicLiabilityInsurance: {
+        status: 'not-started',
+      },
+    };
+
+    const userData = {
+      firstName,
+      lastName,
+      email: normalizedEmail,
+      passwordHash,
+      phone: verifiedPhone,
+      postcode,
+      referralCode,
+      role: userType,
+      googleId: pending.provider === 'google' ? pending.providerId : undefined,
+      facebookId: pending.provider === 'facebook' ? pending.providerId : undefined,
+      verification,
+    };
+
+    // Professional-specific fields
+    if (userType === 'professional') {
+      if (tradingName && tradingName.trim()) {
+        userData.tradingName = tradingName.trim();
+      }
+      if (travelDistance && travelDistance.trim()) {
+        userData.travelDistance = travelDistance.trim();
+      }
+    }
+
+    // Address fields - available for both client and professional
+    if (address && address.trim()) {
+      userData.address = address.trim();
+    }
+    if (townCity && townCity.trim()) {
+      userData.townCity = townCity.trim();
+    }
+
+    const user = await User.create(userData);
+
+    req.session.userId = user.id;
+    req.session.role = user.role;
+    clearPendingSocialProfile(req);
+
+    return res.status(201).json({ user: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Social phone verification error', error);
+    return res.status(500).json({ error: 'Failed to verify phone and complete registration' });
+  }
+});
+
 router.post('/social/complete', async (req, res) => {
   try {
     const pending = getPendingSocialProfile(req);

@@ -24,12 +24,12 @@ export default function SocialOnboardingPage() {
   const navigate = useNavigate();
   const {
     fetchPendingSocialProfile,
-    completeSocialRegistration,
+    sendSocialPhoneCode,
+    verifySocialPhone,
     isLoggedIn,
   } = useAccount();
 
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingProfile, setPendingProfile] = useState<any>(null);
 
@@ -133,27 +133,50 @@ export default function SocialOnboardingPage() {
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const registrationData = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        postcode: postcode.trim(),
-        referralCode: referralCode.trim(),
-        userType,
-        address: address.trim(),
-        townCity: townCity.trim(),
-        county: county.trim(),
-        agreeTerms: true,
-        ...(userType === "professional" && {
-          tradingName: tradingName.trim(),
-          travelDistance: travelDistance,
-        })
-      };
+    // Store registration data for after phone verification
+    const data = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      postcode: postcode.trim(),
+      referralCode: referralCode.trim(),
+      userType,
+      address: address.trim(),
+      townCity: townCity.trim(),
+      county: county.trim(),
+      agreeTerms: true,
+      ...(userType === "professional" && {
+        tradingName: tradingName.trim(),
+        travelDistance: travelDistance,
+      })
+    };
+    setRegistrationData(data);
 
-      const user = await completeSocialRegistration(registrationData);
+    // Send phone verification code
+    setIsSendingPhoneCode(true);
+    try {
+      const response = await sendSocialPhoneCode(phone.trim());
+      setPhoneCodeHint(response?.phoneCode || null);
+      setShowPhoneVerification(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send verification code");
+    } finally {
+      setIsSendingPhoneCode(false);
+    }
+  };
+
+  const handleVerifyPhoneCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phoneCode.length !== 4) {
+      setError("Please enter a 4-digit code");
+      return;
+    }
+
+    setError(null);
+    setIsVerifyingPhone(true);
+    try {
+      const user = await verifySocialPhone(phoneCode, registrationData);
 
       // Navigate based on user role
       if (user.role === "professional") {
@@ -162,9 +185,10 @@ export default function SocialOnboardingPage() {
         navigate("/account", { replace: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : "Phone verification failed");
+      setPhoneCode("");
     } finally {
-      setSubmitting(false);
+      setIsVerifyingPhone(false);
     }
   };
 
@@ -604,12 +628,85 @@ export default function SocialOnboardingPage() {
 
               <Button
                 type="submit"
-                disabled={submitting}
+                disabled={isSendingPhoneCode}
                 className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {submitting ? "Creating account..." : "Complete Registration"}
+                {isSendingPhoneCode ? "Sending code..." : "Send Verification Code"}
               </Button>
             </form>
+
+            {/* Phone Verification Modal */}
+            {showPhoneVerification && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+                <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-6 md:p-8 max-w-[480px] w-full relative">
+                  <div className="text-center mb-5">
+                    <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Phone className="w-7 h-7 text-[#FE8A0F]" />
+                    </div>
+                    <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-2">
+                      Verify Your Phone Number
+                    </h3>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      We've sent a 4-digit code to {phone}
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleVerifyPhoneCode} className="space-y-4">
+                    <div>
+                      <Label htmlFor="phone-code" className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
+                        Enter 4-Digit Code
+                      </Label>
+                      <Input
+                        id="phone-code"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={phoneCode}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setPhoneCode(value);
+                          if (error) setError(null);
+                        }}
+                        className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
+                        maxLength={4}
+                        required
+                        autoFocus
+                      />
+                      {phoneCodeHint && (
+                        <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
+                          Hint: {phoneCodeHint}
+                        </p>
+                      )}
+                      {error && (
+                        <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      disabled={isVerifyingPhone || phoneCode.length !== 4}
+                      className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isVerifyingPhone ? "Verifying..." : "Verify & Complete Registration"}
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPhoneVerification(false);
+                        setPhoneCode("");
+                        setError(null);
+                      }}
+                      className="w-full text-[#6b6b6b] hover:text-[#2c353f] font-['Poppins',sans-serif] text-[13px]"
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
 
             {/* Footer Note */}
             <div className="mt-4 pt-4 border-t border-gray-100 text-center">

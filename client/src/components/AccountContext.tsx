@@ -111,6 +111,8 @@ interface AccountContextType {
   verifyRegistrationEmail: (code: string, email?: string) => Promise<void>;
   completeRegistration: (code: string, email?: string) => Promise<UserInfo>;
   fetchPendingSocialProfile: () => Promise<PendingSocialProfile | null>;
+  sendSocialPhoneCode: (phone: string) => Promise<{ message: string; phoneCode?: string }>;
+  verifySocialPhone: (code: string, registrationData: SocialRegistrationPayload) => Promise<UserInfo>;
   completeSocialRegistration: (payload: SocialRegistrationPayload) => Promise<UserInfo>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<UserInfo>;
   requestEmailChangeOTP: (email: string) => Promise<{ message: string; emailCode?: string }>;
@@ -254,6 +256,30 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const data = await requestJson("/api/auth/social/pending");
     return data.pending ?? null;
   }, [requestJson]);
+
+  const sendSocialPhoneCode = useCallback(
+    async (phone: string) => {
+      const data = await requestJson("/api/auth/social/send-phone-code", {
+        method: "POST",
+        body: JSON.stringify({ phone }),
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
+  const verifySocialPhone = useCallback(
+    async (code: string, registrationData: SocialRegistrationPayload) => {
+      const data = await requestJson("/api/auth/social/verify-phone", {
+        method: "POST",
+        body: JSON.stringify({ code, ...registrationData }),
+      });
+
+      applyUserSession(data.user);
+      return data.user;
+    },
+    [applyUserSession, requestJson]
+  );
 
   const completeSocialRegistration = useCallback(
     async (payload: SocialRegistrationPayload) => {
@@ -456,6 +482,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         verifyRegistrationEmail,
         completeRegistration,
         fetchPendingSocialProfile,
+        sendSocialPhoneCode,
+        verifySocialPhone,
         completeSocialRegistration,
         updateProfile,
         requestEmailChangeOTP,
