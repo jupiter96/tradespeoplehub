@@ -2,18 +2,22 @@ import mongoose from 'mongoose';
 
 const emailTemplateSchema = new mongoose.Schema(
   {
-    type: {
+    category: {
       type: String,
       required: true,
       enum: [
         'verification',
-        'welcome',
-        'reminder-verification',
-        'reminder-identity',
-        'fully-verified',
-        'verification-approved',
-        'verification-rejected',
+        'listing',
+        'orders',
+        'notification',
+        'support',
+        'team',
       ],
+    },
+    type: {
+      type: String,
+      required: true,
+      trim: true,
     },
     subject: {
       type: String,
@@ -36,6 +40,12 @@ const emailTemplateSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    emailFrom: {
+      type: String,
+      trim: true,
+      // Email address to use for sending emails from this template category
+      // If not set, will use default SMTP_USER or SMTP_USER_VERIFICATION based on category
+    },
   },
   {
     timestamps: true,
@@ -43,8 +53,9 @@ const emailTemplateSchema = new mongoose.Schema(
 );
 
 // Indexes
-// type field has unique index (defined below)
-emailTemplateSchema.index({ type: 1 }, { unique: true });
+// category and type combination should be unique
+emailTemplateSchema.index({ category: 1, type: 1 }, { unique: true });
+emailTemplateSchema.index({ category: 1 });
 emailTemplateSchema.index({ isActive: 1 });
 
 const EmailTemplate = mongoose.model('EmailTemplate', emailTemplateSchema);

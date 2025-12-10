@@ -56,12 +56,40 @@ interface ServiceCategory {
   sector: Sector | string;
   name: string;
   slug?: string;
-  question?: string;
   order: number;
   description?: string;
   icon?: string;
   bannerImage?: string;
   isActive: boolean;
+  level?: number; // 3-7
+  categoryLevelMapping?: Array<{
+    level: number;
+    attributeType: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
+    title?: string;
+    thumbnail?: string;
+    icon?: string;
+    metadata?: Record<string, any>;
+  }>;
+  metaTitle?: string;
+  metaDescription?: string;
+  attributes?: Array<{
+    name: string;
+    order: number;
+  }>;
+  extraServices?: Array<{
+    name: string;
+    price: number;
+    days: number;
+    order: number;
+  }>;
+  pricePerUnit?: {
+    enabled: boolean;
+    units: Array<{
+      name: string;
+      price: number;
+      order: number;
+    }>;
+  };
   subCategories?: ServiceSubCategory[];
 }
 
@@ -69,7 +97,29 @@ interface ServiceSubCategory {
   _id: string;
   name: string;
   order: number;
+  titles?: Array<{
+    level: number;
+    title: string;
+  }>;
+  attributes?: Array<{
+    level: number;
+    attributeType: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
+    values: Array<{
+      label: string;
+      value: string;
+      order: number;
+    }>;
+  }>;
 }
+
+const ATTRIBUTE_TYPES = [
+  { value: 'serviceType', label: 'Service Type' },
+  { value: 'size', label: 'Size' },
+  { value: 'frequency', label: 'Frequency' },
+  { value: 'make', label: 'Make' },
+  { value: 'model', label: 'Model' },
+  { value: 'brand', label: 'Brand' },
+] as const;
 
 // Sortable Row Component
 function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive }: {
@@ -115,6 +165,20 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
         <div className="font-medium truncate" title={serviceCategory.name}>
           {serviceCategory.name && serviceCategory.name.length > 25 ? serviceCategory.name.substring(0, 25) + "..." : serviceCategory.name}
         </div>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        <span className="font-medium">
+          {serviceCategory.subCategories?.length || 0}
+        </span>
+      </TableCell>
+      <TableCell className="text-black dark:text-white">
+        {serviceCategory.slug ? (
+          <span className="text-sm text-gray-600 dark:text-gray-400 truncate" title={serviceCategory.slug}>
+            {serviceCategory.slug.length > 20 ? serviceCategory.slug.substring(0, 20) + "..." : serviceCategory.slug}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">-</span>
+        )}
       </TableCell>
       <TableCell className="text-black dark:text-white">
         {serviceCategory.icon ? (
@@ -248,25 +312,48 @@ export default function AdminServiceCategoriesPage() {
     sector: string;
     name: string;
     slug: string;
-    question: string;
     order: number;
     description: string;
+    metaTitle: string;
+    metaDescription: string;
     icon: string;
     bannerImage: string;
     isActive: boolean;
-    subCategories: { name: string; order: number }[];
+    level: number;
+    categoryLevelMapping: Array<{
+      level: number;
+      attributeType: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
+      title?: string;
+      thumbnail?: string;
+      icon?: string;
+      metadata?: Record<string, any>;
+    }>;
+    attributes: Array<{ name: string; order: number }>;
+    extraServices: Array<{ name: string; price: number; days: number; order: number }>;
+    pricePerUnit: {
+      enabled: boolean;
+      units: Array<{ name: string; price: number; order: number }>;
+    };
   }>({
     sector: "",
     name: "",
     slug: "",
-    question: "",
     order: 0,
     description: "",
+    metaTitle: "",
+    metaDescription: "",
     icon: "",
     bannerImage: "",
     isActive: true,
-    subCategories: [],
-  });
+    level: 3,
+    categoryLevelMapping: [],
+      attributes: [],
+      extraServices: [],
+      pricePerUnit: {
+        enabled: false,
+        units: [],
+      },
+    });
   const [uploadingImage, setUploadingImage] = useState<{ type: "icon" | "banner" | null; loading: boolean }>({ type: null, loading: false });
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
@@ -558,12 +645,13 @@ export default function AdminServiceCategoriesPage() {
       sector: selectedSectorId,
       name: "",
       slug: "",
-      question: "",
       order: getNextAvailableOrder(),
       description: "",
       icon: "",
       bannerImage: "",
       isActive: true,
+      level: 3,
+      categoryLevelMapping: [],
       subCategories: [],
     });
     setEditingServiceCategory(null);
@@ -575,22 +663,22 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const handleEdit = (serviceCategory: ServiceCategory) => {
-    const subCategories = (serviceCategory.subCategories || []).map((sub: ServiceSubCategory) => ({
-      name: sub.name,
-      order: sub.order,
-    }));
-    
     setFormData({
       sector: typeof serviceCategory.sector === "string" ? serviceCategory.sector : serviceCategory.sector._id,
       name: serviceCategory.name,
       slug: serviceCategory.slug || generateSlug(serviceCategory.name),
-      question: serviceCategory.question || "",
       order: serviceCategory.order,
       description: serviceCategory.description || "",
+      metaTitle: (serviceCategory as any).metaTitle || "",
+      metaDescription: (serviceCategory as any).metaDescription || "",
       icon: serviceCategory.icon || "",
       bannerImage: serviceCategory.bannerImage || "",
       isActive: serviceCategory.isActive,
-      subCategories: subCategories.length > 0 ? subCategories : [],
+      level: serviceCategory.level || 3,
+      categoryLevelMapping: serviceCategory.categoryLevelMapping || [],
+      attributes: (serviceCategory as any).attributes || [],
+      extraServices: (serviceCategory as any).extraServices || [],
+      pricePerUnit: (serviceCategory as any).pricePerUnit || { enabled: false, units: [] },
     });
     setEditingServiceCategory(serviceCategory);
     setIconPreview(serviceCategory.icon || null);
@@ -702,13 +790,21 @@ export default function AdminServiceCategoriesPage() {
         sector: formData.sector,
         name: formData.name.trim(),
         slug: formData.slug.trim(),
-        question: formData.question.trim(),
         order: formData.order,
-        description: formData.description.trim(),
-        icon: formData.icon.trim(),
-        bannerImage: formData.bannerImage.trim(),
+        description: (formData.description || "").trim(),
+        metaTitle: (formData.metaTitle || "").trim(),
+        metaDescription: (formData.metaDescription || "").trim(),
+        icon: (formData.icon || "").trim(),
+        bannerImage: (formData.bannerImage || "").trim(),
         isActive: formData.isActive,
+        level: formData.level,
+        categoryLevelMapping: formData.categoryLevelMapping || [],
+        attributes: formData.attributes || [],
+        extraServices: formData.extraServices || [],
+        pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
+
+      console.log("Creating service category with payload:", serviceCategoryPayload);
 
       const serviceCategoryResponse = await fetch(serviceCategoryUrl, {
         method: serviceCategoryMethod,
@@ -720,8 +816,15 @@ export default function AdminServiceCategoriesPage() {
       });
 
       if (!serviceCategoryResponse.ok) {
-        const error = await serviceCategoryResponse.json();
-        throw new Error(error.error || "Failed to save service category");
+        const errorText = await serviceCategoryResponse.text();
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch (e) {
+          error = { error: errorText || "Failed to save service category" };
+        }
+        console.error("Service category creation error:", error);
+        throw new Error(error.error || error.message || "Failed to save service category");
       }
 
       const serviceCategoryData = await serviceCategoryResponse.json();
@@ -804,70 +907,7 @@ export default function AdminServiceCategoriesPage() {
         }
       }
 
-      // Then, handle subcategories
-      if (editingServiceCategory) {
-        // Delete existing subcategories that are not in the new list
-        const existingSubCategories = (editingServiceCategory.subCategories || []) as ServiceSubCategory[];
-        const newSubCategoryNames = formData.subCategories.map((sub) => sub.name.trim()).filter(Boolean);
-        
-        for (const existingSub of existingSubCategories) {
-          if (!newSubCategoryNames.includes(existingSub.name)) {
-            await fetch(resolveApiUrl(`/api/service-subcategories/${existingSub._id}?hardDelete=true`), {
-              method: "DELETE",
-              credentials: "include",
-            });
-          }
-        }
-      }
-
-      // Create or update subcategories
-      for (let i = 0; i < formData.subCategories.length; i++) {
-        const subCategory = formData.subCategories[i];
-        if (!subCategory.name.trim()) continue;
-
-        // Check if subcategory already exists
-        const existingSubResponse = await fetch(
-          resolveApiUrl(`/api/service-subcategories?serviceCategoryId=${savedServiceCategory._id}&activeOnly=false`),
-          { credentials: "include" }
-        );
-        
-        let existingSub = null;
-        if (existingSubResponse.ok) {
-          const existingData = await existingSubResponse.json();
-          existingSub = existingData.serviceSubCategories?.find(
-            (sub: ServiceSubCategory) => sub.name === subCategory.name.trim()
-          );
-        }
-
-        const subCategoryPayload = {
-          serviceCategory: savedServiceCategory._id,
-          name: subCategory.name.trim(),
-          order: subCategory.order || i + 1,
-          isActive: true,
-        };
-
-        if (existingSub) {
-          // Update existing subcategory
-          await fetch(resolveApiUrl(`/api/service-subcategories/${existingSub._id}`), {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify(subCategoryPayload),
-          });
-        } else {
-          // Create new subcategory
-          await fetch(resolveApiUrl("/api/service-subcategories"), {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify(subCategoryPayload),
-          });
-        }
-      }
+      // Attributes, extraServices, and pricePerUnit are already included in serviceCategoryPayload
 
       toast.success(editingServiceCategory ? "Service category updated successfully" : "Service category created successfully");
       setIsModalOpen(false);
@@ -1139,6 +1179,8 @@ export default function AdminServiceCategoriesPage() {
                             <TableRow className="border-0 hover:bg-transparent shadow-sm">
                               <SortableHeader column="order" label="Order" />
                               <SortableHeader column="name" label="Service Category Name" />
+                              <TableHead className="text-[#FE8A0F] font-semibold">Subcategories</TableHead>
+                              <TableHead className="text-[#FE8A0F] font-semibold">Slug</TableHead>
                               <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
                               <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
                               <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
@@ -1233,25 +1275,25 @@ export default function AdminServiceCategoriesPage() {
                 <Label htmlFor="name" className="text-black dark:text-white">
                   Service Category Name <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Plumbing"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
+                  <Input
+                    id="name"
+                    value={formData.name || ""}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    placeholder="Plumbing"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  />
               </div>
               <div>
                 <Label htmlFor="slug" className="text-black dark:text-white">
                   Slug <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="slug"
-                  value={formData.slug}
-                  onChange={(e) => handleInputChange("slug", e.target.value)}
-                  placeholder="plumbing"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                />
+                  <Input
+                    id="slug"
+                    value={formData.slug || ""}
+                    onChange={(e) => handleInputChange("slug", e.target.value)}
+                    placeholder="plumbing"
+                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  />
               </div>
               <div className="flex items-center gap-4">
                 <Label htmlFor="isActive" className="text-black dark:text-white">
@@ -1272,18 +1314,147 @@ export default function AdminServiceCategoriesPage() {
               </div>
             </div>
 
-            {/* Question */}
+            {/* Category Level Mapping */}
             <div>
-              <Label htmlFor="question" className="text-black dark:text-white">
-                Service Category Question
+              <Label className="text-black dark:text-white mb-2 block">
+                Category Level Mapping <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="question"
-                value={formData.question}
-                onChange={(e) => handleInputChange("question", e.target.value)}
-                placeholder="What type of service do you need?"
-                className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-              />
+              <div className="space-y-2 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+                {/* Level 1 - Fixed: Main Category */}
+                <div className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
+                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                    Category Level 1:
+                  </Label>
+                  <Input
+                    value="Main Category"
+                    disabled
+                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400"
+                  />
+                </div>
+
+                {/* Level 2 - Fixed: Sub Category */}
+                <div className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
+                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                    Category Level 2:
+                  </Label>
+                  <Input
+                    value="Sub Category"
+                    disabled
+                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400"
+                  />
+                </div>
+
+                {/* Level 3-7 - Selectable */}
+                {[3, 4, 5, 6, 7].map((level) => {
+                  const mapping = formData.categoryLevelMapping.find((m) => m.level === level);
+                  const usedTypes = formData.categoryLevelMapping
+                    .filter((m) => m.level !== level)
+                    .map((m) => m.attributeType);
+                  
+                  // Check if this level should be shown (based on selected level count)
+                  const shouldShow = level <= formData.level;
+
+                  if (!shouldShow) return null;
+
+                  return (
+                    <div key={level} className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
+                      <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                        Category Level {level}:
+                      </Label>
+                      <Select
+                        value={mapping?.attributeType || ""}
+                        onValueChange={(value) => {
+                          setFormData((prev) => {
+                            const newMapping = [...prev.categoryLevelMapping];
+                            const existingIndex = newMapping.findIndex((m) => m.level === level);
+                            const selectedType = ATTRIBUTE_TYPES.find((t) => t.value === value);
+                            if (existingIndex >= 0) {
+                              newMapping[existingIndex].attributeType = value as any;
+                              if (!newMapping[existingIndex].title && selectedType) {
+                                newMapping[existingIndex].title = selectedType.label;
+                              }
+                            } else {
+                              newMapping.push({
+                                level,
+                                attributeType: value as any,
+                                title: selectedType?.label || "",
+                              });
+                            }
+                            return {
+                              ...prev,
+                              categoryLevelMapping: newMapping.sort((a, b) => a.level - b.level),
+                            };
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                          <SelectValue placeholder="Select attribute type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                          {ATTRIBUTE_TYPES.map((type) => (
+                            <SelectItem
+                              key={type.value}
+                              value={type.value}
+                              disabled={usedTypes.includes(type.value as any)}
+                            >
+                              {type.label}
+                              {usedTypes.includes(type.value as any) && " (Already used)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+
+                {/* Level Selection */}
+                <div className="flex items-center gap-3 p-2 pt-3">
+                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                    Number of Levels <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.level.toString()}
+                    onValueChange={(value) => {
+                      const newLevel = parseInt(value);
+                      setFormData((prev) => {
+                        const newMapping = [];
+                        for (let i = 3; i <= newLevel; i++) {
+                          const existing = prev.categoryLevelMapping.find((m) => m.level === i);
+                          if (existing) {
+                            newMapping.push(existing);
+                          } else {
+                            const usedTypes = newMapping.map((m) => m.attributeType);
+                            const availableType = ATTRIBUTE_TYPES.find((t) => !usedTypes.includes(t.value as any));
+                            if (availableType) {
+                              newMapping.push({
+                                level: i,
+                                attributeType: availableType.value as any,
+                                title: availableType.label,
+                              });
+                            }
+                          }
+                        }
+                        return {
+                          ...prev,
+                          level: newLevel,
+                          categoryLevelMapping: newMapping,
+                        };
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                      <SelectValue placeholder="Select number of levels" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                      {[3, 4, 5, 6, 7].map((level) => (
+                        <SelectItem key={level} value={level.toString()}>
+                          {level} Levels
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
             {/* Description */}
@@ -1291,13 +1462,41 @@ export default function AdminServiceCategoriesPage() {
               <Label htmlFor="description" className="text-black dark:text-white">
                 Description
               </Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="Describe this service category..."
-                className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-              />
+                <Textarea
+                  id="description"
+                  value={formData.description || ""}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  placeholder="Describe this service category..."
+                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                />
+            </div>
+
+            {/* Meta Title and Meta Description */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="metaTitle" className="text-black dark:text-white">
+                  Meta Title
+                </Label>
+                <Input
+                  id="metaTitle"
+                  value={formData.metaTitle || ""}
+                  onChange={(e) => handleInputChange("metaTitle", e.target.value)}
+                  placeholder="SEO meta title"
+                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                />
+              </div>
+              <div>
+                <Label htmlFor="metaDescription" className="text-black dark:text-white">
+                  Meta Description
+                </Label>
+                <Textarea
+                  id="metaDescription"
+                  value={formData.metaDescription || ""}
+                  onChange={(e) => handleInputChange("metaDescription", e.target.value)}
+                  placeholder="SEO meta description"
+                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                />
+              </div>
             </div>
 
             {/* Images */}
@@ -1410,91 +1609,295 @@ export default function AdminServiceCategoriesPage() {
               </div>
             </div>
 
-            {/* Subcategories */}
+            {/* Add Attributes */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Service Subcategories</Label>
+                <Label className="text-black dark:text-white">Attributes</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={handleAddSubCategory}
+                  onClick={() => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      attributes: [
+                        ...(prev.attributes || []),
+                        { name: "", order: (prev.attributes || []).length + 1 },
+                      ],
+                    }));
+                  }}
                   className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Service Subcategory
+                  Add Attribute
                 </Button>
               </div>
               <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
-                {formData.subCategories.length === 0 ? (
+                {(!formData.attributes || formData.attributes.length === 0) ? (
                   <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
-                    No service subcategories. Click "Add Service Subcategory" to add one.
+                    No attributes. Click "Add Attribute" to add one.
                   </p>
                 ) : (
-                  formData.subCategories.map((subCategory, index) => (
+                  (formData.attributes || []).map((attribute, index) => (
                     <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
-                      <div className="flex-1 grid grid-cols-2 gap-3">
+                      <Input
+                        value={attribute.name || ""}
+                        onChange={(e) => {
+                          setFormData((prev) => {
+                            const updated = [...prev.attributes];
+                            updated[index] = { ...updated[index], name: e.target.value };
+                            return { ...prev, attributes: updated };
+                          });
+                        }}
+                        placeholder="Attribute name"
+                        className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            attributes: prev.attributes.filter((_, i) => i !== index),
+                          }));
+                        }}
+                        className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Add Extra Services */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <Label className="text-black dark:text-white">Extra Services</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      extraServices: [
+                        ...(prev.extraServices || []),
+                        { name: "", price: 0, days: 0, order: (prev.extraServices || []).length + 1 },
+                      ],
+                    }));
+                  }}
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Extra Service
+                </Button>
+              </div>
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+                {(!formData.extraServices || formData.extraServices.length === 0) ? (
+                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                    No extra services. Click "Add Extra Service" to add one.
+                  </p>
+                ) : (
+                  (formData.extraServices || []).map((service, index) => (
+                    <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
+                          <Label className="text-black dark:text-white text-sm">Name</Label>
                           <Input
-                            value={subCategory.name}
-                            onChange={(e) =>
-                              handleSubCategoryChange(index, "name", e.target.value)
-                            }
-                            placeholder="Service subcategory name"
-                            className="text-sm bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            value={service.name || ""}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                const updated = [...prev.extraServices];
+                                updated[index] = { ...updated[index], name: e.target.value };
+                                return { ...prev, extraServices: updated };
+                              });
+                            }}
+                            placeholder="Service name"
+                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                         <div>
+                          <Label className="text-black dark:text-white text-sm">Price</Label>
                           <Input
                             type="number"
-                            value={subCategory.order}
-                            onChange={(e) =>
-                              handleSubCategoryChange(
-                                index,
-                                "order",
-                                parseInt(e.target.value) || index + 1
-                              )
-                            }
-                            placeholder="Order"
-                            className="text-sm bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            value={service.price || 0}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                const updated = [...prev.extraServices];
+                                updated[index] = { ...updated[index], price: parseFloat(e.target.value) || 0 };
+                                return { ...prev, extraServices: updated };
+                              });
+                            }}
+                            placeholder="0.00"
+                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-black dark:text-white text-sm">Days</Label>
+                          <Input
+                            type="number"
+                            value={service.days || 0}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                const updated = [...prev.extraServices];
+                                updated[index] = { ...updated[index], days: parseInt(e.target.value) || 0 };
+                                return { ...prev, extraServices: updated };
+                              });
+                            }}
+                            placeholder="0"
+                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex justify-end">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleMoveSubCategory(index, "up")}
-                          disabled={index === 0}
-                          className="h-8 w-8 p-0 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 disabled:opacity-30"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              extraServices: prev.extraServices.filter((_, i) => i !== index),
+                            }));
+                          }}
+                          className="h-8 px-3 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                         >
-                          <ArrowUp className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMoveSubCategory(index, "down")}
-                          disabled={index === formData.subCategories.length - 1}
-                          className="h-8 w-8 p-0 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 disabled:opacity-30"
-                        >
-                          <ArrowDown className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveSubCategory(index)}
-                          className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
-                        >
-                          <X className="w-4 h-4" />
+                          <X className="w-4 h-4 mr-1" />
+                          Remove
                         </Button>
                       </div>
                     </div>
                   ))
                 )}
               </div>
+            </div>
+
+            {/* Price Per Unit */}
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <input
+                  type="checkbox"
+                  id="pricePerUnit"
+                  checked={formData.pricePerUnit?.enabled || false}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      pricePerUnit: {
+                        ...(prev.pricePerUnit || { enabled: false, units: [] }),
+                        enabled: e.target.checked,
+                      },
+                    }));
+                  }}
+                  className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
+                />
+                <Label htmlFor="pricePerUnit" className="text-black dark:text-white">
+                  Price Per Unit
+                </Label>
+              </div>
+              {(formData.pricePerUnit?.enabled || false) && (
+                <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          pricePerUnit: {
+                            ...prev.pricePerUnit,
+                            units: [
+                              ...(prev.pricePerUnit?.units || []),
+                              { name: "", price: 0, order: (prev.pricePerUnit?.units || []).length + 1 },
+                            ],
+                          },
+                        }));
+                      }}
+                      className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Price Unit
+                    </Button>
+                  </div>
+                  {(!formData.pricePerUnit?.units || formData.pricePerUnit.units.length === 0) ? (
+                    <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                      No price units. Click "Add Price Unit" to add one.
+                    </p>
+                  ) : (
+                    (formData.pricePerUnit?.units || []).map((unit, index) => (
+                      <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-black dark:text-white text-sm">Unit Name</Label>
+                            <Input
+                              value={unit.name || ""}
+                              onChange={(e) => {
+                                setFormData((prev) => {
+                                  const updated = [...prev.pricePerUnit.units];
+                                  updated[index] = { ...updated[index], name: e.target.value };
+                                  return {
+                                    ...prev,
+                                    pricePerUnit: {
+                                      ...prev.pricePerUnit,
+                                      units: updated,
+                                    },
+                                  };
+                                });
+                              }}
+                              placeholder="e.g., Per hour, Per square meter"
+                              className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-black dark:text-white text-sm">Price</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="number"
+                                value={unit.price || 0}
+                                onChange={(e) => {
+                                  setFormData((prev) => {
+                                    const updated = [...prev.pricePerUnit.units];
+                                    updated[index] = { ...updated[index], price: parseFloat(e.target.value) || 0 };
+                                    return {
+                                      ...prev,
+                                      pricePerUnit: {
+                                        ...prev.pricePerUnit,
+                                        units: updated,
+                                      },
+                                    };
+                                  });
+                                }}
+                                placeholder="0.00"
+                                className="flex-1 mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    pricePerUnit: {
+                                      ...prev.pricePerUnit,
+                                      units: prev.pricePerUnit.units.filter((_, i) => i !== index),
+                                    },
+                                  }));
+                                }}
+                                className="h-10 w-10 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-1"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

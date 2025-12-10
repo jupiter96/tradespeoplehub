@@ -2,16 +2,55 @@ import nodemailer from 'nodemailer';
 import twilio from 'twilio';
 import dotenv from 'dotenv';
 import EmailTemplate from '../models/EmailTemplate.js';
+import SmtpConfig from '../models/SmtpConfig.js';
 
 // Load environment variables first
 dotenv.config();
 
+// Get SMTP config from database or fallback to environment variables
+let SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_USER_VERIFICATION;
+
+async function loadSmtpConfig() {
+  try {
+    const smtpConfig = await SmtpConfig.findOne();
+    if (smtpConfig) {
+      SMTP_HOST = smtpConfig.smtpHost;
+      SMTP_PORT = smtpConfig.smtpPort;
+      SMTP_USER = smtpConfig.smtpUser;
+      SMTP_PASS = smtpConfig.smtpPass;
+      SMTP_USER_VERIFICATION = smtpConfig.smtpUserVerification || '';
+      console.log('[Notifier] Using SMTP configuration from database');
+    } else {
+      // Fallback to environment variables
+      SMTP_HOST = process.env.SMTP_HOST;
+      SMTP_PORT = process.env.SMTP_PORT;
+      SMTP_USER = process.env.SMTP_USER;
+      SMTP_PASS = process.env.SMTP_PASS;
+      SMTP_USER_VERIFICATION = process.env.SMTP_USER_VERIFICATION;
+      console.log('[Notifier] Using SMTP configuration from environment variables');
+    }
+  } catch (error) {
+    console.error('[Notifier] Error loading SMTP config from database, using environment variables:', error);
+    // Fallback to environment variables
+    SMTP_HOST = process.env.SMTP_HOST;
+    SMTP_PORT = process.env.SMTP_PORT;
+    SMTP_USER = process.env.SMTP_USER;
+    SMTP_PASS = process.env.SMTP_PASS;
+    SMTP_USER_VERIFICATION = process.env.SMTP_USER_VERIFICATION;
+  }
+}
+
+// Load SMTP config on module initialization
+await loadSmtpConfig();
+
+// Function to reload SMTP config (useful when admin updates settings)
+export async function reloadSmtpConfig() {
+  await loadSmtpConfig();
+  // Recreate transporters with new config
+  await initializeTransporters();
+}
+
 const {
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_USER,
-  SMTP_PASS,
-  SMTP_USER_VERIFICATION,
   TWILIO_ACCOUNT_SID,
   TWILIO_AUTH_TOKEN,
   TWILIO_FROM = process.env.TWILIO_FROM_NUMBER || 'TRADEPPLHUB',
@@ -42,8 +81,10 @@ console.log('[Notifier] Twilio configuration check:', {
 let mailTransporter;
 let verificationMailTransporter;
 
-// Create default mail transporter
-if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
+// Function to initialize transporters
+async function initializeTransporters() {
+  // Create default mail transporter
+  if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
   console.log('[Notifier] Initializing SMTP transporter:', {
     host: SMTP_HOST,
     port: Number(SMTP_PORT),
@@ -53,14 +94,14 @@ if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
   });
   
   try {
-    mailTransporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT),
-      secure: Number(SMTP_PORT) === 465,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
+  mailTransporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT),
+    secure: Number(SMTP_PORT) === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
     });
     console.log('[Notifier] SMTP transporter created successfully');
     
@@ -117,19 +158,23 @@ if (SMTP_HOST && SMTP_PORT && SMTP_USER_VERIFICATION && SMTP_PASS) {
   } catch (error) {
     console.error('[Notifier] Failed to create verification SMTP transporter:', error);
   }
-} else {
-  console.warn('[Notifier] Verification SMTP configuration incomplete:', {
-    hasHost: !!SMTP_HOST,
-    hasPort: !!SMTP_PORT,
-    hasUser: !!SMTP_USER_VERIFICATION,
-    hasPass: !!SMTP_PASS
-  });
+  } else {
+    console.warn('[Notifier] Verification SMTP configuration incomplete:', {
+      hasHost: !!SMTP_HOST,
+      hasPort: !!SMTP_PORT,
+      hasUser: !!SMTP_USER_VERIFICATION,
+      hasPass: !!SMTP_PASS
+    });
+  }
 }
+
+// Initialize transporters on module load
+await initializeTransporters();
 
 let twilioClient;
 if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
   try {
-    twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
     console.log('[Notifier] Twilio client initialized successfully');
   } catch (error) {
     console.error('[Notifier] Failed to initialize Twilio client:', error);
@@ -384,10 +429,10 @@ export async function sendSmsVerificationCode(to, code) {
 
   try {
     const message = await twilioClient.messages.create({
-      to,
-      from: TWILIO_FROM,
-      body: `Your TradePplHub verification code is ${code}`,
-    });
+    to,
+    from: TWILIO_FROM,
+    body: `Your TradePplHub verification code is ${code}`,
+  });
     console.log('[SMS] Message sent successfully:', message.sid);
   } catch (error) {
     console.error('[SMS] Failed to send verification SMS:', error);

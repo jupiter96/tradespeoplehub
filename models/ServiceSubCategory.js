@@ -44,6 +44,61 @@ const serviceSubCategorySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Titles for each level (Level 3-7)
+    titles: {
+      type: [{
+        level: {
+          type: Number,
+          required: true,
+          min: 3,
+          max: 7,
+        },
+        title: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+      }],
+      default: [],
+      // Array of titles: [{ level: 3, title: 'Service Type' }, ...]
+    },
+    // Attributes for each level (Level 3-7)
+    attributes: {
+      type: [{
+        level: {
+          type: Number,
+          required: true,
+          min: 3,
+          max: 7,
+        },
+        attributeType: {
+          type: String,
+          enum: ['serviceType', 'size', 'frequency', 'make', 'model', 'brand'],
+          required: true,
+        },
+        values: {
+          type: [{
+            label: {
+              type: String,
+              required: true,
+              trim: true,
+            },
+            value: {
+              type: String,
+              required: true,
+              trim: true,
+            },
+            order: {
+              type: Number,
+              default: 0,
+            },
+          }],
+          default: [],
+        },
+      }],
+      default: [],
+      // Array of attributes: [{ level: 3, attributeType: 'serviceType', values: [{ label: 'Black', value: 'black', order: 1 }, ...] }, ...]
+    },
   },
   { timestamps: true }
 );

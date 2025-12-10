@@ -41,6 +41,16 @@ const serviceCategorySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    metaTitle: {
+      type: String,
+      trim: true,
+      // SEO meta title
+    },
+    metaDescription: {
+      type: String,
+      trim: true,
+      // SEO meta description
+    },
     icon: {
       type: String,
       trim: true,
@@ -51,9 +61,121 @@ const serviceCategorySchema = new mongoose.Schema(
       trim: true,
       // URL to banner image for category detail page (Cloudinary URL)
     },
+    // Attributes for this category
+    attributes: {
+      type: [{
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        order: {
+          type: Number,
+          default: 0,
+        },
+      }],
+      default: [],
+    },
+    // Extra services for this category
+    extraServices: {
+      type: [{
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        days: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        order: {
+          type: Number,
+          default: 0,
+        },
+      }],
+      default: [],
+    },
+    // Price per unit configuration
+    pricePerUnit: {
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
+      units: {
+        type: [{
+          name: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          price: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          order: {
+            type: Number,
+            default: 0,
+          },
+        }],
+        default: [],
+      },
+    },
     isActive: {
       type: Boolean,
       default: true,
+    },
+    // Level system: 3-7 levels (Level 1 = Main Category, Level 2 = Sub Category are fixed)
+    level: {
+      type: Number,
+      min: 3,
+      max: 7,
+      default: 3,
+      // Number of levels selected by admin (3-7)
+    },
+    // Category Level Mapping: defines which attribute type is used for each level (3-7)
+    // Each level has its own thumbnail, icon, metadata, title, and attribute
+    categoryLevelMapping: {
+      type: [{
+        level: {
+          type: Number,
+          required: true,
+          min: 3,
+          max: 7,
+        },
+        attributeType: {
+          type: String,
+          enum: ['serviceType', 'size', 'frequency', 'make', 'model', 'brand'],
+          required: true,
+        },
+        title: {
+          type: String,
+          trim: true,
+          // Display title for this level (e.g., "Service Type", "Size")
+        },
+        thumbnail: {
+          type: String,
+          trim: true,
+          // Thumbnail image URL for this level
+        },
+        icon: {
+          type: String,
+          trim: true,
+          // Icon URL or name for this level
+        },
+        metadata: {
+          type: mongoose.Schema.Types.Mixed,
+          // Additional metadata for this level (can store any JSON data)
+        },
+      }],
+      default: [],
+      // Array of level mappings with full metadata: [{ level: 3, attributeType: 'serviceType', title: 'Service Type', thumbnail: '...', icon: '...', metadata: {...} }, ...]
     },
   },
   { timestamps: true }

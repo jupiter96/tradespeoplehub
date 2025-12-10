@@ -169,6 +169,8 @@ router.get('/:identifier', async (req, res) => {
 // Create new service category (Admin only)
 router.post('/', async (req, res) => {
   try {
+    console.log('POST /api/service-categories - Request body:', JSON.stringify(req.body, null, 2));
+    
     const {
       sector,
       name,
@@ -176,16 +178,25 @@ router.post('/', async (req, res) => {
       question,
       order,
       description,
+      metaTitle,
+      metaDescription,
       icon,
       bannerImage,
       isActive,
+      level,
+      categoryLevelMapping,
+      attributes,
+      extraServices,
+      pricePerUnit,
     } = req.body;
     
     if (!sector) {
+      console.log('Error: Sector is required');
       return res.status(400).json({ error: 'Sector is required' });
     }
     
     if (!name) {
+      console.log('Error: Service category name is required');
       return res.status(400).json({ error: 'Service category name is required' });
     }
     
@@ -198,6 +209,7 @@ router.post('/', async (req, res) => {
     }
     
     if (!sectorDoc) {
+      console.log('Error: Sector not found:', sector);
       return res.status(404).json({ error: 'Sector not found' });
     }
     
@@ -213,6 +225,7 @@ router.post('/', async (req, res) => {
       name: name.trim() 
     });
     if (existingServiceCategory) {
+      console.log('Error: Service category with this name already exists');
       return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
     }
     
@@ -247,31 +260,44 @@ router.post('/', async (req, res) => {
       }
     }
     
-    const serviceCategory = await ServiceCategory.create({
+    const createData = {
       sector: sectorDoc._id,
       name: name.trim(),
       slug: serviceCategorySlug,
       question,
       order: finalOrder,
-      description,
-      icon,
-      bannerImage,
+      description: description || '',
+      metaTitle: metaTitle || '',
+      metaDescription: metaDescription || '',
+      icon: icon || '',
+      bannerImage: bannerImage || '',
       isActive: isActive !== undefined ? isActive : true,
-    });
+      level: level || 3,
+      categoryLevelMapping: categoryLevelMapping || [],
+      attributes: attributes || [],
+      extraServices: extraServices || [],
+      pricePerUnit: pricePerUnit || { enabled: false, units: [] },
+    };
+    
+    console.log('Creating service category with data:', JSON.stringify(createData, null, 2));
+    
+    const serviceCategory = await ServiceCategory.create(createData);
     
     // Populate sector for response
     await serviceCategory.populate('sector', 'name slug icon');
     
+    console.log('Service category created successfully:', serviceCategory._id);
     return res.status(201).json({ serviceCategory });
   } catch (error) {
-    console.error('Create service category error', error);
+    console.error('Create service category error:', error);
+    console.error('Error stack:', error.stack);
     if (error.code === 11000) {
       if (error.keyPattern?.['sector,order']) {
         return res.status(409).json({ error: `Service category with order ${order} already exists in this sector. Order must be unique within a sector.` });
       }
       return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
     }
-    return res.status(500).json({ error: 'Failed to create service category' });
+    return res.status(500).json({ error: error.message || 'Failed to create service category', details: error.toString() });
   }
 });
 
@@ -289,6 +315,8 @@ router.put('/:id', async (req, res) => {
       icon,
       bannerImage,
       isActive,
+      level,
+      categoryLevelMapping,
     } = req.body;
     
     const serviceCategory = await ServiceCategory.findById(id);
@@ -305,9 +333,10 @@ router.put('/:id', async (req, res) => {
         sectorDoc = await Sector.findOne({ slug: sector });
       }
       
-      if (!sectorDoc) {
-        return res.status(404).json({ error: 'Sector not found' });
-      }
+    if (!sectorDoc) {
+      console.log('Error: Sector not found:', sector);
+      return res.status(404).json({ error: 'Sector not found' });
+    }
       
       serviceCategory.sector = sectorDoc._id;
     }
@@ -319,9 +348,10 @@ router.put('/:id', async (req, res) => {
         name: name.trim(),
         _id: { $ne: id }
       });
-      if (existingServiceCategory) {
-        return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
-      }
+    if (existingServiceCategory) {
+      console.log('Error: Service category with this name already exists');
+      return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
+    }
     }
     
     // Check if order is being changed and if it conflicts
@@ -342,9 +372,16 @@ router.put('/:id', async (req, res) => {
     if (question !== undefined) serviceCategory.question = question;
     if (order !== undefined) serviceCategory.order = order;
     if (description !== undefined) serviceCategory.description = description;
+    if (req.body.metaTitle !== undefined) serviceCategory.metaTitle = req.body.metaTitle;
+    if (req.body.metaDescription !== undefined) serviceCategory.metaDescription = req.body.metaDescription;
     if (icon !== undefined) serviceCategory.icon = icon;
     if (bannerImage !== undefined) serviceCategory.bannerImage = bannerImage;
     if (isActive !== undefined) serviceCategory.isActive = isActive;
+    if (level !== undefined) serviceCategory.level = level;
+    if (categoryLevelMapping !== undefined) serviceCategory.categoryLevelMapping = categoryLevelMapping;
+    if (req.body.attributes !== undefined) serviceCategory.attributes = req.body.attributes;
+    if (req.body.extraServices !== undefined) serviceCategory.extraServices = req.body.extraServices;
+    if (req.body.pricePerUnit !== undefined) serviceCategory.pricePerUnit = req.body.pricePerUnit;
     
     await serviceCategory.save();
     

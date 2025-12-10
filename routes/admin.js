@@ -7,6 +7,8 @@ import User from '../models/User.js';
 import Admin from '../models/Admin.js';
 import SEOContent from '../models/SEOContent.js';
 import EmailTemplate from '../models/EmailTemplate.js';
+import EmailCategorySmtp from '../models/EmailCategorySmtp.js';
+import SmtpConfig from '../models/SmtpConfig.js';
 import Category from '../models/Category.js';
 import Sector from '../models/Sector.js';
 import SubCategory from '../models/SubCategory.js';
@@ -1974,7 +1976,9 @@ router.put('/seo-content/:type', requireAdmin, async (req, res) => {
 // Email Template Management Routes
 router.get('/email-templates', requireAdmin, async (req, res) => {
   try {
-    const templates = await EmailTemplate.find().sort({ type: 1 });
+    const { category } = req.query;
+    const query = category ? { category } : {};
+    const templates = await EmailTemplate.find(query).sort({ category: 1, type: 1 });
     return res.json({ templates });
   } catch (error) {
     console.error('Get email templates error', error);
@@ -1982,10 +1986,10 @@ router.get('/email-templates', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/email-templates/:type', requireAdmin, async (req, res) => {
+router.get('/email-templates/:category/:type', requireAdmin, async (req, res) => {
   try {
-    const { type } = req.params;
-    const template = await EmailTemplate.findOne({ type });
+    const { category, type } = req.params;
+    const template = await EmailTemplate.findOne({ category, type });
     
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
@@ -2000,44 +2004,49 @@ router.get('/email-templates/:type', requireAdmin, async (req, res) => {
 
 router.post('/email-templates', requireAdmin, async (req, res) => {
   try {
-    const { type, subject, body, variables, logoUrl } = req.body;
+    const { category, type, subject, body, variables, logoUrl, emailFrom } = req.body;
 
-    if (!type || !subject || !body) {
-      return res.status(400).json({ error: 'Type, subject, and body are required' });
+    if (!category || !type || !subject || !body) {
+      return res.status(400).json({ error: 'Category, type, subject, and body are required' });
     }
 
-    const validTypes = ['verification', 'welcome', 'reminder-verification', 'reminder-identity', 'fully-verified'];
-    if (!validTypes.includes(type)) {
-      return res.status(400).json({ error: 'Invalid template type' });
+    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'team'];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ error: 'Invalid template category' });
     }
 
-    const existing = await EmailTemplate.findOne({ type });
+    const existing = await EmailTemplate.findOne({ category, type });
     if (existing) {
-      return res.status(409).json({ error: 'Template with this type already exists' });
+      return res.status(409).json({ error: 'Template with this category and type already exists' });
     }
 
     const template = await EmailTemplate.create({
+      category,
       type,
       subject,
       body,
       variables: variables || [],
       logoUrl: logoUrl || '',
+      emailFrom: emailFrom || '',
       isActive: true,
     });
 
     return res.status(201).json({ message: 'Email template created successfully', template });
   } catch (error) {
     console.error('Create email template error', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'Template with this category and type already exists' });
+    }
     return res.status(500).json({ error: 'Failed to create email template' });
   }
 });
 
-router.put('/email-templates/:type', requireAdmin, async (req, res) => {
+router.put('/email-templates/:category/:type', requireAdmin, async (req, res) => {
   try {
-    const { type } = req.params;
-    const { subject, body, variables, logoUrl, isActive } = req.body;
+    const { category, type } = req.params;
+    const { subject, body, variables, logoUrl, emailFrom, isActive } = req.body;
 
-    const template = await EmailTemplate.findOne({ type });
+    const template = await EmailTemplate.findOne({ category, type });
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
@@ -2047,10 +2056,11 @@ router.put('/email-templates/:type', requireAdmin, async (req, res) => {
     if (body !== undefined) updateData.body = body;
     if (variables !== undefined) updateData.variables = variables;
     if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+    if (emailFrom !== undefined) updateData.emailFrom = emailFrom;
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const updated = await EmailTemplate.findOneAndUpdate(
-      { type },
+      { category, type },
       updateData,
       { new: true, runValidators: true }
     );
@@ -2062,11 +2072,11 @@ router.put('/email-templates/:type', requireAdmin, async (req, res) => {
   }
 });
 
-router.delete('/email-templates/:type', requireAdmin, async (req, res) => {
+router.delete('/email-templates/:category/:type', requireAdmin, async (req, res) => {
   try {
-    const { type } = req.params;
+    const { category, type } = req.params;
     
-    const template = await EmailTemplate.findOneAndDelete({ type });
+    const template = await EmailTemplate.findOneAndDelete({ category, type });
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
@@ -2075,6 +2085,105 @@ router.delete('/email-templates/:type', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Delete email template error', error);
     return res.status(500).json({ error: 'Failed to delete email template' });
+  }
+});
+
+// Get SMTP configuration
+router.get('/smtp-config', requireAdmin, async (req, res) => {
+  try {
+    const smtpConfig = await SmtpConfig.findOne();
+    
+    if (!smtpConfig) {
+      // If no config in database, return environment variables as defaults
+      return res.json({
+        smtpConfig: {
+          smtpHost: process.env.SMTP_HOST || '',
+          smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
+          smtpUser: process.env.SMTP_USER || '',
+          smtpPass: process.env.SMTP_PASS || '',
+          smtpUserVerification: process.env.SMTP_USER_VERIFICATION || '',
+        },
+      });
+    }
+    
+    // Return config but mask password
+    return res.json({
+      smtpConfig: {
+        smtpHost: smtpConfig.smtpHost,
+        smtpPort: smtpConfig.smtpPort,
+        smtpUser: smtpConfig.smtpUser,
+        smtpPass: smtpConfig.smtpPass ? '***' : '',
+        smtpUserVerification: smtpConfig.smtpUserVerification || '',
+      },
+    });
+  } catch (error) {
+    console.error('Get SMTP config error', error);
+    return res.status(500).json({ error: 'Failed to fetch SMTP configuration' });
+  }
+});
+
+// Create or update SMTP configuration
+router.put('/smtp-config', requireAdmin, async (req, res) => {
+  try {
+    const { smtpHost, smtpPort, smtpUser, smtpPass, smtpUserVerification } = req.body;
+    
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+      return res.status(400).json({ error: 'SMTP host, port, user, and password are required' });
+    }
+    
+    const port = parseInt(smtpPort);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      return res.status(400).json({ error: 'Invalid SMTP port (must be between 1 and 65535)' });
+    }
+    
+    // If password is masked (***), don't update it
+    const updateData = {
+      smtpHost: smtpHost.trim(),
+      smtpPort: port,
+      smtpUser: smtpUser.trim(),
+      smtpUserVerification: smtpUserVerification ? smtpUserVerification.trim() : '',
+    };
+    
+    // Only update password if it's not masked
+    if (smtpPass && smtpPass !== '***') {
+      updateData.smtpPass = smtpPass;
+    }
+    
+    // Use findOneAndUpdate with upsert to create or update
+    const smtpConfig = await SmtpConfig.findOneAndUpdate(
+      {},
+      updateData,
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+    
+    // Reload notifier to use new SMTP settings
+    try {
+      const { reloadSmtpConfig } = await import('../services/notifier.js');
+      if (reloadSmtpConfig) {
+        await reloadSmtpConfig();
+        console.log('SMTP configuration reloaded successfully');
+      }
+    } catch (reloadError) {
+      console.warn('Failed to reload notifier service:', reloadError);
+      // Continue anyway - settings are saved and will be used on next server restart
+    }
+    
+    return res.json({
+      message: 'SMTP configuration saved successfully',
+      smtpConfig: {
+        smtpHost: smtpConfig.smtpHost,
+        smtpPort: smtpConfig.smtpPort,
+        smtpUser: smtpConfig.smtpUser,
+        smtpPass: '***',
+        smtpUserVerification: smtpConfig.smtpUserVerification || '',
+      },
+    });
+  } catch (error) {
+    console.error('Save SMTP config error', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'SMTP configuration already exists. Use PUT to update.' });
+    }
+    return res.status(500).json({ error: 'Failed to save SMTP configuration' });
   }
 });
 
