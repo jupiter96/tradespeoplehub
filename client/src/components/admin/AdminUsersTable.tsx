@@ -93,6 +93,11 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  // Check if this is the deleted accounts page
+  const isDeletedAccountsPage = useMemo(() => {
+    return window.location.pathname.includes("delete-account");
+  }, []);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -169,7 +174,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     } finally {
       setLoading(false);
     }
-  }, [page, role, limit, sortBy, sortOrder, searchTerm, showVerification]);
+  }, [page, role, limit, sortBy, sortOrder, searchTerm, showVerification, isDeletedAccountsPage]);
 
   useImperativeHandle(ref, () => ({
     refresh: () => {
