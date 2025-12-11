@@ -412,12 +412,12 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
 
   logCode('email', to, code);
 
-  // Try to use template first (with verification transporter)
+  // Try to use template first (with verification category)
   try {
     const result = await sendTemplatedEmail(to, 'verification', {
       firstName: firstName,
       code: code,
-    }, true); // Use verification SMTP transporter
+    }, false, 'verification'); // Use verification category SMTP user
     if (result) {
       return result;
     }
@@ -425,25 +425,30 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
     console.warn('[EMAIL] Template email failed, falling back to simple email:', templateError.message);
   }
 
-  // Fallback to simple email if template fails (use verification transporter)
-  console.log('[EMAIL] Checking verification mail transporter:', {
-    hasVerificationMailTransporter: !!verificationMailTransporter,
-    transporterType: verificationMailTransporter ? typeof verificationMailTransporter : 'null'
-  });
-
-  if (!verificationMailTransporter) {
-    console.warn('[EMAIL] Verification SMTP is not configured. Code logged for manual verification.');
+  // Fallback to simple email if template fails (use verification category SMTP user)
+  const verificationSmtpUser = getSmtpUserForCategory('verification');
+  
+  if (!verificationSmtpUser) {
+    console.warn('[EMAIL] Verification SMTP user is not configured. Code logged for manual verification.');
     console.warn('[EMAIL] Verification SMTP configuration status:', {
       SMTP_HOST: SMTP_HOST || 'missing',
       SMTP_PORT: SMTP_PORT || 'missing',
-      SMTP_USER_VERIFICATION: SMTP_USER_VERIFICATION || 'missing',
+      verificationSmtpUser: verificationSmtpUser || 'missing',
       SMTP_PASS: SMTP_PASS ? '***' : 'missing'
     });
     return;
   }
 
+  // Create transporter for verification category
+  const transporter = createTransporterForUser(verificationSmtpUser);
+  
+  if (!transporter) {
+    console.warn('[EMAIL] Failed to create verification SMTP transporter. Code logged for manual verification.');
+    return;
+  }
+
   const emailOptions = {
-    from: SMTP_USER_VERIFICATION,
+    from: verificationSmtpUser,
     to,
     subject: 'Your Sortars verification code',
     text: `Your verification code is ${code}`,
@@ -458,7 +463,7 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
   });
 
   try {
-    const result = await verificationMailTransporter.sendMail(emailOptions);
+    const result = await transporter.sendMail(emailOptions);
     console.log('[EMAIL] Email sent successfully:', {
       messageId: result.messageId,
       response: result.response,

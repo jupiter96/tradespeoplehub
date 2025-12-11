@@ -1625,7 +1625,8 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
               verificationType: verificationTypeName,
               verificationStep: type,
             },
-            true // Use verification SMTP transporter
+            false, // useVerificationTransporter is deprecated
+            'verification' // Use verification category SMTP user
           );
           console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName}`);
         } else if (status === 'rejected') {
@@ -1639,7 +1640,8 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
               verificationStep: type,
               rejectionReason: rejectionReason || 'No reason provided',
             },
-            true // Use verification SMTP transporter
+            false, // useVerificationTransporter is deprecated
+            'verification' // Use verification category SMTP user
           );
           console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName}`);
         }
@@ -1664,7 +1666,7 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
           const { sendTemplatedEmail } = await import('../services/notifier.js');
           await sendTemplatedEmail(user.email, 'fully-verified', {
             firstName: user.firstName,
-          }, true); // Use verification SMTP transporter for fully verified email
+          }, false, 'verification'); // Use verification category SMTP user
           console.log('[Admin] Fully verified email sent to:', user.email);
         } catch (emailError) {
           console.error('[Admin] Failed to send fully verified email:', emailError);
