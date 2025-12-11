@@ -1143,13 +1143,13 @@ router.post('/register/verify-phone', async (req, res) => {
       travelDistance: user.travelDistance,
     });
 
-    // Send welcome email
+    // Send welcome email using no-reply category
     try {
       console.log('[Welcome Email] Sending welcome email to:', user.email);
       await sendTemplatedEmail(user.email, 'welcome', {
         firstName: user.firstName,
-      });
-      console.log('[Welcome Email] Welcome email sent successfully');
+      }, false, 'no-reply');
+      console.log('[Welcome Email] Welcome email sent successfully using no-reply category');
     } catch (welcomeEmailError) {
       console.error('[Welcome Email] Failed to send welcome email:', welcomeEmailError);
       // Don't fail registration if welcome email fails

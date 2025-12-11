@@ -3,41 +3,140 @@ import twilio from 'twilio';
 import dotenv from 'dotenv';
 import EmailTemplate from '../models/EmailTemplate.js';
 import SmtpConfig from '../models/SmtpConfig.js';
+import EmailCategorySmtp from '../models/EmailCategorySmtp.js';
 
 // Load environment variables first
 dotenv.config();
 
-// Get SMTP config from database or fallback to environment variables
-let SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_USER_VERIFICATION;
+// Global SMTP config (host, port, pass only)
+let SMTP_HOST, SMTP_PORT, SMTP_PASS;
+
+// Category-specific SMTP users (loaded from database)
+const categorySmtpUsers = new Map();
 
 async function loadSmtpConfig() {
   try {
-    const smtpConfig = await SmtpConfig.findOne();
+    // Load global SMTP config (host, port, pass)
+    let smtpConfig = await SmtpConfig.findOne();
     if (smtpConfig) {
       SMTP_HOST = smtpConfig.smtpHost;
       SMTP_PORT = smtpConfig.smtpPort;
-      SMTP_USER = smtpConfig.smtpUser;
       SMTP_PASS = smtpConfig.smtpPass;
-      SMTP_USER_VERIFICATION = smtpConfig.smtpUserVerification || '';
-      console.log('[Notifier] Using SMTP configuration from database');
+      console.log('[Notifier] Using global SMTP configuration from database');
     } else {
-      // Fallback to environment variables
-      SMTP_HOST = process.env.SMTP_HOST;
-      SMTP_PORT = process.env.SMTP_PORT;
-      SMTP_USER = process.env.SMTP_USER;
-      SMTP_PASS = process.env.SMTP_PASS;
-      SMTP_USER_VERIFICATION = process.env.SMTP_USER_VERIFICATION;
-      console.log('[Notifier] Using SMTP configuration from environment variables');
+      // Initialize from environment variables if available
+      if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_PASS) {
+        smtpConfig = await SmtpConfig.create({
+          smtpHost: process.env.SMTP_HOST,
+          smtpPort: parseInt(process.env.SMTP_PORT) || 587,
+          smtpPass: process.env.SMTP_PASS,
+        });
+        SMTP_HOST = smtpConfig.smtpHost;
+        SMTP_PORT = smtpConfig.smtpPort;
+        SMTP_PASS = smtpConfig.smtpPass;
+        console.log('[Notifier] Initialized global SMTP config from environment variables');
+      } else {
+        // Fallback to environment variables
+        SMTP_HOST = process.env.SMTP_HOST;
+        SMTP_PORT = process.env.SMTP_PORT;
+        SMTP_PASS = process.env.SMTP_PASS;
+        console.log('[Notifier] Using global SMTP configuration from environment variables');
+      }
     }
+
+    // Load category-specific SMTP users
+    const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+    for (const category of categories) {
+      let categorySmtp = await EmailCategorySmtp.findOne({ category });
+      
+      // Migrate old 'team' to 'no-reply' if exists
+      if (category === 'no-reply' && !categorySmtp) {
+        const oldTeamSmtp = await EmailCategorySmtp.findOne({ category: 'team' });
+        if (oldTeamSmtp) {
+          categorySmtp = await EmailCategorySmtp.create({
+            category: 'no-reply',
+            smtpUser: oldTeamSmtp.smtpUser,
+          });
+          console.log(`[Notifier] Migrated 'team' to 'no-reply' SMTP user`);
+        }
+      }
+      
+      if (!categorySmtp) {
+        let envValue = null;
+        
+        // Support category uses SMTP_USER directly
+        if (category === 'support') {
+          envValue = process.env.SMTP_USER;
+          if (envValue) {
+            categorySmtp = await EmailCategorySmtp.create({
+              category,
+              smtpUser: envValue,
+            });
+            console.log(`[Notifier] Initialized ${category} SMTP user from SMTP_USER`);
+          }
+        } else if (category === 'no-reply') {
+          // No-reply category uses SMTP_USER_NO_REPLY
+          envValue = process.env.SMTP_USER_NO_REPLY;
+          if (envValue) {
+            categorySmtp = await EmailCategorySmtp.create({
+              category,
+              smtpUser: envValue,
+            });
+            console.log(`[Notifier] Initialized ${category} SMTP user from SMTP_USER_NO_REPLY`);
+          } else {
+            // Fallback to default SMTP_USER if available
+            const defaultUser = process.env.SMTP_USER;
+            if (defaultUser) {
+              categorySmtp = await EmailCategorySmtp.create({
+                category,
+                smtpUser: defaultUser,
+              });
+              console.log(`[Notifier] Initialized ${category} SMTP user from default SMTP_USER`);
+            }
+          }
+        } else {
+          // Other categories use SMTP_USER_{CATEGORY}
+          const envVarName = `SMTP_USER_${category.toUpperCase()}`;
+          envValue = process.env[envVarName];
+          
+          if (envValue) {
+            categorySmtp = await EmailCategorySmtp.create({
+              category,
+              smtpUser: envValue,
+            });
+            console.log(`[Notifier] Initialized ${category} SMTP user from environment variable ${envVarName}`);
+          } else {
+            // Fallback to default SMTP_USER if available
+            const defaultUser = process.env.SMTP_USER;
+            if (defaultUser) {
+              categorySmtp = await EmailCategorySmtp.create({
+                category,
+                smtpUser: defaultUser,
+              });
+              console.log(`[Notifier] Initialized ${category} SMTP user from default SMTP_USER`);
+            }
+          }
+        }
+      }
+      
+      if (categorySmtp) {
+        categorySmtpUsers.set(category, categorySmtp.smtpUser);
+      }
+    }
+    
+    console.log('[Notifier] Category SMTP users loaded:', Object.fromEntries(categorySmtpUsers));
   } catch (error) {
     console.error('[Notifier] Error loading SMTP config from database, using environment variables:', error);
     // Fallback to environment variables
     SMTP_HOST = process.env.SMTP_HOST;
     SMTP_PORT = process.env.SMTP_PORT;
-    SMTP_USER = process.env.SMTP_USER;
     SMTP_PASS = process.env.SMTP_PASS;
-    SMTP_USER_VERIFICATION = process.env.SMTP_USER_VERIFICATION;
   }
+}
+
+// Get SMTP user for a category
+function getSmtpUserForCategory(category) {
+  return categorySmtpUsers.get(category) || process.env.SMTP_USER || '';
 }
 
 // Load SMTP config on module initialization
@@ -60,13 +159,10 @@ const {
 console.log('[Notifier] SMTP configuration check:', {
   hasHost: !!SMTP_HOST,
   hasPort: !!SMTP_PORT,
-  hasUser: !!SMTP_USER,
   hasPass: !!SMTP_PASS,
-  hasVerificationUser: !!SMTP_USER_VERIFICATION,
   host: SMTP_HOST || 'missing',
   port: SMTP_PORT || 'missing',
-  user: SMTP_USER || 'missing',
-  verificationUser: SMTP_USER_VERIFICATION || 'missing'
+  categoryUsers: Object.fromEntries(categorySmtpUsers)
 });
 
 // Debug logging for Twilio credentials
@@ -81,91 +177,32 @@ console.log('[Notifier] Twilio configuration check:', {
 let mailTransporter;
 let verificationMailTransporter;
 
-// Function to initialize transporters
-async function initializeTransporters() {
-  // Create default mail transporter
-  if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
-  console.log('[Notifier] Initializing SMTP transporter:', {
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465,
-    user: SMTP_USER,
-    hasPassword: !!SMTP_PASS
-  });
-  
-  try {
-  mailTransporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-    });
-    console.log('[Notifier] SMTP transporter created successfully');
-    
-    // Verify connection
-    mailTransporter.verify((error, success) => {
-      if (error) {
-        console.error('[Notifier] SMTP connection verification failed:', error);
-      } else {
-        console.log('[Notifier] SMTP connection verified successfully');
-      }
-    });
-  } catch (error) {
-    console.error('[Notifier] Failed to create SMTP transporter:', error);
+// Function to create transporter for a specific user
+function createTransporterForUser(smtpUser) {
+  if (!SMTP_HOST || !SMTP_PORT || !smtpUser || !SMTP_PASS) {
+    return null;
   }
-} else {
-  console.warn('[Notifier] SMTP configuration incomplete:', {
-    hasHost: !!SMTP_HOST,
-    hasPort: !!SMTP_PORT,
-    hasUser: !!SMTP_USER,
-    hasPass: !!SMTP_PASS
-  });
-}
-
-// Create verification-specific mail transporter
-if (SMTP_HOST && SMTP_PORT && SMTP_USER_VERIFICATION && SMTP_PASS) {
-  console.log('[Notifier] Initializing verification SMTP transporter:', {
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465,
-    user: SMTP_USER_VERIFICATION,
-    hasPassword: !!SMTP_PASS
-  });
   
   try {
-    verificationMailTransporter = nodemailer.createTransport({
+    return nodemailer.createTransport({
       host: SMTP_HOST,
       port: Number(SMTP_PORT),
       secure: Number(SMTP_PORT) === 465,
       auth: {
-        user: SMTP_USER_VERIFICATION,
+        user: smtpUser,
         pass: SMTP_PASS,
       },
     });
-    console.log('[Notifier] Verification SMTP transporter created successfully');
-    
-    // Verify connection
-    verificationMailTransporter.verify((error, success) => {
-      if (error) {
-        console.error('[Notifier] Verification SMTP connection verification failed:', error);
-      } else {
-        console.log('[Notifier] Verification SMTP connection verified successfully');
-      }
-    });
   } catch (error) {
-    console.error('[Notifier] Failed to create verification SMTP transporter:', error);
+    console.error('[Notifier] Failed to create SMTP transporter:', error);
+    return null;
   }
-  } else {
-    console.warn('[Notifier] Verification SMTP configuration incomplete:', {
-      hasHost: !!SMTP_HOST,
-      hasPort: !!SMTP_PORT,
-      hasUser: !!SMTP_USER_VERIFICATION,
-      hasPass: !!SMTP_PASS
-    });
-  }
+}
+
+// Function to initialize transporters (deprecated - now using dynamic transporters)
+async function initializeTransporters() {
+  // This function is kept for backward compatibility but transporters are now created dynamically
+  console.log('[Notifier] Transporter initialization skipped - using dynamic transporters per category');
 }
 
 // Initialize transporters on module load
@@ -203,11 +240,12 @@ export function renderEmailTemplate(templateBody, variables) {
 }
 
 // Send email using template with optional verification transporter
-export async function sendTemplatedEmail(to, templateType, variables = {}, useVerificationTransporter = false) {
+export async function sendTemplatedEmail(to, templateType, variables = {}, useVerificationTransporter = false, categoryOverride = null) {
   console.log('[EMAIL] sendTemplatedEmail called:', {
     to: to || 'missing',
     templateType: templateType || 'missing',
     variables: Object.keys(variables),
+    categoryOverride: categoryOverride || 'none',
     timestamp: new Date().toISOString()
   });
 
@@ -220,14 +258,39 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
   }
 
   try {
-    const template = await EmailTemplate.findOne({ 
-      type: templateType, 
-      isActive: true 
-    });
+    // Build query - if categoryOverride is provided, use it; otherwise find by type only
+    let template;
+    
+    if (categoryOverride) {
+      // First try to find template with the specified category
+      template = await EmailTemplate.findOne({ 
+        type: templateType,
+        category: categoryOverride,
+        isActive: true 
+      });
+      
+      // If not found with categoryOverride, try without category (for backward compatibility)
+      if (!template) {
+        template = await EmailTemplate.findOne({ 
+          type: templateType, 
+          isActive: true 
+        });
+        // If found, update its category to match categoryOverride (optional - for future use)
+        if (template) {
+          console.log(`[EMAIL] Template found without category, using categoryOverride: ${categoryOverride}`);
+        }
+      }
+    } else {
+      template = await EmailTemplate.findOne({ 
+        type: templateType, 
+        isActive: true 
+      });
+    }
 
     if (!template) {
       console.error('[EMAIL] Template not found:', {
         templateType,
+        categoryOverride: categoryOverride || 'none',
         isActive: true
       });
       return null;
@@ -254,29 +317,37 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
       bodyLength: htmlBody.length
     });
 
-    // Use verification transporter if requested and available, otherwise use default
-    const transporter = useVerificationTransporter && verificationMailTransporter 
-      ? verificationMailTransporter 
-      : mailTransporter;
+    // Get SMTP user for the template's category
+    // Use categoryOverride if provided, otherwise use template's category
+    const category = categoryOverride || template.category || 'verification';
+    const smtpUser = getSmtpUserForCategory(category);
     
-    const transporterType = useVerificationTransporter && verificationMailTransporter 
-      ? 'verification' 
-      : 'default';
-
-    if (!transporter) {
-      console.warn(`[EMAIL] ${transporterType} SMTP is not configured. Email would be sent with template:`, {
+    if (!smtpUser) {
+      console.warn(`[EMAIL] No SMTP user configured for category ${category}. Email would be sent with template:`, {
         to,
         subject,
         templateType,
-        useVerificationTransporter
+        category
       });
       return null;
     }
 
-    // Use verification email address if using verification transporter, otherwise use default SMTP user
-    const fromEmail = useVerificationTransporter && SMTP_USER_VERIFICATION 
-      ? SMTP_USER_VERIFICATION 
-      : SMTP_USER;
+    // Create transporter dynamically for this category
+    const transporter = createTransporterForUser(smtpUser);
+    
+    if (!transporter) {
+      console.warn(`[EMAIL] Failed to create SMTP transporter for category ${category}. Email would be sent with template:`, {
+        to,
+        subject,
+        templateType,
+        category,
+        smtpUser
+      });
+      return null;
+    }
+
+    // Use the category-specific SMTP user as from email
+    const fromEmail = smtpUser;
 
     const emailOptions = {
       from: fromEmail,
@@ -285,12 +356,13 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
       html: htmlBody,
     };
 
-    console.log(`[EMAIL] Attempting to send templated email using ${transporterType} transporter:`, {
+    console.log(`[EMAIL] Attempting to send templated email using category ${category} transporter:`, {
       from: emailOptions.from,
       to: emailOptions.to,
       subject: emailOptions.subject,
       templateType,
-      useVerificationTransporter,
+      category,
+      smtpUser,
       timestamp: new Date().toISOString()
     });
 

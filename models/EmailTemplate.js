@@ -11,7 +11,7 @@ const emailTemplateSchema = new mongoose.Schema(
         'orders',
         'notification',
         'support',
-        'team',
+        'no-reply',
       ],
     },
     type: {

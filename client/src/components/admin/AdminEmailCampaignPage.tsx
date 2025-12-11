@@ -37,22 +37,19 @@ const categories = [
   { value: "orders", label: "Orders", icon: "📦", color: "bg-purple-500" },
   { value: "notification", label: "Notification", icon: "🔔", color: "bg-yellow-500" },
   { value: "support", label: "Support", icon: "💬", color: "bg-red-500" },
-  { value: "team", label: "Team", icon: "👥", color: "bg-indigo-500" },
+  { value: "no-reply", label: "No-Reply", icon: "📧", color: "bg-indigo-500" },
 ];
 
 const defaultLogoUrl = "https://res.cloudinary.com/drv3pneh8/image/upload/v1765138083/71632be70905a17fd389a8d053249645c4e8a4df_wvs6z6.png";
 
 interface SmtpSettings {
-  smtpEmail: string;
-  smtpPassword: string;
+  smtpUser: string;
 }
 
 interface GlobalSmtpConfig {
   smtpHost: string;
   smtpPort: number;
-  smtpUser: string;
   smtpPass: string;
-  smtpUserVerification: string;
 }
 
 export default function AdminEmailCampaignPage() {
@@ -65,17 +62,14 @@ export default function AdminEmailCampaignPage() {
   const [loading, setLoading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({
-    smtpEmail: "",
-    smtpPassword: "",
+    smtpUser: "",
   });
   const [isSavingSmtp, setIsSavingSmtp] = useState(false);
   const [isEditingSmtp, setIsEditingSmtp] = useState(false);
   const [globalSmtpConfig, setGlobalSmtpConfig] = useState<GlobalSmtpConfig>({
     smtpHost: "",
     smtpPort: 587,
-    smtpUser: "",
     smtpPass: "",
-    smtpUserVerification: "",
   });
   const [isSavingGlobalSmtp, setIsSavingGlobalSmtp] = useState(false);
   const [isEditingGlobalSmtp, setIsEditingGlobalSmtp] = useState(false);
@@ -116,13 +110,11 @@ export default function AdminEmailCampaignPage() {
       const data = await response.json();
       if (data.smtpSettings) {
         setSmtpSettings({
-          smtpEmail: data.smtpSettings.smtpEmail || "",
-          smtpPassword: data.smtpSettings.smtpPassword === "***" ? "" : data.smtpSettings.smtpPassword || "",
+          smtpUser: data.smtpSettings.smtpUser || "",
         });
       } else {
         setSmtpSettings({
-          smtpEmail: "",
-          smtpPassword: "",
+          smtpUser: "",
         });
       }
       setIsEditingSmtp(false);
@@ -150,19 +142,21 @@ export default function AdminEmailCampaignPage() {
         setGlobalSmtpConfig({
           smtpHost: data.smtpConfig.smtpHost || "",
           smtpPort: data.smtpConfig.smtpPort || 587,
-          smtpUser: data.smtpConfig.smtpUser || "",
           // If password is masked (***), keep empty. Otherwise, use the value (from env vars if not saved yet)
           smtpPass: data.smtpConfig.smtpPass === "***" ? "" : (data.smtpConfig.smtpPass || ""),
-          smtpUserVerification: data.smtpConfig.smtpUserVerification || "",
+        });
+        console.log('Loaded SMTP config:', {
+          host: data.smtpConfig.smtpHost,
+          port: data.smtpConfig.smtpPort,
+          hasPass: !!data.smtpConfig.smtpPass && data.smtpConfig.smtpPass !== "***",
+          passIsMasked: data.smtpConfig.smtpPass === "***"
         });
       } else {
         // Fallback to empty values if no config and no env vars
         setGlobalSmtpConfig({
           smtpHost: "",
           smtpPort: 587,
-          smtpUser: "",
           smtpPass: "",
-          smtpUserVerification: "",
         });
       }
       setIsEditingGlobalSmtp(false);
@@ -171,16 +165,14 @@ export default function AdminEmailCampaignPage() {
       setGlobalSmtpConfig({
         smtpHost: "",
         smtpPort: 587,
-        smtpUser: "",
         smtpPass: "",
-        smtpUserVerification: "",
       });
     }
   };
 
   const handleSaveSmtp = async () => {
-    if (!smtpSettings.smtpEmail || !smtpSettings.smtpPassword) {
-      toast.error("Please fill in both email and password");
+    if (!smtpSettings.smtpUser) {
+      toast.error("Please fill in SMTP user");
       return;
     }
 
@@ -193,8 +185,7 @@ export default function AdminEmailCampaignPage() {
         },
         credentials: "include",
         body: JSON.stringify({
-          smtpEmail: smtpSettings.smtpEmail,
-          smtpPassword: smtpSettings.smtpPassword,
+          smtpUser: smtpSettings.smtpUser,
         }),
       });
 
@@ -216,8 +207,8 @@ export default function AdminEmailCampaignPage() {
   };
 
   const handleSaveGlobalSmtp = async () => {
-    if (!globalSmtpConfig.smtpHost || !globalSmtpConfig.smtpPort || !globalSmtpConfig.smtpUser || !globalSmtpConfig.smtpPass) {
-      toast.error("Please fill in all required fields (Host, Port, User, Password)");
+    if (!globalSmtpConfig.smtpHost || !globalSmtpConfig.smtpPort || !globalSmtpConfig.smtpPass) {
+      toast.error("Please fill in all required fields (Host, Port, Password)");
       return;
     }
 
@@ -232,9 +223,7 @@ export default function AdminEmailCampaignPage() {
         body: JSON.stringify({
           smtpHost: globalSmtpConfig.smtpHost,
           smtpPort: globalSmtpConfig.smtpPort,
-          smtpUser: globalSmtpConfig.smtpUser,
           smtpPass: globalSmtpConfig.smtpPass,
-          smtpUserVerification: globalSmtpConfig.smtpUserVerification,
         }),
       });
 
@@ -522,20 +511,6 @@ export default function AdminEmailCampaignPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="smtpUser" className="text-black dark:text-white">
-                    SMTP User (Default) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="smtpUser"
-                    value={globalSmtpConfig.smtpUser}
-                    onChange={(e) =>
-                      setGlobalSmtpConfig({ ...globalSmtpConfig, smtpUser: e.target.value })
-                    }
-                    placeholder="e.g., noreply@example.com"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="smtpPass" className="text-black dark:text-white">
                     SMTP Password <span className="text-red-500">*</span>
                   </Label>
@@ -549,23 +524,6 @@ export default function AdminEmailCampaignPage() {
                     placeholder="Enter SMTP password"
                     className="mt-1"
                   />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="smtpUserVerification" className="text-black dark:text-white">
-                    SMTP User (Verification) <span className="text-gray-500">(Optional)</span>
-                  </Label>
-                  <Input
-                    id="smtpUserVerification"
-                    value={globalSmtpConfig.smtpUserVerification}
-                    onChange={(e) =>
-                      setGlobalSmtpConfig({ ...globalSmtpConfig, smtpUserVerification: e.target.value })
-                    }
-                    placeholder="e.g., verification@example.com"
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Optional: Separate email account for verification emails
-                  </p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -604,19 +562,9 @@ export default function AdminEmailCampaignPage() {
                       <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpPort}</span>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-black dark:text-white">User (Default):</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpUser}</span>
-                    </div>
-                    <div>
                       <span className="text-sm font-medium text-black dark:text-white">Password:</span>
                       <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">••••••••</span>
                     </div>
-                    {globalSmtpConfig.smtpUserVerification && (
-                      <div className="md:col-span-2">
-                        <span className="text-sm font-medium text-black dark:text-white">User (Verification):</span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpUserVerification}</span>
-                      </div>
-                    )}
                   </div>
                 </>
               ) : (
@@ -681,44 +629,30 @@ export default function AdminEmailCampaignPage() {
                 size="sm"
               >
                 <Edit className="w-4 h-4 mr-2" />
-                {smtpSettings.smtpEmail ? "Edit" : "Configure"}
+                {smtpSettings.smtpUser ? "Edit" : "Configure"}
               </Button>
             )}
           </div>
 
           {isEditingSmtp ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="smtpEmail" className="text-black dark:text-white">
-                    SMTP Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="smtpEmail"
-                    type="email"
-                    value={smtpSettings.smtpEmail}
-                    onChange={(e) =>
-                      setSmtpSettings({ ...smtpSettings, smtpEmail: e.target.value })
-                    }
-                    placeholder="e.g., verification@example.com"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="smtpPassword" className="text-black dark:text-white">
-                    SMTP Password <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="smtpPassword"
-                    type="password"
-                    value={smtpSettings.smtpPassword}
-                    onChange={(e) =>
-                      setSmtpSettings({ ...smtpSettings, smtpPassword: e.target.value })
-                    }
-                    placeholder="Enter SMTP password"
-                    className="mt-1"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="smtpUser" className="text-black dark:text-white">
+                  SMTP User (Email Address) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="smtpUser"
+                  type="email"
+                  value={smtpSettings.smtpUser}
+                  onChange={(e) =>
+                    setSmtpSettings({ ...smtpSettings, smtpUser: e.target.value })
+                  }
+                  placeholder={`e.g., ${activeTab}@example.com`}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  This email address will be used as the "from" address for emails in this category
+                </p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -744,20 +678,14 @@ export default function AdminEmailCampaignPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {smtpSettings.smtpEmail ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-black dark:text-white">Email:</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{smtpSettings.smtpEmail}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-black dark:text-white">Password:</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">••••••••</span>
-                  </div>
-                </>
+              {smtpSettings.smtpUser ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-black dark:text-white">SMTP User:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{smtpSettings.smtpUser}</span>
+                </div>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No SMTP settings configured. Click "Configure" to set up.
+                  No SMTP user configured. Click "Configure" to set up.
                 </p>
               )}
             </div>

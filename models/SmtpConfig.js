@@ -13,20 +13,10 @@ const smtpConfigSchema = new mongoose.Schema(
       min: 1,
       max: 65535,
     },
-    smtpUser: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     smtpPass: {
       type: String,
       required: true,
       // Password will be stored (consider encryption in production)
-    },
-    smtpUserVerification: {
-      type: String,
-      trim: true,
-      // Optional: verification-specific SMTP user
     },
   },
   {

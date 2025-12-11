@@ -2010,7 +2010,7 @@ router.post('/email-templates', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Category, type, subject, and body are required' });
     }
 
-    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'team'];
+    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
     if (!validCategories.includes(category)) {
       return res.status(400).json({ error: 'Invalid template category' });
     }
@@ -2088,21 +2088,27 @@ router.delete('/email-templates/:category/:type', requireAdmin, async (req, res)
   }
 });
 
-// Get SMTP configuration
+// Get SMTP configuration (Global: host, port, pass only)
 router.get('/smtp-config', requireAdmin, async (req, res) => {
   try {
-    const smtpConfig = await SmtpConfig.findOne();
+    let smtpConfig = await SmtpConfig.findOne();
     
     if (!smtpConfig) {
-      // If no config in database, return environment variables as defaults
+      // If no config in database, return environment variables as defaults (for initial display)
+      // Don't auto-create, let admin save it explicitly
+      const envConfig = {
+        smtpHost: process.env.SMTP_HOST || '',
+        smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
+        smtpPass: process.env.SMTP_PASS || '', // Return actual value from env, not masked
+      };
+      console.log('Returning SMTP config from environment variables:', {
+        hasHost: !!envConfig.smtpHost,
+        hasPort: !!envConfig.smtpPort,
+        hasPass: !!envConfig.smtpPass,
+        passLength: envConfig.smtpPass ? envConfig.smtpPass.length : 0
+      });
       return res.json({
-        smtpConfig: {
-          smtpHost: process.env.SMTP_HOST || '',
-          smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-          smtpUser: process.env.SMTP_USER || '',
-          smtpPass: process.env.SMTP_PASS || '',
-          smtpUserVerification: process.env.SMTP_USER_VERIFICATION || '',
-        },
+        smtpConfig: envConfig,
       });
     }
     
@@ -2111,9 +2117,7 @@ router.get('/smtp-config', requireAdmin, async (req, res) => {
       smtpConfig: {
         smtpHost: smtpConfig.smtpHost,
         smtpPort: smtpConfig.smtpPort,
-        smtpUser: smtpConfig.smtpUser,
         smtpPass: smtpConfig.smtpPass ? '***' : '',
-        smtpUserVerification: smtpConfig.smtpUserVerification || '',
       },
     });
   } catch (error) {
@@ -2122,13 +2126,125 @@ router.get('/smtp-config', requireAdmin, async (req, res) => {
   }
 });
 
-// Create or update SMTP configuration
+// Get SMTP user for a category
+router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+    
+    let smtpSettings = await EmailCategorySmtp.findOne({ category });
+    
+    // Migrate old 'team' to 'no-reply' if exists
+    if (category === 'no-reply' && !smtpSettings) {
+      const oldTeamSmtp = await EmailCategorySmtp.findOne({ category: 'team' });
+      if (oldTeamSmtp) {
+        smtpSettings = await EmailCategorySmtp.create({
+          category: 'no-reply',
+          smtpUser: oldTeamSmtp.smtpUser,
+        });
+        console.log(`Migrated 'team' to 'no-reply' SMTP user`);
+      }
+    }
+    
+    if (!smtpSettings) {
+      let envValue = null;
+      
+      // Support category uses SMTP_USER directly
+      if (category === 'support') {
+        envValue = process.env.SMTP_USER;
+        if (envValue) {
+          smtpSettings = await EmailCategorySmtp.create({
+            category,
+            smtpUser: envValue,
+          });
+          console.log(`Initialized ${category} SMTP user from SMTP_USER`);
+        }
+      } else if (category === 'no-reply') {
+        // No-reply category uses SMTP_USER_NO_REPLY
+        envValue = process.env.SMTP_USER_NO_REPLY;
+        if (envValue) {
+          smtpSettings = await EmailCategorySmtp.create({
+            category,
+            smtpUser: envValue,
+          });
+          console.log(`Initialized ${category} SMTP user from SMTP_USER_NO_REPLY`);
+        }
+      } else {
+        // Other categories use SMTP_USER_{CATEGORY}
+        const envVarName = `SMTP_USER_${category.toUpperCase()}`;
+        envValue = process.env[envVarName];
+        
+        if (envValue) {
+          smtpSettings = await EmailCategorySmtp.create({
+            category,
+            smtpUser: envValue,
+          });
+          console.log(`Initialized ${category} SMTP user from environment variable ${envVarName}`);
+        }
+      }
+      
+      if (!smtpSettings) {
+        return res.json({ smtpSettings: null });
+      }
+    }
+    
+    return res.json({
+      smtpSettings: {
+        category: smtpSettings.category,
+        smtpUser: smtpSettings.smtpUser,
+      },
+    });
+  } catch (error) {
+    console.error('Get email category SMTP error', error);
+    return res.status(500).json({ error: 'Failed to fetch SMTP settings' });
+  }
+});
+
+// Create or update SMTP user for a category
+router.put('/email-category-smtp/:category', requireAdmin, async (req, res) => {
+  try {
+    const { category } = req.params;
+    const { smtpUser } = req.body;
+    
+    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+    
+    if (!smtpUser) {
+      return res.status(400).json({ error: 'SMTP user is required' });
+    }
+    
+    const smtpSettings = await EmailCategorySmtp.findOneAndUpdate(
+      { category },
+      { smtpUser: smtpUser.trim() },
+      { upsert: true, new: true, runValidators: true }
+    );
+    
+    return res.json({
+      message: 'SMTP user saved successfully',
+      smtpSettings: {
+        category: smtpSettings.category,
+        smtpUser: smtpSettings.smtpUser,
+      },
+    });
+  } catch (error) {
+    console.error('Save email category SMTP error', error);
+    return res.status(500).json({ error: 'Failed to save SMTP settings' });
+  }
+});
+
+// Create or update SMTP configuration (Global: host, port, pass only)
 router.put('/smtp-config', requireAdmin, async (req, res) => {
   try {
-    const { smtpHost, smtpPort, smtpUser, smtpPass, smtpUserVerification } = req.body;
+    const { smtpHost, smtpPort, smtpPass } = req.body;
     
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
-      return res.status(400).json({ error: 'SMTP host, port, user, and password are required' });
+    if (!smtpHost || !smtpPort || !smtpPass) {
+      return res.status(400).json({ error: 'SMTP host, port, and password are required' });
     }
     
     const port = parseInt(smtpPort);
@@ -2140,8 +2256,6 @@ router.put('/smtp-config', requireAdmin, async (req, res) => {
     const updateData = {
       smtpHost: smtpHost.trim(),
       smtpPort: port,
-      smtpUser: smtpUser.trim(),
-      smtpUserVerification: smtpUserVerification ? smtpUserVerification.trim() : '',
     };
     
     // Only update password if it's not masked
@@ -2173,9 +2287,7 @@ router.put('/smtp-config', requireAdmin, async (req, res) => {
       smtpConfig: {
         smtpHost: smtpConfig.smtpHost,
         smtpPort: smtpConfig.smtpPort,
-        smtpUser: smtpConfig.smtpUser,
         smtpPass: '***',
-        smtpUserVerification: smtpConfig.smtpUserVerification || '',
       },
     });
   } catch (error) {

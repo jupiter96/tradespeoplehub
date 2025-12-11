@@ -12,18 +12,13 @@ const emailCategorySmtpSchema = new mongoose.Schema(
         'orders',
         'notification',
         'support',
-        'team',
+        'no-reply',
       ],
     },
-    smtpEmail: {
+    smtpUser: {
       type: String,
       required: true,
       trim: true,
-    },
-    smtpPassword: {
-      type: String,
-      required: true,
-      // Password will be stored (consider encryption in production)
     },
   },
   {
