@@ -205,10 +205,11 @@ const generateSubCategoryNames = (serviceCategoryName, attributeType, level) => 
 };
 
 // Generate service subcategory data
-const generateServiceSubCategoryData = (name, serviceCategoryId, parentSubCategoryId, level, attributeType = null, order = 1, serviceCategoryName = '') => {
-  // For nested subcategories (level > 1), include service category name to ensure uniqueness
-  const baseName = level > 1 && serviceCategoryName 
-    ? `${name} - ${serviceCategoryName}` 
+const generateServiceSubCategoryData = (name, serviceCategoryId, parentSubCategoryId, level, attributeType = null, order = 1, serviceCategoryName = '', parentSubCategoryName = '') => {
+  // For nested subcategories (level > 1), include parent subcategory name to ensure uniqueness within parent
+  // This ensures names are unique per parent subcategory, not just per service category
+  const baseName = level > 1 && parentSubCategoryName 
+    ? `${name} - ${parentSubCategoryName}` 
     : name;
   
   return {
@@ -312,35 +313,45 @@ const createNestedSubCategories = async (serviceCategory, parentSubCategory, cur
       createdNamesInBatch.add(name);
     }
     
-    // For nested subcategories, use unique name with service category
-    const uniqueName = currentLevel > 1 ? name : name;
     const order = maxOrder + i + 1;
+    
+    // For nested subcategories (level > 1), we'll append parent name in generateServiceSubCategoryData
+    // So we check existence using the base name, but the actual stored name will include parent
+    const baseName = name;
+    const parentSubCategoryName = parentSubCategory ? parentSubCategory.name : '';
+    
+    // For nested subcategories, the final name will be "name - parentName"
+    // So we need to check if that combination already exists
+    const finalName = currentLevel > 1 && parentSubCategoryName 
+      ? `${baseName} - ${parentSubCategoryName}` 
+      : baseName;
     
     // Check if subcategory already exists in database
     const existingQuery = parentSubCategory
-      ? { parentSubCategory: parentSubCategory._id, name: uniqueName }
-      : { serviceCategory: serviceCategoryId, parentSubCategory: null, name: uniqueName, attributeType: attributeType };
+      ? { parentSubCategory: parentSubCategory._id, name: finalName }
+      : { serviceCategory: serviceCategoryId, parentSubCategory: null, name: finalName, attributeType: attributeType };
     
     const existing = await ServiceSubCategory.findOne(existingQuery);
     if (existing) {
-      console.log(`    ⚠️  Subcategory "${uniqueName}" (Level ${currentLevel}) already exists, skipping...`);
+      console.log(`    ⚠️  Subcategory "${finalName}" (Level ${currentLevel}) already exists, skipping...`);
       continue;
     }
 
     // Create subcategory
     const subCategoryData = generateServiceSubCategoryData(
-      uniqueName,
+      baseName,
       serviceCategoryId,
       parentSubCategory ? parentSubCategory._id : null,
       currentLevel,
       currentLevel === 1 ? attributeType : null,
       order,
-      serviceCategoryName
+      serviceCategoryName,
+      parentSubCategoryName
     );
 
     const subCategory = await ServiceSubCategory.create(subCategoryData);
     created.push(subCategory);
-    console.log(`    ✅ Created subcategory: ${name} (Level ${currentLevel}, Order: ${order})`);
+    console.log(`    ✅ Created subcategory: ${subCategoryData.name} (Level ${currentLevel}, Order: ${order})`);
 
     // Recursively create nested subcategories
     if (currentLevel < maxLevel) {
