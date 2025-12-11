@@ -127,10 +127,34 @@ async function loadSmtpConfig() {
     console.log('[Notifier] Category SMTP users loaded:', Object.fromEntries(categorySmtpUsers));
   } catch (error) {
     console.error('[Notifier] Error loading SMTP config from database, using environment variables:', error);
-    // Fallback to environment variables
+    // Fallback to environment variables for global config
     SMTP_HOST = process.env.SMTP_HOST;
     SMTP_PORT = process.env.SMTP_PORT;
     SMTP_PASS = process.env.SMTP_PASS;
+    
+    // Still try to initialize category SMTP users from environment variables even if DB fails
+    try {
+      const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+      for (const category of categories) {
+        let envValue = null;
+        
+        if (category === 'support') {
+          envValue = process.env.SMTP_USER;
+        } else if (category === 'no-reply') {
+          envValue = process.env.SMTP_USER_NO_REPLY || process.env.SMTP_USER;
+        } else {
+          const envVarName = `SMTP_USER_${category.toUpperCase()}`;
+          envValue = process.env[envVarName] || process.env.SMTP_USER;
+        }
+        
+        if (envValue) {
+          categorySmtpUsers.set(category, envValue);
+        }
+      }
+      console.log('[Notifier] Category SMTP users loaded from environment variables (fallback):', Object.fromEntries(categorySmtpUsers));
+    } catch (fallbackError) {
+      console.error('[Notifier] Error loading category SMTP users from environment variables:', fallbackError);
+    }
   }
 }
 
@@ -239,13 +263,27 @@ export function renderEmailTemplate(templateBody, variables) {
   return rendered;
 }
 
-// Send email using template with optional verification transporter
-export async function sendTemplatedEmail(to, templateType, variables = {}, useVerificationTransporter = false, categoryOverride = null) {
+/**
+ * Send email using template with category-specific SMTP configuration
+ * 
+ * @param {string} to - Recipient email address
+ * @param {string} templateType - Template type (e.g., 'welcome', 'verification', 'verification-approved')
+ * @param {object} variables - Template variables for rendering
+ * @param {string} category - Email category that determines SMTP user:
+ *   - 'verification': Uses SMTP_USER_VERIFICATION (for verification codes, approval/rejection emails)
+ *   - 'no-reply': Uses SMTP_USER_NO_REPLY (for welcome emails, notifications)
+ *   - 'listing': Uses SMTP_USER_LISTING
+ *   - 'orders': Uses SMTP_USER_ORDERS
+ *   - 'notification': Uses SMTP_USER_NOTIFICATION
+ *   - 'support': Uses SMTP_USER
+ * @returns {Promise<object|null>} - Email sending result or null if failed
+ */
+export async function sendTemplatedEmail(to, templateType, variables = {}, category = null) {
   console.log('[EMAIL] sendTemplatedEmail called:', {
     to: to || 'missing',
     templateType: templateType || 'missing',
     variables: Object.keys(variables),
-    categoryOverride: categoryOverride || 'none',
+    category: category || 'auto-detect',
     timestamp: new Date().toISOString()
   });
 
@@ -258,29 +296,30 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
   }
 
   try {
-    // Build query - if categoryOverride is provided, use it; otherwise find by type only
+    // Find email template
+    // If category is provided, try to find template with that category first
     let template;
     
-    if (categoryOverride) {
+    if (category) {
       // First try to find template with the specified category
       template = await EmailTemplate.findOne({ 
         type: templateType,
-        category: categoryOverride,
+        category: category,
         isActive: true 
       });
       
-      // If not found with categoryOverride, try without category (for backward compatibility)
+      // If not found with category, try without category (for backward compatibility)
       if (!template) {
         template = await EmailTemplate.findOne({ 
           type: templateType, 
           isActive: true 
         });
-        // If found, update its category to match categoryOverride (optional - for future use)
         if (template) {
-          console.log(`[EMAIL] Template found without category, using categoryOverride: ${categoryOverride}`);
+          console.log(`[EMAIL] Template found without category, using provided category: ${category}`);
         }
       }
     } else {
+      // Auto-detect: find template by type only
       template = await EmailTemplate.findOne({ 
         type: templateType, 
         isActive: true 
@@ -290,7 +329,7 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
     if (!template) {
       console.error('[EMAIL] Template not found:', {
         templateType,
-        categoryOverride: categoryOverride || 'none',
+        category: category || 'auto-detect',
         isActive: true
       });
       return null;
@@ -317,61 +356,56 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
       bodyLength: htmlBody.length
     });
 
-    // Get SMTP user for the template's category
-    // Use categoryOverride if provided, otherwise use template's category
-    const category = categoryOverride || template.category || 'verification';
-    const smtpUser = getSmtpUserForCategory(category);
+    // Determine the category to use for SMTP configuration
+    // Priority: 1) Provided category parameter, 2) Template's category, 3) Default to 'verification'
+    const emailCategory = category || template.category || 'verification';
+    const smtpUser = getSmtpUserForCategory(emailCategory);
     
     if (!smtpUser) {
-      console.warn(`[EMAIL] No SMTP user configured for category ${category}. Email would be sent with template:`, {
+      console.warn(`[EMAIL] No SMTP user configured for category ${emailCategory}. Email cannot be sent:`, {
         to,
         subject,
         templateType,
-        category
+        category: emailCategory
       });
       return null;
     }
 
-    // Create transporter dynamically for this category
+    // Create transporter dynamically for this category's SMTP user
     const transporter = createTransporterForUser(smtpUser);
     
     if (!transporter) {
-      console.warn(`[EMAIL] Failed to create SMTP transporter for category ${category}. Email would be sent with template:`, {
+      console.warn(`[EMAIL] Failed to create SMTP transporter for category ${emailCategory}. Email cannot be sent:`, {
         to,
         subject,
         templateType,
-        category,
+        category: emailCategory,
         smtpUser
       });
       return null;
     }
 
-    // Use the category-specific SMTP user as from email
-    const fromEmail = smtpUser;
-
+    // Use the category-specific SMTP user as 'from' email address
     const emailOptions = {
-      from: fromEmail,
+      from: smtpUser,
       to,
       subject,
       html: htmlBody,
     };
 
-    console.log(`[EMAIL] Attempting to send templated email using category ${category} transporter:`, {
-      from: emailOptions.from,
+    console.log(`[EMAIL] Sending email with category ${emailCategory} (from: ${smtpUser}):`, {
       to: emailOptions.to,
-      subject: emailOptions.subject,
+      subject: emailOptions.subject.substring(0, 50) + '...',
       templateType,
-      category,
-      smtpUser,
+      category: emailCategory,
       timestamp: new Date().toISOString()
     });
 
     const result = await transporter.sendMail(emailOptions);
-    console.log('[EMAIL] Templated email sent successfully:', {
+    console.log(`[EMAIL] Email sent successfully (category: ${emailCategory}):`, {
       messageId: result.messageId,
-      response: result.response,
-      accepted: result.accepted,
-      rejected: result.rejected,
+      from: smtpUser,
+      to: result.accepted,
       templateType,
       timestamp: new Date().toISOString()
     });
@@ -391,14 +425,20 @@ export async function sendTemplatedEmail(to, templateType, variables = {}, useVe
   }
 }
 
+/**
+ * Send email verification code to user during registration
+ * Uses SMTP_USER_VERIFICATION (category: verification) as 'from' address
+ * 
+ * @param {string} to - Recipient email address
+ * @param {string} code - Verification code
+ * @param {string} firstName - User's first name
+ * @returns {Promise<object|void>} - Email sending result or void if failed
+ */
 export async function sendEmailVerificationCode(to, code, firstName = 'User') {
   console.log('[EMAIL] sendEmailVerificationCode called:', {
     to: to || 'missing',
     code: code || 'missing',
     firstName: firstName,
-    hasTo: !!to,
-    hasCode: !!code,
-    codeLength: code?.length || 0,
     timestamp: new Date().toISOString()
   });
 
@@ -412,12 +452,12 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
 
   logCode('email', to, code);
 
-  // Try to use template first (with verification category)
+  // Try to use template first (category: verification)
   try {
     const result = await sendTemplatedEmail(to, 'verification', {
       firstName: firstName,
       code: code,
-    }, false, 'verification'); // Use verification category SMTP user
+    }, 'verification'); // Use verification category SMTP user
     if (result) {
       return result;
     }

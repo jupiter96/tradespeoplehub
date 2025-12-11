@@ -50,6 +50,7 @@ const defaultTemplates = [
   },
   {
     type: 'welcome',
+    category: 'no-reply', // Welcome emails are sent from no-reply address
     subject: 'Welcome to Sortars! Your account is ready',
     body: `
 <!DOCTYPE html>
@@ -396,8 +397,16 @@ async function createDefaultTemplates() {
 
     for (const template of defaultTemplates) {
       const existing = await EmailTemplate.findOne({ type: template.type });
+      
       if (existing) {
-        console.log(`Template ${template.type} already exists, skipping...`);
+        // Special handling for welcome template: update category to 'no-reply' if it's not already set
+        if (template.type === 'welcome' && template.category === 'no-reply' && existing.category !== 'no-reply') {
+          existing.category = 'no-reply';
+          await existing.save();
+          console.log(`Updated welcome template category to 'no-reply'`);
+        } else {
+          console.log(`Template ${template.type} already exists, skipping...`);
+        }
         continue;
       }
 
@@ -407,8 +416,13 @@ async function createDefaultTemplates() {
         body: template.body.replace(/\{\{logoUrl\}\}/g, logoUrl),
       };
 
+      // Ensure category is set (default to 'verification' if not specified)
+      if (!templateData.category) {
+        templateData.category = 'verification';
+      }
+
       await EmailTemplate.create(templateData);
-      console.log(`Created default template: ${template.type}`);
+      console.log(`Created default template: ${template.type} (category: ${templateData.category})`);
     }
 
     console.log('Default email templates created successfully!');

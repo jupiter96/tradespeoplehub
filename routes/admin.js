@@ -1616,7 +1616,7 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
         const verificationTypeName = verificationTypeNames[type] || type;
 
         if (status === 'verified') {
-          // Send approval email for this verification step
+          // Send approval email for this verification step (category: verification -> SMTP_USER_VERIFICATION)
           await sendTemplatedEmail(
             user.email, 
             'verification-approved', 
@@ -1625,12 +1625,11 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
               verificationType: verificationTypeName,
               verificationStep: type,
             },
-            false, // useVerificationTransporter is deprecated
-            'verification' // Use verification category SMTP user
+            'verification' // Category: verification -> Uses SMTP_USER_VERIFICATION
           );
-          console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName}`);
+          console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
         } else if (status === 'rejected') {
-          // Send rejection email
+          // Send rejection email (category: verification -> SMTP_USER_VERIFICATION)
           await sendTemplatedEmail(
             user.email, 
             'verification-rejected', 
@@ -1640,10 +1639,9 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
               verificationStep: type,
               rejectionReason: rejectionReason || 'No reason provided',
             },
-            false, // useVerificationTransporter is deprecated
-            'verification' // Use verification category SMTP user
+            'verification' // Category: verification -> Uses SMTP_USER_VERIFICATION
           );
-          console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName}`);
+          console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
         }
       } catch (emailError) {
         console.error('[Admin] Failed to send verification step email:', emailError);
@@ -1664,10 +1662,11 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
       if (isFullyVerified) {
         try {
           const { sendTemplatedEmail } = await import('../services/notifier.js');
+          // Send fully verified email (category: verification -> SMTP_USER_VERIFICATION)
           await sendTemplatedEmail(user.email, 'fully-verified', {
             firstName: user.firstName,
-          }, false, 'verification'); // Use verification category SMTP user
-          console.log('[Admin] Fully verified email sent to:', user.email);
+          }, 'verification'); // Category: verification -> Uses SMTP_USER_VERIFICATION
+          console.log('[Admin] Fully verified email sent to:', user.email, '(category: verification)');
         } catch (emailError) {
           console.error('[Admin] Failed to send fully verified email:', emailError);
           // Don't fail the request if email fails
@@ -2174,6 +2173,16 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
             smtpUser: envValue,
           });
           console.log(`Initialized ${category} SMTP user from SMTP_USER_NO_REPLY`);
+        } else {
+          // Fallback to default SMTP_USER if SMTP_USER_NO_REPLY is not available
+          const defaultUser = process.env.SMTP_USER;
+          if (defaultUser) {
+            smtpSettings = await EmailCategorySmtp.create({
+              category,
+              smtpUser: defaultUser,
+            });
+            console.log(`Initialized ${category} SMTP user from default SMTP_USER (fallback)`);
+          }
         }
       } else {
         // Other categories use SMTP_USER_{CATEGORY}

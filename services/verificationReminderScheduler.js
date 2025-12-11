@@ -115,10 +115,11 @@ async function sendVerificationReminder(user) {
   try {
     const verificationLink = `${CLIENT_ORIGIN}/account`;
     
+    // Send verification reminder email (category: verification -> SMTP_USER_VERIFICATION)
     await sendTemplatedEmail(user.email, 'reminder-identity', {
       firstName: user.firstName,
       verificationLink: verificationLink,
-    }, false, 'verification'); // Use verification category SMTP user
+    }, 'verification'); // Category: verification -> Uses SMTP_USER_VERIFICATION
 
     // Update reminder tracking
     const reminder = user.verificationReminder || {};

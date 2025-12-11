@@ -267,10 +267,9 @@ export default function AdminEmailCampaignPage() {
 
   const getTemplatesForCategory = (category: string) => {
     if (category === "verification") {
-      // For verification tab, show templates with specific types
+      // For verification tab, show templates with specific types (excluding welcome which is in no-reply)
       const verificationTypes = [
         "verification",
-        "welcome",
         "reminder-verification",
         "reminder-identity",
         "fully-verified",
@@ -283,6 +282,8 @@ export default function AdminEmailCampaignPage() {
           (verificationTypes.includes(t.type) && (!t.category || t.category === "verification"))
       );
     }
+    // For other categories, show templates that match the category
+    // welcome template should be in no-reply category
     return templates.filter((t) => t.category === category);
   };
 
