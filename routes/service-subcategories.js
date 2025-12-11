@@ -10,21 +10,35 @@ router.get('/', async (req, res) => {
     const { 
       serviceCategoryId, 
       serviceCategorySlug,
+      parentSubCategoryId,
       activeOnly = 'true',
-      includeServiceCategory = 'false' 
+      includeServiceCategory = 'false',
+      page,
+      limit,
+      sortBy = 'order',
+      sortOrder = 'asc',
+      search
     } = req.query;
     
     const query = {};
     
-    // Filter by service category
-    if (serviceCategoryId) {
-      query.serviceCategory = serviceCategoryId;
-    } else if (serviceCategorySlug) {
-      const serviceCategory = await ServiceCategory.findOne({ slug: serviceCategorySlug });
-      if (!serviceCategory) {
-        return res.status(404).json({ error: 'Service category not found' });
+    // Filter by parent subcategory (for nested subcategories)
+    if (parentSubCategoryId) {
+      query.parentSubCategory = parentSubCategoryId;
+      query.serviceCategory = null; // When parentSubCategory is set, serviceCategory should be null
+    } else {
+      // Filter by service category (for top-level subcategories)
+      if (serviceCategoryId) {
+        query.serviceCategory = serviceCategoryId;
+        query.parentSubCategory = null; // Top-level subcategories have no parent
+      } else if (serviceCategorySlug) {
+        const serviceCategory = await ServiceCategory.findOne({ slug: serviceCategorySlug });
+        if (!serviceCategory) {
+          return res.status(404).json({ error: 'Service category not found' });
+        }
+        query.serviceCategory = serviceCategory._id;
+        query.parentSubCategory = null;
       }
-      query.serviceCategory = serviceCategory._id;
     }
     
     // Filter by active status
@@ -32,16 +46,57 @@ router.get('/', async (req, res) => {
       query.isActive = true;
     }
     
-    let serviceSubCategoriesQuery = ServiceSubCategory.find(query).sort({ order: 1, name: 1 });
+    // Search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { slug: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+    
+    // Sorting
+    const sortOptions = {};
+    if (sortBy === 'order') {
+      sortOptions.order = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'name') {
+      sortOptions.name = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    }
+    // Always add order as secondary sort
+    if (sortBy !== 'order') {
+      sortOptions.order = 1;
+    }
+    
+    let serviceSubCategoriesQuery = ServiceSubCategory.find(query);
     
     // Include service category information if requested
     if (includeServiceCategory === 'true') {
       serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('serviceCategory', 'name slug');
     }
     
-    const serviceSubCategories = await serviceSubCategoriesQuery.lean();
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
     
-    return res.json({ serviceSubCategories });
+    const total = await ServiceSubCategory.countDocuments(query);
+    const totalPages = Math.ceil(total / limitNum);
+    
+    const serviceSubCategories = await serviceSubCategoriesQuery
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    
+    return res.json({ 
+      serviceSubCategories,
+      total,
+      totalPages,
+      page: pageNum,
+      limit: limitNum
+    });
   } catch (error) {
     console.error('Get service subcategories error', error);
     return res.status(500).json({ error: 'Failed to fetch service subcategories' });
@@ -92,6 +147,9 @@ router.post('/', async (req, res) => {
       slug,
       order,
       description,
+      metaTitle,
+      metaDescription,
+      bannerImage,
       icon,
       isActive,
     } = req.body;
@@ -122,23 +180,29 @@ router.post('/', async (req, res) => {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
     
-    // Check if service subcategory with same name already exists in this service category
-    const existingServiceSubCategory = await ServiceSubCategory.findOne({ 
-      serviceCategory: serviceCategoryDoc._id, 
-      name: name.trim() 
-    });
+    // Check if service subcategory with same name already exists
+    const nameQuery = parentSubCategoryDoc 
+      ? { parentSubCategory: parentSubCategoryDoc._id, name: name.trim() }
+      : { serviceCategory: serviceCategoryDoc._id, parentSubCategory: null, name: name.trim() };
+    
+    const existingServiceSubCategory = await ServiceSubCategory.findOne(nameQuery);
     if (existingServiceSubCategory) {
-      return res.status(409).json({ error: 'Service subcategory with this name already exists in this service category' });
+      return res.status(409).json({ error: 'Service subcategory with this name already exists' });
     }
     
     const serviceSubCategory = await ServiceSubCategory.create({
       serviceCategory: serviceCategoryDoc._id,
+      parentSubCategory: parentSubCategoryDoc ? parentSubCategoryDoc._id : null,
       name: name.trim(),
       slug: serviceSubCategorySlug,
       order: order !== undefined ? order : 0,
       description,
+      metaTitle,
+      metaDescription,
+      bannerImage,
       icon,
       isActive: isActive !== undefined ? isActive : true,
+      level: level !== undefined ? level : calculatedLevel,
     });
     
     // Populate service category for response
@@ -164,6 +228,9 @@ router.put('/:id', async (req, res) => {
       slug,
       order,
       description,
+      metaTitle,
+      metaDescription,
+      bannerImage,
       icon,
       isActive,
     } = req.body;
@@ -206,6 +273,9 @@ router.put('/:id', async (req, res) => {
     if (slug !== undefined) serviceSubCategory.slug = slug;
     if (order !== undefined) serviceSubCategory.order = order;
     if (description !== undefined) serviceSubCategory.description = description;
+    if (metaTitle !== undefined) serviceSubCategory.metaTitle = metaTitle;
+    if (metaDescription !== undefined) serviceSubCategory.metaDescription = metaDescription;
+    if (bannerImage !== undefined) serviceSubCategory.bannerImage = bannerImage;
     if (icon !== undefined) serviceSubCategory.icon = icon;
     if (isActive !== undefined) serviceSubCategory.isActive = isActive;
     

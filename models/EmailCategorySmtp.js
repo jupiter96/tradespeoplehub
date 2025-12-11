@@ -5,7 +5,6 @@ const emailCategorySmtpSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      unique: true,
       enum: [
         'verification',
         'listing',

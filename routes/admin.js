@@ -393,8 +393,8 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
       return res.status(400).json({ error: 'Invalid image type. Must be "icon" or "banner"' });
     }
 
-    if (!['sector', 'category', 'service-category'].includes(entityType)) {
-      return res.status(400).json({ error: 'Invalid entity type. Must be "sector", "category", or "service-category"' });
+    if (!['sector', 'category', 'service-category', 'service-subcategory'].includes(entityType)) {
+      return res.status(400).json({ error: 'Invalid entity type. Must be "sector", "category", "service-category", or "service-subcategory"' });
     }
 
     if (!req.file) {
@@ -437,6 +437,8 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
     } else if (entityType === 'service-category') {
       const ServiceCategory = (await import('../models/ServiceCategory.js')).default;
       entity = await ServiceCategory.findById(entityId);
+    } else if (entityType === 'service-subcategory') {
+      entity = await ServiceSubCategory.findById(entityId);
     }
 
     if (!entity) {
@@ -2086,6 +2088,62 @@ router.delete('/email-templates/:category/:type', requireAdmin, async (req, res)
   } catch (error) {
     console.error('Delete email template error', error);
     return res.status(500).json({ error: 'Failed to delete email template' });
+  }
+});
+
+// Migrate welcome template to no-reply category
+router.post('/email-templates/migrate-welcome', requireAdmin, async (req, res) => {
+  try {
+    // Find all welcome templates (regardless of category)
+    const welcomeTemplates = await EmailTemplate.find({ type: 'welcome' });
+    
+    if (welcomeTemplates.length === 0) {
+      return res.json({ message: 'No welcome templates found', updated: 0 });
+    }
+
+    // Check if a welcome template with category 'no-reply' already exists
+    const existingNoReply = await EmailTemplate.findOne({ type: 'welcome', category: 'no-reply' });
+    
+    let updatedCount = 0;
+    let deletedCount = 0;
+    
+    for (const template of welcomeTemplates) {
+      if (template.category !== 'no-reply') {
+        const oldCategory = template.category;
+        
+        if (existingNoReply) {
+          // If no-reply version exists, delete the old one
+          await EmailTemplate.deleteOne({ _id: template._id });
+          deletedCount++;
+          console.log(`Deleted duplicate welcome template with category ${oldCategory}`);
+        } else {
+          // Update category to 'no-reply'
+          // Need to delete and recreate to avoid unique index conflict
+          const templateData = template.toObject();
+          delete templateData._id;
+          delete templateData.createdAt;
+          delete templateData.updatedAt;
+          
+          await EmailTemplate.deleteOne({ _id: template._id });
+          await EmailTemplate.create({
+            ...templateData,
+            category: 'no-reply'
+          });
+          updatedCount++;
+          console.log(`Migrated welcome template from category ${oldCategory} to 'no-reply'`);
+        }
+      }
+    }
+
+    return res.json({ 
+      message: `Welcome template migration completed`, 
+      updated: updatedCount,
+      deleted: deletedCount,
+      total: welcomeTemplates.length 
+    });
+  } catch (error) {
+    console.error('Migrate welcome template error', error);
+    return res.status(500).json({ error: 'Failed to migrate welcome template' });
   }
 });
 

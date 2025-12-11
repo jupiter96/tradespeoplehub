@@ -282,8 +282,14 @@ export default function AdminEmailCampaignPage() {
           (verificationTypes.includes(t.type) && (!t.category || t.category === "verification"))
       );
     }
+    if (category === "no-reply") {
+      // For no-reply tab, show templates with category 'no-reply' OR type 'welcome' (regardless of category)
+      // This ensures welcome templates are always shown in no-reply tab
+      return templates.filter(
+        (t) => t.category === category || t.type === "welcome"
+      );
+    }
     // For other categories, show templates that match the category
-    // welcome template should be in no-reply category
     return templates.filter((t) => t.category === category);
   };
 

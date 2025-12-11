@@ -122,11 +122,12 @@ const ATTRIBUTE_TYPES = [
 ] as const;
 
 // Sortable Row Component
-function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive }: {
+function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive, onViewSubCategories }: {
   serviceCategory: ServiceCategory;
   onEdit: (serviceCategory: ServiceCategory) => void;
   onDelete: (serviceCategory: ServiceCategory) => void;
   onToggleActive: (serviceCategory: ServiceCategory) => void;
+  onViewSubCategories: (serviceCategory: ServiceCategory) => void;
 }) {
   const {
     attributes,
@@ -233,6 +234,27 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
             <DropdownMenuItem
+              onClick={() => {
+                const sector = typeof serviceCategory.sector === 'object' ? serviceCategory.sector : null;
+                if (sector?.slug) {
+                  window.open(`/sector/${sector.slug}`, '_blank');
+                } else {
+                  toast.error("Sector slug not available");
+                }
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Service Category
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onViewSubCategories(serviceCategory)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <FolderTree className="h-4 w-4 mr-2" />
+              View Sub Categories
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={() => onEdit(serviceCategory)}
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
             >
@@ -278,6 +300,21 @@ export default function AdminServiceCategoriesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingServiceCategory, setEditingServiceCategory] = useState<ServiceCategory | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [viewingSubCategories, setViewingSubCategories] = useState<ServiceCategory | null>(null);
+  const [isSubCategoriesModalOpen, setIsSubCategoriesModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"categories" | "subcategories">("categories");
+  const [selectedServiceCategory, setSelectedServiceCategory] = useState<ServiceCategory | null>(null);
+  const [selectedParentSubCategory, setSelectedParentSubCategory] = useState<ServiceSubCategory | null>(null);
+  const [subCategoryBreadcrumb, setSubCategoryBreadcrumb] = useState<Array<{ id: string; name: string; type: 'category' | 'subcategory' }>>([]);
+  const [serviceSubCategories, setServiceSubCategories] = useState<ServiceSubCategory[]>([]);
+  const [editingServiceSubCategory, setEditingServiceSubCategory] = useState<ServiceSubCategory | null>(null);
+  const [isSubCategoryModalOpen, setIsSubCategoryModalOpen] = useState(false);
+  const [subCategoryPage, setSubCategoryPage] = useState(1);
+  const [subCategoryTotalPages, setSubCategoryTotalPages] = useState(1);
+  const [subCategoryTotal, setSubCategoryTotal] = useState(0);
+  const [subCategorySearchTerm, setSubCategorySearchTerm] = useState("");
+  const [subCategorySortBy, setSubCategorySortBy] = useState<string>("order");
+  const [subCategorySortOrder, setSubCategorySortOrder] = useState<"asc" | "desc">("desc");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -300,6 +337,35 @@ export default function AdminServiceCategoriesPage() {
     message: "",
     onConfirm: () => {},
   });
+  const [subCategoryFormData, setSubCategoryFormData] = useState<{
+    serviceCategory: string;
+    parentSubCategory: string;
+    name: string;
+    slug: string;
+    description: string;
+    metaTitle: string;
+    metaDescription: string;
+    bannerImage: string;
+    icon: string;
+    order: number;
+    level: number;
+    isActive: boolean;
+  }>({
+    serviceCategory: "",
+    parentSubCategory: "",
+    name: "",
+    slug: "",
+    description: "",
+    metaTitle: "",
+    metaDescription: "",
+    bannerImage: "",
+    icon: "",
+    order: 0,
+    level: 1,
+    isActive: true,
+  });
+  const [subCategoryIconPreview, setSubCategoryIconPreview] = useState<string | null>(null);
+  const [subCategoryBannerPreview, setSubCategoryBannerPreview] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -373,6 +439,41 @@ export default function AdminServiceCategoriesPage() {
     }
   };
 
+  const fetchServiceSubCategories = useCallback(async (serviceCategoryId?: string, parentSubCategoryId?: string) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        activeOnly: "false",
+        page: subCategoryPage.toString(),
+        limit: limit.toString(),
+        sortBy: subCategorySortBy,
+        sortOrder: subCategorySortOrder,
+        ...(subCategorySearchTerm && { search: subCategorySearchTerm }),
+        ...(serviceCategoryId && { serviceCategoryId }),
+        ...(parentSubCategoryId && { parentSubCategoryId }),
+      });
+
+      const response = await fetch(resolveApiUrl(`/api/service-subcategories?${params}`), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setServiceSubCategories(data.serviceSubCategories || []);
+        setSubCategoryTotal(data.total || 0);
+        setSubCategoryTotalPages(data.totalPages || 1);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to fetch service subcategories");
+      }
+    } catch (error) {
+      console.error("Error fetching service subcategories:", error);
+      toast.error("Failed to fetch service subcategories");
+    } finally {
+      setLoading(false);
+    }
+  }, [subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm]);
+
   // Combined effect to handle both regular updates and search debouncing
   // This prevents duplicate API calls on initial load
   useEffect(() => {
@@ -381,12 +482,29 @@ export default function AdminServiceCategoriesPage() {
       return;
     }
 
-    const debounceTimer = setTimeout(() => {
-      fetchServiceCategories(selectedSectorId);
-    }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
+    if (viewMode === "categories") {
+      const debounceTimer = setTimeout(() => {
+        fetchServiceCategories(selectedSectorId);
+      }, searchTerm ? 500 : 0); // No debounce for initial load, 500ms for search
 
-    return () => clearTimeout(debounceTimer);
-  }, [selectedSectorId, page, limit, sortBy, sortOrder, searchTerm]);
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [selectedSectorId, page, limit, sortBy, sortOrder, searchTerm, viewMode]);
+
+  // Effect for subcategories
+  useEffect(() => {
+    if (viewMode === "subcategories" && (selectedServiceCategory || selectedParentSubCategory)) {
+      const debounceTimer = setTimeout(() => {
+        if (selectedParentSubCategory) {
+          fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+        } else if (selectedServiceCategory) {
+          fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+        }
+      }, subCategorySearchTerm ? 500 : 0);
+
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [viewMode, selectedServiceCategory, selectedParentSubCategory, subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, fetchServiceSubCategories]);
 
   const fetchSectors = async () => {
     try {
@@ -510,6 +628,58 @@ export default function AdminServiceCategoriesPage() {
       }
       return updated;
     });
+  };
+
+  const handleSubCategoryImageUpload = async (file: File, type: "icon" | "banner") => {
+    if (!selectedServiceCategory) return;
+    
+    setUploadingImage({ type, loading: true });
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("image", file);
+
+      const entityId = editingServiceSubCategory?._id || "temp";
+      const response = await fetch(
+        resolveApiUrl(`/api/admin/upload-image/${type}/service-subcategory/${entityId}`),
+        {
+          method: "POST",
+          credentials: "include",
+          body: uploadFormData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const imageUrl = data.imageUrl;
+        
+        if (type === "icon") {
+          setSubCategoryFormData(prev => ({ ...prev, icon: imageUrl }));
+          setSubCategoryIconPreview(imageUrl);
+        } else {
+          setSubCategoryFormData(prev => ({ ...prev, bannerImage: imageUrl }));
+          setSubCategoryBannerPreview(imageUrl);
+        }
+        toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || `Failed to upload ${type}`);
+        if (type === "icon") {
+          setSubCategoryIconPreview(subCategoryFormData.icon || null);
+        } else {
+          setSubCategoryBannerPreview(subCategoryFormData.bannerImage || null);
+        }
+      }
+    } catch (error) {
+      console.error(`Error uploading ${type}:`, error);
+      toast.error(`Failed to upload ${type}`);
+      if (type === "icon") {
+        setSubCategoryIconPreview(subCategoryFormData.icon || null);
+      } else {
+        setSubCategoryBannerPreview(subCategoryFormData.bannerImage || null);
+      }
+    } finally {
+      setUploadingImage({ type, loading: false });
+    }
   };
 
   const handleImageUpload = async (file: File, type: "icon" | "banner") => {
@@ -660,6 +830,176 @@ export default function AdminServiceCategoriesPage() {
     setPendingIconFile(null);
     setPendingBannerFile(null);
     setIsModalOpen(true);
+  };
+
+  const handleViewSubCategories = (serviceCategory: ServiceCategory) => {
+    setSelectedServiceCategory(serviceCategory);
+    setSelectedParentSubCategory(null);
+    setSubCategoryBreadcrumb([{ id: serviceCategory._id, name: serviceCategory.name, type: 'category' }]);
+    setViewMode("subcategories");
+    setSubCategoryPage(1);
+    setSubCategorySearchTerm("");
+    fetchServiceSubCategories(serviceCategory._id, undefined);
+  };
+
+  const handleViewNestedSubCategories = (subCategory: ServiceSubCategory) => {
+    if ((subCategory.level || 1) >= 7) {
+      toast.error("Maximum nesting level (7) reached");
+      return;
+    }
+    setSelectedParentSubCategory(subCategory);
+    setSubCategoryBreadcrumb(prev => [...prev, { id: subCategory._id, name: subCategory.name, type: 'subcategory' }]);
+    setSubCategoryPage(1);
+    setSubCategorySearchTerm("");
+    fetchServiceSubCategories(undefined, subCategory._id);
+  };
+
+  const handleBackToCategories = () => {
+    setViewMode("categories");
+    setSelectedServiceCategory(null);
+    setSelectedParentSubCategory(null);
+    setSubCategoryBreadcrumb([]);
+    setServiceSubCategories([]);
+  };
+
+  const handleBreadcrumbClick = (index: number) => {
+    const newBreadcrumb = subCategoryBreadcrumb.slice(0, index + 1);
+    setSubCategoryBreadcrumb(newBreadcrumb);
+    
+    if (index === 0) {
+      // Back to service category level
+      const categoryItem = newBreadcrumb[0];
+      if (categoryItem && categoryItem.type === 'category' && selectedServiceCategory) {
+        setSelectedParentSubCategory(null);
+        fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+      }
+    } else {
+      // Navigate to a nested subcategory
+      const subCategoryItem = newBreadcrumb[index];
+      if (subCategoryItem && subCategoryItem.type === 'subcategory') {
+        const parentSubCategory = serviceSubCategories.find(sc => sc._id === subCategoryItem.id);
+        if (parentSubCategory) {
+          setSelectedParentSubCategory(parentSubCategory);
+          fetchServiceSubCategories(undefined, parentSubCategory._id);
+        }
+      }
+    }
+  };
+
+  const handleCreateSubCategory = () => {
+    if (!selectedServiceCategory) return;
+    const currentLevel = selectedParentSubCategory ? (selectedParentSubCategory.level || 1) + 1 : 1;
+    if (currentLevel > 7) {
+      toast.error("Maximum nesting level (7) reached");
+      return;
+    }
+    setSubCategoryFormData({
+      serviceCategory: selectedServiceCategory._id,
+      parentSubCategory: selectedParentSubCategory?._id || "",
+      name: "",
+      slug: "",
+      description: "",
+      metaTitle: "",
+      metaDescription: "",
+      bannerImage: "",
+      icon: "",
+      order: serviceSubCategories.length > 0 
+        ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
+        : 1,
+      level: currentLevel,
+      isActive: true,
+    });
+    setEditingServiceSubCategory(null);
+    setSubCategoryIconPreview(null);
+    setSubCategoryBannerPreview(null);
+    setIsSubCategoryModalOpen(true);
+  };
+
+  const handleEditSubCategory = (subCategory: ServiceSubCategory) => {
+    setSubCategoryFormData({
+      serviceCategory: typeof subCategory.serviceCategory === "string" 
+        ? subCategory.serviceCategory 
+        : (subCategory.serviceCategory as ServiceCategory)._id,
+      name: subCategory.name,
+      slug: subCategory.slug || generateSlug(subCategory.name),
+      description: subCategory.description || "",
+      metaTitle: subCategory.metaTitle || "",
+      metaDescription: subCategory.metaDescription || "",
+      bannerImage: subCategory.bannerImage || "",
+      icon: subCategory.icon || "",
+      order: subCategory.order || 0,
+      isActive: subCategory.isActive,
+    });
+    setEditingServiceSubCategory(subCategory);
+    setSubCategoryIconPreview(subCategory.icon || null);
+    setSubCategoryBannerPreview(subCategory.bannerImage || null);
+    setIsSubCategoryModalOpen(true);
+  };
+
+  const handleSaveSubCategory = async () => {
+    if (!subCategoryFormData.name.trim()) {
+      toast.error("Sub category name is required");
+      return;
+    }
+
+    if (!subCategoryFormData.slug.trim()) {
+      subCategoryFormData.slug = generateSlug(subCategoryFormData.name);
+    }
+
+    try {
+      setIsSaving(true);
+      
+      const url = editingServiceSubCategory
+        ? resolveApiUrl(`/api/service-subcategories/${editingServiceSubCategory._id}`)
+        : resolveApiUrl("/api/service-subcategories");
+      
+      const method = editingServiceSubCategory ? "PUT" : "POST";
+
+      const payload: any = {
+        name: subCategoryFormData.name.trim(),
+        slug: subCategoryFormData.slug.trim(),
+        description: subCategoryFormData.description.trim(),
+        metaTitle: subCategoryFormData.metaTitle.trim(),
+        metaDescription: subCategoryFormData.metaDescription.trim(),
+        bannerImage: subCategoryFormData.bannerImage.trim(),
+        icon: subCategoryFormData.icon.trim(),
+        order: subCategoryFormData.order,
+        level: subCategoryFormData.level,
+        isActive: subCategoryFormData.isActive,
+      };
+
+      // Add parentSubCategory or serviceCategory based on which one is set
+      if (subCategoryFormData.parentSubCategory) {
+        payload.parentSubCategory = subCategoryFormData.parentSubCategory;
+      } else {
+        payload.serviceCategory = subCategoryFormData.serviceCategory;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        toast.success(editingServiceSubCategory ? "Sub category updated successfully" : "Sub category created successfully");
+        setIsSubCategoryModalOpen(false);
+        if (selectedParentSubCategory) {
+          fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+        } else if (selectedServiceCategory) {
+          fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to save sub category");
+      }
+    } catch (error) {
+      console.error("Error saving sub category:", error);
+      toast.error("Failed to save sub category");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEdit = (serviceCategory: ServiceCategory) => {
@@ -1106,6 +1446,307 @@ export default function AdminServiceCategoriesPage() {
         onTabChange={handleTabChange}
       >
         {(tab) => {
+          // Show subcategories view if in subcategories mode
+          if (viewMode === "subcategories" && selectedServiceCategory) {
+            return (
+              <div className="space-y-6">
+                {/* Back Button and Breadcrumb */}
+                <div className="flex items-center gap-4 flex-wrap">
+                  <Button
+                    onClick={handleBackToCategories}
+                    variant="outline"
+                    className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back to Service Categories
+                  </Button>
+                  {/* Breadcrumb */}
+                  {subCategoryBreadcrumb.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {subCategoryBreadcrumb.map((item, index) => (
+                        <React.Fragment key={item.id}>
+                          {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400" />}
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleBreadcrumbClick(index)}
+                            className="text-sm text-[#FE8A0F] hover:bg-[#FE8A0F]/10 p-1 h-auto"
+                          >
+                            {item.name}
+                          </Button>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                  <div className="ml-auto">
+                    <h2 className="text-xl font-bold text-black dark:text-white">
+                      {selectedParentSubCategory 
+                        ? `Sub Categories - ${selectedParentSubCategory.name} (Level ${selectedParentSubCategory.level || 1})`
+                        : `Sub Categories - ${selectedServiceCategory.name}`
+                      }
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {selectedParentSubCategory 
+                        ? `Manage nested subcategories (Level ${(selectedParentSubCategory.level || 1) + 1})`
+                        : "Manage subcategories for this service category"
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Search and Controls */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-black dark:text-white whitespace-nowrap">
+                      Total: <span className="text-[#FE8A0F] font-semibold">{subCategoryTotal}</span> subcategories
+                    </p>
+                  </div>
+                  <div className="relative flex-shrink-0" style={{ width: '200px' }}>
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+                    <Input
+                      type="text"
+                      placeholder="Search"
+                      value={subCategorySearchTerm}
+                      onChange={(e) => setSubCategorySearchTerm(e.target.value)}
+                      className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="subCategoryRowsPerPage" className="text-sm text-black dark:text-white whitespace-nowrap">
+                      Rows per page:
+                    </Label>
+                    <Select value={limit.toString()} onValueChange={(value) => {
+                      setLimit(parseInt(value));
+                      setSubCategoryPage(1);
+                    }}>
+                      <SelectTrigger id="subCategoryRowsPerPage" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="ml-auto">
+                    <Button
+                      onClick={handleCreateSubCategory}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white border-0 shadow-lg transition-all"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Sub Category
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Sub Categories Table */}
+                <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+                  {serviceSubCategories.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-black dark:text-white">No subcategories found</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-0 hover:bg-transparent shadow-sm">
+                            <TableHead className="text-[#FE8A0F] font-semibold">Order</TableHead>
+                            <TableHead className="text-[#FE8A0F] font-semibold">Name</TableHead>
+                            <TableHead className="text-[#FE8A0F] font-semibold">Slug</TableHead>
+                            <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
+                            <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
+                            <TableHead className="text-[#FE8A0F] font-semibold text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {serviceSubCategories.map((subCategory) => (
+                            <TableRow key={subCategory._id} className="border-0 hover:bg-gray-50 dark:hover:bg-gray-900">
+                              <TableCell className="text-black dark:text-white">{subCategory.order || 0}</TableCell>
+                              <TableCell className="text-black dark:text-white font-medium">{subCategory.name}</TableCell>
+                              <TableCell className="text-black dark:text-white">
+                                {subCategory.slug ? (
+                                  <span className="truncate" title={subCategory.slug}>
+                                    {subCategory.slug.length > 20 ? subCategory.slug.substring(0, 20) + "..." : subCategory.slug}
+                                  </span>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
+                              <TableCell className="text-black dark:text-white">
+                                {subCategory.icon ? (
+                                  <img src={subCategory.icon} alt="Icon" className="w-8 h-8 object-cover rounded" />
+                                ) : (
+                                  <span className="text-gray-400 text-sm">No icon</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-black dark:text-white">
+                                {subCategory.bannerImage ? (
+                                  <img src={subCategory.bannerImage} alt="Banner" className="w-16 h-8 object-cover rounded" />
+                                ) : (
+                                  <span className="text-gray-400 text-sm">No image</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                                    {(subCategory.level || 1) < 7 && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleViewNestedSubCategories(subCategory)}
+                                        className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                      >
+                                        <FolderTree className="h-4 w-4 mr-2" />
+                                        View Sub Categories
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      onClick={() => handleEditSubCategory(subCategory)}
+                                      className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                    >
+                                      <Edit2 className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setConfirmModal({
+                                          isOpen: true,
+                                          type: subCategory.isActive ? "deactivate" : "activate",
+                                          title: subCategory.isActive ? "Deactivate Sub Category" : "Activate Sub Category",
+                                          message: `Are you sure you want to ${subCategory.isActive ? "deactivate" : "activate"} "${subCategory.name}"?`,
+                                          onConfirm: async () => {
+                                            try {
+                                              const response = await fetch(resolveApiUrl(`/api/service-subcategories/${subCategory._id}`), {
+                                                method: "PUT",
+                                                headers: { "Content-Type": "application/json" },
+                                                credentials: "include",
+                                                body: JSON.stringify({ isActive: !subCategory.isActive }),
+                                              });
+                                              if (response.ok) {
+                                                toast.success(`Sub category ${subCategory.isActive ? "deactivated" : "activated"} successfully`);
+                                                if (selectedParentSubCategory) {
+                                                  fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+                                                } else if (selectedServiceCategory) {
+                                                  fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+                                                }
+                                              } else {
+                                                const error = await response.json();
+                                                toast.error(error.error || "Failed to update sub category");
+                                              }
+                                            } catch (error) {
+                                              toast.error("Failed to update sub category");
+                                            } finally {
+                                              setConfirmModal({ ...confirmModal, isOpen: false });
+                                            }
+                                          },
+                                          itemName: subCategory.name,
+                                        });
+                                      }}
+                                      className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                    >
+                                      {subCategory.isActive ? (
+                                        <>
+                                          <Ban className="h-4 w-4 mr-2" />
+                                          Deactivate
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                                          Activate
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setConfirmModal({
+                                          isOpen: true,
+                                          type: "delete",
+                                          title: "Delete Sub Category",
+                                          message: `Are you sure you want to delete "${subCategory.name}"? This action cannot be undone.`,
+                                          onConfirm: async () => {
+                                            try {
+                                              const response = await fetch(resolveApiUrl(`/api/service-subcategories/${subCategory._id}?hardDelete=true`), {
+                                                method: "DELETE",
+                                                credentials: "include",
+                                              });
+                                              if (response.ok) {
+                                                toast.success("Sub category deleted successfully");
+                                                if (selectedParentSubCategory) {
+                                                  fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+                                                } else if (selectedServiceCategory) {
+                                                  fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+                                                }
+                                              } else {
+                                                const error = await response.json();
+                                                toast.error(error.error || "Failed to delete sub category");
+                                              }
+                                            } catch (error) {
+                                              toast.error("Failed to delete sub category");
+                                            } finally {
+                                              setConfirmModal({ ...confirmModal, isOpen: false });
+                                            }
+                                          },
+                                          itemName: subCategory.name,
+                                        });
+                                      }}
+                                      className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {subCategoryTotalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-black dark:text-white">
+                        Page <span className="text-[#FE8A0F] font-semibold">{subCategoryPage}</span> of <span className="text-[#FE8A0F] font-semibold">{subCategoryTotalPages}</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSubCategoryPage((p) => Math.max(1, p - 1))}
+                          disabled={subCategoryPage === 1}
+                          className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSubCategoryPage((p) => Math.min(subCategoryTotalPages, p + 1))}
+                          disabled={subCategoryPage === subCategoryTotalPages}
+                          className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
           const currentServiceCategories = getCurrentServiceCategories(tab);
 
           return (
@@ -1194,6 +1835,7 @@ export default function AdminServiceCategoriesPage() {
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                                 onToggleActive={handleToggleActive}
+                                onViewSubCategories={handleViewSubCategories}
                               />
                             ))}
                           </TableBody>
@@ -1967,6 +2609,329 @@ export default function AdminServiceCategoriesPage() {
                 : confirmModal.type === "activate"
                 ? "Activate"
                 : "Deactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sub Category Create/Edit Modal */}
+      <Dialog open={isSubCategoryModalOpen} onOpenChange={setIsSubCategoryModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-black dark:text-white">
+              {editingServiceSubCategory ? "Edit Sub Category" : "Create New Sub Category"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4">
+            {/* Service Category (Read-only) */}
+            <div>
+              <Label className="text-black dark:text-white">Service Category <span className="text-red-500">*</span></Label>
+              <Input
+                value={selectedServiceCategory?.name || ""}
+                disabled
+                className="mt-1 bg-gray-100 dark:bg-gray-800"
+              />
+            </div>
+
+            {/* Parent Sub Category (Read-only, if exists) */}
+            {selectedParentSubCategory && (
+              <div>
+                <Label className="text-black dark:text-white">Parent Sub Category</Label>
+                <Input
+                  value={selectedParentSubCategory.name}
+                  disabled
+                  className="mt-1 bg-gray-100 dark:bg-gray-800"
+                />
+              </div>
+            )}
+
+            {/* Level (Read-only) */}
+            <div>
+              <Label className="text-black dark:text-white">Level</Label>
+              <Input
+                value={`Level ${subCategoryFormData.level || 1}`}
+                disabled
+                className="mt-1 bg-gray-100 dark:bg-gray-800"
+              />
+            </div>
+
+            {/* Name */}
+            <div>
+              <Label htmlFor="subCategoryName" className="text-black dark:text-white">
+                Sub Category Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="subCategoryName"
+                value={subCategoryFormData.name}
+                onChange={(e) => {
+                  setSubCategoryFormData({ ...subCategoryFormData, name: e.target.value });
+                  if (!editingServiceSubCategory) {
+                    setSubCategoryFormData(prev => ({ ...prev, slug: generateSlug(e.target.value) }));
+                  }
+                }}
+                placeholder="Enter sub category name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Slug */}
+            <div>
+              <Label htmlFor="subCategorySlug" className="text-black dark:text-white">
+                Slug <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="subCategorySlug"
+                value={subCategoryFormData.slug}
+                onChange={(e) => setSubCategoryFormData({ ...subCategoryFormData, slug: e.target.value })}
+                placeholder="Enter slug"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label htmlFor="subCategoryDescription" className="text-black dark:text-white">
+                Description
+              </Label>
+              <Textarea
+                id="subCategoryDescription"
+                value={subCategoryFormData.description}
+                onChange={(e) => setSubCategoryFormData({ ...subCategoryFormData, description: e.target.value })}
+                placeholder="Enter description"
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+
+            {/* Meta Title */}
+            <div>
+              <Label htmlFor="subCategoryMetaTitle" className="text-black dark:text-white">
+                Meta Title
+              </Label>
+              <Input
+                id="subCategoryMetaTitle"
+                value={subCategoryFormData.metaTitle}
+                onChange={(e) => setSubCategoryFormData({ ...subCategoryFormData, metaTitle: e.target.value })}
+                placeholder="Enter meta title"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Meta Description */}
+            <div>
+              <Label htmlFor="subCategoryMetaDescription" className="text-black dark:text-white">
+                Meta Description
+              </Label>
+              <Textarea
+                id="subCategoryMetaDescription"
+                value={subCategoryFormData.metaDescription}
+                onChange={(e) => setSubCategoryFormData({ ...subCategoryFormData, metaDescription: e.target.value })}
+                placeholder="Enter meta description"
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+
+            {/* Icon Upload */}
+            <div>
+              <Label className="text-black dark:text-white">Category Icon</Label>
+              <div className="mt-2 space-y-2">
+                <Input
+                  type="url"
+                  value={subCategoryFormData.icon}
+                  onChange={(e) => {
+                    setSubCategoryFormData({ ...subCategoryFormData, icon: e.target.value });
+                    setSubCategoryIconPreview(e.target.value || null);
+                  }}
+                  placeholder="Enter icon URL or upload"
+                  className="mb-2"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        await handleSubCategoryImageUpload(file, "icon");
+                      }
+                    };
+                    input.click();
+                  }}
+                  className="w-full"
+                  disabled={uploadingImage.loading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploadingImage.loading ? "Uploading..." : "Upload Icon"}
+                </Button>
+                {(subCategoryIconPreview || subCategoryFormData.icon) && (
+                  <div className="mt-2">
+                    <img
+                      src={subCategoryIconPreview || subCategoryFormData.icon}
+                      alt="Icon preview"
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Banner Image Upload */}
+            <div>
+              <Label className="text-black dark:text-white">Banner Image</Label>
+              <div className="mt-2 space-y-2">
+                <Input
+                  type="url"
+                  value={subCategoryFormData.bannerImage}
+                  onChange={(e) => {
+                    setSubCategoryFormData({ ...subCategoryFormData, bannerImage: e.target.value });
+                    setSubCategoryBannerPreview(e.target.value || null);
+                  }}
+                  placeholder="Enter banner image URL or upload"
+                  className="mb-2"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        await handleSubCategoryImageUpload(file, "banner");
+                      }
+                    };
+                    input.click();
+                  }}
+                  className="w-full"
+                  disabled={uploadingImage.loading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploadingImage.loading ? "Uploading..." : "Upload Banner Image"}
+                </Button>
+                {(subCategoryBannerPreview || subCategoryFormData.bannerImage) && (
+                  <div className="mt-2">
+                    <img
+                      src={subCategoryBannerPreview || subCategoryFormData.bannerImage}
+                      alt="Banner preview"
+                      className="w-full h-48 object-cover rounded"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsSubCategoryModalOpen(false)}
+              variant="outline"
+              disabled={isSaving}
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveSubCategory}
+              disabled={isSaving}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingServiceSubCategory ? "Update" : "Create"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Sub Categories Modal */}
+      <Dialog open={isSubCategoriesModalOpen} onOpenChange={setIsSubCategoriesModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white dark:bg-black border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
+              <FolderTree className="w-6 h-6 text-[#FE8A0F]" />
+              Sub Categories - {viewingSubCategories?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {viewingSubCategories?.subCategories && viewingSubCategories.subCategories.length > 0 ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-4 gap-4 font-semibold text-[#FE8A0F] pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <div>Order</div>
+                  <div>Name</div>
+                  <div>Titles</div>
+                  <div>Attributes</div>
+                </div>
+                {viewingSubCategories.subCategories
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((subCategory) => (
+                    <div
+                      key={subCategory._id}
+                      className="grid grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="text-black dark:text-white font-medium">
+                        {subCategory.order || 0}
+                      </div>
+                      <div className="text-black dark:text-white font-medium">
+                        {subCategory.name}
+                      </div>
+                      <div className="text-black dark:text-white">
+                        {subCategory.titles && subCategory.titles.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {subCategory.titles.map((title, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                L{title.level}: {title.title}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No titles</span>
+                        )}
+                      </div>
+                      <div className="text-black dark:text-white">
+                        {subCategory.attributes && subCategory.attributes.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {subCategory.attributes.map((attr, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {attr.attributeType} ({attr.values?.length || 0})
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No attributes</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FolderTree className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 text-lg">
+                  No subcategories found for this service category.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsSubCategoriesModalOpen(false)}
+              variant="outline"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

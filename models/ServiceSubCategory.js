@@ -5,7 +5,22 @@ const serviceSubCategorySchema = new mongoose.Schema(
     serviceCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ServiceCategory',
-      required: true,
+      required: function() {
+        return !this.parentSubCategory;
+      },
+    },
+    parentSubCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ServiceSubCategory',
+      default: null,
+      // If parentSubCategory is set, serviceCategory is not required
+    },
+    level: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 7,
+      // Level 1 = direct child of ServiceCategory, Level 2-7 = nested subcategories
     },
     name: {
       type: String,
@@ -28,6 +43,18 @@ const serviceSubCategorySchema = new mongoose.Schema(
       },
     },
     description: {
+      type: String,
+      trim: true,
+    },
+    metaTitle: {
+      type: String,
+      trim: true,
+    },
+    metaDescription: {
+      type: String,
+      trim: true,
+    },
+    bannerImage: {
       type: String,
       trim: true,
     },
@@ -105,10 +132,13 @@ const serviceSubCategorySchema = new mongoose.Schema(
 
 // Indexes
 serviceSubCategorySchema.index({ serviceCategory: 1, order: 1 });
-// Ensure unique subcategory name within a category
-serviceSubCategorySchema.index({ serviceCategory: 1, name: 1 }, { unique: true });
+serviceSubCategorySchema.index({ parentSubCategory: 1, order: 1 });
+// Ensure unique subcategory name within a category or parent subcategory
+serviceSubCategorySchema.index({ serviceCategory: 1, name: 1 }, { unique: true, partialFilterExpression: { parentSubCategory: null } });
+serviceSubCategorySchema.index({ parentSubCategory: 1, name: 1 }, { unique: true, partialFilterExpression: { parentSubCategory: { $ne: null } } });
 serviceSubCategorySchema.index({ slug: 1 });
 serviceSubCategorySchema.index({ isActive: 1 });
+serviceSubCategorySchema.index({ level: 1 });
 
 const ServiceSubCategory =
   mongoose.models?.ServiceSubCategory ||
