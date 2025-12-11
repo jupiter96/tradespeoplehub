@@ -22,6 +22,13 @@ const serviceSubCategorySchema = new mongoose.Schema(
       max: 7,
       // Level 1 = direct child of ServiceCategory, Level 2-7 = nested subcategories
     },
+    // Attribute type for level 1 subcategories (from categoryLevelMapping level 3)
+    attributeType: {
+      type: String,
+      enum: ['serviceType', 'size', 'frequency', 'make', 'model', 'brand'],
+      default: null,
+      // Only set for level 1 subcategories to indicate which tab/attribute type they belong to
+    },
     name: {
       type: String,
       required: true,

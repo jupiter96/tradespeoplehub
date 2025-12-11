@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, ShoppingCart, Bell, User, Search, Heart, ShoppingBag, Briefcase, CreditCard, Lock, Settings, MessageCircle, HelpCircle, Gift, FileText, Wallet, Shield, Ticket, LogOut } from "lucide-react";
 import { useCart } from "../components/CartContext";
 import { useAccount } from "../components/AccountContext";
-import { useSectors, type Sector, type Category } from "../hooks/useSectorsAndCategories";
+import { useSectors, useServiceCategories, type Sector, type Category, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../components/ui/alert-dialog";
@@ -584,14 +584,32 @@ export default function Nav() {
   const getSearchSuggestions = () => {
     if (!searchQuery) return [];
     
-    const allCategories = categoryTree.flatMap(sector => 
-      sector.mainCategories.map(cat => ({
-        name: cat.name,
-        sectorName: sector.name,
-        sectorSlug: sector.sectorValue,
-        type: 'category' as const
-      }))
-    );
+    // Use service categories if available, otherwise fallback to categoryTree
+    let allCategories: Array<{ name: string; sectorName: string; sectorSlug: string; serviceCategorySlug?: string; type: 'category' }> = [];
+    
+    if (apiSectors.length > 0 && Object.keys(serviceCategoriesBySector).length > 0) {
+      // Use service categories
+      allCategories = apiSectors.flatMap(sector => {
+        const serviceCategories = serviceCategoriesBySector[sector._id] || [];
+        return serviceCategories.map(serviceCategory => ({
+          name: serviceCategory.name,
+          sectorName: sector.name,
+          sectorSlug: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
+          serviceCategorySlug: serviceCategory.slug,
+          type: 'category' as const
+        }));
+      });
+    } else {
+      // Fallback to categoryTree
+      allCategories = categoryTree.flatMap(sector => 
+        sector.mainCategories.map(cat => ({
+          name: cat.name,
+          sectorName: sector.name,
+          sectorSlug: sector.sectorValue,
+          type: 'category' as const
+        }))
+      );
+    }
     
     const filtered = allCategories.filter(item =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -608,8 +626,52 @@ export default function Nav() {
     }
   };
 
-  // Get sectors from API with categories and subcategories, sorted by order
-  const { sectors: apiSectors, loading: sectorsLoading } = useSectors(true, true); // Include categories and subcategories
+  // Get sectors from API
+  const { sectors: apiSectors, loading: sectorsLoading } = useSectors(false, false);
+  
+  // Fetch service categories for all sectors
+  const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Record<string, ServiceCategory[]>>({});
+  const [serviceCategoriesLoading, setServiceCategoriesLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchServiceCategories = async () => {
+      try {
+        setServiceCategoriesLoading(true);
+        if (apiSectors.length > 0) {
+          const { resolveApiUrl } = await import("../config/api");
+          const categoriesMap: Record<string, ServiceCategory[]> = {};
+          
+          const promises = apiSectors.map(async (sector: Sector) => {
+            try {
+              const response = await fetch(
+                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=true&sortBy=order&sortOrder=asc`),
+                { credentials: 'include' }
+              );
+              if (response.ok) {
+                const data = await response.json();
+                categoriesMap[sector._id] = data.serviceCategories || [];
+              }
+            } catch (error) {
+              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+            }
+          });
+          
+          await Promise.all(promises);
+          setServiceCategoriesBySector(categoriesMap);
+        }
+      } catch (error) {
+        console.error('Error fetching service categories:', error);
+      } finally {
+        setServiceCategoriesLoading(false);
+      }
+    };
+    
+    if (apiSectors.length > 0) {
+      fetchServiceCategories();
+    } else {
+      setServiceCategoriesLoading(false);
+    }
+  }, [apiSectors]);
   
   // Use API sectors if available, otherwise fall back to categoryTree
   const sectorsToUse = apiSectors.length > 0 ? apiSectors : categoryTree.map(s => ({ name: s.name, slug: s.sectorValue, order: s.id }));
@@ -630,18 +692,38 @@ export default function Nav() {
     return acc;
   }, {} as Record<string, string>);
   
-  // Generate categoryDropdownData from API data, sorted by order
-  const categoryDropdownData: { [key: string]: { title: string; items: string[] }[] } = {};
+  // Generate categoryDropdownData from service categories, sorted by order
+  const categoryDropdownData: { [key: string]: { title: string; items: string[]; serviceCategorySlug?: string }[] } = {};
   
-  if (apiSectors.length > 0) {
-    // Use API data
+  if (apiSectors.length > 0 && Object.keys(serviceCategoriesBySector).length > 0) {
+    // Use service categories (new system)
+    sortedSectors.forEach((sector: Sector) => {
+      const serviceCategories = serviceCategoriesBySector[sector._id] || [];
+      if (serviceCategories.length > 0) {
+        // Sort service categories by order
+        const sortedServiceCategories = [...serviceCategories].sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        categoryDropdownData[sector.name] = sortedServiceCategories.map((serviceCategory: ServiceCategory) => {
+          // Sort subcategories by order and take first 4
+          const sortedSubCategories = serviceCategory.subCategories 
+            ? [...serviceCategory.subCategories].sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 4)
+            : [];
+          
+          return {
+            title: serviceCategory.name,
+            items: sortedSubCategories.map((subCat: ServiceSubCategory) => subCat.name),
+            serviceCategorySlug: serviceCategory.slug
+          };
+        });
+      }
+    });
+  } else if (apiSectors.length > 0) {
+    // Fallback to legacy categories if service categories not loaded yet
     sortedSectors.forEach((sector: Sector) => {
       if (sector.categories && sector.categories.length > 0) {
-        // Sort categories by order
         const sortedCategories = [...sector.categories].sort((a: Category, b: Category) => (a.order || 0) - (b.order || 0));
         
         categoryDropdownData[sector.name] = sortedCategories.map((category: Category) => {
-          // Sort subcategories by order and take first 4
           const sortedSubCategories = category.subCategories 
             ? [...category.subCategories].sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 4)
             : [];
@@ -658,7 +740,7 @@ export default function Nav() {
     categoryTree.forEach(sector => {
       categoryDropdownData[sector.name] = sector.mainCategories.map(mainCat => ({
         title: mainCat.name,
-        items: mainCat.subCategories.slice(0, 4) // Show first 4 subcategories in dropdown
+        items: mainCat.subCategories.slice(0, 4)
       }));
     });
   }
@@ -757,7 +839,9 @@ export default function Nav() {
                       {getSearchSuggestions().map((suggestion, index) => (
                         <Link
                           key={index}
-                          to={`/sector/${suggestion.sectorSlug}?category=${getCategoryId(suggestion.sectorName, suggestion.name, sortedSectors)}`}
+                          to={suggestion.serviceCategorySlug
+                            ? `/sector/${suggestion.sectorSlug}/${suggestion.serviceCategorySlug}`
+                            : `/sector/${suggestion.sectorSlug}?category=${getCategoryId(suggestion.sectorName, suggestion.name, sortedSectors)}`}
                           onClick={() => {
                             setShowSearchSuggestions(false);
                             setSearchQuery("");
@@ -1139,22 +1223,40 @@ export default function Nav() {
                   {categoryDropdownData[activeDropdown].map((column, colIdx) => (
                     <div key={colIdx} className="min-w-0">
                       <Link
-                        to={`/category/${getCategoryId(activeDropdown, column.title, sortedSectors)}`}
+                        to={column.serviceCategorySlug && sectorNameToSlug[activeDropdown]
+                          ? `/sector/${sectorNameToSlug[activeDropdown]}/${column.serviceCategorySlug}`
+                          : `/category/${getCategoryId(activeDropdown, column.title, sortedSectors)}`}
                         className="font-['Poppins',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors mb-2.5 block cursor-pointer"
                       >
                         {column.title}
                       </Link>
                       <ul className="space-y-2">
-                        {column.items.map((item, idx) => (
-                          <li key={idx}>
-                            <Link
-                              to={`/services?category=${encodeURIComponent(activeDropdown)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`}
-                              className="font-['Poppins',sans-serif] font-light text-[13px] text-[#5b5b5b] hover:text-[#FE8A0F] transition-colors block"
-                            >
-                              {item}
-                            </Link>
-                          </li>
-                        ))}
+                        {column.items.map((item, idx) => {
+                          // Find the subcategory slug if available
+                          const sector = sortedSectors.find((s: Sector) => s.name === activeDropdown);
+                          const serviceCategory = sector && serviceCategoriesBySector[sector._id]?.find(
+                            (sc: ServiceCategory) => sc.name === column.title
+                          );
+                          const subCategory = serviceCategory?.subCategories?.find(
+                            (subCat: ServiceSubCategory) => subCat.name === item
+                          );
+                          const subCategorySlug = subCategory?.slug;
+                          
+                          const linkTo = column.serviceCategorySlug && sectorNameToSlug[activeDropdown] && subCategorySlug
+                            ? `/sector/${sectorNameToSlug[activeDropdown]}/${column.serviceCategorySlug}/${subCategorySlug}`
+                            : `/services?category=${encodeURIComponent(activeDropdown)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`;
+                          
+                          return (
+                            <li key={idx}>
+                              <Link
+                                to={linkTo}
+                                className="font-['Poppins',sans-serif] font-light text-[13px] text-[#5b5b5b] hover:text-[#FE8A0F] transition-colors block"
+                              >
+                                {item}
+                              </Link>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   ))}
@@ -1200,7 +1302,9 @@ export default function Nav() {
                     className="border-b border-[#E5E5E5] last:border-b-0 pb-4 mb-4 last:mb-0 sm:border-b-0 sm:pb-0"
                   >
                     <Link
-                      to={`/category/${getCategoryId(expandedCategory, column.title, sortedSectors)}`}
+                      to={column.serviceCategorySlug && sectorNameToSlug[expandedCategory]
+                        ? `/sector/${sectorNameToSlug[expandedCategory]}/${column.serviceCategorySlug}`
+                        : `/category/${getCategoryId(expandedCategory, column.title, sortedSectors)}`}
                       className="font-['Poppins',sans-serif] font-semibold text-[16px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-3 block cursor-pointer"
                       onClick={() => {
                         setMobileDropdownOpen(false);
@@ -1210,20 +1314,36 @@ export default function Nav() {
                       {column.title}
                     </Link>
                     <ul className="space-y-2.5 pl-2">
-                      {column.items.map((item, itemIdx) => (
-                        <li key={itemIdx}>
-                          <Link
-                            to={`/services?category=${encodeURIComponent(expandedCategory)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`}
-                            className="font-['Poppins',sans-serif] font-light text-[14px] text-[#5b5b5b] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors block"
-                            onClick={() => {
-                              setMobileDropdownOpen(false);
-                              setExpandedCategory(null);
-                            }}
-                          >
-                            {item}
-                          </Link>
-                        </li>
-                      ))}
+                      {column.items.map((item, itemIdx) => {
+                        // Find the subcategory slug if available
+                        const sector = sortedSectors.find((s: Sector) => s.name === expandedCategory);
+                        const serviceCategory = sector && serviceCategoriesBySector[sector._id]?.find(
+                          (sc: ServiceCategory) => sc.name === column.title
+                        );
+                        const subCategory = serviceCategory?.subCategories?.find(
+                          (subCat: ServiceSubCategory) => subCat.name === item
+                        );
+                        const subCategorySlug = subCategory?.slug;
+                        
+                        const linkTo = column.serviceCategorySlug && sectorNameToSlug[expandedCategory] && subCategorySlug
+                          ? `/sector/${sectorNameToSlug[expandedCategory]}/${column.serviceCategorySlug}/${subCategorySlug}`
+                          : `/services?category=${encodeURIComponent(expandedCategory)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`;
+                        
+                        return (
+                          <li key={itemIdx}>
+                            <Link
+                              to={linkTo}
+                              className="font-['Poppins',sans-serif] font-light text-[14px] text-[#5b5b5b] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors block"
+                              onClick={() => {
+                                setMobileDropdownOpen(false);
+                                setExpandedCategory(null);
+                              }}
+                            >
+                              {item}
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 ),

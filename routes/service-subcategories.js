@@ -11,6 +11,7 @@ router.get('/', async (req, res) => {
       serviceCategoryId, 
       serviceCategorySlug,
       parentSubCategoryId,
+      attributeType,
       activeOnly = 'true',
       includeServiceCategory = 'false',
       page,
@@ -31,6 +32,11 @@ router.get('/', async (req, res) => {
       if (serviceCategoryId) {
         query.serviceCategory = serviceCategoryId;
         query.parentSubCategory = null; // Top-level subcategories have no parent
+        // Filter by attributeType for level 1 subcategories
+        if (attributeType) {
+          query.attributeType = attributeType;
+          query.level = 1; // Only level 1 subcategories have attributeType
+        }
       } else if (serviceCategorySlug) {
         const serviceCategory = await ServiceCategory.findOne({ slug: serviceCategorySlug });
         if (!serviceCategory) {
@@ -38,6 +44,11 @@ router.get('/', async (req, res) => {
         }
         query.serviceCategory = serviceCategory._id;
         query.parentSubCategory = null;
+        // Filter by attributeType for level 1 subcategories
+        if (attributeType) {
+          query.attributeType = attributeType;
+          query.level = 1; // Only level 1 subcategories have attributeType
+        }
       }
     }
     
@@ -174,6 +185,27 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Service category not found' });
     }
     
+    // Find parent subcategory if provided
+    let parentSubCategoryDoc = null;
+    let calculatedLevel = 1;
+    if (parentSubCategory) {
+      if (parentSubCategory.match(/^[0-9a-fA-F]{24}$/)) {
+        parentSubCategoryDoc = await ServiceSubCategory.findById(parentSubCategory);
+      } else {
+        parentSubCategoryDoc = await ServiceSubCategory.findOne({ slug: parentSubCategory });
+      }
+      if (!parentSubCategoryDoc) {
+        return res.status(404).json({ error: 'Parent subcategory not found' });
+      }
+      calculatedLevel = (parentSubCategoryDoc.level || 1) + 1;
+      if (calculatedLevel > 7) {
+        return res.status(400).json({ error: 'Maximum nesting level (7) reached' });
+      }
+    } else {
+      // For level 1 subcategories, use provided level or default to 1
+      calculatedLevel = level !== undefined ? level : 1;
+    }
+    
     // Generate slug if not provided
     const serviceSubCategorySlug = slug || name
       .toLowerCase()
@@ -202,7 +234,8 @@ router.post('/', async (req, res) => {
       bannerImage,
       icon,
       isActive: isActive !== undefined ? isActive : true,
-      level: level !== undefined ? level : calculatedLevel,
+      level: calculatedLevel,
+      attributeType: calculatedLevel === 1 && attributeType ? attributeType : null,
     });
     
     // Populate service category for response

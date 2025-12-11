@@ -97,6 +97,7 @@ interface ServiceSubCategory {
   _id: string;
   name: string;
   order: number;
+  attributeType?: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
   titles?: Array<{
     level: number;
     title: string;
@@ -122,12 +123,13 @@ const ATTRIBUTE_TYPES = [
 ] as const;
 
 // Sortable Row Component
-function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive, onViewSubCategories }: {
+function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive, onViewSubCategories, sectors }: {
   serviceCategory: ServiceCategory;
   onEdit: (serviceCategory: ServiceCategory) => void;
   onDelete: (serviceCategory: ServiceCategory) => void;
   onToggleActive: (serviceCategory: ServiceCategory) => void;
   onViewSubCategories: (serviceCategory: ServiceCategory) => void;
+  sectors: Sector[];
 }) {
   const {
     attributes,
@@ -235,11 +237,27 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
           <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
             <DropdownMenuItem
               onClick={() => {
-                const sector = typeof serviceCategory.sector === 'object' ? serviceCategory.sector : null;
-                if (sector?.slug) {
-                  window.open(`/sector/${sector.slug}`, '_blank');
+                let sectorSlug: string | undefined;
+                
+                // Handle both object and string (ID) cases for sector
+                if (typeof serviceCategory.sector === 'object' && serviceCategory.sector !== null) {
+                  sectorSlug = serviceCategory.sector.slug;
+                } else if (typeof serviceCategory.sector === 'string') {
+                  // Find sector by ID from sectors array
+                  const sector = sectors.find(s => s._id === serviceCategory.sector);
+                  sectorSlug = sector?.slug;
+                }
+                
+                const serviceCategorySlug = serviceCategory.slug;
+                
+                if (sectorSlug && serviceCategorySlug) {
+                  const url = `/sector/${sectorSlug}/${serviceCategorySlug}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                } else if (sectorSlug) {
+                  const url = `/sector/${sectorSlug}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
                 } else {
-                  toast.error("Sector slug not available");
+                  toast.error("Sector or service category slug not available");
                 }
               }}
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
@@ -315,6 +333,7 @@ export default function AdminServiceCategoriesPage() {
   const [subCategorySearchTerm, setSubCategorySearchTerm] = useState("");
   const [subCategorySortBy, setSubCategorySortBy] = useState<string>("order");
   const [subCategorySortOrder, setSubCategorySortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedAttributeType, setSelectedAttributeType] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -350,6 +369,7 @@ export default function AdminServiceCategoriesPage() {
     order: number;
     level: number;
     isActive: boolean;
+    attributeType?: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
   }>({
     serviceCategory: "",
     parentSubCategory: "",
@@ -363,6 +383,7 @@ export default function AdminServiceCategoriesPage() {
     order: 0,
     level: 1,
     isActive: true,
+    attributeType: undefined,
   });
   const [subCategoryIconPreview, setSubCategoryIconPreview] = useState<string | null>(null);
   const [subCategoryBannerPreview, setSubCategoryBannerPreview] = useState<string | null>(null);
@@ -451,6 +472,7 @@ export default function AdminServiceCategoriesPage() {
         ...(subCategorySearchTerm && { search: subCategorySearchTerm }),
         ...(serviceCategoryId && { serviceCategoryId }),
         ...(parentSubCategoryId && { parentSubCategoryId }),
+        ...(serviceCategoryId && !parentSubCategoryId && selectedAttributeType && { attributeType: selectedAttributeType }),
       });
 
       const response = await fetch(resolveApiUrl(`/api/service-subcategories?${params}`), {
@@ -472,7 +494,7 @@ export default function AdminServiceCategoriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm]);
+  }, [subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, selectedAttributeType]);
 
   // Combined effect to handle both regular updates and search debouncing
   // This prevents duplicate API calls on initial load
@@ -504,7 +526,7 @@ export default function AdminServiceCategoriesPage() {
 
       return () => clearTimeout(debounceTimer);
     }
-  }, [viewMode, selectedServiceCategory, selectedParentSubCategory, subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, fetchServiceSubCategories]);
+  }, [viewMode, selectedServiceCategory, selectedParentSubCategory, subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, selectedAttributeType, fetchServiceSubCategories]);
 
   const fetchSectors = async () => {
     try {
@@ -839,6 +861,16 @@ export default function AdminServiceCategoriesPage() {
     setViewMode("subcategories");
     setSubCategoryPage(1);
     setSubCategorySearchTerm("");
+    // Get first level (lowest level, typically level 3) attributeType from categoryLevelMapping for tabs
+    const sortedMappings = serviceCategory.categoryLevelMapping
+      ?.filter(m => m.level >= 3 && m.level <= 7)
+      .sort((a, b) => a.level - b.level);
+    const firstLevelMapping = sortedMappings?.[0];
+    if (firstLevelMapping) {
+      setSelectedAttributeType(firstLevelMapping.attributeType);
+    } else {
+      setSelectedAttributeType(null);
+    }
     fetchServiceSubCategories(serviceCategory._id, undefined);
   };
 
@@ -908,6 +940,7 @@ export default function AdminServiceCategoriesPage() {
         : 1,
       level: currentLevel,
       isActive: true,
+      attributeType: currentLevel === 1 && selectedAttributeType ? selectedAttributeType : undefined,
     });
     setEditingServiceSubCategory(null);
     setSubCategoryIconPreview(null);
@@ -916,10 +949,14 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const handleEditSubCategory = (subCategory: ServiceSubCategory) => {
+    const parentSubCategoryId = typeof subCategory.parentSubCategory === "string" 
+      ? subCategory.parentSubCategory 
+      : (subCategory.parentSubCategory as ServiceSubCategory)?._id || "";
     setSubCategoryFormData({
       serviceCategory: typeof subCategory.serviceCategory === "string" 
         ? subCategory.serviceCategory 
         : (subCategory.serviceCategory as ServiceCategory)._id,
+      parentSubCategory: parentSubCategoryId,
       name: subCategory.name,
       slug: subCategory.slug || generateSlug(subCategory.name),
       description: subCategory.description || "",
@@ -928,7 +965,9 @@ export default function AdminServiceCategoriesPage() {
       bannerImage: subCategory.bannerImage || "",
       icon: subCategory.icon || "",
       order: subCategory.order || 0,
+      level: subCategory.level || 1,
       isActive: subCategory.isActive,
+      attributeType: subCategory.attributeType,
     });
     setEditingServiceSubCategory(subCategory);
     setSubCategoryIconPreview(subCategory.icon || null);
@@ -966,6 +1005,7 @@ export default function AdminServiceCategoriesPage() {
         order: subCategoryFormData.order,
         level: subCategoryFormData.level,
         isActive: subCategoryFormData.isActive,
+        ...(subCategoryFormData.attributeType && { attributeType: subCategoryFormData.attributeType }),
       };
 
       // Add parentSubCategory or serviceCategory based on which one is set
@@ -1493,6 +1533,46 @@ export default function AdminServiceCategoriesPage() {
                   </div>
                 </div>
 
+                {/* Tabs for Level 1 Subcategories (only when no parent subcategory) */}
+                {!selectedParentSubCategory && selectedServiceCategory && selectedServiceCategory.categoryLevelMapping && selectedServiceCategory.categoryLevelMapping.length > 0 && (
+                  <div className="border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex gap-2 overflow-x-auto">
+                      {selectedServiceCategory.categoryLevelMapping
+                        .filter(m => m.level >= 3 && m.level <= 7)
+                        .sort((a, b) => a.level - b.level)
+                        .map((mapping) => {
+                          const attributeTypeLabels: Record<string, string> = {
+                            serviceType: 'Service Type',
+                            size: 'Size',
+                            frequency: 'Frequency',
+                            make: 'Make',
+                            model: 'Model',
+                            brand: 'Brand',
+                          };
+                          const label = mapping.title || attributeTypeLabels[mapping.attributeType] || mapping.attributeType;
+                          return (
+                            <button
+                              key={`${mapping.level}-${mapping.attributeType}`}
+                              onClick={() => {
+                                setSelectedAttributeType(mapping.attributeType);
+                                setSubCategoryPage(1);
+                                setSubCategorySearchTerm("");
+                                fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+                              }}
+                              className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                                selectedAttributeType === mapping.attributeType
+                                  ? 'border-[#FE8A0F] text-[#FE8A0F]'
+                                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-[#FE8A0F] hover:border-gray-300 dark:hover:border-gray-600'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Search and Controls */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
@@ -1836,6 +1916,7 @@ export default function AdminServiceCategoriesPage() {
                                 onDelete={handleDelete}
                                 onToggleActive={handleToggleActive}
                                 onViewSubCategories={handleViewSubCategories}
+                                sectors={sectors}
                               />
                             ))}
                           </TableBody>

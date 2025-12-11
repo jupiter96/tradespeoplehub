@@ -50,7 +50,7 @@ import { Label } from "./ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { allServices, type Service } from "./servicesData";
 import { categoryTreeForServicesPage } from "./unifiedCategoriesData";
-import { useSectors } from "../hooks/useSectorsAndCategories";
+import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 
 // Helper function to calculate distance between two coordinates (Haversine formula)
@@ -269,6 +269,10 @@ export default function ServicesPage() {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const sectorSlugParam = searchParams.get("sector");
+  const serviceCategorySlugParam = searchParams.get("serviceCategory");
+  const serviceSubCategorySlugParam = searchParams.get("serviceSubCategory");
+  // Legacy URL params for backward compatibility
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
   const detailedSubcategoryParam = searchParams.get("detailedSubcategory");
@@ -481,17 +485,97 @@ export default function ServicesPage() {
     }[];
   };
 
-  // Load sectors and categories from API
-  const { sectors: apiSectors, loading: sectorsLoading } = useSectors(true, true);
+  // Load sectors from API
+  const { sectors: apiSectors, loading: sectorsLoading } = useSectors(false, false);
+  
+  // Load legacy categories for fallback
+  const { sectors: legacySectors } = useSectors(true, true);
+  
+  // Load service categories for all sectors
+  const [allServiceCategories, setAllServiceCategories] = useState<ServiceCategory[]>([]);
+  const [serviceCategoriesLoading, setServiceCategoriesLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchAllServiceCategories = async () => {
+      try {
+        setServiceCategoriesLoading(true);
+        if (apiSectors.length > 0) {
+          // Fetch service categories for each sector
+          const { resolveApiUrl } = await import("../config/api");
+          const serviceCategoriesPromises = apiSectors.map(async (sector: Sector) => {
+            try {
+              const response = await fetch(
+                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=true&sortBy=order&sortOrder=asc`),
+                { credentials: 'include' }
+              );
+              if (response.ok) {
+                const data = await response.json();
+                return data.serviceCategories || [];
+              }
+              return [];
+            } catch (error) {
+              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+              return [];
+            }
+          });
+          
+          const allCategories = await Promise.all(serviceCategoriesPromises);
+          const flattened = allCategories.flat();
+          setAllServiceCategories(flattened);
+        }
+      } catch (error) {
+        console.error('Error fetching service categories:', error);
+      } finally {
+        setServiceCategoriesLoading(false);
+      }
+    };
+    
+    if (apiSectors.length > 0) {
+      fetchAllServiceCategories();
+    } else {
+      setServiceCategoriesLoading(false);
+    }
+  }, [apiSectors]);
   
   // Convert API data to categoryTree format, sorted by order
+  // Priority: Service Categories (new system) > Legacy Categories > Static data
   const categoryTree: CategoryTree[] = useMemo(() => {
-    if (apiSectors.length > 0) {
-      // Use API data, sorted by order
+    if (allServiceCategories.length > 0 && apiSectors.length > 0) {
+      // Use service categories (new system)
       const sortedSectors = [...apiSectors].sort((a, b) => (a.order || 0) - (b.order || 0));
       
       return sortedSectors.map((sector: Sector) => {
-        // Sort categories by order
+        // Get service categories for this sector
+        const sectorServiceCategories = allServiceCategories
+          .filter((sc: ServiceCategory) => {
+            const sectorId = typeof sc.sector === 'object' ? sc.sector._id : sc.sector;
+            return sectorId === sector._id;
+          })
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        return {
+          sector: sector.name,
+          sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
+          mainCategories: sectorServiceCategories.map((serviceCategory: ServiceCategory) => {
+            // Sort subcategories by order
+            const sortedSubCategories = ((serviceCategory.subCategories || []) as ServiceSubCategory[])
+              .sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            return {
+              name: serviceCategory.name,
+              value: serviceCategory.slug || serviceCategory.name.toLowerCase().replace(/\s+/g, '-'),
+              subCategories: sortedSubCategories.map((subCat: ServiceSubCategory) => subCat.name)
+            };
+          })
+        };
+      });
+    }
+    
+    // Fallback to legacy categories if service categories are not available
+    if (legacySectors.length > 0) {
+      const sortedSectors = [...legacySectors].sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      return sortedSectors.map((sector: Sector) => {
         const sortedCategories = ((sector.categories || []) as Category[])
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         
@@ -499,7 +583,6 @@ export default function ServicesPage() {
           sector: sector.name,
           sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
           mainCategories: sortedCategories.map((category: Category) => {
-            // Sort subcategories by order
             const sortedSubCategories = ((category.subCategories || []) as SubCategory[])
               .sort((a, b) => (a.order || 0) - (b.order || 0));
             
@@ -512,9 +595,10 @@ export default function ServicesPage() {
         };
       });
     }
-    // Fallback to static data if API data is not available
+    
+    // Final fallback to static data
     return categoryTreeForServicesPage;
-  }, [apiSectors]);
+  }, [allServiceCategories, apiSectors, legacySectors]);
 
   // Selected filters - new approach with type and value
   type SelectedFilter = {
@@ -577,19 +661,88 @@ export default function ServicesPage() {
 
   // Initialize filters from URL parameters and auto-expand categories
   useEffect(() => {
-    if (categoryParam || subcategoryParam || detailedSubcategoryParam) {
-      const filters: SelectedFilter[] = [];
+    const filters: SelectedFilter[] = [];
+    
+    // Priority: New service category URL params > Legacy category params
+    if (sectorSlugParam && serviceCategorySlugParam) {
+      // Find the sector by slug
+      const matchedSector = apiSectors.find((s: Sector) => s.slug === sectorSlugParam);
       
-      // Find the sector in categoryTree that matches categoryParam
+      if (matchedSector) {
+        // Find the service category by slug
+        const matchedServiceCategory = allServiceCategories.find((sc: ServiceCategory) => {
+          const sectorId = typeof sc.sector === 'object' ? sc.sector._id : sc.sector;
+          return sectorId === matchedSector._id && sc.slug === serviceCategorySlugParam;
+        });
+        
+        if (matchedServiceCategory) {
+          if (serviceSubCategorySlugParam) {
+            // Find the subcategory
+            const matchedSubCategory = matchedServiceCategory.subCategories?.find(
+              (subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam || subCat.name === serviceSubCategorySlugParam
+            );
+            
+            if (matchedSubCategory) {
+              filters.push({
+                type: 'subCategory',
+                sector: matchedSector.name,
+                mainCategory: matchedServiceCategory.name,
+                subCategory: matchedSubCategory.name,
+                displayName: matchedSubCategory.name
+              });
+              
+              setExpandedSectors(prev => {
+                const newSet = new Set(prev);
+                newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
+                return newSet;
+              });
+              
+              const key = `${matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-')}-${matchedServiceCategory.slug || matchedServiceCategory.name.toLowerCase().replace(/\s+/g, '-')}`;
+              setExpandedMainCategories(prev => {
+                const newSet = new Set(prev);
+                newSet.add(key);
+                return newSet;
+              });
+            }
+          } else {
+            // Only service category selected
+            filters.push({
+              type: 'mainCategory',
+              sector: matchedSector.name,
+              mainCategory: matchedServiceCategory.name,
+              displayName: matchedServiceCategory.name
+            });
+            
+            setExpandedSectors(prev => {
+              const newSet = new Set(prev);
+              newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
+              return newSet;
+            });
+          }
+        } else {
+          // Only sector selected
+          filters.push({
+            type: 'sector',
+            sector: matchedSector.name,
+            displayName: matchedSector.name
+          });
+          
+          setExpandedSectors(prev => {
+            const newSet = new Set(prev);
+            newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
+            return newSet;
+          });
+        }
+      }
+    } else if (categoryParam || subcategoryParam || detailedSubcategoryParam) {
+      // Legacy URL params for backward compatibility
       const matchedSector = categoryTree.find(s => s.sector === categoryParam);
       
       if (matchedSector) {
         if (detailedSubcategoryParam && subcategoryParam) {
-          // Find the main category that matches subcategoryParam
           const matchedMainCat = matchedSector.mainCategories.find(mc => mc.name === subcategoryParam);
           
           if (matchedMainCat) {
-            // If we have all three levels, add the most specific filter
             filters.push({
               type: 'subCategory',
               sector: matchedSector.sector,
@@ -598,7 +751,6 @@ export default function ServicesPage() {
               displayName: detailedSubcategoryParam
             });
             
-            // Auto-expand sector and main category using sectorValue and mainCategory value
             setExpandedSectors(prev => {
               const newSet = new Set(prev);
               newSet.add(matchedSector.sectorValue);
@@ -613,11 +765,9 @@ export default function ServicesPage() {
             });
           }
         } else if (subcategoryParam) {
-          // Find the main category that matches subcategoryParam
           const matchedMainCat = matchedSector.mainCategories.find(mc => mc.name === subcategoryParam);
           
           if (matchedMainCat) {
-            // If we have category and subcategory, add mainCategory filter
             filters.push({
               type: 'mainCategory',
               sector: matchedSector.sector,
@@ -625,7 +775,6 @@ export default function ServicesPage() {
               displayName: subcategoryParam
             });
             
-            // Auto-expand sector using sectorValue
             setExpandedSectors(prev => {
               const newSet = new Set(prev);
               newSet.add(matchedSector.sectorValue);
@@ -633,25 +782,25 @@ export default function ServicesPage() {
             });
           }
         } else {
-          // If we only have category, add sector filter
           filters.push({
             type: 'sector',
             sector: matchedSector.sector,
             displayName: categoryParam
           });
           
-          // Auto-expand sector using sectorValue
           setExpandedSectors(prev => {
             const newSet = new Set(prev);
             newSet.add(matchedSector.sectorValue);
             return newSet;
           });
         }
-        
-        setSelectedFilters(filters);
       }
     }
-  }, [categoryParam, subcategoryParam, detailedSubcategoryParam]);
+    
+    if (filters.length > 0) {
+      setSelectedFilters(filters);
+    }
+  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, allServiceCategories, categoryTree]);
 
   // Auto-expand categories when filters change
   useEffect(() => {
@@ -1327,8 +1476,15 @@ export default function ServicesPage() {
 
   // Generate dynamic SEO content based on filters
   const generateSEOContent = () => {
-    const categoryName = categoryParam || (selectedFilters.length > 0 ? selectedFilters[0].sector : null);
-    const subcategoryName = subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
+    // Priority: New service category params > Legacy params > Selected filters
+    const categoryName = serviceCategorySlugParam 
+      ? allServiceCategories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)?.name
+      : categoryParam || (selectedFilters.length > 0 ? selectedFilters[0].sector : null);
+    const subcategoryName = serviceSubCategorySlugParam
+      ? allServiceCategories
+          .find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)
+          ?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam)?.name
+      : subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
     
     if (categoryName && subcategoryName) {
       return {

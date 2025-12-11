@@ -42,6 +42,8 @@ function AppContent() {
         <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/all-categories" element={<AllCategoriesPage />} />
         <Route path="/sector/:sectorSlug" element={<SectorPage />} />
+        <Route path="/sector/:sectorSlug/:serviceCategorySlug/*" element={<SectorPage />} />
+        {/* Legacy routes for backward compatibility */}
         <Route path="/category/:categorySlug/:subCategorySlug" element={<SectorPage />} />
         <Route path="/category/:categorySlug" element={<SectorPage />} />
         <Route path="/cart" element={<CartPage />} />

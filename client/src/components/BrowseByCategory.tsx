@@ -16,14 +16,57 @@ import {
   Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
-import { useSectors } from "../hooks/useSectorsAndCategories";
+import { useState, useEffect } from "react";
+import { useSectors, useServiceCategories, type ServiceCategory } from "../hooks/useSectorsAndCategories";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Sector } from "../hooks/useSectorsAndCategories";
 
 export default function BrowseByCategory() {
-  const { sectors, loading } = useSectors(true, true); // Include categories and subcategories
+  const { sectors, loading: sectorsLoading } = useSectors(false, false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Record<string, ServiceCategory[]>>({});
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch service categories for all sectors
+  useEffect(() => {
+    const fetchServiceCategories = async () => {
+      try {
+        setLoading(true);
+        if (sectors.length > 0) {
+          const { resolveApiUrl } = await import("../config/api");
+          const categoriesMap: Record<string, ServiceCategory[]> = {};
+          
+          const promises = sectors.map(async (sector: Sector) => {
+            try {
+              const response = await fetch(
+                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=false&sortBy=order&sortOrder=asc&limit=1`),
+                { credentials: 'include' }
+              );
+              if (response.ok) {
+                const data = await response.json();
+                categoriesMap[sector._id] = data.serviceCategories || [];
+              }
+            } catch (error) {
+              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+            }
+          });
+          
+          await Promise.all(promises);
+          setServiceCategoriesBySector(categoriesMap);
+        }
+      } catch (error) {
+        console.error('Error fetching service categories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (sectors.length > 0) {
+      fetchServiceCategories();
+    } else {
+      setLoading(false);
+    }
+  }, [sectors]);
   // Icon mapping for sectors - Each sector now has a unique icon
   const iconMap: Record<string, any> = {
     "Home & Garden": Home,
@@ -97,28 +140,38 @@ export default function BrowseByCategory() {
     },
   };
 
-  // Sort by order field (ascending) and take top 6
+  // Sort by order field (ascending) and take top 6 sectors
   const topSectors = sectors
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .slice(0, 6);
 
+  // Build categories: For each sector, show the first service category or the sector itself
   const categories = topSectors.map((sector: Sector) => {
+    const sectorServiceCategories = serviceCategoriesBySector[sector._id] || [];
+    const firstServiceCategory = sectorServiceCategories[0];
+    
+    // If sector has service categories, use the first one; otherwise use sector
+    const displayName = firstServiceCategory?.name || sector.name;
+    const displaySlug = firstServiceCategory?.slug || sector.slug;
+    const displayIcon = firstServiceCategory?.icon || sector.icon;
     const IconComponent = iconMap[sector.name] || Home;
     const styles = categoryStyles[sector.name] || categoryStyles["Home & Garden"];
     
     return {
-      id: sector._id,
-      name: sector.name,
-      subtitle: undefined,
+      id: firstServiceCategory?._id || sector._id,
+      name: displayName,
+      subtitle: firstServiceCategory ? sector.name : undefined,
       icon: IconComponent,
-      iconImage: sector.icon, // Admin uploaded icon image URL
+      iconImage: displayIcon, // Service category icon or sector icon
       styles: styles,
-      categoryName: sector.name,
+      categoryName: displayName,
       sectorSlug: sector.slug,
+      serviceCategorySlug: firstServiceCategory?.slug,
+      isServiceCategory: !!firstServiceCategory,
     };
   });
 
-  if (loading) {
+  if (sectorsLoading || loading) {
     return (
       <div className="w-full">
         <div className="flex items-center justify-between mb-8 md:mb-10">
@@ -158,7 +211,9 @@ export default function BrowseByCategory() {
             return (
               <Link
                 key={category.id}
-                to={`/sector/${category.sectorSlug}`}
+                to={category.isServiceCategory && category.serviceCategorySlug
+                  ? `/sector/${category.sectorSlug}/${category.serviceCategorySlug}`
+                  : `/sector/${category.sectorSlug}`}
                 className="relative overflow-hidden rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl group cursor-pointer flex-shrink-0 w-[110px] aspect-[4/3]"
               >
                 {/* Background Image */}
@@ -224,7 +279,9 @@ export default function BrowseByCategory() {
           return (
             <Link
               key={category.id}
-              to={`/sector/${category.sectorSlug}`}
+              to={category.isServiceCategory && category.serviceCategorySlug
+                ? `/sector/${category.sectorSlug}/${category.serviceCategorySlug}`
+                : `/sector/${category.sectorSlug}`}
               className="relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-2xl group cursor-pointer aspect-[4/3]"
             >
               {/* Background Image */}

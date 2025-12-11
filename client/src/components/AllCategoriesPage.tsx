@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronRight,
   ChevronLeft,
@@ -8,44 +8,89 @@ import {
 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { useSectors } from "../hooks/useSectorsAndCategories";
-import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
+import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
+import type { Sector } from "../hooks/useSectorsAndCategories";
 import { getSectorIcon, getCategoryIcon, getSubCategoryIcon } from "./categoryIconMappings";
 
 type ViewMode = "sectors" | "categories" | "subcategories";
 
 export default function AllCategoriesPage() {
-  const { sectors, loading, error } = useSectors(true, true); // Include categories and subcategories
+  const { sectors, loading: sectorsLoading, error: sectorsError } = useSectors(false, false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedServiceCategory, setSelectedServiceCategory] = useState<ServiceCategory | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("sectors");
+  const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Record<string, ServiceCategory[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch service categories for all sectors
+  useEffect(() => {
+    const fetchServiceCategories = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        if (sectors.length > 0) {
+          const { resolveApiUrl } = await import("../config/api");
+          const categoriesMap: Record<string, ServiceCategory[]> = {};
+          
+          const promises = sectors.map(async (sector: Sector) => {
+            try {
+              const response = await fetch(
+                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=true&sortBy=order&sortOrder=asc`),
+                { credentials: 'include' }
+              );
+              if (response.ok) {
+                const data = await response.json();
+                categoriesMap[sector._id] = data.serviceCategories || [];
+              }
+            } catch (error) {
+              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+            }
+          });
+          
+          await Promise.all(promises);
+          setServiceCategoriesBySector(categoriesMap);
+        }
+      } catch (error) {
+        console.error('Error fetching service categories:', error);
+        setError('Failed to load service categories');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (sectors.length > 0) {
+      fetchServiceCategories();
+    } else {
+      setLoading(false);
+    }
+  }, [sectors]);
 
   // Sort sectors by order
   const sortedSectors = [...sectors].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  // Get categories for selected sector, sorted by order
-  const getCategoriesForSector = (sector: Sector): Category[] => {
-    const categories = ((sector.categories || []) as Category[])
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    return categories;
+  // Get service categories for selected sector, sorted by order
+  const getServiceCategoriesForSector = (sector: Sector): ServiceCategory[] => {
+    const serviceCategories = serviceCategoriesBySector[sector._id] || [];
+    return serviceCategories.sort((a, b) => (a.order || 0) - (b.order || 0));
   };
 
-  // Get subcategories for selected category, sorted by order
-  const getSubCategoriesForCategory = (category: Category): SubCategory[] => {
-    const subCategories = ((category.subCategories || []) as SubCategory[])
+  // Get subcategories for selected service category, sorted by order
+  const getSubCategoriesForServiceCategory = (serviceCategory: ServiceCategory): ServiceSubCategory[] => {
+    const subCategories = ((serviceCategory.subCategories || []) as ServiceSubCategory[])
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     return subCategories;
   };
 
   const handleSectorClick = (sector: Sector) => {
     setSelectedSector(sector);
-    setSelectedCategory(null);
+    setSelectedServiceCategory(null);
     setViewMode("categories");
   };
 
-  const handleCategoryClick = (category: Category) => {
-    setSelectedCategory(category);
+  const handleCategoryClick = (serviceCategory: ServiceCategory) => {
+    setSelectedServiceCategory(serviceCategory);
     setViewMode("subcategories");
   };
 
@@ -56,7 +101,7 @@ export default function AllCategoriesPage() {
   };
 
   const handleBackToCategories = () => {
-    setSelectedCategory(null);
+    setSelectedServiceCategory(null);
     setViewMode("categories");
   };
 
@@ -101,13 +146,13 @@ export default function AllCategoriesPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 md:-mt-16 pb-16 md:pb-24 relative z-20">
-        {loading ? (
+        {(sectorsLoading || loading) ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-[#3D78CB]" />
           </div>
-        ) : error ? (
+        ) : (sectorsError || error) ? (
           <div className="text-center py-20">
-            <p className="text-red-500 font-['Poppins',sans-serif]">{error}</p>
+            <p className="text-red-500 font-['Poppins',sans-serif]">{sectorsError || error}</p>
           </div>
         ) : (
           <div className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8">
@@ -127,10 +172,10 @@ export default function AllCategoriesPage() {
                     <span className="text-[#3D78CB] font-medium">{selectedSector.name}</span>
                   </>
                 )}
-                {selectedCategory && (
+                {selectedServiceCategory && (
                   <>
                     <ChevronRight className="w-4 h-4" />
-                    <span className="text-[#3D78CB] font-medium">{selectedCategory.name}</span>
+                    <span className="text-[#3D78CB] font-medium">{selectedServiceCategory.name}</span>
                   </>
                 )}
               </div>
@@ -199,28 +244,30 @@ export default function AllCategoriesPage() {
                   </div>
                 </div>
                 {(() => {
-                  const categories = getCategoriesForSector(selectedSector);
-                  return categories.length > 0 ? (
+                  const serviceCategories = getServiceCategoriesForSector(selectedSector);
+                  return serviceCategories.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {categories.map((category) => {
-                        const CategoryIconComponent = getCategoryIcon(category.name);
-                        const hasIcon = category.icon && !imageErrors[`category-${category._id}`];
-                        const subCategories = getSubCategoriesForCategory(category);
+                      {serviceCategories.map((serviceCategory) => {
+                        const CategoryIconComponent = getCategoryIcon(serviceCategory.name);
+                        const hasIcon = serviceCategory.icon && !imageErrors[`serviceCategory-${serviceCategory._id}`];
+                        const subCategories = getSubCategoriesForServiceCategory(serviceCategory);
+                        const sectorSlug = selectedSector.slug || selectedSector.name.toLowerCase().replace(/\s+/g, '-');
+                        const serviceCategorySlug = serviceCategory.slug || serviceCategory.name.toLowerCase().replace(/\s+/g, '-');
                         
                         return (
-                          <button
-                            key={category._id}
-                            onClick={() => handleCategoryClick(category)}
+                          <Link
+                            key={serviceCategory._id}
+                            to={`/sector/${sectorSlug}/${serviceCategorySlug}`}
                             className="group flex items-center gap-4 p-4 bg-gray-50 hover:bg-white rounded-[12px] border border-gray-200 hover:border-[#3D78CB] hover:shadow-[0px_4px_12px_rgba(61,120,203,0.15)] transition-all duration-200 text-left w-full"
                           >
                             {/* Category Icon */}
                             <div className="w-12 h-12 rounded-[10px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex-shrink-0">
                               {hasIcon ? (
                                 <img 
-                                  src={category.icon} 
-                                  alt={category.name}
+                                  src={serviceCategory.icon} 
+                                  alt={serviceCategory.name}
                                   className="w-full h-full object-contain p-1.5"
-                                  onError={() => handleImageError(`category-${category._id}`)}
+                                  onError={() => handleImageError(`serviceCategory-${serviceCategory._id}`)}
                                 />
                               ) : (
                                 <CategoryIconComponent
@@ -230,7 +277,7 @@ export default function AllCategoriesPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[15px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
-                                {category.name}
+                                {serviceCategory.name}
                               </h3>
                               {subCategories.length > 0 && (
                                 <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
@@ -239,7 +286,7 @@ export default function AllCategoriesPage() {
                               )}
                             </div>
                             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#3D78CB] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                          </button>
+                          </Link>
                         );
                       })}
                     </div>
@@ -255,12 +302,12 @@ export default function AllCategoriesPage() {
             )}
 
             {/* Subcategories View */}
-            {viewMode === "subcategories" && selectedCategory && (
+            {viewMode === "subcategories" && selectedServiceCategory && selectedSector && (
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
-                      {selectedCategory.name}
+                      {selectedServiceCategory.name}
                     </h2>
                     <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
                       Available services in this category
@@ -268,24 +315,28 @@ export default function AllCategoriesPage() {
                   </div>
                 </div>
                 {(() => {
-                  const subCategories = getSubCategoriesForCategory(selectedCategory);
+                  const subCategories = getSubCategoriesForServiceCategory(selectedServiceCategory);
+                  const sectorSlug = selectedSector.slug || selectedSector.name.toLowerCase().replace(/\s+/g, '-');
+                  const serviceCategorySlug = selectedServiceCategory.slug || selectedServiceCategory.name.toLowerCase().replace(/\s+/g, '-');
+                  
                   return subCategories.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {subCategories.map((subCategory) => {
                         const SubCategoryIconComponent = getSubCategoryIcon(subCategory.name);
-                        const hasIcon = (subCategory as any).icon && !imageErrors[`subcategory-${subCategory._id}`];
+                        const hasIcon = subCategory.icon && !imageErrors[`subcategory-${subCategory._id}`];
+                        const subCategorySlug = subCategory.slug || subCategory.name.toLowerCase().replace(/\s+/g, '-');
                         
                         return (
                           <Link
                             key={subCategory._id}
-                            to={`/services?category=${encodeURIComponent(selectedSector?.name || '')}&subcategory=${encodeURIComponent(selectedCategory.name)}&service=${encodeURIComponent(subCategory.name)}`}
+                            to={`/sector/${sectorSlug}/${serviceCategorySlug}/${subCategorySlug}`}
                             className="group flex items-center gap-3 p-3 bg-gray-50 hover:bg-white rounded-[10px] border border-gray-200 hover:border-[#3D78CB] hover:shadow-[0px_2px_8px_rgba(61,120,203,0.12)] transition-all duration-200"
                           >
                             {/* SubCategory Icon */}
                             <div className="w-10 h-10 rounded-[8px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex-shrink-0">
                               {hasIcon ? (
                                 <img 
-                                  src={(subCategory as any).icon} 
+                                  src={subCategory.icon} 
                                   alt={subCategory.name}
                                   className="w-full h-full object-contain p-1"
                                   onError={() => handleImageError(`subcategory-${subCategory._id}`)}

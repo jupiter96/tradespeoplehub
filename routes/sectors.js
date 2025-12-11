@@ -105,7 +105,13 @@ router.get('/', async (req, res) => {
 router.get('/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
-    const { includeCategories = 'false', includeSubCategories = 'false', activeOnly = 'true' } = req.query;
+    const { 
+      includeCategories = 'false', 
+      includeSubCategories = 'false',
+      includeServiceCategories = 'false',
+      includeServiceSubCategories = 'false',
+      activeOnly = 'true' 
+    } = req.query;
     
     // Try to find by ID first, then by slug
     let sector;
@@ -129,7 +135,38 @@ router.get('/:identifier', async (req, res) => {
     
     const sectorData = sector.toObject();
     
-    // Include categories if requested
+    // Include service categories if requested (preferred over regular categories)
+    if (includeServiceCategories === 'true') {
+      const ServiceCategory = (await import('../models/ServiceCategory.js')).default;
+      const serviceCategories = await ServiceCategory.find({ 
+        sector: sector._id,
+        isActive: activeOnly === 'true' ? true : { $exists: true }
+      })
+        .sort({ order: 1, name: 1 })
+        .lean();
+      
+      // Include service subcategories if requested
+      if (includeServiceSubCategories === 'true') {
+        const ServiceSubCategory = (await import('../models/ServiceSubCategory.js')).default;
+        const serviceCategoriesWithSubCategories = await Promise.all(
+          serviceCategories.map(async (serviceCategory) => {
+            const subCategories = await ServiceSubCategory.find({
+              serviceCategory: serviceCategory._id,
+              parentSubCategory: null, // Only top-level subcategories
+              isActive: activeOnly === 'true' ? true : { $exists: true }
+            })
+              .sort({ order: 1, name: 1 })
+              .lean();
+            return { ...serviceCategory, subCategories };
+          })
+        );
+        sectorData.serviceCategories = serviceCategoriesWithSubCategories;
+      } else {
+        sectorData.serviceCategories = serviceCategories;
+      }
+    }
+    
+    // Include categories if requested (legacy support)
     if (includeCategories === 'true') {
       const categories = await Category.find({ 
         sector: sector._id,

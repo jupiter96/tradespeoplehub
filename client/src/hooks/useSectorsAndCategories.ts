@@ -244,3 +244,152 @@ export const useSector = (identifier: string, includeCategories = false) => {
   return { sector, loading, error };
 };
 
+// Service Category interfaces and hooks
+export interface ServiceCategory {
+  _id: string;
+  sector: string | Sector;
+  name: string;
+  slug?: string;
+  question?: string;
+  order: number;
+  description?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  icon?: string;
+  bannerImage?: string;
+  isActive: boolean;
+  level?: number;
+  categoryLevelMapping?: Array<{
+    level: number;
+    attributeType: string;
+    title?: string;
+    thumbnail?: string;
+    icon?: string;
+    metadata?: any;
+  }>;
+  attributes?: Array<{
+    name: string;
+    order: number;
+  }>;
+  extraServices?: Array<{
+    name: string;
+    price: number;
+    days: number;
+    order: number;
+  }>;
+  pricePerUnit?: {
+    enabled: boolean;
+    units: Array<{
+      name: string;
+      price: number;
+      order: number;
+    }>;
+  };
+  subCategories?: ServiceSubCategory[];
+}
+
+export interface ServiceSubCategory {
+  _id: string;
+  serviceCategory?: string | ServiceCategory;
+  parentSubCategory?: string | ServiceSubCategory;
+  name: string;
+  slug?: string;
+  description?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  bannerImage?: string;
+  icon?: string;
+  order: number;
+  level: number;
+  attributeType?: string;
+  isActive: boolean;
+}
+
+export const useServiceCategories = (sectorId?: string, sectorSlug?: string, includeSubCategories = false) => {
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServiceCategories = async () => {
+      try {
+        setLoading(true);
+        let url = '/api/service-categories?activeOnly=true&sortBy=order&sortOrder=asc';
+        if (includeSubCategories) {
+          url += '&includeSubCategories=true';
+        }
+        if (sectorId) {
+          url += `&sectorId=${sectorId}`;
+        } else if (sectorSlug) {
+          url += `&sectorSlug=${sectorSlug}`;
+        }
+        
+        const response = await fetch(resolveApiUrl(url), {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch service categories');
+        }
+        
+        const data = await response.json();
+        setServiceCategories(data.serviceCategories || []);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching service categories:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch service categories');
+        setServiceCategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServiceCategories();
+  }, [sectorId, sectorSlug, includeSubCategories]);
+
+  return { serviceCategories, loading, error };
+};
+
+export const useServiceCategory = (identifier: string, includeSubCategories = false) => {
+  const [serviceCategory, setServiceCategory] = useState<ServiceCategory | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServiceCategory = async () => {
+      try {
+        setLoading(true);
+        const url = includeSubCategories
+          ? `/api/service-categories/${identifier}?includeSector=true&includeSubCategories=true&activeOnly=true`
+          : `/api/service-categories/${identifier}?includeSector=true&activeOnly=true`;
+        const response = await fetch(resolveApiUrl(url), {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Service category not found');
+          }
+          throw new Error('Failed to fetch service category');
+        }
+        
+        const data = await response.json();
+        setServiceCategory(data.serviceCategory || null);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching service category:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch service category');
+        setServiceCategory(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (identifier) {
+      fetchServiceCategory();
+    }
+  }, [identifier, includeSubCategories]);
+
+  return { serviceCategory, loading, error };
+};
+
