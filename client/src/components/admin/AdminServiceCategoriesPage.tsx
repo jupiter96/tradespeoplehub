@@ -2793,13 +2793,68 @@ export default function AdminServiceCategoriesPage() {
             <DialogTitle className="text-2xl font-bold text-black dark:text-white">
               {editingServiceSubCategory 
                 ? "Edit Sub Category" 
-                : `Adding to Main Category - ${selectedParentSubCategory?.name || selectedServiceCategory?.name || "Category"}`}
+                : (() => {
+                    // Get the first tab (main tab) from categoryLevelMapping
+                    const sortedMappings = selectedServiceCategory?.categoryLevelMapping
+                      ?.filter(m => m.level >= 3 && m.level <= 7)
+                      .sort((a, b) => a.level - b.level) || [];
+                    const firstTab = sortedMappings[0];
+                    const isFirstTab = firstTab && selectedAttributeType === firstTab.attributeType;
+                    
+                    // Attribute type labels
+                    const attributeTypeLabels: Record<string, string> = {
+                      serviceType: 'Service Type',
+                      size: 'Size',
+                      frequency: 'Frequency',
+                      make: 'Make',
+                      model: 'Model',
+                      brand: 'Brand',
+                    };
+                    
+                    if (isFirstTab) {
+                      // First tab: "Adding to Main Category - [부모 카테고리 이름]"
+                      return `Adding to Main Category - ${selectedParentSubCategory?.name || selectedServiceCategory?.name || "Category"}`;
+                    } else {
+                      // Other tabs: "Adding to [현재 탭 이름]"
+                      const currentTabLabel = selectedAttributeType 
+                        ? (sortedMappings.find(m => m.attributeType === selectedAttributeType)?.title 
+                            || attributeTypeLabels[selectedAttributeType] 
+                            || selectedAttributeType)
+                        : "Category";
+                      return `Adding to ${currentTabLabel}`;
+                    }
+                  })()}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 mt-4">
             {/* Service Category (Read-only) */}
             <div>
-              <Label className="text-black dark:text-white">Service Category <span className="text-red-500">*</span></Label>
+              <Label className="text-black dark:text-white">
+                {(() => {
+                  // Get current tab label
+                  const sortedMappings = selectedServiceCategory?.categoryLevelMapping
+                    ?.filter(m => m.level >= 3 && m.level <= 7)
+                    .sort((a, b) => a.level - b.level) || [];
+                  
+                  // Attribute type labels
+                  const attributeTypeLabels: Record<string, string> = {
+                    serviceType: 'Service Type',
+                    size: 'Size',
+                    frequency: 'Frequency',
+                    make: 'Make',
+                    model: 'Model',
+                    brand: 'Brand',
+                  };
+                  
+                  const currentTabLabel = selectedAttributeType 
+                    ? (sortedMappings.find(m => m.attributeType === selectedAttributeType)?.title 
+                        || attributeTypeLabels[selectedAttributeType] 
+                        || selectedAttributeType)
+                    : "Service";
+                  
+                  return `${currentTabLabel} Category`;
+                })()} <span className="text-red-500">*</span>
+              </Label>
               <Input
                 value={selectedServiceCategory?.name || ""}
                 disabled

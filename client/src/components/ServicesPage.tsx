@@ -735,31 +735,31 @@ export default function ServicesPage() {
               });
             } else if (serviceSubCategorySlugParam) {
               // Fallback: try to find by the last slug parameter
-              const matchedSubCategory = matchedServiceCategory.subCategories?.find(
-                (subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam || subCat.name === serviceSubCategorySlugParam
-              );
+            const matchedSubCategory = matchedServiceCategory.subCategories?.find(
+              (subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam || subCat.name === serviceSubCategorySlugParam
+            );
+            
+            if (matchedSubCategory) {
+              filters.push({
+                type: 'subCategory',
+                sector: matchedSector.name,
+                mainCategory: matchedServiceCategory.name,
+                subCategory: matchedSubCategory.name,
+                displayName: matchedSubCategory.name
+              });
               
-              if (matchedSubCategory) {
-                filters.push({
-                  type: 'subCategory',
-                  sector: matchedSector.name,
-                  mainCategory: matchedServiceCategory.name,
-                  subCategory: matchedSubCategory.name,
-                  displayName: matchedSubCategory.name
-                });
-                
-                setExpandedSectors(prev => {
-                  const newSet = new Set(prev);
-                  newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
-                  return newSet;
-                });
-                
-                const key = `${matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-')}-${matchedServiceCategory.slug || matchedServiceCategory.name.toLowerCase().replace(/\s+/g, '-')}`;
-                setExpandedMainCategories(prev => {
-                  const newSet = new Set(prev);
-                  newSet.add(key);
-                  return newSet;
-                });
+              setExpandedSectors(prev => {
+                const newSet = new Set(prev);
+                newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
+                return newSet;
+              });
+              
+              const key = `${matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-')}-${matchedServiceCategory.slug || matchedServiceCategory.name.toLowerCase().replace(/\s+/g, '-')}`;
+              setExpandedMainCategories(prev => {
+                const newSet = new Set(prev);
+                newSet.add(key);
+                return newSet;
+              });
               }
             }
           } else {
@@ -1547,10 +1547,10 @@ export default function ServicesPage() {
           return matchedServiceCategory?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === lastSlug)?.name;
         })()
       : serviceSubCategorySlugParam
-        ? allServiceCategories
-            .find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)
-            ?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam)?.name
-        : subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
+      ? allServiceCategories
+          .find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)
+          ?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam)?.name
+      : subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
     
     if (categoryName && subcategoryName) {
       return {
