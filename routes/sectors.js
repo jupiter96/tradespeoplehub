@@ -170,7 +170,7 @@ router.get('/:identifier', async (req, res) => {
     if (includeCategories === 'true') {
       const categories = await Category.find({ 
         sector: sector._id,
-        isActive: true 
+        isActive: activeOnly === 'true' ? true : { $exists: true }
       })
         .sort({ order: 1, name: 1 })
         .lean();
@@ -181,7 +181,7 @@ router.get('/:identifier', async (req, res) => {
           categories.map(async (category) => {
             const subCategories = await SubCategory.find({
               category: category._id,
-              isActive: true
+              isActive: activeOnly === 'true' ? true : { $exists: true }
             })
               .sort({ order: 1, name: 1 })
               .lean();

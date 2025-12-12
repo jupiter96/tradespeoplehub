@@ -152,7 +152,7 @@ router.get('/:identifier', async (req, res) => {
     if (includeSubCategories === 'true') {
       const subCategories = await SubCategory.find({
         category: category._id,
-        isActive: true
+        isActive: activeOnly === 'true' ? true : { $exists: true }
       })
         .sort({ order: 1, name: 1 })
         .lean();

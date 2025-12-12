@@ -96,7 +96,7 @@ export default function AllCategoriesPage() {
 
   const handleBackToSectors = () => {
     setSelectedSector(null);
-    setSelectedCategory(null);
+    setSelectedServiceCategory(null);
     setViewMode("sectors");
   };
 
@@ -191,7 +191,7 @@ export default function AllCategoriesPage() {
                   {sortedSectors.map((sector) => {
                     const IconComponent = getSectorIcon(sector.name);
                     const hasIcon = sector.icon && !imageErrors[`sector-${sector._id}`];
-                    const categories = getCategoriesForSector(sector);
+                    const categories = getServiceCategoriesForSector(sector);
                     
                     return (
                       <button

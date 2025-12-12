@@ -688,13 +688,25 @@ export default function AdminSectorsPage() {
       
       const method = editingSector ? "PUT" : "POST";
 
+      const payload = {
+        name: formData.name.trim(),
+        slug: formData.slug.trim(),
+        description: formData.description || "",
+        metaTitle: formData.metaTitle || "",
+        metaDescription: formData.metaDescription || "",
+        icon: formData.icon || "",
+        bannerImage: formData.bannerImage || "",
+        order: formData.order,
+        isActive: formData.isActive,
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
