@@ -1294,18 +1294,77 @@ export default function AdminServiceCategoriesPage() {
       // Clear pending files
       setPendingIconFile(null);
       setPendingBannerFile(null);
-      // Reset to first page and ensure order desc sorting for new items to appear at top
+      
       if (!editingServiceCategory) {
-        setPage(1);
-        setSortBy("order");
-        setSortOrder("desc");
-      }
-      // Refresh the list to show updated images
-      if (selectedSectorId) {
-        // Small delay to ensure state updates and database is updated
-        setTimeout(() => {
-          fetchServiceCategories(selectedSectorId);
-        }, 100);
+        // New category created - redirect to subcategories view
+        // First refresh the list to get the full category data
+        if (selectedSectorId) {
+          // Fetch updated categories to get the full category with all fields
+          const refreshResponse = await fetch(
+            resolveApiUrl(`/api/service-categories/${savedServiceCategory._id}?includeSector=true&includeSubCategories=true`),
+            { credentials: "include" }
+          );
+          
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            const fullServiceCategory = refreshData.serviceCategory;
+            
+            // Navigate to subcategories view
+            setSelectedServiceCategory(fullServiceCategory);
+            setSelectedParentSubCategory(null);
+            setSubCategoryBreadcrumb([{ id: fullServiceCategory._id, name: fullServiceCategory.name, type: 'category' }]);
+            setViewMode("subcategories");
+            setSubCategoryPage(1);
+            setSubCategorySearchTerm("");
+            
+            // Get first level (lowest level, typically level 3) attributeType from categoryLevelMapping for tabs
+            const sortedMappings = fullServiceCategory.categoryLevelMapping
+              ?.filter((m: any) => m.level >= 3 && m.level <= 7)
+              .sort((a: any, b: any) => a.level - b.level);
+            const firstLevelMapping = sortedMappings?.[0];
+            if (firstLevelMapping) {
+              setSelectedAttributeType(firstLevelMapping.attributeType);
+            } else {
+              setSelectedAttributeType(null);
+            }
+            
+            // Fetch subcategories
+            fetchServiceSubCategories(fullServiceCategory._id, undefined);
+          } else {
+            // If refresh fails, use the saved category data
+            setSelectedServiceCategory(savedServiceCategory);
+            setSelectedParentSubCategory(null);
+            setSubCategoryBreadcrumb([{ id: savedServiceCategory._id, name: savedServiceCategory.name, type: 'category' }]);
+            setViewMode("subcategories");
+            setSubCategoryPage(1);
+            setSubCategorySearchTerm("");
+            
+            const sortedMappings = savedServiceCategory.categoryLevelMapping
+              ?.filter((m: any) => m.level >= 3 && m.level <= 7)
+              .sort((a: any, b: any) => a.level - b.level);
+            const firstLevelMapping = sortedMappings?.[0];
+            if (firstLevelMapping) {
+              setSelectedAttributeType(firstLevelMapping.attributeType);
+            } else {
+              setSelectedAttributeType(null);
+            }
+            
+            fetchServiceSubCategories(savedServiceCategory._id, undefined);
+          }
+        } else {
+          // If no sector selected, just refresh the list
+          setPage(1);
+          setSortBy("order");
+          setSortOrder("desc");
+        }
+      } else {
+        // Editing existing category - just refresh the list
+        if (selectedSectorId) {
+          // Small delay to ensure state updates and database is updated
+          setTimeout(() => {
+            fetchServiceCategories(selectedSectorId);
+          }, 100);
+        }
       }
     } catch (error: any) {
       console.error("Error saving service category:", error);
