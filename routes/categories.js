@@ -276,6 +276,7 @@ router.put('/:id', async (req, res) => {
       order,
       description,
       icon,
+      bannerImage,
       isActive,
     } = req.body;
     

@@ -140,7 +140,7 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onToggleActive(category)}
-              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+              className={category.isActive ? "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer" : "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"}
             >
               {category.isActive ? (
                 <>
@@ -383,7 +383,10 @@ export default function AdminCategoriesPage() {
   };
 
   const handleToggleActive = async (category: Category) => {
-    if (!category._id) return;
+    if (!category._id) {
+      toast.error("Category ID is missing");
+      return;
+    }
     
     const newStatus = !category.isActive;
     const action = newStatus ? "activate" : "deactivate";
@@ -406,18 +409,33 @@ export default function AdminCategoriesPage() {
 
           if (response.ok) {
             toast.success(`Category ${action}d successfully`);
+            // Always refresh categories list, regardless of selectedSectorId
             if (selectedSectorId) {
-              fetchCategories(selectedSectorId);
+              await fetchCategories(selectedSectorId);
+            } else {
+              // If no sector selected, try to get sector from category
+              const categorySectorId = typeof category.sector === "string" 
+                ? category.sector 
+                : category.sector?._id;
+              if (categorySectorId) {
+                await fetchCategories(categorySectorId);
+              } else {
+                // Fallback: refresh the current list
+                setCategories(prev => prev.map(c => 
+                  c._id === category._id ? { ...c, isActive: newStatus } : c
+                ));
+              }
             }
           } else {
-            const error = await response.json();
-            toast.error(error.error || `Failed to ${action} category`);
+            const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+            toast.error(errorData.error || `Failed to ${action} category`);
           }
         } catch (error) {
           console.error(`Error ${action}ing category:`, error);
-          toast.error(`Failed to ${action} category`);
+          toast.error(`Failed to ${action} category: ${error instanceof Error ? error.message : "Unknown error"}`);
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
-        setConfirmModal({ ...confirmModal, isOpen: false });
       },
       itemName: category.name,
     });

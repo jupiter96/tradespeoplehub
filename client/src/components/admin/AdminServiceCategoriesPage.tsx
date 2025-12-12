@@ -281,7 +281,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onToggleActive(serviceCategory)}
-              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+              className={serviceCategory.isActive ? "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer" : "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"}
             >
               {serviceCategory.isActive ? (
                 <>
@@ -1730,7 +1730,7 @@ export default function AdminServiceCategoriesPage() {
                                           itemName: subCategory.name,
                                         });
                                       }}
-                                      className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                      className={subCategory.isActive ? "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer" : "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"}
                                     >
                                       {subCategory.isActive ? (
                                         <>
