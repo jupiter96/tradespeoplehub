@@ -97,6 +97,8 @@ interface ServiceSubCategory {
   _id: string;
   name: string;
   order: number;
+  serviceCategory?: string | ServiceCategory;
+  parentSubCategory?: string | ServiceSubCategory;
   attributeType?: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
   titles?: Array<{
     level: number;
@@ -465,6 +467,7 @@ export default function AdminServiceCategoriesPage() {
       setLoading(true);
       const params = new URLSearchParams({
         activeOnly: "false",
+        includeServiceCategory: "true",
         page: subCategoryPage.toString(),
         limit: limit.toString(),
         sortBy: subCategorySortBy,
@@ -1692,6 +1695,7 @@ export default function AdminServiceCategoriesPage() {
                           <TableRow className="border-0 hover:bg-transparent shadow-sm">
                             <TableHead className="text-[#FE8A0F] font-semibold">Order</TableHead>
                             <TableHead className="text-[#FE8A0F] font-semibold">Name</TableHead>
+                            <TableHead className="text-[#FE8A0F] font-semibold">Parent Category</TableHead>
                             <TableHead className="text-[#FE8A0F] font-semibold">Slug</TableHead>
                             <TableHead className="text-[#FE8A0F] font-semibold">Icon</TableHead>
                             <TableHead className="text-[#FE8A0F] font-semibold">Banner Image</TableHead>
@@ -1699,10 +1703,37 @@ export default function AdminServiceCategoriesPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {serviceSubCategories.map((subCategory) => (
+                          {serviceSubCategories.map((subCategory) => {
+                            // Get parent category name
+                            const parentName = (() => {
+                              // If parentSubCategory is populated (object), use its name
+                              if (subCategory.parentSubCategory && typeof subCategory.parentSubCategory === 'object' && 'name' in subCategory.parentSubCategory) {
+                                return (subCategory.parentSubCategory as any).name;
+                              }
+                              // If parentSubCategory is just an ID, check if we have selectedParentSubCategory
+                              if (subCategory.parentSubCategory && selectedParentSubCategory) {
+                                return selectedParentSubCategory.name;
+                              }
+                              // If serviceCategory is populated (object), use its name
+                              if (subCategory.serviceCategory && typeof subCategory.serviceCategory === 'object' && 'name' in subCategory.serviceCategory) {
+                                return (subCategory.serviceCategory as any).name;
+                              }
+                              // Fallback to selectedServiceCategory
+                              if (selectedServiceCategory) {
+                                return selectedServiceCategory.name;
+                              }
+                              return "-";
+                            })();
+
+                            return (
                             <TableRow key={subCategory._id} className="border-0 hover:bg-gray-50 dark:hover:bg-gray-900">
                               <TableCell className="text-black dark:text-white">{subCategory.order || 0}</TableCell>
                               <TableCell className="text-black dark:text-white font-medium">{subCategory.name}</TableCell>
+                              <TableCell className="text-black dark:text-white">
+                                <span className="text-sm text-gray-600 dark:text-gray-400" title={parentName}>
+                                  {parentName.length > 30 ? parentName.substring(0, 30) + "..." : parentName}
+                                </span>
+                              </TableCell>
                               <TableCell className="text-black dark:text-white">
                                 {subCategory.slug ? (
                                   <span className="truncate" title={subCategory.slug}>
@@ -1845,7 +1876,8 @@ export default function AdminServiceCategoriesPage() {
                                 </DropdownMenu>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
@@ -2759,7 +2791,9 @@ export default function AdminServiceCategoriesPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-black dark:text-white">
-              {editingServiceSubCategory ? "Edit Sub Category" : "Create New Sub Category"}
+              {editingServiceSubCategory 
+                ? "Edit Sub Category" 
+                : `Adding to Main Category - ${selectedParentSubCategory?.name || selectedServiceCategory?.name || "Category"}`}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 mt-4">

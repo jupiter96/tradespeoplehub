@@ -85,6 +85,8 @@ router.get('/', async (req, res) => {
     // Include service category information if requested
     if (includeServiceCategory === 'true') {
       serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('serviceCategory', 'name slug');
+      // Also populate parentSubCategory to show parent information in the table
+      serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('parentSubCategory', 'name slug');
     }
     
     // Pagination
