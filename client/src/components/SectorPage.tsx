@@ -1160,6 +1160,31 @@ export default function SectorPage() {
                     // First check if subCategories array exists and has items
                     const hasSubCategories = subCategory.subCategories && subCategory.subCategories.length > 0;
                     
+                    // Helper function to build full subcategory path (all parent subcategories)
+                    const buildFullSubCategoryPath = () => {
+                      const allSubCategoryNames: string[] = [];
+                      const allSubCategorySlugs: string[] = [];
+                      
+                      // Add all parent subcategories from the current path
+                      if (subCategorySlugs.length > 0) {
+                        // Fetch parent subcategory names by traversing the path
+                        // For now, we'll use the slugs and fetch names if needed
+                        // But we can also build from currentServiceSubCategory if available
+                        if (currentServiceSubCategory) {
+                          // We need to build the full path by traversing up
+                          // For simplicity, we'll use the subcategory names we have
+                          allSubCategorySlugs.push(...subCategorySlugs);
+                        } else {
+                          allSubCategorySlugs.push(...subCategorySlugs);
+                        }
+                      }
+                      
+                      // Add current subcategory
+                      allSubCategorySlugs.push(subCategorySlug);
+                      
+                      return { names: allSubCategoryNames, slugs: allSubCategorySlugs };
+                    };
+                    
                     // Handle click to check for nested subcategories via API
                     const handleSubCategoryClick = async (e: React.MouseEvent) => {
                       e.preventDefault();
@@ -1190,35 +1215,41 @@ export default function SectorPage() {
                             const currentPath = `/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
                             navigate(currentPath);
                           } else {
-                            // Navigate to services page with filter
+                            // This is the last level subcategory - navigate to services page with filter
                             const sectorName = sector?.name || '';
-                            const serviceCategoryName = currentServiceCategory?.name || '';
-                            const parentSubCategoryName = currentServiceSubCategory?.name || '';
-                            const subCategoryName = subCategory.name;
+                            const serviceCategorySlugValue = serviceCategorySlug || '';
                             
-                            // Build filter URL with all parent subcategories
-                            let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategoryName)}`;
+                            // Build filter URL with sector and service category slugs
+                            let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategorySlugValue)}`;
                             
-                            // Add all parent subcategories in the path
-                            if (currentServiceSubCategory) {
-                              filterUrl += `&serviceSubCategory=${encodeURIComponent(currentServiceSubCategory.name)}`;
+                            // Add all parent subcategory slugs in order
+                            if (subCategorySlugs.length > 0) {
+                              subCategorySlugs.forEach((slug) => {
+                                filterUrl += `&serviceSubCategory=${encodeURIComponent(slug)}`;
+                              });
                             }
-                            filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategoryName)}`;
+                            
+                            // Add current subcategory slug
+                            filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
                             
                             navigate(filterUrl);
                           }
                         } else {
                           // If API fails, assume no subcategories and go to services page
                           const sectorName = sector?.name || '';
-                          const serviceCategoryName = currentServiceCategory?.name || '';
-                          const parentSubCategoryName = currentServiceSubCategory?.name || '';
-                          const subCategoryName = subCategory.name;
+                          const serviceCategorySlugValue = serviceCategorySlug || '';
                           
-                          let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategoryName)}`;
-                          if (parentSubCategoryName) {
-                            filterUrl += `&serviceSubCategory=${encodeURIComponent(parentSubCategoryName)}`;
+                          let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategorySlugValue)}`;
+                          
+                          // Add all parent subcategory slugs
+                          if (subCategorySlugs.length > 0) {
+                            subCategorySlugs.forEach((slug) => {
+                              filterUrl += `&serviceSubCategory=${encodeURIComponent(slug)}`;
+                            });
                           }
-                          filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategoryName)}`;
+                          
+                          // Add current subcategory slug
+                          filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
                           
                           navigate(filterUrl);
                         }
@@ -1226,15 +1257,19 @@ export default function SectorPage() {
                         console.error('Error checking subcategory:', error);
                         // On error, navigate to services page
                         const sectorName = sector?.name || '';
-                        const serviceCategoryName = currentServiceCategory?.name || '';
-                        const parentSubCategoryName = currentServiceSubCategory?.name || '';
-                        const subCategoryName = subCategory.name;
+                        const serviceCategorySlugValue = serviceCategorySlug || '';
                         
-                        let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategoryName)}`;
-                        if (parentSubCategoryName) {
-                          filterUrl += `&serviceSubCategory=${encodeURIComponent(parentSubCategoryName)}`;
+                        let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategorySlugValue)}`;
+                        
+                        // Add all parent subcategory slugs
+                        if (subCategorySlugs.length > 0) {
+                          subCategorySlugs.forEach((slug) => {
+                            filterUrl += `&serviceSubCategory=${encodeURIComponent(slug)}`;
+                          });
                         }
-                        filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategoryName)}`;
+                        
+                        // Add current subcategory slug
+                        filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
                         
                         navigate(filterUrl);
                       }

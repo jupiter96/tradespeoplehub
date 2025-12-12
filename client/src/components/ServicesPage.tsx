@@ -271,7 +271,11 @@ export default function ServicesPage() {
   const [searchParams] = useSearchParams();
   const sectorSlugParam = searchParams.get("sector");
   const serviceCategorySlugParam = searchParams.get("serviceCategory");
-  const serviceSubCategorySlugParam = searchParams.get("serviceSubCategory");
+  // Handle multiple serviceSubCategory parameters (for nested subcategories)
+  const serviceSubCategorySlugParams = searchParams.getAll("serviceSubCategory");
+  const serviceSubCategorySlugParam = serviceSubCategorySlugParams.length > 0 
+    ? serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1] // Use the last one for backward compatibility
+    : null;
   // Legacy URL params for backward compatibility
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
@@ -676,19 +680,45 @@ export default function ServicesPage() {
         });
         
         if (matchedServiceCategory) {
-          if (serviceSubCategorySlugParam) {
-            // Find the subcategory
-            const matchedSubCategory = matchedServiceCategory.subCategories?.find(
-              (subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam || subCat.name === serviceSubCategorySlugParam
-            );
+          // Handle multiple serviceSubCategory parameters (nested subcategories)
+          if (serviceSubCategorySlugParams.length > 0) {
+            // Traverse the nested subcategory path to find the last one
+            let currentSubCategory: ServiceSubCategory | null = null;
+            let currentParentId: string | undefined = undefined;
+            const subCategoryPath: string[] = [];
             
-            if (matchedSubCategory) {
+            // Start from the service category's subcategories
+            for (let i = 0; i < serviceSubCategorySlugParams.length; i++) {
+              const slug = serviceSubCategorySlugParams[i];
+              
+              // Find subcategory by slug
+              const foundSubCategory = currentParentId
+                ? null // We'll need to fetch nested subcategories via API
+                : matchedServiceCategory.subCategories?.find(
+                    (subCat: ServiceSubCategory) => subCat.slug === slug || subCat.name === slug
+                  );
+              
+              if (foundSubCategory) {
+                currentSubCategory = foundSubCategory;
+                currentParentId = foundSubCategory._id;
+                subCategoryPath.push(foundSubCategory.name);
+              } else if (currentSubCategory) {
+                // Try to find in nested subcategories (we'll use the last found one)
+                // For now, we'll use the last subcategory found
+                break;
+              }
+            }
+            
+            // Use the last subcategory in the path
+            if (currentSubCategory) {
+              const lastSubCategoryName = subCategoryPath[subCategoryPath.length - 1] || currentSubCategory.name;
+              
               filters.push({
                 type: 'subCategory',
                 sector: matchedSector.name,
                 mainCategory: matchedServiceCategory.name,
-                subCategory: matchedSubCategory.name,
-                displayName: matchedSubCategory.name
+                subCategory: lastSubCategoryName,
+                displayName: lastSubCategoryName
               });
               
               setExpandedSectors(prev => {
@@ -703,6 +733,34 @@ export default function ServicesPage() {
                 newSet.add(key);
                 return newSet;
               });
+            } else if (serviceSubCategorySlugParam) {
+              // Fallback: try to find by the last slug parameter
+              const matchedSubCategory = matchedServiceCategory.subCategories?.find(
+                (subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam || subCat.name === serviceSubCategorySlugParam
+              );
+              
+              if (matchedSubCategory) {
+                filters.push({
+                  type: 'subCategory',
+                  sector: matchedSector.name,
+                  mainCategory: matchedServiceCategory.name,
+                  subCategory: matchedSubCategory.name,
+                  displayName: matchedSubCategory.name
+                });
+                
+                setExpandedSectors(prev => {
+                  const newSet = new Set(prev);
+                  newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
+                  return newSet;
+                });
+                
+                const key = `${matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-')}-${matchedServiceCategory.slug || matchedServiceCategory.name.toLowerCase().replace(/\s+/g, '-')}`;
+                setExpandedMainCategories(prev => {
+                  const newSet = new Set(prev);
+                  newSet.add(key);
+                  return newSet;
+                });
+              }
             }
           } else {
             // Only service category selected
@@ -800,7 +858,7 @@ export default function ServicesPage() {
     if (filters.length > 0) {
       setSelectedFilters(filters);
     }
-  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, allServiceCategories, categoryTree]);
+  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParams, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, allServiceCategories, categoryTree]);
 
   // Auto-expand categories when filters change
   useEffect(() => {
@@ -1480,11 +1538,19 @@ export default function ServicesPage() {
     const categoryName = serviceCategorySlugParam 
       ? allServiceCategories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)?.name
       : categoryParam || (selectedFilters.length > 0 ? selectedFilters[0].sector : null);
-    const subcategoryName = serviceSubCategorySlugParam
-      ? allServiceCategories
-          .find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)
-          ?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam)?.name
-      : subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
+    
+    // Handle multiple serviceSubCategory parameters - use the last one
+    const subcategoryName = serviceSubCategorySlugParams.length > 0
+      ? (() => {
+          const lastSlug = serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1];
+          const matchedServiceCategory = allServiceCategories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam);
+          return matchedServiceCategory?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === lastSlug)?.name;
+        })()
+      : serviceSubCategorySlugParam
+        ? allServiceCategories
+            .find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)
+            ?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam)?.name
+        : subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
     
     if (categoryName && subcategoryName) {
       return {
