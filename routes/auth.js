@@ -10,6 +10,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
 import PendingRegistration from '../models/PendingRegistration.js';
 import SEOContent from '../models/SEOContent.js';
+import SocialAuthError from '../models/SocialAuthError.js';
 import passport from '../services/passport.js';
 import {
   sendEmailVerificationCode,
@@ -43,6 +44,12 @@ const SOCIAL_SUCCESS_REDIRECT =
   process.env.SOCIAL_SUCCESS_REDIRECT || `${CLIENT_ORIGIN}/account`;
 const SOCIAL_FAILURE_REDIRECT =
   process.env.SOCIAL_FAILURE_REDIRECT || `${CLIENT_ORIGIN}/login?social=failed`;
+
+// Helper function to add query parameters to URL
+const addQueryParam = (url, key, value) => {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}${key}=${encodeURIComponent(value)}`;
+};
 const SOCIAL_ONBOARDING_REDIRECT =
   process.env.SOCIAL_ONBOARDING_REDIRECT || `${CLIENT_ORIGIN}/social-onboarding`;
 const PASSWORD_RESET_URL = process.env.PASSWORD_RESET_URL || `${CLIENT_ORIGIN}/reset-password`;
@@ -234,26 +241,123 @@ const clearPendingSocialProfile = (req) => {
   delete req.session[socialSessionKey];
 };
 
+// Helper function to save social auth errors to database
+const saveSocialAuthError = async (provider, errorType, errorMessage, req, additionalData = {}) => {
+  try {
+    const errorData = {
+      provider,
+      errorType,
+      errorMessage: errorMessage || 'Unknown error',
+      errorStack: additionalData.error?.stack || null,
+      errorDetails: additionalData.error ? {
+        name: additionalData.error.name,
+        message: additionalData.error.message,
+        code: additionalData.error.code,
+        status: additionalData.error.status,
+        ...(additionalData.errorDetails || {}),
+      } : (additionalData.errorDetails || {}),
+      providerId: additionalData.providerId || null,
+      email: additionalData.email || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.get('user-agent') || null,
+      requestUrl: req.originalUrl || req.url || null,
+      queryParams: req.query || {},
+      sessionId: req.sessionID || null,
+      context: {
+        profile: additionalData.profile ? {
+          id: additionalData.profile.id,
+          displayName: additionalData.profile.displayName,
+          hasEmail: !!additionalData.profile.emails?.[0]?.value,
+          hasName: !!additionalData.profile.name,
+        } : null,
+        result: additionalData.result ? {
+          needsProfile: additionalData.result.needsProfile,
+          isDeleted: additionalData.result.isDeleted,
+          isBlocked: additionalData.result.isBlocked,
+          role: additionalData.result.role,
+        } : null,
+        ...(additionalData.context || {}),
+      },
+    };
+
+    await SocialAuthError.create(errorData);
+    console.log(`✅ Social auth error saved to database: ${provider} - ${errorType}`);
+  } catch (saveError) {
+    // Don't throw error if saving fails - just log it
+    console.error('Failed to save social auth error to database:', saveError);
+  }
+};
+
 const handleSocialCallback = (provider) => (req, res, next) => {
-  passport.authenticate(provider, (err, result, info) => {
+  passport.authenticate(provider, async (err, result, info) => {
     if (err) {
       console.error(`${provider} auth error:`, err);
       console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      
+      // Save error to database
+      await saveSocialAuthError(
+        provider,
+        'auth_error',
+        err.message || err.toString() || 'Authentication error',
+        req,
+        {
+          error: err,
+          errorDetails: {
+            ...(err.response ? { response: err.response } : {}),
+            ...(err.data ? { data: err.data } : {}),
+          },
+        }
+      );
+      
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=auth_error');
+      return res.redirect(addQueryParam(SOCIAL_FAILURE_REDIRECT, 'error', 'auth_error'));
     }
 
     // Handle case where user is rejected (e.g., deleted account, blocked, etc.)
     if (info && info.message) {
       console.error(`${provider} auth info:`, info.message);
+      
+      // Determine error type based on message
+      let errorType = 'user_rejected';
+      if (info.message.includes('deleted')) {
+        errorType = 'account_deleted';
+      } else if (info.message.includes('suspended') || info.message.includes('blocked')) {
+        errorType = 'account_blocked';
+      }
+      
+      // Save error to database
+      await saveSocialAuthError(
+        provider,
+        errorType,
+        info.message,
+        req,
+        {
+          info,
+          providerId: result?.providerId || null,
+          email: result?.email || null,
+        }
+      );
+      
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + `?error=${encodeURIComponent(info.message)}`);
+      return res.redirect(addQueryParam(SOCIAL_FAILURE_REDIRECT, 'error', info.message));
     }
 
     if (!result) {
       console.error(`${provider} auth failed: No result returned`);
+      
+      // Save error to database
+      await saveSocialAuthError(
+        provider,
+        'no_result',
+        'No result returned from authentication',
+        req,
+        {
+          info,
+        }
+      );
+      
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=no_result');
+      return res.redirect(addQueryParam(SOCIAL_FAILURE_REDIRECT, 'error', 'no_result'));
     }
 
     if (result.needsProfile) {
@@ -269,25 +373,78 @@ const handleSocialCallback = (provider) => (req, res, next) => {
 
     // Check if user is deleted
     if (result.isDeleted) {
+      await saveSocialAuthError(
+        provider,
+        'account_deleted',
+        'User account has been deleted',
+        req,
+        {
+          result: {
+            providerId: result.providerId || result._id?.toString(),
+            email: result.email,
+          },
+        }
+      );
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_deleted');
+      return res.redirect(addQueryParam(SOCIAL_FAILURE_REDIRECT, 'error', 'account_deleted'));
     }
 
     // Check if user is blocked
     if (result.isBlocked) {
+      await saveSocialAuthError(
+        provider,
+        'account_blocked',
+        'User account has been blocked',
+        req,
+        {
+          result: {
+            providerId: result.providerId || result._id?.toString(),
+            email: result.email,
+          },
+        }
+      );
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=account_blocked');
+      return res.redirect(addQueryParam(SOCIAL_FAILURE_REDIRECT, 'error', 'account_blocked'));
     }
 
     // Reject admin users - they must use admin login
     if (result.role === 'admin' || result.role === 'subadmin') {
+      await saveSocialAuthError(
+        provider,
+        'admin_not_allowed',
+        'Admin users cannot login via social auth',
+        req,
+        {
+          result: {
+            providerId: result.providerId || result._id?.toString(),
+            email: result.email,
+            role: result.role,
+          },
+        }
+      );
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=admin_not_allowed');
+      return res.redirect(addQueryParam(SOCIAL_FAILURE_REDIRECT, 'error', 'admin_not_allowed'));
     }
 
-    req.logIn(result, (loginErr) => {
+    req.logIn(result, async (loginErr) => {
       if (loginErr) {
         console.error(`${provider} login error`, loginErr);
+        
+        // Save error to database
+        await saveSocialAuthError(
+          provider,
+          'login_error',
+          loginErr.message || loginErr.toString() || 'Login error',
+          req,
+          {
+            error: loginErr,
+            result: {
+              providerId: result.providerId || result._id?.toString(),
+              email: result.email,
+            },
+          }
+        );
+        
         return res.redirect(SOCIAL_FAILURE_REDIRECT);
       }
       
@@ -296,9 +453,25 @@ const handleSocialCallback = (provider) => (req, res, next) => {
       req.session.userId = result._id ? result._id.toString() : result.id;
       
       // Save session before redirecting to ensure session is persisted
-      req.session.save((saveErr) => {
+      req.session.save(async (saveErr) => {
         if (saveErr) {
           console.error(`${provider} session save error`, saveErr);
+          
+          // Save error to database
+          await saveSocialAuthError(
+            provider,
+            'session_error',
+            saveErr.message || saveErr.toString() || 'Session save error',
+            req,
+            {
+              error: saveErr,
+              result: {
+                providerId: result.providerId || result._id?.toString(),
+                email: result.email,
+              },
+            }
+          );
+          
           return res.redirect(SOCIAL_FAILURE_REDIRECT);
         }
         

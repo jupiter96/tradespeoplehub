@@ -3,6 +3,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
 import dotenv from 'dotenv';
 import User from '../models/User.js';
+import SocialAuthError from '../models/SocialAuthError.js';
 
 // Load environment variables
 dotenv.config();
@@ -94,6 +95,27 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
     });
   } catch (error) {
     console.error(`${provider} verification error:`, error);
+    
+    // Save verification error to database (async, don't wait)
+    SocialAuthError.create({
+      provider,
+      errorType: 'verification_error',
+      errorMessage: error.message || error.toString() || 'Verification error',
+      errorStack: error.stack || null,
+      errorDetails: {
+        name: error.name,
+        message: error.message,
+        ...(error.response ? { response: error.response } : {}),
+      },
+      context: {
+        providerId: profile?.id || null,
+        hasEmail: !!profile?.emails?.[0]?.value,
+        hasName: !!profile?.name,
+      },
+    }).catch((saveError) => {
+      console.error('Failed to save verification error to database:', saveError);
+    });
+    
     return done(error, null);
   }
 };
