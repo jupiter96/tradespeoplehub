@@ -336,6 +336,7 @@ export default function AdminServiceCategoriesPage() {
   const [subCategorySortBy, setSubCategorySortBy] = useState<string>("order");
   const [subCategorySortOrder, setSubCategorySortOrder] = useState<"asc" | "desc">("desc");
   const [selectedAttributeType, setSelectedAttributeType] = useState<string | null>(null);
+  const [level1SubCategories, setLevel1SubCategories] = useState<ServiceSubCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -462,6 +463,39 @@ export default function AdminServiceCategoriesPage() {
     }
   };
 
+  // Helper function to check if current tab is the first tab (Level 2 - Sub Category tab)
+  const isFirstTab = useCallback(() => {
+    // Level 2 is the first tab (selectedAttributeType === null)
+    return selectedAttributeType === null;
+  }, [selectedAttributeType]);
+
+  // Fetch Level 2 Sub Categories (for parent selection in non-first tabs)
+  const fetchLevel1SubCategories = useCallback(async () => {
+    if (!selectedServiceCategory) return;
+
+    try {
+      // Fetch Level 2 subcategories (level=2, parentSubCategory=null)
+      const params = new URLSearchParams({
+        activeOnly: "false",
+        includeServiceCategory: "true",
+        serviceCategoryId: selectedServiceCategory._id,
+        level: "2", // Level 2 subcategories
+        limit: "1000", // Get all level 2 subcategories
+      });
+
+      const response = await fetch(resolveApiUrl(`/api/service-subcategories?${params}`), {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLevel1SubCategories(data.serviceSubCategories || []);
+      }
+    } catch (error) {
+      console.error("Error fetching level 2 subcategories:", error);
+    }
+  }, [selectedServiceCategory]);
+
   const fetchServiceSubCategories = useCallback(async (serviceCategoryId?: string, parentSubCategoryId?: string) => {
     try {
       setLoading(true);
@@ -475,6 +509,9 @@ export default function AdminServiceCategoriesPage() {
         ...(subCategorySearchTerm && { search: subCategorySearchTerm }),
         ...(serviceCategoryId && { serviceCategoryId }),
         ...(parentSubCategoryId && { parentSubCategoryId }),
+        // If Level 2 tab (selectedAttributeType === null), fetch level 2 subcategories
+        // Otherwise, fetch by attributeType
+        ...(serviceCategoryId && !parentSubCategoryId && selectedAttributeType === null && { level: "2" }),
         ...(serviceCategoryId && !parentSubCategoryId && selectedAttributeType && { attributeType: selectedAttributeType }),
       });
 
@@ -864,16 +901,8 @@ export default function AdminServiceCategoriesPage() {
     setViewMode("subcategories");
     setSubCategoryPage(1);
     setSubCategorySearchTerm("");
-    // Get first level (lowest level, typically level 3) attributeType from categoryLevelMapping for tabs
-    const sortedMappings = serviceCategory.categoryLevelMapping
-      ?.filter(m => m.level >= 3 && m.level <= 7)
-      .sort((a, b) => a.level - b.level);
-    const firstLevelMapping = sortedMappings?.[0];
-    if (firstLevelMapping) {
-      setSelectedAttributeType(firstLevelMapping.attributeType);
-    } else {
-      setSelectedAttributeType(null);
-    }
+    // Set Level 2 (Sub Category) as the first tab (selectedAttributeType = null)
+    setSelectedAttributeType(null);
     fetchServiceSubCategories(serviceCategory._id, undefined);
   };
 
@@ -923,14 +952,32 @@ export default function AdminServiceCategoriesPage() {
 
   const handleCreateSubCategory = () => {
     if (!selectedServiceCategory) return;
-    const currentLevel = selectedParentSubCategory ? (selectedParentSubCategory.level || 1) + 1 : 1;
-    if (currentLevel > 7) {
+    
+    // Check if it's Level 2 tab (first tab - Sub Category)
+    const isFirstTabNow = selectedAttributeType === null;
+    
+    // Determine target level based on selected tab
+    let targetLevel = 1; // Default to level 1
+    let attributeType: string | undefined = undefined;
+    
+    if (isFirstTabNow) {
+      // Level 2 tab: create Level 2 subcategory
+      targetLevel = 2;
+      attributeType = undefined; // Level 2 has no attributeType
+    } else if (selectedAttributeType) {
+      // Other tabs: create Level 1 subcategory for the selected attributeType
+      targetLevel = 1;
+      attributeType = selectedAttributeType;
+    }
+    
+    if (targetLevel > 7) {
       toast.error("Maximum nesting level (7) reached");
       return;
     }
+    
     setSubCategoryFormData({
       serviceCategory: selectedServiceCategory._id,
-      parentSubCategory: selectedParentSubCategory?._id || "",
+      parentSubCategory: isFirstTabNow ? "" : "", // Empty for user to select in non-first tabs
       name: "",
       slug: "",
       description: "",
@@ -941,13 +988,19 @@ export default function AdminServiceCategoriesPage() {
       order: serviceSubCategories.length > 0 
         ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
         : 1,
-      level: currentLevel,
+      level: targetLevel,
       isActive: true,
-      attributeType: currentLevel === 1 && selectedAttributeType ? selectedAttributeType : undefined,
+      attributeType: attributeType,
     });
     setEditingServiceSubCategory(null);
     setSubCategoryIconPreview(null);
     setSubCategoryBannerPreview(null);
+    
+    // Fetch Level 2 subcategories if not first tab (for parent selection)
+    if (!isFirstTabNow) {
+      fetchLevel1SubCategories();
+    }
+    
     setIsSubCategoryModalOpen(true);
   };
 
@@ -986,6 +1039,16 @@ export default function AdminServiceCategoriesPage() {
 
     if (!subCategoryFormData.slug.trim()) {
       subCategoryFormData.slug = generateSlug(subCategoryFormData.name);
+    }
+
+    // Check if parentSubCategory is required (for non-first tabs)
+    if (!editingServiceSubCategory && selectedServiceCategory) {
+      const isFirstTabNow = selectedAttributeType === null; // Level 2 is the first tab
+      
+      if (!isFirstTabNow && !subCategoryFormData.parentSubCategory) {
+        toast.error("Please select a Sub Category");
+        return;
+      }
     }
 
     try {
@@ -1320,16 +1383,8 @@ export default function AdminServiceCategoriesPage() {
             setSubCategoryPage(1);
             setSubCategorySearchTerm("");
             
-            // Get first level (lowest level, typically level 3) attributeType from categoryLevelMapping for tabs
-            const sortedMappings = fullServiceCategory.categoryLevelMapping
-              ?.filter((m: any) => m.level >= 3 && m.level <= 7)
-              .sort((a: any, b: any) => a.level - b.level);
-            const firstLevelMapping = sortedMappings?.[0];
-            if (firstLevelMapping) {
-              setSelectedAttributeType(firstLevelMapping.attributeType);
-            } else {
-              setSelectedAttributeType(null);
-            }
+            // Set Level 2 (Sub Category) as the first tab (selectedAttributeType = null)
+            setSelectedAttributeType(null);
             
             // Fetch subcategories
             fetchServiceSubCategories(fullServiceCategory._id, undefined);
@@ -1342,15 +1397,8 @@ export default function AdminServiceCategoriesPage() {
             setSubCategoryPage(1);
             setSubCategorySearchTerm("");
             
-            const sortedMappings = savedServiceCategory.categoryLevelMapping
-              ?.filter((m: any) => m.level >= 3 && m.level <= 7)
-              .sort((a: any, b: any) => a.level - b.level);
-            const firstLevelMapping = sortedMappings?.[0];
-            if (firstLevelMapping) {
-              setSelectedAttributeType(firstLevelMapping.attributeType);
-            } else {
-              setSelectedAttributeType(null);
-            }
+            // Set Level 2 (Sub Category) as the first tab (selectedAttributeType = null)
+            setSelectedAttributeType(null);
             
             fetchServiceSubCategories(savedServiceCategory._id, undefined);
           }
@@ -1595,12 +1643,33 @@ export default function AdminServiceCategoriesPage() {
                   </div>
                 </div>
 
-                {/* Tabs for Level 1 Subcategories (only when no parent subcategory) */}
-                {!selectedParentSubCategory && selectedServiceCategory && selectedServiceCategory.categoryLevelMapping && selectedServiceCategory.categoryLevelMapping.length > 0 && (
+                {/* Tabs for Subcategories (Level 2-6, only when no parent subcategory) */}
+                {!selectedParentSubCategory && selectedServiceCategory && (
                   <div className="border-b border-gray-200 dark:border-gray-700">
                     <div className="flex gap-2 overflow-x-auto">
+                      {/* Level 2 Tab - Sub Category (First Tab) */}
+                      {selectedServiceCategory.level && selectedServiceCategory.level >= 2 && (
+                        <button
+                          key="level-2-subcategory"
+                          onClick={() => {
+                            setSelectedAttributeType(null); // Level 2 has no attributeType
+                            setSubCategoryPage(1);
+                            setSubCategorySearchTerm("");
+                            fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+                          }}
+                          className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                            selectedAttributeType === null
+                              ? 'border-[#FE8A0F] text-[#FE8A0F]'
+                              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-[#FE8A0F] hover:border-gray-300 dark:hover:border-gray-600'
+                          }`}
+                        >
+                          Sub Category
+                        </button>
+                      )}
+
+                      {/* Level 3-6 Tabs from categoryLevelMapping */}
                       {selectedServiceCategory.categoryLevelMapping
-                        .filter(m => m.level >= 3 && m.level <= 7)
+                        ?.filter(m => m.level >= 3 && m.level <= 6) // Only show up to level 6
                         .sort((a, b) => a.level - b.level)
                         .map((mapping) => {
                           const attributeTypeLabels: Record<string, string> = {
@@ -1620,6 +1689,10 @@ export default function AdminServiceCategoriesPage() {
                                 setSubCategoryPage(1);
                                 setSubCategorySearchTerm("");
                                 fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+                                // Fetch level 2 subcategories for parent selection if not first tab (Level 2)
+                                if (selectedAttributeType !== null) {
+                                  fetchLevel1SubCategories();
+                                }
                               }}
                               className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                                 selectedAttributeType === mapping.attributeType
@@ -2100,13 +2173,14 @@ export default function AdminServiceCategoriesPage() {
               <div>
                 <Label htmlFor="slug" className="text-black dark:text-white">
                   Slug <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
                 </Label>
                   <Input
                     id="slug"
                     value={formData.slug || ""}
-                    onChange={(e) => handleInputChange("slug", e.target.value)}
+                    disabled
                     placeholder="plumbing"
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                   />
               </div>
               <div className="flex items-center gap-4">
@@ -2794,12 +2868,8 @@ export default function AdminServiceCategoriesPage() {
               {editingServiceSubCategory 
                 ? "Edit Sub Category" 
                 : (() => {
-                    // Get the first tab (main tab) from categoryLevelMapping
-                    const sortedMappings = selectedServiceCategory?.categoryLevelMapping
-                      ?.filter(m => m.level >= 3 && m.level <= 7)
-                      .sort((a, b) => a.level - b.level) || [];
-                    const firstTab = sortedMappings[0];
-                    const isFirstTab = firstTab && selectedAttributeType === firstTab.attributeType;
+                    // Check if it's Level 2 tab (first tab - Sub Category)
+                    const isFirstTab = selectedAttributeType === null;
                     
                     // Attribute type labels
                     const attributeTypeLabels: Record<string, string> = {
@@ -2812,10 +2882,13 @@ export default function AdminServiceCategoriesPage() {
                     };
                     
                     if (isFirstTab) {
-                      // First tab: "Adding to Main Category - [부모 카테고리 이름]"
-                      return `Adding to Main Category - ${selectedParentSubCategory?.name || selectedServiceCategory?.name || "Category"}`;
+                      // Level 2 tab: "Adding to Main Category - [부모 카테고리 이름]"
+                      return `Adding to Main Category - ${selectedServiceCategory?.name || "Category"}`;
                     } else {
                       // Other tabs: "Adding to [현재 탭 이름]"
+                      const sortedMappings = selectedServiceCategory?.categoryLevelMapping
+                        ?.filter(m => m.level >= 3 && m.level <= 6)
+                        .sort((a, b) => a.level - b.level) || [];
                       const currentTabLabel = selectedAttributeType 
                         ? (sortedMappings.find(m => m.attributeType === selectedAttributeType)?.title 
                             || attributeTypeLabels[selectedAttributeType] 
@@ -2831,9 +2904,16 @@ export default function AdminServiceCategoriesPage() {
             <div>
               <Label className="text-black dark:text-white">
                 {(() => {
-                  // Get current tab label
+                  // Check if it's Level 2 tab (first tab - Sub Category)
+                  const isFirstTab = selectedAttributeType === null;
+                  
+                  if (isFirstTab) {
+                    return "Sub Category";
+                  }
+                  
+                  // Get current tab label for other tabs
                   const sortedMappings = selectedServiceCategory?.categoryLevelMapping
-                    ?.filter(m => m.level >= 3 && m.level <= 7)
+                    ?.filter(m => m.level >= 3 && m.level <= 6)
                     .sort((a, b) => a.level - b.level) || [];
                   
                   // Attribute type labels
@@ -2862,17 +2942,55 @@ export default function AdminServiceCategoriesPage() {
               />
             </div>
 
-            {/* Parent Sub Category (Read-only, if exists) */}
-            {selectedParentSubCategory && (
-              <div>
-                <Label className="text-black dark:text-white">Parent Sub Category</Label>
-                <Input
-                  value={selectedParentSubCategory.name}
-                  disabled
-                  className="mt-1 bg-gray-100 dark:bg-gray-800"
-                />
-              </div>
-            )}
+            {/* Parent Sub Category Selection (for non-first tabs) */}
+            {(() => {
+              // Check if it's Level 2 tab (first tab - Sub Category)
+              const isFirstTabNow = selectedAttributeType === null;
+              
+              // Show parent subcategory selection for non-first tabs when creating new subcategory
+              if (!editingServiceSubCategory && !isFirstTabNow && !selectedParentSubCategory) {
+                return (
+                  <div>
+                    <Label className="text-black dark:text-white">
+                      Sub Category <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={subCategoryFormData.parentSubCategory}
+                      onValueChange={(value) => {
+                        setSubCategoryFormData({ ...subCategoryFormData, parentSubCategory: value });
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select a Sub Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {level1SubCategories.map((subCat) => (
+                          <SelectItem key={subCat._id} value={subCat._id}>
+                            {subCat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }
+              
+              // Show read-only parent subcategory if editing or if navigating from nested view
+              if (selectedParentSubCategory) {
+                return (
+                  <div>
+                    <Label className="text-black dark:text-white">Parent Sub Category</Label>
+                    <Input
+                      value={selectedParentSubCategory.name}
+                      disabled
+                      className="mt-1 bg-gray-100 dark:bg-gray-800"
+                    />
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
 
             {/* Level (Read-only) */}
             <div>
@@ -2907,13 +3025,14 @@ export default function AdminServiceCategoriesPage() {
             <div>
               <Label htmlFor="subCategorySlug" className="text-black dark:text-white">
                 Slug <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
               </Label>
               <Input
                 id="subCategorySlug"
                 value={subCategoryFormData.slug}
-                onChange={(e) => setSubCategoryFormData({ ...subCategoryFormData, slug: e.target.value })}
+                disabled
                 placeholder="Enter slug"
-                className="mt-1"
+                className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
               />
             </div>
 

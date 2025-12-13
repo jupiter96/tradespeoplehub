@@ -1011,13 +1011,14 @@ export default function AdminSectorsPage() {
               <div>
                 <Label htmlFor="slug" className="text-black dark:text-white">
                   Slug <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
                 </Label>
                 <Input
                   id="slug"
                   value={formData.slug}
-                  onChange={(e) => handleInputChange("slug", e.target.value)}
+                  disabled
                   placeholder="home-garden"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                 />
               </div>
               <div className="flex items-center gap-4">

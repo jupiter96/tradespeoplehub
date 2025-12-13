@@ -213,8 +213,8 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Sector not found' });
     }
     
-    // Generate slug if not provided
-    const serviceCategorySlug = slug || name
+    // Generate slug automatically from name (ignore provided slug)
+    let serviceCategorySlug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
@@ -228,6 +228,15 @@ router.post('/', async (req, res) => {
       console.log('Error: Service category with this name already exists');
       return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
     }
+    
+    // Check if slug already exists globally, if so, append number
+    let finalSlug = serviceCategorySlug;
+    let counter = 1;
+    while (await ServiceCategory.findOne({ slug: finalSlug })) {
+      finalSlug = `${serviceCategorySlug}-${counter}`;
+      counter++;
+    }
+    serviceCategorySlug = finalSlug;
     
     // Find next available order - always use max + 1, minimum is 1
     let finalOrder = order;
@@ -354,6 +363,23 @@ router.put('/:id', async (req, res) => {
     }
     }
     
+    // Auto-generate slug from name if name is changed (ignore provided slug)
+    if (name !== undefined && name.trim() !== serviceCategory.name) {
+      let newSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      
+      // Check if slug already exists globally, if so, append number
+      let finalSlug = newSlug;
+      let counter = 1;
+      while (await ServiceCategory.findOne({ slug: finalSlug, _id: { $ne: id } })) {
+        finalSlug = `${newSlug}-${counter}`;
+        counter++;
+      }
+      serviceCategory.slug = finalSlug;
+    }
+    
     // Check if order is being changed and if it conflicts
     if (order !== undefined && order !== serviceCategory.order) {
       const existingOrder = await ServiceCategory.findOne({ 
@@ -368,7 +394,6 @@ router.put('/:id', async (req, res) => {
     
     // Update fields
     if (name !== undefined) serviceCategory.name = name.trim();
-    if (slug !== undefined) serviceCategory.slug = slug;
     if (question !== undefined) serviceCategory.question = question;
     if (order !== undefined) serviceCategory.order = order;
     if (description !== undefined) serviceCategory.description = description;

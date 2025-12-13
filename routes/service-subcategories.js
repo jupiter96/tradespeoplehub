@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
       serviceCategorySlug,
       parentSubCategoryId,
       attributeType,
+      level,
       activeOnly = 'true',
       includeServiceCategory = 'false',
       page,
@@ -32,8 +33,15 @@ router.get('/', async (req, res) => {
       if (serviceCategoryId) {
         query.serviceCategory = serviceCategoryId;
         query.parentSubCategory = null; // Top-level subcategories have no parent
-        // Filter by attributeType for level 1 subcategories
-        if (attributeType) {
+        // Filter by level if specified (e.g., level 2 for Sub Category tab)
+        if (level) {
+          query.level = parseInt(level);
+          // Level 2 subcategories don't have attributeType
+          if (parseInt(level) === 2) {
+            query.attributeType = null;
+          }
+        } else if (attributeType) {
+          // Filter by attributeType for level 1 subcategories
           query.attributeType = attributeType;
           query.level = 1; // Only level 1 subcategories have attributeType
         }
@@ -44,8 +52,15 @@ router.get('/', async (req, res) => {
         }
         query.serviceCategory = serviceCategory._id;
         query.parentSubCategory = null;
-        // Filter by attributeType for level 1 subcategories
-        if (attributeType) {
+        // Filter by level if specified (e.g., level 2 for Sub Category tab)
+        if (level) {
+          query.level = parseInt(level);
+          // Level 2 subcategories don't have attributeType
+          if (parseInt(level) === 2) {
+            query.attributeType = null;
+          }
+        } else if (attributeType) {
+          // Filter by attributeType for level 1 subcategories
           query.attributeType = attributeType;
           query.level = 1; // Only level 1 subcategories have attributeType
         }
@@ -156,6 +171,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       serviceCategory,
+      parentSubCategory,
       name,
       slug,
       order,
@@ -165,6 +181,8 @@ router.post('/', async (req, res) => {
       bannerImage,
       icon,
       isActive,
+      level,
+      attributeType,
     } = req.body;
     
     if (!serviceCategory) {
@@ -204,12 +222,16 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Maximum nesting level (7) reached' });
       }
     } else {
-      // For level 1 subcategories, use provided level or default to 1
-      calculatedLevel = level !== undefined ? level : 1;
+      // For top-level subcategories, use provided level or default to 1
+      // Level 2 subcategories are direct children of ServiceCategory
+      calculatedLevel = level !== undefined ? parseInt(level) : 1;
+      if (calculatedLevel < 1 || calculatedLevel > 7) {
+        return res.status(400).json({ error: 'Level must be between 1 and 7' });
+      }
     }
     
-    // Generate slug if not provided
-    const serviceSubCategorySlug = slug || name
+    // Generate slug automatically from name (ignore provided slug)
+    let serviceSubCategorySlug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
@@ -224,6 +246,15 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Service subcategory with this name already exists' });
     }
     
+    // Check if slug already exists globally, if so, append number
+    let finalSlug = serviceSubCategorySlug;
+    let counter = 1;
+    while (await ServiceSubCategory.findOne({ slug: finalSlug })) {
+      finalSlug = `${serviceSubCategorySlug}-${counter}`;
+      counter++;
+    }
+    serviceSubCategorySlug = finalSlug;
+    
     const serviceSubCategory = await ServiceSubCategory.create({
       serviceCategory: serviceCategoryDoc._id,
       parentSubCategory: parentSubCategoryDoc ? parentSubCategoryDoc._id : null,
@@ -237,7 +268,9 @@ router.post('/', async (req, res) => {
       icon,
       isActive: isActive !== undefined ? isActive : true,
       level: calculatedLevel,
-      attributeType: calculatedLevel === 1 && attributeType ? attributeType : null,
+      // Level 2 subcategories don't have attributeType
+      // Level 1 subcategories (for attribute-based tabs) have attributeType
+      attributeType: calculatedLevel === 2 ? null : (attributeType || null),
     });
     
     // Populate service category for response
@@ -303,9 +336,25 @@ router.put('/:id', async (req, res) => {
       }
     }
     
+    // Auto-generate slug from name if name is changed (ignore provided slug)
+    if (name !== undefined && name.trim() !== serviceSubCategory.name) {
+      let newSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      
+      // Check if slug already exists globally, if so, append number
+      let finalSlug = newSlug;
+      let counter = 1;
+      while (await ServiceSubCategory.findOne({ slug: finalSlug, _id: { $ne: id } })) {
+        finalSlug = `${newSlug}-${counter}`;
+        counter++;
+      }
+      serviceSubCategory.slug = finalSlug;
+    }
+    
     // Update fields
     if (name !== undefined) serviceSubCategory.name = name.trim();
-    if (slug !== undefined) serviceSubCategory.slug = slug;
     if (order !== undefined) serviceSubCategory.order = order;
     if (description !== undefined) serviceSubCategory.description = description;
     if (metaTitle !== undefined) serviceSubCategory.metaTitle = metaTitle;

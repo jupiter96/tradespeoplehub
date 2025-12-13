@@ -370,6 +370,86 @@ const createNestedSubCategories = async (serviceCategory, parentSubCategory, cur
   return created;
 };
 
+// Generate names for Level 2 Sub Category (first tab)
+const generateLevel2SubCategoryNames = (serviceCategoryName) => {
+  const baseName = serviceCategoryName.toLowerCase();
+  const names = [
+    `Basic ${serviceCategoryName}`,
+    `Standard ${serviceCategoryName}`,
+    `Premium ${serviceCategoryName}`,
+    `Professional ${serviceCategoryName}`,
+    `Expert ${serviceCategoryName}`,
+    `Advanced ${serviceCategoryName}`,
+    `Commercial ${serviceCategoryName}`,
+    `Residential ${serviceCategoryName}`,
+    `Emergency ${serviceCategoryName}`,
+    `Complete ${serviceCategoryName} Solution`,
+    `Full Service ${serviceCategoryName}`,
+    `Custom ${serviceCategoryName}`
+  ];
+  return names;
+};
+
+// Create Level 2 Sub Categories (first tab - Sub Category tab)
+const createLevel2SubCategories = async (serviceCategory) => {
+  console.log(`    📑 Creating Level 2 Sub Categories (first tab)...`);
+  
+  const serviceCategoryName = serviceCategory.name;
+  const serviceCategoryId = serviceCategory._id;
+  
+  // Get names for Level 2
+  const allNames = generateLevel2SubCategoryNames(serviceCategoryName);
+  const count = Math.floor(Math.random() * 4) + 4; // 4-7 subcategories
+  const selectedNames = getRandomItems(allNames, Math.min(count, allNames.length));
+  
+  // Get max order for Level 2 subcategories
+  const maxOrderResult = await ServiceSubCategory.findOne({ 
+    serviceCategory: serviceCategoryId,
+    level: 2
+  })
+    .sort({ order: -1 })
+    .select('order')
+    .lean();
+  const maxOrder = maxOrderResult?.order || 0;
+  
+  const created = [];
+  for (let i = 0; i < selectedNames.length; i++) {
+    const name = selectedNames[i];
+    const order = maxOrder + i + 1;
+    
+    // Check if already exists (check both level 2 and level 1 with same name)
+    // MongoDB unique index: serviceCategory_1_name_1 (for parentSubCategory: null)
+    const existing = await ServiceSubCategory.findOne({
+      serviceCategory: serviceCategoryId,
+      parentSubCategory: null,
+      name: name
+    });
+    
+    if (existing) {
+      console.log(`    ⚠️  Sub Category "${name}" already exists (Level ${existing.level}), skipping...`);
+      continue;
+    }
+    
+    // Create Level 2 subcategory (no parentSubCategory, no attributeType)
+    const subCategoryData = generateServiceSubCategoryData(
+      name,
+      serviceCategoryId,
+      null,
+      2,
+      null, // No attributeType for Level 2
+      order,
+      serviceCategoryName,
+      ''
+    );
+    
+    const subCategory = await ServiceSubCategory.create(subCategoryData);
+    created.push(subCategory);
+    console.log(`    ✅ Created Level 2 Sub Category: ${name} (Order: ${order})`);
+  }
+  
+  return created;
+};
+
 // Create all subcategories for a service category
 const createServiceSubCategories = async (serviceCategory) => {
   console.log(`  📁 Creating subcategories for: ${serviceCategory.name}`);
@@ -384,21 +464,32 @@ const createServiceSubCategories = async (serviceCategory) => {
   const maxLevel = Math.min(serviceCategory.level || 3, 4); // Limit to level 4 for seeding
   let totalCreated = 0;
 
-  // Each level (3-7) in categoryLevelMapping becomes a tab
+  // Track all Level 1 names across all tabs to prevent duplicates
+  // Also include Level 2 names to prevent conflicts
+  const allUsedLevel1Names = new Set();
+
+  // First, create Level 2 Sub Categories (first tab - Sub Category tab)
+  const level2SubCategories = await createLevel2SubCategories(serviceCategory);
+  totalCreated += level2SubCategories.length;
+  
+  // Add Level 2 names to the used names set to prevent duplicates in Level 1 subcategories
+  level2SubCategories.forEach(subCat => {
+    allUsedLevel1Names.add(subCat.name);
+  });
+
+  // Each level (3-7) in categoryLevelMapping becomes a tab (after the first Sub Category tab)
   // Sort by level to ensure consistent order
   const sortedMappings = categoryLevelMapping
     .filter(m => m.level >= 3 && m.level <= 7)
     .sort((a, b) => a.level - b.level);
 
   if (sortedMappings.length === 0) {
-    console.log(`    ⚠️  No valid level mappings (3-7) found, skipping subcategories...`);
-    return;
+    console.log(`    ⚠️  No valid level mappings (3-7) found, skipping additional tabs...`);
+    console.log(`    ✅ Created ${totalCreated} total subcategories`);
+    return totalCreated;
   }
 
-  // Track all Level 1 names across all tabs to prevent duplicates
-  const allUsedLevel1Names = new Set();
-
-  // Create Level 1 subcategories for each level mapping
+  // Create Level 1 subcategories for each level mapping (these become tabs after Sub Category tab)
   // Each level mapping becomes a tab in the UI
   for (const mapping of sortedMappings) {
     const attributeType = mapping.attributeType;

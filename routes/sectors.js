@@ -222,17 +222,20 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Sector name is required' });
     }
     
-    // Generate slug if not provided
-    const sectorSlug = slug || name
+    // Generate slug automatically from name (ignore provided slug)
+    let sectorSlug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
     
-    // Check if slug already exists
-    const existingSector = await Sector.findOne({ slug: sectorSlug });
-    if (existingSector) {
-      return res.status(409).json({ error: 'Sector with this slug already exists' });
+    // Check if slug already exists, if so, append number
+    let finalSlug = sectorSlug;
+    let counter = 1;
+    while (await Sector.findOne({ slug: finalSlug })) {
+      finalSlug = `${sectorSlug}-${counter}`;
+      counter++;
     }
+    sectorSlug = finalSlug;
     
     // Find next available order - always use max + 1, minimum is 1
     let finalOrder = order;
@@ -308,12 +311,21 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Sector not found' });
     }
     
-    // Check if slug is being changed and if it conflicts
-    if (slug && slug !== sector.slug) {
-      const existingSector = await Sector.findOne({ slug, _id: { $ne: id } });
-      if (existingSector) {
-        return res.status(409).json({ error: 'Sector with this slug already exists' });
+    // Auto-generate slug from name if name is changed (ignore provided slug)
+    if (name !== undefined && name.trim() !== sector.name) {
+      let newSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      
+      // Check if slug already exists, if so, append number
+      let finalSlug = newSlug;
+      let counter = 1;
+      while (await Sector.findOne({ slug: finalSlug, _id: { $ne: id } })) {
+        finalSlug = `${newSlug}-${counter}`;
+        counter++;
       }
+      sector.slug = finalSlug;
     }
     
     // Check if order is being changed and if it conflicts
@@ -326,7 +338,6 @@ router.put('/:id', async (req, res) => {
     
     // Update fields
     if (name !== undefined) sector.name = name;
-    if (slug !== undefined) sector.slug = slug;
     if (description !== undefined) sector.description = description;
     if (metaTitle !== undefined) sector.metaTitle = metaTitle;
     if (metaDescription !== undefined) sector.metaDescription = metaDescription;
