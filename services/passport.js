@@ -31,9 +31,22 @@ passport.deserializeUser(async (id, done) => {
 
 const handleSocialVerify = (provider) => async (accessToken, refreshToken, profile, done) => {
   try {
+    console.log(`${provider} profile received:`, {
+      id: profile.id,
+      hasEmail: !!profile.emails?.[0]?.value,
+      hasName: !!profile.name,
+      displayName: profile.displayName,
+    });
+
     const providerId = profile.id;
+    if (!providerId) {
+      console.error(`${provider} profile missing ID`);
+      return done(new Error('Provider profile missing ID'), null);
+    }
+
     const email = profile.emails?.[0]?.value?.toLowerCase();
     // Handle both Google and Facebook profile structures
+    // Facebook uses profile.name.firstName/lastName, Google uses givenName/familyName
     const firstName = profile.name?.givenName || profile.name?.firstName || profile.displayName?.split(' ')?.[0] || '';
     const lastName = profile.name?.familyName || profile.name?.lastName || '';
 
@@ -45,6 +58,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
       (email ? await User.findOne({ email, isDeleted: true }) : null);
     
     if (deletedUser) {
+      console.log(`${provider} login attempt with deleted account:`, providerId);
       return done(null, false, { message: 'This account has been deleted and cannot be re-registered' });
     }
     
@@ -56,6 +70,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
     if (user) {
       // Check if user is blocked
       if (user.isBlocked) {
+        console.log(`${provider} login attempt with blocked account:`, providerId);
         return done(null, false, { message: 'Your account has been suspended. Please contact support@sortars.com' });
       }
       
@@ -63,9 +78,12 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
         user[providerField] = providerId;
         await user.save();
       }
+      console.log(`${provider} login successful for existing user:`, user.email || user._id);
       return done(null, user);
     }
 
+    // New user - needs profile completion
+    console.log(`${provider} new user needs profile:`, { providerId, email, firstName, lastName });
     return done(null, {
       needsProfile: true,
       provider,
@@ -75,6 +93,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
       lastName,
     });
   } catch (error) {
+    console.error(`${provider} verification error:`, error);
     return done(error, null);
   }
 };
@@ -107,7 +126,8 @@ if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET && FACEBOOK_CALLBACK_URL) {
         clientID: FACEBOOK_CLIENT_ID,
         clientSecret: FACEBOOK_CLIENT_SECRET,
         callbackURL: FACEBOOK_CALLBACK_URL,
-        profileFields: ['id', 'emails', 'name', 'displayName'],
+        profileFields: ['id', 'emails', 'name', 'displayName', 'first_name', 'last_name'],
+        enableProof: true, // Enable app secret proof for better security
       },
       handleSocialVerify('facebook')
     )

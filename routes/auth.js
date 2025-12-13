@@ -235,16 +235,25 @@ const clearPendingSocialProfile = (req) => {
 };
 
 const handleSocialCallback = (provider) => (req, res, next) => {
-  passport.authenticate(provider, (err, result) => {
+  passport.authenticate(provider, (err, result, info) => {
     if (err) {
-      console.error(`${provider} auth error`, err);
+      console.error(`${provider} auth error:`, err);
+      console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=auth_error');
+    }
+
+    // Handle case where user is rejected (e.g., deleted account, blocked, etc.)
+    if (info && info.message) {
+      console.error(`${provider} auth info:`, info.message);
+      clearPendingSocialProfile(req);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + `?error=${encodeURIComponent(info.message)}`);
     }
 
     if (!result) {
+      console.error(`${provider} auth failed: No result returned`);
       clearPendingSocialProfile(req);
-      return res.redirect(SOCIAL_FAILURE_REDIRECT);
+      return res.redirect(SOCIAL_FAILURE_REDIRECT + '?error=no_result');
     }
 
     if (result.needsProfile) {
