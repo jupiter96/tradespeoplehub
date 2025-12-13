@@ -205,12 +205,10 @@ const generateSubCategoryNames = (serviceCategoryName, attributeType, level) => 
 };
 
 // Generate service subcategory data
-const generateServiceSubCategoryData = (name, serviceCategoryId, parentSubCategoryId, level, attributeType = null, order = 1, serviceCategoryName = '', parentSubCategoryName = '') => {
-  // For nested subcategories (level > 1), include parent subcategory name to ensure uniqueness within parent
-  // This ensures names are unique per parent subcategory, not just per service category
-  const baseName = level > 1 && parentSubCategoryName 
-    ? `${name} - ${parentSubCategoryName}` 
-    : name;
+const generateServiceSubCategoryData = (name, serviceCategoryId, parentSubCategoryId, level, attributeType = null, categoryLevel = null, order = 1, serviceCategoryName = '', parentSubCategoryName = '') => {
+  // In new hierarchy, names don't need parent suffix for uniqueness
+  // Each level has its own parent context
+  const baseName = name;
   
   return {
     serviceCategory: parentSubCategoryId ? null : serviceCategoryId,
@@ -224,146 +222,72 @@ const generateServiceSubCategoryData = (name, serviceCategoryId, parentSubCatego
     icon: '',
     order: order,
     level: level,
-    attributeType: level === 1 ? attributeType : null,
+    attributeType: level === 2 ? null : (attributeType || null), // Level 2 has no attributeType
+    categoryLevel: categoryLevel || level, // categoryLevel matches level in new hierarchy
     isActive: true,
   };
 };
 
-// Create nested subcategories recursively
-const createNestedSubCategories = async (serviceCategory, parentSubCategory, currentLevel, maxLevel, attributeType = null, usedLevel1Names = null) => {
-  if (currentLevel > maxLevel) return [];
+// Create subcategories for a specific level with parent subcategories
+const createSubCategoriesForLevel = async (serviceCategory, parentSubCategories, targetLevel, attributeType, categoryLevel) => {
+  if (!parentSubCategories || parentSubCategories.length === 0) {
+    return [];
+  }
 
   const created = [];
   const serviceCategoryName = serviceCategory.name;
   const serviceCategoryId = serviceCategory._id;
-  
-  // For Level 1, use the shared set of used names if provided
-  const createdNamesInBatch = currentLevel === 1 && !parentSubCategory && usedLevel1Names 
-    ? usedLevel1Names 
-    : new Set();
-  
-  // Determine how many subcategories to create at this level
-  let count;
-  if (currentLevel === 1) {
-    // Level 1: Create 3-5 subcategories per attributeType
-    count = Math.floor(Math.random() * 3) + 3; // 3-5
-  } else if (currentLevel === 2) {
-    // Level 2: Create 2-4 subcategories
-    count = Math.floor(Math.random() * 3) + 2; // 2-4
-  } else if (currentLevel === 3) {
-    // Level 3: Create 2-3 subcategories (only for some parents)
-    if (Math.random() > 0.6) return []; // 40% chance to skip
-    count = Math.floor(Math.random() * 2) + 2; // 2-3
-  } else if (currentLevel === 4) {
-    // Level 4: Create 1-2 subcategories (only for some parents)
-    if (Math.random() > 0.7) return []; // 30% chance to skip
-    count = Math.floor(Math.random() * 2) + 1; // 1-2
-  } else {
-    return [];
-  }
 
-  // Get names for this level
-  let names;
-  if (currentLevel === 1 && attributeType) {
-    names = generateSubCategoryNames(serviceCategoryName, attributeType, 1);
-  } else if (currentLevel === 2) {
-    const parentAttributeType = attributeType || 'serviceType';
-    names = generateSubCategoryNames(serviceCategoryName, parentAttributeType, 2);
-  } else if (currentLevel === 3) {
-    names = generateSubCategoryNames(serviceCategoryName, 'serviceType', 3);
-  } else {
-    names = generateSubCategoryNames(serviceCategoryName, 'serviceType', 4);
-  }
+  // Determine how many subcategories to create per parent
+  const countPerParent = Math.floor(Math.random() * 3) + 2; // 2-4 subcategories per parent
 
-  // Select random names
-  const selectedNames = getRandomItems(names, Math.min(count, names.length));
+  // Get names for this level based on attributeType
+  const names = generateSubCategoryNames(serviceCategoryName, attributeType, targetLevel - 1); // Use level-1 for name generation
 
-  // Get max order for this level
-  let maxOrder = 0;
-  if (parentSubCategory) {
-    const maxOrderResult = await ServiceSubCategory.findOne({ parentSubCategory: parentSubCategory._id })
-      .sort({ order: -1 })
-      .select('order')
-      .lean();
-    maxOrder = maxOrderResult?.order || 0;
-  } else {
+  for (const parentSubCategory of parentSubCategories) {
+    // Select random names for this parent
+    const selectedNames = getRandomItems(names, Math.min(countPerParent, names.length));
+
+    // Get max order for this parent
     const maxOrderResult = await ServiceSubCategory.findOne({ 
-      serviceCategory: serviceCategory._id,
-      level: 1,
-      attributeType: attributeType
+      parentSubCategory: parentSubCategory._id 
     })
       .sort({ order: -1 })
       .select('order')
       .lean();
-    maxOrder = maxOrderResult?.order || 0;
-  }
+    const maxOrder = maxOrderResult?.order || 0;
 
-  for (let i = 0; i < selectedNames.length; i++) {
-    let name = selectedNames[i];
-    
-    // For Level 1, ensure uniqueness by adding index if duplicate name found in batch
-    if (currentLevel === 1 && !parentSubCategory) {
-      let uniqueName = name;
-      let nameIndex = 1;
-      while (createdNamesInBatch.has(uniqueName)) {
-        uniqueName = `${name} ${nameIndex}`;
-        nameIndex++;
+    for (let i = 0; i < selectedNames.length; i++) {
+      const name = selectedNames[i];
+      const order = maxOrder + i + 1;
+
+      // Check if subcategory already exists
+      const existing = await ServiceSubCategory.findOne({
+        parentSubCategory: parentSubCategory._id,
+        name: name.trim()
+      });
+
+      if (existing) {
+        console.log(`    ⚠️  Subcategory "${name}" (Level ${targetLevel}) already exists under parent "${parentSubCategory.name}", skipping...`);
+        continue;
       }
-      name = uniqueName;
-      createdNamesInBatch.add(name);
-    }
-    
-    const order = maxOrder + i + 1;
-    
-    // For nested subcategories (level > 1), we'll append parent name in generateServiceSubCategoryData
-    // So we check existence using the base name, but the actual stored name will include parent
-    const baseName = name;
-    const parentSubCategoryName = parentSubCategory ? parentSubCategory.name : '';
-    
-    // For nested subcategories, the final name will be "name - parentName"
-    // So we need to check if that combination already exists
-    const finalName = currentLevel > 1 && parentSubCategoryName 
-      ? `${baseName} - ${parentSubCategoryName}` 
-      : baseName;
-    
-    // Check if subcategory already exists in database
-    const existingQuery = parentSubCategory
-      ? { parentSubCategory: parentSubCategory._id, name: finalName }
-      : { serviceCategory: serviceCategoryId, parentSubCategory: null, name: finalName, attributeType: attributeType };
-    
-    const existing = await ServiceSubCategory.findOne(existingQuery);
-    if (existing) {
-      console.log(`    ⚠️  Subcategory "${finalName}" (Level ${currentLevel}) already exists, skipping...`);
-      continue;
-    }
 
-    // Create subcategory
-    const subCategoryData = generateServiceSubCategoryData(
-      baseName,
-      serviceCategoryId,
-      parentSubCategory ? parentSubCategory._id : null,
-      currentLevel,
-      currentLevel === 1 ? attributeType : null,
-      order,
-      serviceCategoryName,
-      parentSubCategoryName
-    );
-
-    const subCategory = await ServiceSubCategory.create(subCategoryData);
-    created.push(subCategory);
-    console.log(`    ✅ Created subcategory: ${subCategoryData.name} (Level ${currentLevel}, Order: ${order})`);
-
-    // Recursively create nested subcategories
-    if (currentLevel < maxLevel) {
-      const nested = await createNestedSubCategories(
-        serviceCategory,
-        subCategory,
-        currentLevel + 1,
-        maxLevel,
+      // Create subcategory
+      const subCategoryData = generateServiceSubCategoryData(
+        name,
+        serviceCategoryId,
+        parentSubCategory._id,
+        targetLevel,
         attributeType,
-        usedLevel1Names
+        categoryLevel,
+        order,
+        serviceCategoryName,
+        parentSubCategory.name
       );
-      created.push(...nested);
+
+      const subCategory = await ServiceSubCategory.create(subCategoryData);
+      created.push(subCategory);
+      console.log(`    ✅ Created subcategory: ${name} (Level ${targetLevel}, Parent: ${parentSubCategory.name}, Order: ${order})`);
     }
   }
 
@@ -392,7 +316,7 @@ const generateLevel2SubCategoryNames = (serviceCategoryName) => {
 
 // Create Level 2 Sub Categories (first tab - Sub Category tab)
 const createLevel2SubCategories = async (serviceCategory) => {
-  console.log(`    📑 Creating Level 2 Sub Categories (first tab)...`);
+  console.log(`    📑 Creating Level 2 Sub Categories (first tab - Sub Category)...`);
   
   const serviceCategoryName = serviceCategory.name;
   const serviceCategoryId = serviceCategory._id;
@@ -405,7 +329,8 @@ const createLevel2SubCategories = async (serviceCategory) => {
   // Get max order for Level 2 subcategories
   const maxOrderResult = await ServiceSubCategory.findOne({ 
     serviceCategory: serviceCategoryId,
-    level: 2
+    level: 2,
+    parentSubCategory: null
   })
     .sort({ order: -1 })
     .select('order')
@@ -417,26 +342,27 @@ const createLevel2SubCategories = async (serviceCategory) => {
     const name = selectedNames[i];
     const order = maxOrder + i + 1;
     
-    // Check if already exists (check both level 2 and level 1 with same name)
-    // MongoDB unique index: serviceCategory_1_name_1 (for parentSubCategory: null)
+    // Check if already exists
     const existing = await ServiceSubCategory.findOne({
       serviceCategory: serviceCategoryId,
       parentSubCategory: null,
-      name: name
+      level: 2,
+      name: name.trim()
     });
     
     if (existing) {
-      console.log(`    ⚠️  Sub Category "${name}" already exists (Level ${existing.level}), skipping...`);
+      console.log(`    ⚠️  Sub Category "${name}" (Level 2) already exists, skipping...`);
       continue;
     }
     
-    // Create Level 2 subcategory (no parentSubCategory, no attributeType)
+    // Create Level 2 subcategory (no parentSubCategory, no attributeType, categoryLevel=2)
     const subCategoryData = generateServiceSubCategoryData(
       name,
       serviceCategoryId,
       null,
-      2,
+      2, // level
       null, // No attributeType for Level 2
+      2, // categoryLevel = 2
       order,
       serviceCategoryName,
       ''
@@ -450,7 +376,7 @@ const createLevel2SubCategories = async (serviceCategory) => {
   return created;
 };
 
-// Create all subcategories for a service category
+// Create all subcategories for a service category (new hierarchical structure)
 const createServiceSubCategories = async (serviceCategory) => {
   console.log(`  📁 Creating subcategories for: ${serviceCategory.name}`);
   
@@ -461,54 +387,57 @@ const createServiceSubCategories = async (serviceCategory) => {
     return;
   }
 
-  const maxLevel = Math.min(serviceCategory.level || 3, 4); // Limit to level 4 for seeding
   let totalCreated = 0;
 
-  // Track all Level 1 names across all tabs to prevent duplicates
-  // Also include Level 2 names to prevent conflicts
-  const allUsedLevel1Names = new Set();
-
-  // First, create Level 2 Sub Categories (first tab - Sub Category tab)
+  // Step 1: Create Level 2 Sub Categories (first tab - Sub Category tab)
+  // Parent: ServiceCategory, Level: 2, CategoryLevel: 2
+  console.log(`    📑 Step 1: Creating Level 2 Sub Categories (Sub Category tab)...`);
   const level2SubCategories = await createLevel2SubCategories(serviceCategory);
   totalCreated += level2SubCategories.length;
-  
-  // Add Level 2 names to the used names set to prevent duplicates in Level 1 subcategories
-  level2SubCategories.forEach(subCat => {
-    allUsedLevel1Names.add(subCat.name);
-  });
+  console.log(`    ✅ Created ${level2SubCategories.length} Level 2 subcategories`);
 
-  // Each level (3-7) in categoryLevelMapping becomes a tab (after the first Sub Category tab)
-  // Sort by level to ensure consistent order
+  // Step 2: Create subcategories for each level in categoryLevelMapping (Level 3-6)
+  // Each level uses the previous level's subcategories as parents
   const sortedMappings = categoryLevelMapping
-    .filter(m => m.level >= 3 && m.level <= 7)
+    .filter(m => m.level >= 3 && m.level <= 6)
     .sort((a, b) => a.level - b.level);
 
   if (sortedMappings.length === 0) {
-    console.log(`    ⚠️  No valid level mappings (3-7) found, skipping additional tabs...`);
+    console.log(`    ⚠️  No valid level mappings (3-6) found, skipping additional tabs...`);
     console.log(`    ✅ Created ${totalCreated} total subcategories`);
     return totalCreated;
   }
 
-  // Create Level 1 subcategories for each level mapping (these become tabs after Sub Category tab)
-  // Each level mapping becomes a tab in the UI
+  // Track parent subcategories for each level
+  let currentParentSubCategories = level2SubCategories;
+
+  // Create subcategories for each level sequentially
   for (const mapping of sortedMappings) {
     const attributeType = mapping.attributeType;
-    const level = mapping.level;
+    const targetLevel = mapping.level;
+    const categoryLevel = mapping.level;
     
-    console.log(`    📑 Creating subcategories for tab: ${mapping.title || attributeType} (Level ${level})`);
+    console.log(`    📑 Step ${targetLevel - 1}: Creating Level ${targetLevel} subcategories for tab: ${mapping.title || attributeType} (CategoryLevel ${categoryLevel})`);
     
-    // Create Level 1 subcategories for this attributeType/level
-    // Pass the shared set to ensure uniqueness across all tabs
-    const level1SubCategories = await createNestedSubCategories(
+    if (currentParentSubCategories.length === 0) {
+      console.log(`    ⚠️  No parent subcategories available for Level ${targetLevel}, skipping...`);
+      continue;
+    }
+
+    // Create subcategories for this level using previous level's subcategories as parents
+    const levelSubCategories = await createSubCategoriesForLevel(
       serviceCategory,
-      null,
-      1,
-      maxLevel,
+      currentParentSubCategories,
+      targetLevel,
       attributeType,
-      allUsedLevel1Names
+      categoryLevel
     );
     
-    totalCreated += level1SubCategories.length;
+    totalCreated += levelSubCategories.length;
+    console.log(`    ✅ Created ${levelSubCategories.length} Level ${targetLevel} subcategories`);
+    
+    // Update parent subcategories for next level
+    currentParentSubCategories = levelSubCategories;
   }
 
   console.log(`    ✅ Created ${totalCreated} total subcategories`);

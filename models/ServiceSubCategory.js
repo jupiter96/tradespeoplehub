@@ -29,6 +29,15 @@ const serviceSubCategorySchema = new mongoose.Schema(
       default: null,
       // Only set for level 1 subcategories to indicate which tab/attribute type they belong to
     },
+    // Category level from categoryLevelMapping (2 for Sub Category, 3-6 for other tabs)
+    categoryLevel: {
+      type: Number,
+      min: 2,
+      max: 6,
+      default: null,
+      // Level 2 = Sub Category tab, Level 3-6 = other tabs (Service Type, Size, etc.)
+      // Used for sorting and filtering within tabs
+    },
     name: {
       type: String,
       required: true,

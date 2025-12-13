@@ -373,6 +373,7 @@ export default function AdminServiceCategoriesPage() {
     level: number;
     isActive: boolean;
     attributeType?: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
+    categoryLevel?: number;
   }>({
     serviceCategory: "",
     parentSubCategory: "",
@@ -387,6 +388,7 @@ export default function AdminServiceCategoriesPage() {
     level: 1,
     isActive: true,
     attributeType: undefined,
+    categoryLevel: undefined,
   });
   const [subCategoryIconPreview, setSubCategoryIconPreview] = useState<string | null>(null);
   const [subCategoryBannerPreview, setSubCategoryBannerPreview] = useState<string | null>(null);
@@ -469,19 +471,67 @@ export default function AdminServiceCategoriesPage() {
     return selectedAttributeType === null;
   }, [selectedAttributeType]);
 
-  // Fetch Level 2 Sub Categories (for parent selection in non-first tabs)
-  const fetchLevel1SubCategories = useCallback(async () => {
+  // Fetch parent subcategories for the current tab (previous level subcategories)
+  const fetchParentSubCategories = useCallback(async () => {
     if (!selectedServiceCategory) return;
 
     try {
-      // Fetch Level 2 subcategories (level=2, parentSubCategory=null)
+      // Determine which level and attributeType to fetch based on current tab
+      let parentLevel: number | null = null;
+      let parentAttributeType: string | null = null;
+      
+      if (selectedAttributeType === null) {
+        // Level 2 tab (Sub Category) - no parent needed
+        setLevel1SubCategories([]);
+        return;
+      } else {
+        // Find the current tab's level from categoryLevelMapping
+        const currentMapping = selectedServiceCategory.categoryLevelMapping?.find(
+          m => m.attributeType === selectedAttributeType
+        );
+        if (currentMapping) {
+          // Parent level is one less than current level
+          parentLevel = currentMapping.level - 1;
+          
+          // Find the parent level's attributeType from categoryLevelMapping
+          if (parentLevel === 2) {
+            // Parent is Level 2 (Sub Category tab) - attributeType is null
+            parentAttributeType = null;
+          } else {
+            // Parent is Level 3+ - find its attributeType
+            const parentMapping = selectedServiceCategory.categoryLevelMapping?.find(
+              m => m.level === parentLevel
+            );
+            if (parentMapping) {
+              parentAttributeType = parentMapping.attributeType;
+            }
+          }
+        }
+      }
+
+      if (!parentLevel || parentLevel < 2) {
+        setLevel1SubCategories([]);
+        return;
+      }
+
+      // Fetch subcategories from the parent level with the correct attributeType
       const params = new URLSearchParams({
         activeOnly: "false",
         includeServiceCategory: "true",
         serviceCategoryId: selectedServiceCategory._id,
-        level: "2", // Level 2 subcategories
-        limit: "1000", // Get all level 2 subcategories
+        level: parentLevel.toString(),
+        categoryLevel: parentLevel.toString(),
+        limit: "1000", // Get all parent level subcategories
       });
+      
+      // Add attributeType filter
+      if (parentAttributeType === null) {
+        // Level 2: attributeType is null
+        params.append('attributeType', '');
+      } else if (parentAttributeType) {
+        // Level 3+: filter by parent's attributeType
+        params.append('attributeType', parentAttributeType);
+      }
 
       const response = await fetch(resolveApiUrl(`/api/service-subcategories?${params}`), {
         credentials: "include",
@@ -492,9 +542,9 @@ export default function AdminServiceCategoriesPage() {
         setLevel1SubCategories(data.serviceSubCategories || []);
       }
     } catch (error) {
-      console.error("Error fetching level 2 subcategories:", error);
+      console.error("Error fetching parent subcategories:", error);
     }
-  }, [selectedServiceCategory]);
+  }, [selectedServiceCategory, selectedAttributeType]);
 
   const fetchServiceSubCategories = useCallback(async (serviceCategoryId?: string, parentSubCategoryId?: string) => {
     try {
@@ -509,11 +559,31 @@ export default function AdminServiceCategoriesPage() {
         ...(subCategorySearchTerm && { search: subCategorySearchTerm }),
         ...(serviceCategoryId && { serviceCategoryId }),
         ...(parentSubCategoryId && { parentSubCategoryId }),
-        // If Level 2 tab (selectedAttributeType === null), fetch level 2 subcategories
-        // Otherwise, fetch by attributeType
-        ...(serviceCategoryId && !parentSubCategoryId && selectedAttributeType === null && { level: "2" }),
-        ...(serviceCategoryId && !parentSubCategoryId && selectedAttributeType && { attributeType: selectedAttributeType }),
       });
+      
+      // Apply tab-specific filters based on attributeType
+      // Filter primarily by attributeType field
+      if (serviceCategoryId && !parentSubCategoryId) {
+        if (selectedAttributeType === null) {
+          // Level 2 tab (Sub Category): fetch Level 2 subcategories (attributeType is null)
+          params.append('level', '2');
+          params.append('categoryLevel', '2');
+          // Explicitly set attributeType to null for Level 2
+          params.append('attributeType', '');
+        } else {
+          // Other tabs: filter by attributeType as primary filter
+          params.append('attributeType', selectedAttributeType);
+          // Optionally include level for additional filtering, but attributeType is primary
+          const currentMapping = selectedServiceCategory?.categoryLevelMapping?.find(
+            m => m.attributeType === selectedAttributeType
+          );
+          if (currentMapping) {
+            const tabLevel = currentMapping.level;
+            params.append('level', tabLevel.toString());
+            params.append('categoryLevel', tabLevel.toString());
+          }
+        }
+      }
 
       const response = await fetch(resolveApiUrl(`/api/service-subcategories?${params}`), {
         credentials: "include",
@@ -567,6 +637,15 @@ export default function AdminServiceCategoriesPage() {
       return () => clearTimeout(debounceTimer);
     }
   }, [viewMode, selectedServiceCategory, selectedParentSubCategory, subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, selectedAttributeType, fetchServiceSubCategories]);
+
+  // Fetch parent subcategories when tab changes (for parent selection dropdown)
+  useEffect(() => {
+    if (viewMode === "subcategories" && selectedServiceCategory && selectedAttributeType !== null) {
+      fetchParentSubCategories();
+    } else {
+      setLevel1SubCategories([]);
+    }
+  }, [viewMode, selectedServiceCategory, selectedAttributeType, fetchParentSubCategories]);
 
   const fetchSectors = async () => {
     try {
@@ -956,18 +1035,31 @@ export default function AdminServiceCategoriesPage() {
     // Check if it's Level 2 tab (first tab - Sub Category)
     const isFirstTabNow = selectedAttributeType === null;
     
-    // Determine target level based on selected tab
-    let targetLevel = 1; // Default to level 1
+    // Determine target level and categoryLevel based on selected tab
+    let targetLevel: number;
+    let categoryLevel: number;
     let attributeType: string | undefined = undefined;
     
     if (isFirstTabNow) {
-      // Level 2 tab: create Level 2 subcategory
+      // Level 2 tab (Sub Category): create Level 2 subcategory
       targetLevel = 2;
+      categoryLevel = 2;
       attributeType = undefined; // Level 2 has no attributeType
     } else if (selectedAttributeType) {
-      // Other tabs: create Level 1 subcategory for the selected attributeType
-      targetLevel = 1;
+      // Other tabs: find the level from categoryLevelMapping
+      const mapping = selectedServiceCategory.categoryLevelMapping?.find(
+        m => m.attributeType === selectedAttributeType
+      );
+      if (!mapping) {
+        toast.error("Invalid tab configuration");
+        return;
+      }
+      targetLevel = mapping.level; // Level matches categoryLevelMapping level
+      categoryLevel = mapping.level;
       attributeType = selectedAttributeType;
+    } else {
+      toast.error("Invalid tab selection");
+      return;
     }
     
     if (targetLevel > 7) {
@@ -991,14 +1083,15 @@ export default function AdminServiceCategoriesPage() {
       level: targetLevel,
       isActive: true,
       attributeType: attributeType,
+      categoryLevel: categoryLevel,
     });
     setEditingServiceSubCategory(null);
     setSubCategoryIconPreview(null);
     setSubCategoryBannerPreview(null);
     
-    // Fetch Level 2 subcategories if not first tab (for parent selection)
+    // Fetch parent level subcategories if not first tab (for parent selection)
     if (!isFirstTabNow) {
-      fetchLevel1SubCategories();
+      fetchParentSubCategories();
     }
     
     setIsSubCategoryModalOpen(true);
@@ -1024,6 +1117,7 @@ export default function AdminServiceCategoriesPage() {
       level: subCategory.level || 1,
       isActive: subCategory.isActive,
       attributeType: subCategory.attributeType,
+      categoryLevel: (subCategory as any).categoryLevel,
     });
     setEditingServiceSubCategory(subCategory);
     setSubCategoryIconPreview(subCategory.icon || null);
@@ -1041,15 +1135,7 @@ export default function AdminServiceCategoriesPage() {
       subCategoryFormData.slug = generateSlug(subCategoryFormData.name);
     }
 
-    // Check if parentSubCategory is required (for non-first tabs)
-    if (!editingServiceSubCategory && selectedServiceCategory) {
-      const isFirstTabNow = selectedAttributeType === null; // Level 2 is the first tab
-      
-      if (!isFirstTabNow && !subCategoryFormData.parentSubCategory) {
-        toast.error("Please select a Sub Category");
-        return;
-      }
-    }
+    // Parent category is optional, so we don't validate it
 
     try {
       setIsSaving(true);
@@ -1072,13 +1158,21 @@ export default function AdminServiceCategoriesPage() {
         level: subCategoryFormData.level,
         isActive: subCategoryFormData.isActive,
         ...(subCategoryFormData.attributeType && { attributeType: subCategoryFormData.attributeType }),
+        ...(subCategoryFormData.categoryLevel && { categoryLevel: subCategoryFormData.categoryLevel }),
       };
 
-      // Add parentSubCategory or serviceCategory based on which one is set
-      if (subCategoryFormData.parentSubCategory) {
+      // Always include serviceCategory (required by backend)
+      // Also include parentSubCategory if it's set and not empty
+      payload.serviceCategory = subCategoryFormData.serviceCategory || selectedServiceCategory?._id;
+      if (!payload.serviceCategory) {
+        toast.error("Service category is required");
+        setIsSaving(false);
+        return;
+      }
+      
+      // Add parentSubCategory if it's set and not empty
+      if (subCategoryFormData.parentSubCategory && subCategoryFormData.parentSubCategory.trim() !== "") {
         payload.parentSubCategory = subCategoryFormData.parentSubCategory;
-      } else {
-        payload.serviceCategory = subCategoryFormData.serviceCategory;
       }
 
       const response = await fetch(url, {
@@ -1091,11 +1185,22 @@ export default function AdminServiceCategoriesPage() {
       if (response.ok) {
         toast.success(editingServiceSubCategory ? "Sub category updated successfully" : "Sub category created successfully");
         setIsSubCategoryModalOpen(false);
-        if (selectedParentSubCategory) {
-          fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
-        } else if (selectedServiceCategory) {
-          fetchServiceSubCategories(selectedServiceCategory._id, undefined);
-        }
+        
+        // Reset to first page to see the newly created item
+        setSubCategoryPage(1);
+        
+        // Force a refresh with the current tab's filter
+        // Use a small delay to ensure state updates are processed
+        setTimeout(() => {
+          if (selectedParentSubCategory) {
+            // For nested subcategories, fetch by parent
+            fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+          } else if (selectedServiceCategory) {
+            // For top-level subcategories, fetch with current tab's filter
+            // fetchServiceSubCategories will use the current selectedAttributeType from closure
+            fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+          }
+        }, 50);
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to save sub category");
@@ -1689,10 +1794,7 @@ export default function AdminServiceCategoriesPage() {
                                 setSubCategoryPage(1);
                                 setSubCategorySearchTerm("");
                                 fetchServiceSubCategories(selectedServiceCategory._id, undefined);
-                                // Fetch level 2 subcategories for parent selection if not first tab (Level 2)
-                                if (selectedAttributeType !== null) {
-                                  fetchLevel1SubCategories();
-                                }
+                                // fetchParentSubCategories will be called via useEffect when selectedAttributeType changes
                               }}
                               className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                                 selectedAttributeType === mapping.attributeType
@@ -1777,25 +1879,22 @@ export default function AdminServiceCategoriesPage() {
                         </TableHeader>
                         <TableBody>
                           {serviceSubCategories.map((subCategory) => {
-                            // Get parent category name
+                            // Get parent category name (only parentSubCategory, not serviceCategory)
                             const parentName = (() => {
                               // If parentSubCategory is populated (object), use its name
                               if (subCategory.parentSubCategory && typeof subCategory.parentSubCategory === 'object' && 'name' in subCategory.parentSubCategory) {
                                 return (subCategory.parentSubCategory as any).name;
                               }
-                              // If parentSubCategory is just an ID, check if we have selectedParentSubCategory
-                              if (subCategory.parentSubCategory && selectedParentSubCategory) {
-                                return selectedParentSubCategory.name;
+                              // If parentSubCategory is just an ID, try to find it in the current list
+                              if (subCategory.parentSubCategory && typeof subCategory.parentSubCategory === 'string') {
+                                // Try to find the parent in the current subcategories list
+                                const parent = serviceSubCategories.find(sc => sc._id === subCategory.parentSubCategory);
+                                if (parent) {
+                                  return parent.name;
+                                }
                               }
-                              // If serviceCategory is populated (object), use its name
-                              if (subCategory.serviceCategory && typeof subCategory.serviceCategory === 'object' && 'name' in subCategory.serviceCategory) {
-                                return (subCategory.serviceCategory as any).name;
-                              }
-                              // Fallback to selectedServiceCategory
-                              if (selectedServiceCategory) {
-                                return selectedServiceCategory.name;
-                              }
-                              return "-";
+                              // No parent subcategory - return empty string (will display as blank)
+                              return "";
                             })();
 
                             return (
@@ -1803,9 +1902,13 @@ export default function AdminServiceCategoriesPage() {
                               <TableCell className="text-black dark:text-white">{subCategory.order || 0}</TableCell>
                               <TableCell className="text-black dark:text-white font-medium">{subCategory.name}</TableCell>
                               <TableCell className="text-black dark:text-white">
-                                <span className="text-sm text-gray-600 dark:text-gray-400" title={parentName}>
-                                  {parentName.length > 30 ? parentName.substring(0, 30) + "..." : parentName}
-                                </span>
+                                {parentName ? (
+                                  <span className="text-sm text-gray-600 dark:text-gray-400" title={parentName}>
+                                    {parentName.length > 30 ? parentName.substring(0, 30) + "..." : parentName}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">-</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-black dark:text-white">
                                 {subCategory.slug ? (
@@ -2903,37 +3006,7 @@ export default function AdminServiceCategoriesPage() {
             {/* Service Category (Read-only) */}
             <div>
               <Label className="text-black dark:text-white">
-                {(() => {
-                  // Check if it's Level 2 tab (first tab - Sub Category)
-                  const isFirstTab = selectedAttributeType === null;
-                  
-                  if (isFirstTab) {
-                    return "Sub Category";
-                  }
-                  
-                  // Get current tab label for other tabs
-                  const sortedMappings = selectedServiceCategory?.categoryLevelMapping
-                    ?.filter(m => m.level >= 3 && m.level <= 6)
-                    .sort((a, b) => a.level - b.level) || [];
-                  
-                  // Attribute type labels
-                  const attributeTypeLabels: Record<string, string> = {
-                    serviceType: 'Service Type',
-                    size: 'Size',
-                    frequency: 'Frequency',
-                    make: 'Make',
-                    model: 'Model',
-                    brand: 'Brand',
-                  };
-                  
-                  const currentTabLabel = selectedAttributeType 
-                    ? (sortedMappings.find(m => m.attributeType === selectedAttributeType)?.title 
-                        || attributeTypeLabels[selectedAttributeType] 
-                        || selectedAttributeType)
-                    : "Service";
-                  
-                  return `${currentTabLabel} Category`;
-                })()} <span className="text-red-500">*</span>
+                Main Category <span className="text-red-500">*</span>
               </Label>
               <Input
                 value={selectedServiceCategory?.name || ""}
@@ -2949,10 +3022,36 @@ export default function AdminServiceCategoriesPage() {
               
               // Show parent subcategory selection for non-first tabs when creating new subcategory
               if (!editingServiceSubCategory && !isFirstTabNow && !selectedParentSubCategory) {
+                // Get parent level tab name
+                const currentMapping = selectedServiceCategory?.categoryLevelMapping?.find(
+                  m => m.attributeType === selectedAttributeType
+                );
+                const parentLevel = currentMapping ? currentMapping.level - 1 : 2;
+                
+                let parentTabLabel = "Parent Category";
+                if (parentLevel === 2) {
+                  parentTabLabel = "Parent Category";
+                } else {
+                  const parentMapping = selectedServiceCategory?.categoryLevelMapping?.find(
+                    m => m.level === parentLevel
+                  );
+                  if (parentMapping) {
+                    const attributeTypeLabels: Record<string, string> = {
+                      serviceType: 'Service Type',
+                      size: 'Size',
+                      frequency: 'Frequency',
+                      make: 'Make',
+                      model: 'Model',
+                      brand: 'Brand',
+                    };
+                    parentTabLabel = parentMapping.title || attributeTypeLabels[parentMapping.attributeType] || parentMapping.attributeType;
+                  }
+                }
+                
                 return (
                   <div>
                     <Label className="text-black dark:text-white">
-                      Sub Category <span className="text-red-500">*</span>
+                      Parent Category
                     </Label>
                     <Select
                       value={subCategoryFormData.parentSubCategory}
@@ -2961,7 +3060,7 @@ export default function AdminServiceCategoriesPage() {
                       }}
                     >
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select a Sub Category" />
+                        <SelectValue placeholder={`Select a ${parentTabLabel}`} />
                       </SelectTrigger>
                       <SelectContent>
                         {level1SubCategories.map((subCat) => (
@@ -2979,7 +3078,7 @@ export default function AdminServiceCategoriesPage() {
               if (selectedParentSubCategory) {
                 return (
                   <div>
-                    <Label className="text-black dark:text-white">Parent Sub Category</Label>
+                    <Label className="text-black dark:text-white">Parent Category</Label>
                     <Input
                       value={selectedParentSubCategory.name}
                       disabled

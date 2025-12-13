@@ -24,28 +24,84 @@ router.get('/', async (req, res) => {
     
     const query = {};
     
-    // Filter by parent subcategory (for nested subcategories)
+    // New hierarchical structure: Filter by level and categoryLevel for tab-specific filtering
+    // Level 2: parentSubCategory=null, serviceCategory=serviceCategoryId
+    // Level 3+: parentSubCategory exists, but we filter by level/categoryLevel/attributeType
+    
+    // If parentSubCategoryId is explicitly provided, filter by it (for nested navigation)
     if (parentSubCategoryId) {
       query.parentSubCategory = parentSubCategoryId;
       query.serviceCategory = null; // When parentSubCategory is set, serviceCategory should be null
-    } else {
-      // Filter by service category (for top-level subcategories)
-      if (serviceCategoryId) {
+    } else if (serviceCategoryId) {
+      // Filter primarily by attributeType for tab-specific filtering
+      // attributeType is the primary filter, level/categoryLevel are secondary
+      
+      // If attributeType is provided (including empty string for Level 2), use it as primary filter
+      if (attributeType !== undefined) {
+        if (attributeType === '' || attributeType === null) {
+          // Level 2 tab (Sub Category): attributeType is null
+          query.serviceCategory = serviceCategoryId;
+          query.parentSubCategory = null;
+          query.attributeType = null;
+          query.level = 2;
+          if (req.query.categoryLevel) {
+            query.categoryLevel = parseInt(req.query.categoryLevel);
+          }
+        } else {
+          // Level 3+ tabs: filter by attributeType as primary
+          query.attributeType = attributeType;
+          // Don't set serviceCategory = null here yet, we'll handle it in parentSubCategory filtering
+          // This allows us to include subcategories with parentSubCategory=null if needed
+          
+          // Add level and categoryLevel as secondary filters if provided
+          if (level) {
+            query.level = parseInt(level);
+          }
+          if (req.query.categoryLevel) {
+            query.categoryLevel = parseInt(req.query.categoryLevel);
+          }
+        }
+      } else if (level && req.query.categoryLevel) {
+        // Fallback: if attributeType is not provided, use level/categoryLevel (backward compatibility)
+        const targetLevel = parseInt(level);
+        const targetCategoryLevel = parseInt(req.query.categoryLevel);
+        
+        query.level = targetLevel;
+        query.categoryLevel = targetCategoryLevel;
+        
+        // Level 2: parentSubCategory must be null
+        if (targetLevel === 2) {
+          query.parentSubCategory = null;
+          query.serviceCategory = serviceCategoryId;
+          query.attributeType = null;
+        } else {
+          // Level 3+: parentSubCategory exists, serviceCategory is null in the model
+          query.serviceCategory = null;
+          if (attributeType) {
+            query.attributeType = attributeType;
+          }
+        }
+      } else {
+        // Fallback: filter by service category only (for backward compatibility)
         query.serviceCategory = serviceCategoryId;
-        query.parentSubCategory = null; // Top-level subcategories have no parent
-        // Filter by level if specified (e.g., level 2 for Sub Category tab)
+        query.parentSubCategory = null;
+        // Filter by level if specified
         if (level) {
           query.level = parseInt(level);
-          // Level 2 subcategories don't have attributeType
           if (parseInt(level) === 2) {
             query.attributeType = null;
           }
-        } else if (attributeType) {
-          // Filter by attributeType for level 1 subcategories
-          query.attributeType = attributeType;
-          query.level = 1; // Only level 1 subcategories have attributeType
         }
-      } else if (serviceCategorySlug) {
+        // Filter by categoryLevel if specified
+        if (req.query.categoryLevel) {
+          query.categoryLevel = parseInt(req.query.categoryLevel);
+        }
+        // Filter by attributeType for level 3+ subcategories
+        if (attributeType) {
+          query.attributeType = attributeType;
+        }
+      }
+    } else if (serviceCategorySlug) {
         const serviceCategory = await ServiceCategory.findOne({ slug: serviceCategorySlug });
         if (!serviceCategory) {
           return res.status(404).json({ error: 'Service category not found' });
@@ -59,12 +115,15 @@ router.get('/', async (req, res) => {
           if (parseInt(level) === 2) {
             query.attributeType = null;
           }
-        } else if (attributeType) {
-          // Filter by attributeType for level 1 subcategories
-          query.attributeType = attributeType;
-          query.level = 1; // Only level 1 subcategories have attributeType
         }
-      }
+        // Filter by categoryLevel if specified (for tab-specific filtering)
+        if (req.query.categoryLevel) {
+          query.categoryLevel = parseInt(req.query.categoryLevel);
+        }
+        // Filter by attributeType for level 3+ subcategories (Service Type, Size, etc. tabs)
+        if (attributeType) {
+          query.attributeType = attributeType;
+        }
     }
     
     // Filter by active status
@@ -81,16 +140,181 @@ router.get('/', async (req, res) => {
       ];
     }
     
+    // For Level 3+ subcategories, filter by parentSubCategory's serviceCategory
+    // Since Level 3+ subcategories have parentSubCategory and serviceCategory=null
+    // Filter primarily by attributeType, but maintain parent-child relationship
+    // Also include subcategories with parentSubCategory=null (if not selected during creation)
+    if (attributeType && attributeType !== '' && attributeType !== null && serviceCategoryId && !parentSubCategoryId) {
+      // Get the serviceCategory to access categoryLevelMapping
+      const serviceCategoryDoc = await ServiceCategory.findById(serviceCategoryId).select('categoryLevelMapping').lean();
+      
+      // Find the current level from categoryLevelMapping based on attributeType
+      let currentLevel = null;
+      if (serviceCategoryDoc?.categoryLevelMapping) {
+        const currentMapping = serviceCategoryDoc.categoryLevelMapping.find(m => m.attributeType === attributeType);
+        if (currentMapping) {
+          currentLevel = currentMapping.level;
+        }
+      }
+      
+      // If we couldn't find the level from mapping, try to infer from level parameter
+      if (!currentLevel && level) {
+        currentLevel = parseInt(level);
+      }
+      
+      // Only filter by parentSubCategory if we're dealing with Level 3+ (attributeType is not null)
+      if (currentLevel && currentLevel > 2) {
+        const parentLevel = currentLevel - 1;
+        
+        // Start with Level 2 subcategories (direct children of serviceCategory)
+        const level2SubCategories = await ServiceSubCategory.find({
+          serviceCategory: serviceCategoryId,
+          level: 2,
+          parentSubCategory: null,
+          attributeType: null
+        }).select('_id').lean();
+        
+        if (level2SubCategories.length === 0) {
+          // No Level 2 subcategories, but we still want to show Level 3+ subcategories
+          // that might have parentSubCategory=null (if not selected during creation)
+          // These would have serviceCategory set instead
+          query.$or = [
+            { parentSubCategory: null, serviceCategory: serviceCategoryId },
+            { parentSubCategory: { $in: [] } } // This will never match, but keeps query structure
+          ];
+        } else {
+          // Recursively get subcategories at parentLevel
+          // Start from Level 2 and traverse up to parentLevel
+          let currentParentIds = level2SubCategories.map(sc => sc._id);
+          
+          // If parentLevel is 2, we already have the IDs
+          // Otherwise, traverse from level 3 to parentLevel
+          // For each level, filter by the correct attributeType from categoryLevelMapping
+          for (let l = 3; l <= parentLevel; l++) {
+            // Find the attributeType for this level from categoryLevelMapping
+            let levelAttributeType = null;
+            if (serviceCategoryDoc?.categoryLevelMapping) {
+              const levelMapping = serviceCategoryDoc.categoryLevelMapping.find(m => m.level === l);
+              if (levelMapping) {
+                levelAttributeType = levelMapping.attributeType;
+              }
+            }
+            
+            const levelQuery = {
+              parentSubCategory: { $in: currentParentIds },
+              level: l
+            };
+            
+            // Add attributeType filter if we know it
+            if (levelAttributeType) {
+              levelQuery.attributeType = levelAttributeType;
+            }
+            
+            const nextLevelSubCategories = await ServiceSubCategory.find(levelQuery).select('_id').lean();
+            
+            if (nextLevelSubCategories.length === 0) {
+              // No subcategories at this level, but we still want to show subcategories
+              // that might have parentSubCategory=null
+              currentParentIds = [];
+              break;
+            }
+            
+            currentParentIds = nextLevelSubCategories.map(sc => sc._id);
+          }
+          
+          // Include subcategories that:
+          // 1. Have parentSubCategory in currentParentIds (normal case with parent selected)
+          // 2. Have parentSubCategory=null and serviceCategory=serviceCategoryId (if parent not selected during creation)
+          if (currentParentIds.length > 0) {
+            query.$or = [
+              { parentSubCategory: { $in: currentParentIds } },
+              { parentSubCategory: null, serviceCategory: serviceCategoryId }
+            ];
+            // Remove serviceCategory from main query since we're using it in $or
+            delete query.serviceCategory;
+          } else {
+            // If no valid parents found, allow null parentSubCategory with serviceCategory match
+            query.parentSubCategory = null;
+            query.serviceCategory = serviceCategoryId;
+          }
+        }
+      }
+    } else if (level && req.query.categoryLevel && parseInt(level) > 2 && serviceCategoryId && !parentSubCategoryId) {
+      // Fallback: if attributeType is not provided, use level-based filtering (backward compatibility)
+      const currentLevel = parseInt(level);
+      const parentLevel = currentLevel - 1;
+      
+      // Get the serviceCategory to access categoryLevelMapping
+      const serviceCategoryDoc = await ServiceCategory.findById(serviceCategoryId).select('categoryLevelMapping').lean();
+      
+      // Start with Level 2 subcategories (direct children of serviceCategory)
+      const level2SubCategories = await ServiceSubCategory.find({
+        serviceCategory: serviceCategoryId,
+        level: 2,
+        parentSubCategory: null
+      }).select('_id').lean();
+      
+      if (level2SubCategories.length === 0) {
+        // No Level 2 subcategories, so no higher levels can exist
+        query.parentSubCategory = { $in: [] };
+      } else {
+        // Recursively get subcategories at parentLevel
+        let currentParentIds = level2SubCategories.map(sc => sc._id);
+        
+        for (let l = 3; l <= parentLevel; l++) {
+          // Find the attributeType for this level from categoryLevelMapping
+          let levelAttributeType = null;
+          if (serviceCategoryDoc?.categoryLevelMapping) {
+            const levelMapping = serviceCategoryDoc.categoryLevelMapping.find(m => m.level === l);
+            if (levelMapping) {
+              levelAttributeType = levelMapping.attributeType;
+            }
+          }
+          
+          const levelQuery = {
+            parentSubCategory: { $in: currentParentIds },
+            level: l
+          };
+          
+          // Add attributeType filter if we know it
+          if (levelAttributeType) {
+            levelQuery.attributeType = levelAttributeType;
+          }
+          
+          const nextLevelSubCategories = await ServiceSubCategory.find(levelQuery).select('_id').lean();
+          
+          if (nextLevelSubCategories.length === 0) {
+            query.parentSubCategory = { $in: [] };
+            currentParentIds = [];
+            break;
+          }
+          
+          currentParentIds = nextLevelSubCategories.map(sc => sc._id);
+        }
+        
+        if (currentParentIds.length > 0) {
+          query.parentSubCategory = { $in: currentParentIds };
+        } else {
+          query.parentSubCategory = { $in: [] };
+        }
+      }
+    }
+    
     // Sorting
     const sortOptions = {};
     if (sortBy === 'order') {
       sortOptions.order = sortOrder === 'desc' ? -1 : 1;
     } else if (sortBy === 'name') {
       sortOptions.name = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'categoryLevel') {
+      sortOptions.categoryLevel = sortOrder === 'desc' ? -1 : 1;
     } else {
       sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
-    // Always add order as secondary sort
+    // Always add categoryLevel as secondary sort (if not primary), then order
+    if (sortBy !== 'categoryLevel') {
+      sortOptions.categoryLevel = 1;
+    }
     if (sortBy !== 'order') {
       sortOptions.order = 1;
     }
@@ -183,6 +407,7 @@ router.post('/', async (req, res) => {
       isActive,
       level,
       attributeType,
+      categoryLevel,
     } = req.body;
     
     if (!serviceCategory) {
@@ -217,16 +442,24 @@ router.post('/', async (req, res) => {
       if (!parentSubCategoryDoc) {
         return res.status(404).json({ error: 'Parent subcategory not found' });
       }
-      calculatedLevel = (parentSubCategoryDoc.level || 1) + 1;
+      // In new hierarchy: level should be parent level + 1
+      // But we use the provided level from request to match categoryLevelMapping
+      const expectedLevel = (parentSubCategoryDoc.level || 1) + 1;
+      calculatedLevel = level !== undefined ? parseInt(level) : expectedLevel;
+      
+      // Validate that provided level matches expected level
+      if (calculatedLevel !== expectedLevel) {
+        return res.status(400).json({ error: `Level mismatch: expected ${expectedLevel} based on parent, but got ${calculatedLevel}` });
+      }
+      
       if (calculatedLevel > 7) {
         return res.status(400).json({ error: 'Maximum nesting level (7) reached' });
       }
     } else {
-      // For top-level subcategories, use provided level or default to 1
-      // Level 2 subcategories are direct children of ServiceCategory
-      calculatedLevel = level !== undefined ? parseInt(level) : 1;
-      if (calculatedLevel < 1 || calculatedLevel > 7) {
-        return res.status(400).json({ error: 'Level must be between 1 and 7' });
+      // For top-level subcategories (Level 2 - Sub Category tab), use provided level
+      calculatedLevel = level !== undefined ? parseInt(level) : 2; // Default to 2 for Sub Category tab
+      if (calculatedLevel < 2 || calculatedLevel > 7) {
+        return res.status(400).json({ error: 'Level must be between 2 and 7' });
       }
     }
     
@@ -237,13 +470,45 @@ router.post('/', async (req, res) => {
       .replace(/(^-|-$)/g, '');
     
     // Check if service subcategory with same name already exists
-    const nameQuery = parentSubCategoryDoc 
-      ? { parentSubCategory: parentSubCategoryDoc._id, name: name.trim() }
-      : { serviceCategory: serviceCategoryDoc._id, parentSubCategory: null, name: name.trim() };
+    // For Level 2: check within serviceCategory
+    // For Level 3+: check within parentSubCategory AND same categoryLevel/attributeType
+    let nameQuery;
+    if (parentSubCategoryDoc) {
+      // Level 3+: same parentSubCategory, same categoryLevel, same attributeType
+      nameQuery = {
+        parentSubCategory: parentSubCategoryDoc._id,
+        name: name.trim(),
+        level: calculatedLevel
+      };
+      // Add categoryLevel if provided
+      if (categoryLevel !== undefined) {
+        nameQuery.categoryLevel = parseInt(categoryLevel);
+      }
+      // Add attributeType if provided (for Level 3+)
+      if (attributeType) {
+        nameQuery.attributeType = attributeType;
+      }
+    } else {
+      // Level 2: same serviceCategory, parentSubCategory=null, level=2
+      nameQuery = {
+        serviceCategory: serviceCategoryDoc._id,
+        parentSubCategory: null,
+        name: name.trim(),
+        level: calculatedLevel
+      };
+      // Level 2 subcategories don't have attributeType
+      nameQuery.attributeType = null;
+      // Add categoryLevel if provided
+      if (categoryLevel !== undefined) {
+        nameQuery.categoryLevel = parseInt(categoryLevel);
+      }
+    }
     
     const existingServiceSubCategory = await ServiceSubCategory.findOne(nameQuery);
     if (existingServiceSubCategory) {
-      return res.status(409).json({ error: 'Service subcategory with this name already exists' });
+      return res.status(409).json({ 
+        error: 'Service subcategory with this name already exists in this context. Please use a different name.' 
+      });
     }
     
     // Check if slug already exists globally, if so, append number
@@ -269,8 +534,11 @@ router.post('/', async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       level: calculatedLevel,
       // Level 2 subcategories don't have attributeType
-      // Level 1 subcategories (for attribute-based tabs) have attributeType
+      // Level 3+ subcategories (for attribute-based tabs) have attributeType
       attributeType: calculatedLevel === 2 ? null : (attributeType || null),
+      // Category level from categoryLevelMapping (2 for Sub Category, 3-6 for other tabs)
+      // categoryLevel should match level in the new hierarchy
+      categoryLevel: categoryLevel !== undefined ? parseInt(categoryLevel) : calculatedLevel,
     });
     
     // Populate service category for response
@@ -301,6 +569,7 @@ router.put('/:id', async (req, res) => {
       bannerImage,
       icon,
       isActive,
+      categoryLevel,
     } = req.body;
     
     const serviceSubCategory = await ServiceSubCategory.findById(id);
@@ -362,6 +631,7 @@ router.put('/:id', async (req, res) => {
     if (bannerImage !== undefined) serviceSubCategory.bannerImage = bannerImage;
     if (icon !== undefined) serviceSubCategory.icon = icon;
     if (isActive !== undefined) serviceSubCategory.isActive = isActive;
+    if (categoryLevel !== undefined) serviceSubCategory.categoryLevel = parseInt(categoryLevel);
     
     await serviceSubCategory.save();
     
