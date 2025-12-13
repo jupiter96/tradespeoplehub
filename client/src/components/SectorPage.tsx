@@ -1189,12 +1189,15 @@ export default function SectorPage() {
                     const handleSubCategoryClick = async (e: React.MouseEvent) => {
                       e.preventDefault();
                       
+                      // Build the URL to open in new tab
+                      let targetUrl = '';
+                      
                       // If we already know it has subcategories, navigate directly
                       if (hasSubCategories) {
                         // Build path with current subcategory path
                         const currentPathSlugs = subCategorySlugs.length > 0 ? [...subCategorySlugs, subCategorySlug].join('/') : subCategorySlug;
-                        const currentPath = `/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
-                        navigate(currentPath);
+                        targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
+                        window.open(targetUrl, '_blank');
                         return;
                       }
                       
@@ -1210,12 +1213,12 @@ export default function SectorPage() {
                           const hasNestedSubCategories = data.serviceSubCategories && data.serviceSubCategories.length > 0;
                           
                           if (hasNestedSubCategories) {
-                            // Navigate to subcategory page
+                            // Navigate to subcategory page in new tab
                             const currentPathSlugs = subCategorySlugs.length > 0 ? [...subCategorySlugs, subCategorySlug].join('/') : subCategorySlug;
-                            const currentPath = `/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
-                            navigate(currentPath);
+                            targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
+                            window.open(targetUrl, '_blank');
                           } else {
-                            // This is the last level subcategory - navigate to services page with filter
+                            // This is the last level subcategory - navigate to services page with filter in new tab
                             const sectorName = sector?.name || '';
                             const serviceCategorySlugValue = serviceCategorySlug || '';
                             
@@ -1232,10 +1235,11 @@ export default function SectorPage() {
                             // Add current subcategory slug
                             filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
                             
-                            navigate(filterUrl);
+                            targetUrl = `${window.location.origin}${filterUrl}`;
+                            window.open(targetUrl, '_blank');
                           }
                         } else {
-                          // If API fails, assume no subcategories and go to services page
+                          // If API fails, assume no subcategories and go to services page in new tab
                           const sectorName = sector?.name || '';
                           const serviceCategorySlugValue = serviceCategorySlug || '';
                           
@@ -1251,11 +1255,12 @@ export default function SectorPage() {
                           // Add current subcategory slug
                           filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
                           
-                          navigate(filterUrl);
+                          targetUrl = `${window.location.origin}${filterUrl}`;
+                          window.open(targetUrl, '_blank');
                         }
                       } catch (error) {
                         console.error('Error checking subcategory:', error);
-                        // On error, navigate to services page
+                        // On error, navigate to services page in new tab
                         const sectorName = sector?.name || '';
                         const serviceCategorySlugValue = serviceCategorySlug || '';
                         
@@ -1271,7 +1276,8 @@ export default function SectorPage() {
                         // Add current subcategory slug
                         filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
                         
-                        navigate(filterUrl);
+                        targetUrl = `${window.location.origin}${filterUrl}`;
+                        window.open(targetUrl, '_blank');
                       }
                     };
                     

@@ -32,6 +32,23 @@ router.get('/', async (req, res) => {
     if (parentSubCategoryId) {
       query.parentSubCategory = parentSubCategoryId;
       query.serviceCategory = null; // When parentSubCategory is set, serviceCategory should be null
+      
+      // If level is provided, filter by it (for correct level display)
+      if (level) {
+        query.level = parseInt(level);
+      }
+      // If categoryLevel is provided, filter by it
+      if (req.query.categoryLevel) {
+        query.categoryLevel = parseInt(req.query.categoryLevel);
+      }
+      // If attributeType is provided, filter by it
+      if (attributeType !== undefined) {
+        if (attributeType === '' || attributeType === null) {
+          query.attributeType = null;
+        } else {
+          query.attributeType = attributeType;
+        }
+      }
     } else if (serviceCategoryId) {
       // Filter primarily by attributeType for tab-specific filtering
       // attributeType is the primary filter, level/categoryLevel are secondary
@@ -520,8 +537,35 @@ router.post('/', async (req, res) => {
     }
     serviceSubCategorySlug = finalSlug;
     
+    // Determine attributeType and categoryLevel based on calculated level
+    let finalAttributeType = null;
+    let finalCategoryLevel = calculatedLevel;
+    
+    if (calculatedLevel === 2) {
+      // Level 2: no attributeType
+      finalAttributeType = null;
+    } else if (calculatedLevel > 2) {
+      // Level 3+: use provided attributeType or find from categoryLevelMapping
+      if (attributeType) {
+        finalAttributeType = attributeType;
+      } else {
+        // Try to find attributeType from categoryLevelMapping
+        const mapping = serviceCategoryDoc.categoryLevelMapping?.find(
+          m => m.level === calculatedLevel
+        );
+        if (mapping) {
+          finalAttributeType = mapping.attributeType;
+        }
+      }
+    }
+    
+    // Use provided categoryLevel or default to calculatedLevel
+    if (categoryLevel !== undefined) {
+      finalCategoryLevel = parseInt(categoryLevel);
+    }
+    
     const serviceSubCategory = await ServiceSubCategory.create({
-      serviceCategory: serviceCategoryDoc._id,
+      serviceCategory: parentSubCategoryDoc ? null : serviceCategoryDoc._id, // null if has parent
       parentSubCategory: parentSubCategoryDoc ? parentSubCategoryDoc._id : null,
       name: name.trim(),
       slug: serviceSubCategorySlug,
@@ -533,12 +577,8 @@ router.post('/', async (req, res) => {
       icon,
       isActive: isActive !== undefined ? isActive : true,
       level: calculatedLevel,
-      // Level 2 subcategories don't have attributeType
-      // Level 3+ subcategories (for attribute-based tabs) have attributeType
-      attributeType: calculatedLevel === 2 ? null : (attributeType || null),
-      // Category level from categoryLevelMapping (2 for Sub Category, 3-6 for other tabs)
-      // categoryLevel should match level in the new hierarchy
-      categoryLevel: categoryLevel !== undefined ? parseInt(categoryLevel) : calculatedLevel,
+      attributeType: finalAttributeType,
+      categoryLevel: finalCategoryLevel,
     });
     
     // Populate service category for response

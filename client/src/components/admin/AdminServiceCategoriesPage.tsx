@@ -546,7 +546,12 @@ export default function AdminServiceCategoriesPage() {
     }
   }, [selectedServiceCategory, selectedAttributeType]);
 
-  const fetchServiceSubCategories = useCallback(async (serviceCategoryId?: string, parentSubCategoryId?: string) => {
+  const fetchServiceSubCategories = useCallback(async (
+    serviceCategoryId?: string, 
+    parentSubCategoryId?: string,
+    explicitLevel?: number,
+    explicitAttributeType?: string | null
+  ) => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -563,7 +568,41 @@ export default function AdminServiceCategoriesPage() {
       
       // Apply tab-specific filters based on attributeType
       // Filter primarily by attributeType field
-      if (serviceCategoryId && !parentSubCategoryId) {
+      if (parentSubCategoryId) {
+        // When viewing nested subcategories, filter by parentSubCategory
+        // Use explicit level and attributeType if provided, otherwise calculate from selectedParentSubCategory
+        let expectedLevel: number;
+        let expectedAttributeType: string | null = null;
+        
+        if (explicitLevel !== undefined) {
+          expectedLevel = explicitLevel;
+          if (explicitAttributeType !== undefined) {
+            expectedAttributeType = explicitAttributeType;
+          }
+        } else if (selectedParentSubCategory) {
+          expectedLevel = (selectedParentSubCategory.level || 1) + 1;
+        } else {
+          // Fallback: assume level 3 if we can't determine
+          expectedLevel = 3;
+        }
+        
+        params.append('level', expectedLevel.toString());
+        params.append('categoryLevel', expectedLevel.toString());
+        
+        // If expected level > 2, find the attributeType for that level
+        if (expectedAttributeType !== null) {
+          params.append('attributeType', expectedAttributeType);
+        } else if (expectedLevel > 2 && selectedServiceCategory) {
+          const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+            m => m.level === expectedLevel
+          );
+          if (nextMapping) {
+            params.append('attributeType', nextMapping.attributeType);
+          }
+        } else if (expectedLevel === 2) {
+          params.append('attributeType', '');
+        }
+      } else if (serviceCategoryId) {
         if (selectedAttributeType === null) {
           // Level 2 tab (Sub Category): fetch Level 2 subcategories (attributeType is null)
           params.append('level', '2');
@@ -604,7 +643,7 @@ export default function AdminServiceCategoriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, selectedAttributeType]);
+  }, [subCategoryPage, limit, subCategorySortBy, subCategorySortOrder, subCategorySearchTerm, selectedAttributeType, selectedParentSubCategory, selectedServiceCategory]);
 
   // Combined effect to handle both regular updates and search debouncing
   // This prevents duplicate API calls on initial load
@@ -628,7 +667,19 @@ export default function AdminServiceCategoriesPage() {
     if (viewMode === "subcategories" && (selectedServiceCategory || selectedParentSubCategory)) {
       const debounceTimer = setTimeout(() => {
         if (selectedParentSubCategory) {
-          fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+          // Calculate child level and attributeType
+          const parentLevel = selectedParentSubCategory.level || 1;
+          const childLevel = parentLevel + 1;
+          let childAttributeType: string | null = null;
+          if (childLevel > 2 && selectedServiceCategory) {
+            const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+              m => m.level === childLevel
+            );
+            if (nextMapping) {
+              childAttributeType = nextMapping.attributeType;
+            }
+          }
+          fetchServiceSubCategories(undefined, selectedParentSubCategory._id, childLevel, childAttributeType);
         } else if (selectedServiceCategory) {
           fetchServiceSubCategories(selectedServiceCategory._id, undefined);
         }
@@ -994,7 +1045,24 @@ export default function AdminServiceCategoriesPage() {
     setSubCategoryBreadcrumb(prev => [...prev, { id: subCategory._id, name: subCategory.name, type: 'subcategory' }]);
     setSubCategoryPage(1);
     setSubCategorySearchTerm("");
-    fetchServiceSubCategories(undefined, subCategory._id);
+    // Fetch nested subcategories with the parent subcategory's information
+    // The child level will be parent's level + 1
+    const parentLevel = subCategory.level || 1;
+    const childLevel = parentLevel + 1;
+    
+    // Determine attributeType for the child level
+    let childAttributeType: string | null = null;
+    if (childLevel > 2 && selectedServiceCategory) {
+      const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+        m => m.level === childLevel
+      );
+      if (nextMapping) {
+        childAttributeType = nextMapping.attributeType;
+      }
+    }
+    
+    // Fetch with explicit level and attributeType to ensure correct filtering
+    fetchServiceSubCategories(undefined, subCategory._id, childLevel, childAttributeType);
   };
 
   const handleBackToCategories = () => {
@@ -1023,7 +1091,19 @@ export default function AdminServiceCategoriesPage() {
         const parentSubCategory = serviceSubCategories.find(sc => sc._id === subCategoryItem.id);
         if (parentSubCategory) {
           setSelectedParentSubCategory(parentSubCategory);
-          fetchServiceSubCategories(undefined, parentSubCategory._id);
+          // Calculate child level and attributeType
+          const parentLevel = parentSubCategory.level || 1;
+          const childLevel = parentLevel + 1;
+          let childAttributeType: string | null = null;
+          if (childLevel > 2 && selectedServiceCategory) {
+            const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+              m => m.level === childLevel
+            );
+            if (nextMapping) {
+              childAttributeType = nextMapping.attributeType;
+            }
+          }
+          fetchServiceSubCategories(undefined, parentSubCategory._id, childLevel, childAttributeType);
         }
       }
     }
@@ -1032,6 +1112,65 @@ export default function AdminServiceCategoriesPage() {
   const handleCreateSubCategory = () => {
     if (!selectedServiceCategory) return;
     
+    // If viewing nested subcategories (selectedParentSubCategory exists)
+    // Create subcategory at parent's level + 1
+    if (selectedParentSubCategory) {
+      const parentLevel = selectedParentSubCategory.level || 1;
+      const targetLevel = parentLevel + 1;
+      
+      if (targetLevel > 7) {
+        toast.error("Maximum nesting level (7) reached");
+        return;
+      }
+      
+      // For nested subcategories, determine attributeType based on parent's level
+      // Find the next level's attributeType from categoryLevelMapping
+      let attributeType: string | undefined = undefined;
+      let categoryLevel: number = targetLevel;
+      
+      // Level 3+ should have attributeType from categoryLevelMapping
+      if (targetLevel > 2) {
+        const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+          m => m.level === targetLevel
+        );
+        if (nextMapping) {
+          attributeType = nextMapping.attributeType;
+        } else {
+          // If no mapping found, try to infer from parent's attributeType
+          // This shouldn't happen in normal flow, but handle gracefully
+          console.warn(`No categoryLevelMapping found for level ${targetLevel}`);
+        }
+      } else if (targetLevel === 2) {
+        // Level 2: no attributeType
+        attributeType = undefined;
+      }
+      
+      setSubCategoryFormData({
+        serviceCategory: selectedServiceCategory._id,
+        parentSubCategory: selectedParentSubCategory._id, // Set parent automatically
+        name: "",
+        slug: "",
+        description: "",
+        metaTitle: "",
+        metaDescription: "",
+        bannerImage: "",
+        icon: "",
+        order: serviceSubCategories.length > 0 
+          ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
+          : 1,
+        level: targetLevel,
+        isActive: true,
+        attributeType: attributeType,
+        categoryLevel: categoryLevel,
+      });
+      setEditingServiceSubCategory(null);
+      setSubCategoryIconPreview(null);
+      setSubCategoryBannerPreview(null);
+      setIsSubCategoryModalOpen(true);
+      return;
+    }
+    
+    // For top-level subcategories (no selectedParentSubCategory)
     // Check if it's Level 2 tab (first tab - Sub Category)
     const isFirstTabNow = selectedAttributeType === null;
     
@@ -1146,6 +1285,7 @@ export default function AdminServiceCategoriesPage() {
       
       const method = editingServiceSubCategory ? "PUT" : "POST";
 
+      // Build payload - ensure level, categoryLevel, and attributeType are correct
       const payload: any = {
         name: subCategoryFormData.name.trim(),
         slug: subCategoryFormData.slug.trim(),
@@ -1157,22 +1297,58 @@ export default function AdminServiceCategoriesPage() {
         order: subCategoryFormData.order,
         level: subCategoryFormData.level,
         isActive: subCategoryFormData.isActive,
-        ...(subCategoryFormData.attributeType && { attributeType: subCategoryFormData.attributeType }),
-        ...(subCategoryFormData.categoryLevel && { categoryLevel: subCategoryFormData.categoryLevel }),
+        categoryLevel: subCategoryFormData.categoryLevel || subCategoryFormData.level,
       };
-
-      // Always include serviceCategory (required by backend)
-      // Also include parentSubCategory if it's set and not empty
-      payload.serviceCategory = subCategoryFormData.serviceCategory || selectedServiceCategory?._id;
-      if (!payload.serviceCategory) {
-        toast.error("Service category is required");
-        setIsSaving(false);
-        return;
-      }
       
-      // Add parentSubCategory if it's set and not empty
+      // Handle attributeType - include it even if null for Level 2
+      if (subCategoryFormData.attributeType !== undefined) {
+        payload.attributeType = subCategoryFormData.attributeType;
+      } else if (subCategoryFormData.level === 2) {
+        payload.attributeType = null;
+      }
+
+      // Handle parentSubCategory and serviceCategory
+      // When parentSubCategory is set, serviceCategory should be null (backend will handle it)
       if (subCategoryFormData.parentSubCategory && subCategoryFormData.parentSubCategory.trim() !== "") {
         payload.parentSubCategory = subCategoryFormData.parentSubCategory;
+        // When parentSubCategory is set, ensure level is parent's level + 1
+        // This is already set in handleCreateSubCategory, but ensure it's correct
+        if (selectedParentSubCategory) {
+          const expectedLevel = (selectedParentSubCategory.level || 1) + 1;
+          payload.level = expectedLevel;
+          payload.categoryLevel = expectedLevel;
+          
+          // Determine attributeType for the target level
+          if (expectedLevel > 2 && selectedServiceCategory) {
+            const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+              m => m.level === expectedLevel
+            );
+            if (nextMapping) {
+              payload.attributeType = nextMapping.attributeType;
+            } else {
+              // If no mapping found, keep the one from formData or set to null
+              payload.attributeType = subCategoryFormData.attributeType || null;
+            }
+          } else if (expectedLevel === 2) {
+            // Level 2: no attributeType
+            payload.attributeType = null;
+          } else {
+            payload.attributeType = subCategoryFormData.attributeType || null;
+          }
+        }
+        // When parentSubCategory is set, still include serviceCategory for reference
+        // but backend will set it to null
+        payload.serviceCategory = subCategoryFormData.serviceCategory || selectedServiceCategory?._id;
+      } else {
+        // No parentSubCategory - ensure it's explicitly null
+        payload.parentSubCategory = null;
+        // Always include serviceCategory when no parent
+        payload.serviceCategory = subCategoryFormData.serviceCategory || selectedServiceCategory?._id;
+        if (!payload.serviceCategory) {
+          toast.error("Service category is required");
+          setIsSaving(false);
+          return;
+        }
       }
 
       const response = await fetch(url, {
@@ -1193,8 +1369,19 @@ export default function AdminServiceCategoriesPage() {
         // Use a small delay to ensure state updates are processed
         setTimeout(() => {
           if (selectedParentSubCategory) {
-            // For nested subcategories, fetch by parent
-            fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+            // For nested subcategories, fetch by parent with explicit level and attributeType
+            const parentLevel = selectedParentSubCategory.level || 1;
+            const childLevel = parentLevel + 1;
+            let childAttributeType: string | null = null;
+            if (childLevel > 2 && selectedServiceCategory) {
+              const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+                m => m.level === childLevel
+              );
+              if (nextMapping) {
+                childAttributeType = nextMapping.attributeType;
+              }
+            }
+            fetchServiceSubCategories(undefined, selectedParentSubCategory._id, childLevel, childAttributeType);
           } else if (selectedServiceCategory) {
             // For top-level subcategories, fetch with current tab's filter
             // fetchServiceSubCategories will use the current selectedAttributeType from closure
@@ -1735,7 +1922,7 @@ export default function AdminServiceCategoriesPage() {
                   <div className="ml-auto">
                     <h2 className="text-xl font-bold text-black dark:text-white">
                       {selectedParentSubCategory 
-                        ? `Sub Categories - ${selectedParentSubCategory.name} (Level ${selectedParentSubCategory.level || 1})`
+                        ? `Sub Categories of ${selectedParentSubCategory.name}`
                         : `Sub Categories - ${selectedServiceCategory.name}`
                       }
                     </h2>
@@ -1979,7 +2166,19 @@ export default function AdminServiceCategoriesPage() {
                                               if (response.ok) {
                                                 toast.success(`Sub category ${subCategory.isActive ? "deactivated" : "activated"} successfully`);
                                                 if (selectedParentSubCategory) {
-                                                  fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+                                                  // Calculate child level and attributeType
+                                                  const parentLevel = selectedParentSubCategory.level || 1;
+                                                  const childLevel = parentLevel + 1;
+                                                  let childAttributeType: string | null = null;
+                                                  if (childLevel > 2 && selectedServiceCategory) {
+                                                    const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+                                                      m => m.level === childLevel
+                                                    );
+                                                    if (nextMapping) {
+                                                      childAttributeType = nextMapping.attributeType;
+                                                    }
+                                                  }
+                                                  fetchServiceSubCategories(undefined, selectedParentSubCategory._id, childLevel, childAttributeType);
                                                 } else if (selectedServiceCategory) {
                                                   fetchServiceSubCategories(selectedServiceCategory._id, undefined);
                                                 }
@@ -2026,7 +2225,19 @@ export default function AdminServiceCategoriesPage() {
                                               if (response.ok) {
                                                 toast.success("Sub category deleted successfully");
                                                 if (selectedParentSubCategory) {
-                                                  fetchServiceSubCategories(undefined, selectedParentSubCategory._id);
+                                                  // Calculate child level and attributeType
+                                                  const parentLevel = selectedParentSubCategory.level || 1;
+                                                  const childLevel = parentLevel + 1;
+                                                  let childAttributeType: string | null = null;
+                                                  if (childLevel > 2 && selectedServiceCategory) {
+                                                    const nextMapping = selectedServiceCategory.categoryLevelMapping?.find(
+                                                      m => m.level === childLevel
+                                                    );
+                                                    if (nextMapping) {
+                                                      childAttributeType = nextMapping.attributeType;
+                                                    }
+                                                  }
+                                                  fetchServiceSubCategories(undefined, selectedParentSubCategory._id, childLevel, childAttributeType);
                                                 } else if (selectedServiceCategory) {
                                                   fetchServiceSubCategories(selectedServiceCategory._id, undefined);
                                                 }
