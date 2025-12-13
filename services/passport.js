@@ -148,7 +148,9 @@ if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET && FACEBOOK_CALLBACK_URL) {
         clientID: FACEBOOK_CLIENT_ID,
         clientSecret: FACEBOOK_CLIENT_SECRET,
         callbackURL: FACEBOOK_CALLBACK_URL,
-        profileFields: ['id', 'emails', 'name', 'displayName', 'first_name', 'last_name'],
+        // Use 'name' field which includes first_name and last_name, avoid duplication
+        // 'name' provides: { givenName, familyName } structure
+        profileFields: ['id', 'emails', 'name', 'displayName'],
         enableProof: true, // Enable app secret proof for better security
       },
       handleSocialVerify('facebook')
