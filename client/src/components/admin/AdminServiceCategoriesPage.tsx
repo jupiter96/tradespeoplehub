@@ -2159,8 +2159,8 @@ export default function AdminServiceCategoriesPage() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
-                                    {/* View Category menu for Level 2 subcategories (only when viewing Level 2 tab) */}
-                                    {!selectedParentSubCategory && selectedAttributeType === null && (subCategory.level || 1) === 2 && selectedServiceCategory && subCategory.slug && (() => {
+                                    {/* View Category menu for all subcategory levels */}
+                                    {selectedServiceCategory && subCategory.slug && (() => {
                                       // Get sector slug from selectedServiceCategory
                                       let sectorSlug: string | undefined;
                                       if (typeof selectedServiceCategory.sector === 'object' && selectedServiceCategory.sector !== null) {
@@ -2173,10 +2173,20 @@ export default function AdminServiceCategoriesPage() {
                                       const serviceCategorySlug = selectedServiceCategory.slug;
                                       
                                       if (sectorSlug && serviceCategorySlug) {
-                                        const url = `/sector/${sectorSlug}/${serviceCategorySlug}/${subCategory.slug}`;
+                                        // Build URL path with parent subcategory slugs if available
+                                        let urlPath = `/sector/${sectorSlug}/${serviceCategorySlug}`;
+                                        
+                                        // If we have a parent subcategory, add its slug to the path
+                                        if (selectedParentSubCategory?.slug) {
+                                          urlPath += `/${selectedParentSubCategory.slug}`;
+                                        }
+                                        
+                                        // Add current subcategory slug
+                                        urlPath += `/${subCategory.slug}`;
+                                        
                                         return (
                                           <DropdownMenuItem
-                                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                            onClick={() => window.open(urlPath, '_blank', 'noopener,noreferrer')}
                                             className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
                                           >
                                             <Eye className="h-4 w-4 mr-2" />
