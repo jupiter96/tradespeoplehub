@@ -129,7 +129,7 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
             >
               <FolderTree className="h-4 w-4 mr-2" />
-              View Child Category
+              View Category
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onEdit(category)}

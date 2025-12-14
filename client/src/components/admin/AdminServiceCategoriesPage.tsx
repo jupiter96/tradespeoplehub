@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -272,7 +272,21 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
             >
               <FolderTree className="h-4 w-4 mr-2" />
-              View Sub Categories
+              View Child Category
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onManageTitles(serviceCategory)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <Type className="h-4 w-4 mr-2" />
+              Titles
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onManageAttributes(serviceCategory)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <List className="h-4 w-4 mr-2" />
+              Attributes
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onEdit(serviceCategory)}
@@ -322,6 +336,9 @@ export default function AdminServiceCategoriesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [viewingSubCategories, setViewingSubCategories] = useState<ServiceCategory | null>(null);
   const [isSubCategoriesModalOpen, setIsSubCategoriesModalOpen] = useState(false);
+  const [isTitlesModalOpen, setIsTitlesModalOpen] = useState(false);
+  const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false);
+  const [managingServiceCategory, setManagingServiceCategory] = useState<ServiceCategory | null>(null);
   const [viewMode, setViewMode] = useState<"categories" | "subcategories">("categories");
   const [selectedServiceCategory, setSelectedServiceCategory] = useState<ServiceCategory | null>(null);
   const [selectedParentSubCategory, setSelectedParentSubCategory] = useState<ServiceSubCategory | null>(null);
@@ -635,11 +652,11 @@ export default function AdminServiceCategoriesPage() {
         setSubCategoryTotalPages(data.totalPages || 1);
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to fetch service subcategories");
+        toast.error(error.error || "Failed to fetch service child categories");
       }
     } catch (error) {
       console.error("Error fetching service subcategories:", error);
-      toast.error("Failed to fetch service subcategories");
+      toast.error("Failed to fetch service child categories");
     } finally {
       setLoading(false);
     }
@@ -1036,6 +1053,16 @@ export default function AdminServiceCategoriesPage() {
     fetchServiceSubCategories(serviceCategory._id, undefined);
   };
 
+  const handleManageTitles = (serviceCategory: ServiceCategory) => {
+    setManagingServiceCategory(serviceCategory);
+    setIsTitlesModalOpen(true);
+  };
+
+  const handleManageAttributes = (serviceCategory: ServiceCategory) => {
+    setManagingServiceCategory(serviceCategory);
+    setIsAttributesModalOpen(true);
+  };
+
   const handleViewNestedSubCategories = (subCategory: ServiceSubCategory) => {
     if ((subCategory.level || 1) >= 7) {
       toast.error("Maximum nesting level (7) reached");
@@ -1266,7 +1293,7 @@ export default function AdminServiceCategoriesPage() {
 
   const handleSaveSubCategory = async () => {
     if (!subCategoryFormData.name.trim()) {
-      toast.error("Sub category name is required");
+      toast.error("Child category name is required");
       return;
     }
 
@@ -1359,7 +1386,7 @@ export default function AdminServiceCategoriesPage() {
       });
 
       if (response.ok) {
-        toast.success(editingServiceSubCategory ? "Sub category updated successfully" : "Sub category created successfully");
+        toast.success(editingServiceSubCategory ? "Child category updated successfully" : "Child category created successfully");
         setIsSubCategoryModalOpen(false);
         
         // Reset to first page to see the newly created item
@@ -1390,11 +1417,11 @@ export default function AdminServiceCategoriesPage() {
         }, 50);
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to save sub category");
+        toast.error(error.error || "Failed to save child category");
       }
     } catch (error) {
       console.error("Error saving sub category:", error);
-      toast.error("Failed to save sub category");
+      toast.error("Failed to save child category");
     } finally {
       setIsSaving(false);
     }
@@ -1472,7 +1499,7 @@ export default function AdminServiceCategoriesPage() {
       isOpen: true,
       type: "delete",
       title: "Delete Service Category",
-      message: `Are you sure you want to delete "${serviceCategory.name}"? This will also delete all associated subcategories. This action cannot be undone.`,
+      message: `Are you sure you want to delete "${serviceCategory.name}"? This will also delete all associated child categories. This action cannot be undone.`,
       onConfirm: async () => {
         try {
           const response = await fetch(resolveApiUrl(`/api/service-categories/${serviceCategory._id}?hardDelete=true`), {
@@ -1869,7 +1896,7 @@ export default function AdminServiceCategoriesPage() {
 
   if (loading && sectors.length === 0) {
     return (
-      <AdminPageLayout title="Service Categories" description="Manage service categories and subcategories">
+      <AdminPageLayout title="Service Categories" description="Manage service categories and child categories">
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
         </div>
@@ -1881,7 +1908,7 @@ export default function AdminServiceCategoriesPage() {
     <>
       <AdminPageLayout
         title="Service Categories"
-        description="Manage service categories and subcategories by sector"
+        description="Manage service categories and child categories by sector"
         tabs={sectorTabs}
         defaultTab={selectedSectorId}
         enableTabSlider={true}
@@ -1922,20 +1949,20 @@ export default function AdminServiceCategoriesPage() {
                   <div className="ml-auto">
                     <h2 className="text-xl font-bold text-black dark:text-white">
                       {selectedParentSubCategory 
-                        ? `Sub Categories of ${selectedParentSubCategory.name}`
-                        : `Sub Categories - ${selectedServiceCategory.name}`
+                        ? `Child Categories of ${selectedParentSubCategory.name}`
+                        : `Child Categories - ${selectedServiceCategory.name}`
                       }
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {selectedParentSubCategory 
-                        ? `Manage nested subcategories (Level ${(selectedParentSubCategory.level || 1) + 1})`
-                        : "Manage subcategories for this service category"
+                        ? `Manage nested child categories (Level ${(selectedParentSubCategory.level || 1) + 1})`
+                        : "Manage child categories for this service category"
                       }
                     </p>
                   </div>
                 </div>
 
-                {/* Tabs for Subcategories (Level 2-6, only when no parent subcategory) */}
+                {/* Tabs for Child Categories (Level 2-6, only when no parent subcategory) */}
                 {!selectedParentSubCategory && selectedServiceCategory && (
                   <div className="border-b border-gray-200 dark:border-gray-700">
                     <div className="flex gap-2 overflow-x-auto">
@@ -2039,16 +2066,16 @@ export default function AdminServiceCategoriesPage() {
                       className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white border-0 shadow-lg transition-all"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Sub Category
+                      Create Child Category
                     </Button>
                   </div>
                 </div>
 
-                {/* Sub Categories Table */}
+                {/* Child Categories Table */}
                 <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
                   {serviceSubCategories.length === 0 ? (
                     <div className="text-center py-12">
-                      <p className="text-black dark:text-white">No subcategories found</p>
+                      <p className="text-black dark:text-white">No child categories found</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -2132,13 +2159,40 @@ export default function AdminServiceCategoriesPage() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                                    {/* View Category menu for Level 2 subcategories (only when viewing Level 2 tab) */}
+                                    {!selectedParentSubCategory && selectedAttributeType === null && (subCategory.level || 1) === 2 && selectedServiceCategory && subCategory.slug && (() => {
+                                      // Get sector slug from selectedServiceCategory
+                                      let sectorSlug: string | undefined;
+                                      if (typeof selectedServiceCategory.sector === 'object' && selectedServiceCategory.sector !== null) {
+                                        sectorSlug = selectedServiceCategory.sector.slug;
+                                      } else if (typeof selectedServiceCategory.sector === 'string') {
+                                        const sector = sectors.find(s => s._id === selectedServiceCategory.sector);
+                                        sectorSlug = sector?.slug;
+                                      }
+                                      
+                                      const serviceCategorySlug = selectedServiceCategory.slug;
+                                      
+                                      if (sectorSlug && serviceCategorySlug) {
+                                        const url = `/sector/${sectorSlug}/${serviceCategorySlug}/${subCategory.slug}`;
+                                        return (
+                                          <DropdownMenuItem
+                                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                            className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                          >
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Category
+                                          </DropdownMenuItem>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                     {(subCategory.level || 1) < 7 && (
                                       <DropdownMenuItem
                                         onClick={() => handleViewNestedSubCategories(subCategory)}
                                         className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
                                       >
                                         <FolderTree className="h-4 w-4 mr-2" />
-                                        View Sub Categories
+                                        View Child Categories
                                       </DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem
@@ -2153,7 +2207,7 @@ export default function AdminServiceCategoriesPage() {
                                         setConfirmModal({
                                           isOpen: true,
                                           type: subCategory.isActive ? "deactivate" : "activate",
-                                          title: subCategory.isActive ? "Deactivate Sub Category" : "Activate Sub Category",
+                                          title: subCategory.isActive ? "Deactivate Child Category" : "Activate Child Category",
                                           message: `Are you sure you want to ${subCategory.isActive ? "deactivate" : "activate"} "${subCategory.name}"?`,
                                           onConfirm: async () => {
                                             try {
@@ -2164,7 +2218,7 @@ export default function AdminServiceCategoriesPage() {
                                                 body: JSON.stringify({ isActive: !subCategory.isActive }),
                                               });
                                               if (response.ok) {
-                                                toast.success(`Sub category ${subCategory.isActive ? "deactivated" : "activated"} successfully`);
+                                                toast.success(`Child category ${subCategory.isActive ? "deactivated" : "activated"} successfully`);
                                                 if (selectedParentSubCategory) {
                                                   // Calculate child level and attributeType
                                                   const parentLevel = selectedParentSubCategory.level || 1;
@@ -2184,10 +2238,10 @@ export default function AdminServiceCategoriesPage() {
                                                 }
                                               } else {
                                                 const error = await response.json();
-                                                toast.error(error.error || "Failed to update sub category");
+                                                toast.error(error.error || "Failed to update child category");
                                               }
                                             } catch (error) {
-                                              toast.error("Failed to update sub category");
+                                              toast.error("Failed to update child category");
                                             } finally {
                                               setConfirmModal({ ...confirmModal, isOpen: false });
                                             }
@@ -2214,7 +2268,7 @@ export default function AdminServiceCategoriesPage() {
                                         setConfirmModal({
                                           isOpen: true,
                                           type: "delete",
-                                          title: "Delete Sub Category",
+                                          title: "Delete Child Category",
                                           message: `Are you sure you want to delete "${subCategory.name}"? This action cannot be undone.`,
                                           onConfirm: async () => {
                                             try {
@@ -2223,7 +2277,7 @@ export default function AdminServiceCategoriesPage() {
                                                 credentials: "include",
                                               });
                                               if (response.ok) {
-                                                toast.success("Sub category deleted successfully");
+                                                toast.success("Child category deleted successfully");
                                                 if (selectedParentSubCategory) {
                                                   // Calculate child level and attributeType
                                                   const parentLevel = selectedParentSubCategory.level || 1;
@@ -2243,10 +2297,10 @@ export default function AdminServiceCategoriesPage() {
                                                 }
                                               } else {
                                                 const error = await response.json();
-                                                toast.error(error.error || "Failed to delete sub category");
+                                                toast.error(error.error || "Failed to delete child category");
                                               }
                                             } catch (error) {
-                                              toast.error("Failed to delete sub category");
+                                              toast.error("Failed to delete child category");
                                             } finally {
                                               setConfirmModal({ ...confirmModal, isOpen: false });
                                             }
@@ -2394,6 +2448,8 @@ export default function AdminServiceCategoriesPage() {
                                 onDelete={handleDelete}
                                 onToggleActive={handleToggleActive}
                                 onViewSubCategories={handleViewSubCategories}
+                                onManageTitles={handleManageTitles}
+                                onManageAttributes={handleManageAttributes}
                                 sectors={sectors}
                               />
                             ))}
@@ -3180,7 +3236,7 @@ export default function AdminServiceCategoriesPage() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-black dark:text-white">
               {editingServiceSubCategory 
-                ? "Edit Sub Category" 
+                ? "Edit Child Category" 
                 : (() => {
                     // Check if it's Level 2 tab (first tab - Sub Category)
                     const isFirstTab = selectedAttributeType === null;
@@ -3520,7 +3576,7 @@ export default function AdminServiceCategoriesPage() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
               <FolderTree className="w-6 h-6 text-[#FE8A0F]" />
-              Sub Categories - {viewingSubCategories?.name}
+              Child Categories - {viewingSubCategories?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
@@ -3578,7 +3634,7 @@ export default function AdminServiceCategoriesPage() {
               <div className="text-center py-12">
                 <FolderTree className="w-16 h-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 dark:text-gray-400 text-lg">
-                  No subcategories found for this service category.
+                  No child categories found for this service category.
                 </p>
               </div>
             )}
@@ -3590,6 +3646,264 @@ export default function AdminServiceCategoriesPage() {
               className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Titles Modal */}
+      <Dialog open={isTitlesModalOpen} onOpenChange={setIsTitlesModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-white dark:bg-black border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
+              <Type className="w-6 h-6 text-[#FE8A0F]" />
+              Manage Titles - {managingServiceCategory?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {managingServiceCategory?.categoryLevelMapping && managingServiceCategory.categoryLevelMapping.length > 0 ? (
+              <div className="space-y-4">
+                {managingServiceCategory.categoryLevelMapping.map((mapping, index) => (
+                  <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <Label className="text-sm font-semibold text-[#FE8A0F]">
+                          Level {mapping.level} - {mapping.attributeType}
+                        </Label>
+                      </div>
+                    </div>
+                    <Input
+                      value={mapping.title || ''}
+                      onChange={(e) => {
+                        if (!managingServiceCategory) return;
+                        const updatedMapping = [...managingServiceCategory.categoryLevelMapping || []];
+                        updatedMapping[index] = { ...updatedMapping[index], title: e.target.value };
+                        setManagingServiceCategory({
+                          ...managingServiceCategory,
+                          categoryLevelMapping: updatedMapping
+                        });
+                      }}
+                      placeholder={`Enter title for Level ${mapping.level}`}
+                      className="mt-2"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Type className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500 dark:text-gray-400">
+                  No category level mappings found. Please configure levels in the service category settings.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsTitlesModalOpen(false)}
+              variant="outline"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!managingServiceCategory) return;
+                try {
+                  setIsSaving(true);
+                  const response = await fetch(
+                    resolveApiUrl(`/api/service-categories/${managingServiceCategory._id}`),
+                    {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({
+                        categoryLevelMapping: managingServiceCategory.categoryLevelMapping,
+                      }),
+                    }
+                  );
+                  if (response.ok) {
+                    toast.success("Titles updated successfully");
+                    setIsTitlesModalOpen(false);
+                    if (selectedSectorId) {
+                      fetchServiceCategories(selectedSectorId);
+                    }
+                  } else {
+                    const error = await response.json();
+                    toast.error(error.error || "Failed to update titles");
+                  }
+                } catch (error) {
+                  console.error("Error updating titles:", error);
+                  toast.error("Failed to update titles");
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Titles
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Attributes Modal */}
+      <Dialog open={isAttributesModalOpen} onOpenChange={setIsAttributesModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-white dark:bg-black border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
+              <List className="w-6 h-6 text-[#FE8A0F]" />
+              Manage Attributes - {managingServiceCategory?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm font-semibold text-[#FE8A0F]">Attributes</Label>
+              <Button
+                onClick={() => {
+                  if (!managingServiceCategory) return;
+                  const newAttributes = [...(managingServiceCategory.attributes || [])];
+                  newAttributes.push({ name: '', order: newAttributes.length + 1 });
+                  setManagingServiceCategory({
+                    ...managingServiceCategory,
+                    attributes: newAttributes
+                  });
+                }}
+                size="sm"
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Attribute
+              </Button>
+            </div>
+            {managingServiceCategory?.attributes && managingServiceCategory.attributes.length > 0 ? (
+              <div className="space-y-3">
+                {managingServiceCategory.attributes.map((attr, index) => (
+                  <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+                    <div className="flex-1">
+                      <Input
+                        value={attr.name}
+                        onChange={(e) => {
+                          if (!managingServiceCategory) return;
+                          const updatedAttributes = [...managingServiceCategory.attributes || []];
+                          updatedAttributes[index] = { ...updatedAttributes[index], name: e.target.value };
+                          setManagingServiceCategory({
+                            ...managingServiceCategory,
+                            attributes: updatedAttributes
+                          });
+                        }}
+                        placeholder="Attribute name"
+                        className="mb-2"
+                      />
+                      <Input
+                        type="number"
+                        value={attr.order}
+                        onChange={(e) => {
+                          if (!managingServiceCategory) return;
+                          const updatedAttributes = [...managingServiceCategory.attributes || []];
+                          updatedAttributes[index] = { ...updatedAttributes[index], order: parseInt(e.target.value) || 0 };
+                          setManagingServiceCategory({
+                            ...managingServiceCategory,
+                            attributes: updatedAttributes
+                          });
+                        }}
+                        placeholder="Order"
+                        className="w-24"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => {
+                        if (!managingServiceCategory) return;
+                        const updatedAttributes = managingServiceCategory.attributes?.filter((_, i) => i !== index) || [];
+                        setManagingServiceCategory({
+                          ...managingServiceCategory,
+                          attributes: updatedAttributes
+                        });
+                      }}
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <List className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500 dark:text-gray-400">
+                  No attributes found. Click "Add Attribute" to create one.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsAttributesModalOpen(false)}
+              variant="outline"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!managingServiceCategory) return;
+                try {
+                  setIsSaving(true);
+                  const response = await fetch(
+                    resolveApiUrl(`/api/service-categories/${managingServiceCategory._id}`),
+                    {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({
+                        attributes: managingServiceCategory.attributes,
+                      }),
+                    }
+                  );
+                  if (response.ok) {
+                    toast.success("Attributes updated successfully");
+                    setIsAttributesModalOpen(false);
+                    if (selectedSectorId) {
+                      fetchServiceCategories(selectedSectorId);
+                    }
+                  } else {
+                    const error = await response.json();
+                    toast.error(error.error || "Failed to update attributes");
+                  }
+                } catch (error) {
+                  console.error("Error updating attributes:", error);
+                  toast.error("Failed to update attributes");
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Attributes
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
