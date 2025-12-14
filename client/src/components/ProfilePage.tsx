@@ -30,8 +30,8 @@ import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import API_BASE_URL from "../config/api";
-import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
-import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
+import { useSectors, useCategories, useServiceCategories } from "../hooks/useSectorsAndCategories";
+import type { Sector, Category, SubCategory, ServiceCategory, ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 
 interface ProfileData {
   id: string;
@@ -99,6 +99,13 @@ export default function ProfilePage() {
     undefined,
     true // include subcategories to convert IDs to names
   );
+  
+  // Also fetch service categories and subcategories for the sector
+  const { serviceCategories: availableServiceCategories } = useServiceCategories(
+    selectedSectorId,
+    undefined,
+    true // includeSubCategories
+  );
 
   // Convert service IDs to category/subcategory names - must be defined before conditional returns
   // Use useCallback to memoize the function
@@ -126,6 +133,58 @@ export default function ProfilePage() {
       return categoryMap.get(id) || subcategoryMap.get(id) || id; // Fallback to ID if not found
     }).filter(Boolean);
   }, [availableCategories]);
+
+  // Convert service IDs to subcategory names only (for Available Services card)
+  // Includes both legacy categories/subcategories and service categories/subcategories
+  const convertServiceIdsToSubcategoryNames = useCallback((serviceIds: string[]): string[] => {
+    if (!serviceIds || serviceIds.length === 0) {
+      return [];
+    }
+
+    const categoryMap = new Map<string, string>();
+    const subcategoryMap = new Map<string, string>();
+    const serviceCategoryMap = new Map<string, string>();
+    const serviceSubcategoryMap = new Map<string, string>();
+
+    // Build maps for legacy categories and subcategories
+    if (availableCategories.length > 0) {
+      availableCategories.forEach((cat: Category) => {
+        categoryMap.set(cat._id, cat.name);
+        if (cat.subCategories) {
+          cat.subCategories.forEach((subcat: SubCategory) => {
+            subcategoryMap.set(subcat._id, subcat.name);
+          });
+        }
+      });
+    }
+
+    // Build maps for service categories and subcategories
+    if (availableServiceCategories.length > 0) {
+      availableServiceCategories.forEach((serviceCat: ServiceCategory) => {
+        serviceCategoryMap.set(serviceCat._id, serviceCat.name);
+        if (serviceCat.subCategories) {
+          serviceCat.subCategories.forEach((serviceSubcat: ServiceSubCategory) => {
+            serviceSubcategoryMap.set(serviceSubcat._id, serviceSubcat.name);
+          });
+        }
+      });
+    }
+
+    // Filter to only subcategories (not categories) and convert IDs to names
+    // Include both legacy subcategories and service subcategories
+    return serviceIds
+      .filter((id: string) => {
+        // Only include if it's a subcategory (not a category)
+        const isLegacySubcategory = subcategoryMap.has(id) && !categoryMap.has(id);
+        const isServiceSubcategory = serviceSubcategoryMap.has(id) && !serviceCategoryMap.has(id);
+        return isLegacySubcategory || isServiceSubcategory;
+      })
+      .map((id: string) => {
+        // Try legacy subcategory first, then service subcategory
+        return subcategoryMap.get(id) || serviceSubcategoryMap.get(id) || id; // Fallback to ID if not found
+      })
+      .filter(Boolean);
+  }, [availableCategories, availableServiceCategories]);
 
   // Get skills from services - convert IDs to names
   // Must be called before any conditional returns (React Hooks rules)
@@ -762,26 +821,29 @@ export default function ProfilePage() {
             </Card>
 
             {/* Services */}
-            {profile.services && profile.services.length > 0 && (
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
-                    Available Services
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {convertServiceIdsToNames(profile.services).slice(0, 10).map((serviceName, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1 text-[14px]"
-                      >
-                        {serviceName}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {profile.services && profile.services.length > 0 && (() => {
+              const subcategoryNames = convertServiceIdsToSubcategoryNames(profile.services);
+              return subcategoryNames.length > 0 ? (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
+                      Available Services
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {subcategoryNames.map((serviceName, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1 text-[14px]"
+                        >
+                          {serviceName}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null;
+            })()}
 
             {/* Service Area */}
             <Card className="shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_25px_rgba(0,0,0,0.2)] transition-shadow">

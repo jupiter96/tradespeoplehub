@@ -7,6 +7,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Badge } from "./ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
   Dialog,
@@ -68,7 +70,7 @@ export default function ProfileSection() {
   const [previewActiveTab, setPreviewActiveTab] = useState("about");
   // Additional fields
   const [skills, setSkills] = useState<string[]>([]);
-  const [qualifications, setQualifications] = useState<string>("");
+  const [qualifications, setQualifications] = useState<string[]>([]);
   const [certifications, setCertifications] = useState<string>("");
   const [companyDetails, setCompanyDetails] = useState<string>("");
   const [insuranceExpiryDate, setInsuranceExpiryDate] = useState<string>("");
@@ -112,6 +114,66 @@ export default function ProfileSection() {
     undefined,
     true // include subcategories to convert IDs to names
   );
+  
+  // Fetch all job categories from all sectors for skills dropdown
+  const [allJobCategories, setAllJobCategories] = useState<Array<{ id: string; name: string; sector?: string }>>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [skillsPopoverOpen, setSkillsPopoverOpen] = useState(false);
+  
+  useEffect(() => {
+    const fetchAllCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        // Fetch all categories from all sectors (no sectorId filter)
+        const response = await fetch(`${API_BASE_URL}/api/categories?activeOnly=true&includeSubCategories=true&limit=1000&sortBy=name&sortOrder=asc`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        
+        const data = await response.json();
+        const categoriesList: Array<{ id: string; name: string; sector?: string }> = [];
+        
+        // Add all categories and subcategories to the list
+        if (data.categories) {
+          data.categories.forEach((cat: Category & { subCategories?: SubCategory[] }) => {
+            // Add category itself
+            categoriesList.push({
+              id: cat._id,
+              name: cat.name,
+              sector: typeof cat.sector === 'object' ? (cat.sector as Sector).name : undefined,
+            });
+            
+            // Add subcategories
+            if (cat.subCategories && cat.subCategories.length > 0) {
+              cat.subCategories.forEach((subcat: SubCategory) => {
+                categoriesList.push({
+                  id: subcat._id,
+                  name: subcat.name,
+                  sector: typeof cat.sector === 'object' ? (cat.sector as Sector).name : undefined,
+                });
+              });
+            }
+          });
+        }
+        
+        // Remove duplicates by name (keep first occurrence)
+        const uniqueCategories = Array.from(
+          new Map(categoriesList.map(item => [item.name.toLowerCase(), item])).values()
+        );
+        
+        setAllJobCategories(uniqueCategories.sort((a, b) => a.name.localeCompare(b.name)));
+      } catch (error) {
+        console.error('Error fetching all categories:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    
+    fetchAllCategories();
+  }, []);
   
   // Convert service IDs to category/subcategory names
   const convertServiceIdsToNames = (serviceIds: string[]): string[] => {
@@ -249,7 +311,18 @@ export default function ProfileSection() {
         ? convertServiceIdsToNames(userInfo.services)
         : (userInfo.services || []);
       setSkills(serviceNames);
-      setQualifications((userInfo.publicProfile as any)?.qualifications || "");
+      // Convert qualifications string to array
+      const quals = (userInfo.publicProfile as any)?.qualifications;
+      if (quals) {
+        const qualsArray = typeof quals === 'string' 
+          ? quals.split('\n').filter((q: string) => q.trim())
+          : Array.isArray(quals)
+          ? quals
+          : [];
+        setQualifications(qualsArray.length > 0 ? qualsArray : [""]);
+      } else {
+        setQualifications([""]);
+      }
       setCertifications((userInfo.publicProfile as any)?.certifications || "");
       setCompanyDetails((userInfo.publicProfile as any)?.companyDetails || "");
       if (userInfo.insuranceExpiryDate) {
@@ -305,7 +378,13 @@ export default function ProfileSection() {
       // Convert skill names back to IDs for saving
       const serviceIds = convertServiceNamesToIds(skills);
       
+      // Include required fields from userInfo
       const profileData: any = {
+        firstName: userInfo?.firstName || "",
+        lastName: userInfo?.lastName || "",
+        email: userInfo?.email || "",
+        phone: userInfo?.phone || "",
+        postcode: userInfo?.postcode || "",
         services: serviceIds, // Save as IDs
         professionalIndemnityAmount: professionalIndemnityAmount || undefined,
         insuranceExpiryDate: insuranceExpiryDate ? new Date(insuranceExpiryDate).toISOString() : undefined,
@@ -313,7 +392,7 @@ export default function ProfileSection() {
           bio,
           portfolio,
           isPublic,
-          qualifications,
+          qualifications: qualifications.filter(q => q.trim()).join('\n'),
           certifications,
           companyDetails,
         },
@@ -577,7 +656,18 @@ export default function ProfileSection() {
                     ? convertServiceIdsToNames(userInfo.services)
                     : (userInfo?.services || []);
                   setSkills(serviceNames);
-                  setQualifications((userInfo?.publicProfile as any)?.qualifications || "");
+                  // Convert qualifications string to array
+                  const quals = (userInfo?.publicProfile as any)?.qualifications;
+                  if (quals) {
+                    const qualsArray = typeof quals === 'string' 
+                      ? quals.split('\n').filter((q: string) => q.trim())
+                      : Array.isArray(quals)
+                      ? quals
+                      : [];
+                    setQualifications(qualsArray.length > 0 ? qualsArray : [""]);
+                  } else {
+                    setQualifications([""]);
+                  }
                   setCertifications((userInfo?.publicProfile as any)?.certifications || "");
                   setCompanyDetails((userInfo?.publicProfile as any)?.companyDetails || "");
                   if (userInfo?.insuranceExpiryDate) {
@@ -713,23 +803,51 @@ export default function ProfileSection() {
                 </Badge>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add a skill and press Enter"
-                className="flex-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const value = (e.target as HTMLInputElement).value.trim();
-                    if (value && !skills.includes(value)) {
-                      setSkills([...skills, value]);
-                      (e.target as HTMLInputElement).value = '';
-                    }
-                  }
-                }}
-              />
-            </div>
-            <p className="text-xs text-gray-500">Press Enter to add a skill</p>
+            <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal border-[#FE8A0F] text-black dark:text-white bg-white dark:bg-black"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add job category...
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search job categories..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>
+                      {isLoadingCategories ? "Loading categories..." : "No categories found."}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {allJobCategories
+                        .filter(cat => !skills.includes(cat.name))
+                        .map((category) => (
+                          <CommandItem
+                            key={category.id}
+                            value={category.name}
+                            onSelect={() => {
+                              if (!skills.includes(category.name)) {
+                                setSkills([...skills, category.name]);
+                                setSkillsPopoverOpen(false);
+                              }
+                            }}
+                            className="cursor-pointer"
+                          >
+                            {category.name}
+                            {category.sector && (
+                              <span className="ml-2 text-xs text-gray-500">({category.sector})</span>
+                            )}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-gray-500">Click "Add job category" to select from available categories</p>
           </div>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
@@ -754,17 +872,63 @@ export default function ProfileSection() {
       <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Qualifications</Label>
         {isEditing ? (
-          <Textarea
-            value={qualifications}
-            onChange={(e) => setQualifications(e.target.value)}
-            placeholder="List your qualifications, certifications, trade memberships (one per line)..."
-            className="mt-2 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[150px]"
-          />
+          <div className="space-y-3 mt-2">
+            {qualifications.map((qual, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <Input
+                  value={qual}
+                  onChange={(e) => {
+                    const newQualifications = [...qualifications];
+                    newQualifications[index] = e.target.value;
+                    setQualifications(newQualifications);
+                  }}
+                  placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
+                  className="flex-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+                />
+                {qualifications.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const newQualifications = qualifications.filter((_, i) => i !== index);
+                      setQualifications(newQualifications.length > 0 ? newQualifications : [""]);
+                    }}
+                    className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setQualifications([...qualifications, ""]);
+              }}
+              className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F]"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Another Qualification
+            </Button>
+          </div>
         ) : (
           <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            <p className="text-black dark:text-white whitespace-pre-wrap">
-              {qualifications || "No qualifications added yet. Click 'Edit Profile' to add qualifications."}
-            </p>
+            {qualifications.length > 0 && qualifications.some(q => q.trim()) ? (
+              <div className="space-y-2">
+                {qualifications.filter(q => q.trim()).map((qual, index) => (
+                  <p key={index} className="text-black dark:text-white">
+                    {qual.trim()}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-black dark:text-white">
+                No qualifications added yet. Click 'Edit Profile' to add qualifications.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -1257,12 +1421,16 @@ export default function ProfileSection() {
                           {displayBio}
                         </p>
 
-                        {qualifications && (
+                        {qualifications.length > 0 && qualifications.some(q => q.trim()) && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Qualifications</h5>
-                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
-                                {qualifications}
-                              </p>
+                              <div className="space-y-2">
+                                {qualifications.filter(q => q.trim()).map((qual, index) => (
+                                  <p key={index} className="text-gray-700 dark:text-gray-300 break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
+                                    {qual.trim()}
+                                  </p>
+                                ))}
+                              </div>
                             </div>
                           )}
                           {certifications && (
