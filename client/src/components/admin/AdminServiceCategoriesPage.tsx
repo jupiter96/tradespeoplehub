@@ -2110,7 +2110,8 @@ export default function AdminServiceCategoriesPage() {
                         </TableHeader>
                         <TableBody>
                           {serviceSubCategories.map((subCategory) => {
-                            // Get parent category name (only parentSubCategory, not serviceCategory)
+                            // Get parent category name
+                            // If parentSubCategory exists, use it; otherwise use serviceCategory name
                             const parentName = (() => {
                               // If parentSubCategory is populated (object), use its name
                               if (subCategory.parentSubCategory && typeof subCategory.parentSubCategory === 'object' && 'name' in subCategory.parentSubCategory) {
@@ -2124,7 +2125,20 @@ export default function AdminServiceCategoriesPage() {
                                   return parent.name;
                                 }
                               }
-                              // No parent subcategory - return empty string (will display as blank)
+                              // No parent subcategory - use serviceCategory name
+                              if (subCategory.serviceCategory) {
+                                if (typeof subCategory.serviceCategory === 'object' && 'name' in subCategory.serviceCategory) {
+                                  return (subCategory.serviceCategory as any).name;
+                                }
+                                // If serviceCategory is just an ID, use selectedServiceCategory
+                                if (selectedServiceCategory && typeof subCategory.serviceCategory === 'string' && subCategory.serviceCategory === selectedServiceCategory._id) {
+                                  return selectedServiceCategory.name;
+                                }
+                              }
+                              // Fallback to selectedServiceCategory if available
+                              if (selectedServiceCategory) {
+                                return selectedServiceCategory.name;
+                              }
                               return "";
                             })();
 
