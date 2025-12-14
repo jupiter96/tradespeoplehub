@@ -217,9 +217,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifyRegistrationEmail = useCallback(
     async (code: string, email?: string) => {
+      console.log('[Phone Code] Frontend - AccountContext - Verifying email, will trigger phone code generation');
       const data = await requestJson("/api/auth/register/verify-email", {
         method: "POST",
         body: JSON.stringify({ code, email }),
+      });
+      console.log('[Phone Code] Frontend - AccountContext - Email verified, phone code in response:', {
+        hasPhoneCode: !!data?.phoneCode,
+        phoneCode: data?.phoneCode || 'not provided'
       });
       return data;
     },
@@ -228,14 +233,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const completeRegistration = useCallback(
     async (code: string, email?: string) => {
-      console.log('[Phone Verification] AccountContext - completeRegistration called with code');
+      console.log('[Phone Code] Frontend - AccountContext - completeRegistration called with phone code:', {
+        codeLength: code.length,
+        code: code ? '****' : 'missing',
+        email: email
+      });
       try {
       const data = await requestJson("/api/auth/register/verify-phone", {
         method: "POST",
           body: JSON.stringify({ code, email }),
         });
 
-        console.log('[Phone Verification] AccountContext - Registration API response received:', {
+        console.log('[Phone Code] Frontend - AccountContext - Registration API response received:', {
           userId: data.user?.id,
           email: data.user?.email,
           phone: data.user?.phone,
@@ -245,7 +254,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       applyUserSession(data.user);
       return data.user;
       } catch (error) {
-        console.error('[Phone Verification] AccountContext - completeRegistration error:', error);
+        console.error('[Phone Code] Frontend - AccountContext - completeRegistration error:', error);
         throw error;
       }
     },
@@ -259,9 +268,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const sendSocialPhoneCode = useCallback(
     async (phone: string) => {
+      console.log('[Phone Code] Frontend - Requesting phone code for:', phone);
+      console.log('[Phone Code] Frontend - API endpoint: /api/auth/social/send-phone-code');
       const data = await requestJson("/api/auth/social/send-phone-code", {
         method: "POST",
         body: JSON.stringify({ phone }),
+      });
+      console.log('[Phone Code] Frontend - Response received:', {
+        message: data.message,
+        hasPhoneCode: !!data.phoneCode,
+        phoneCode: data.phoneCode || 'not provided'
       });
       return data;
     },
@@ -270,11 +286,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifySocialPhone = useCallback(
     async (code: string, registrationData: SocialRegistrationPayload) => {
+      console.log('[Phone Code] Frontend - Verifying phone code:', {
+        codeLength: code.length,
+        code: code ? '****' : 'missing',
+        hasRegistrationData: !!registrationData
+      });
       const data = await requestJson("/api/auth/social/verify-phone", {
         method: "POST",
         body: JSON.stringify({ code, ...registrationData }),
       });
-
+      console.log('[Phone Code] Frontend - Phone verification response:', {
+        success: !!data.user,
+        userId: data.user?.id
+      });
       applyUserSession(data.user);
       return data.user;
     },

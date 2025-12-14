@@ -12,6 +12,7 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import PhoneInput from "./PhoneInput";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import Nav from "../imports/Nav";
@@ -160,12 +161,19 @@ export default function SocialOnboardingPage() {
     setRegistrationData(data);
 
     // Send phone verification code
+    console.log('[Phone Code] Frontend - Social Onboarding - Requesting phone code for:', phone.trim());
     setIsSendingPhoneCode(true);
     try {
       const response = await sendSocialPhoneCode(phone.trim());
+      console.log('[Phone Code] Frontend - Social Onboarding - Phone code response:', {
+        message: response?.message,
+        hasPhoneCode: !!response?.phoneCode,
+        phoneCode: response?.phoneCode || 'not provided'
+      });
       setPhoneCodeHint(response?.phoneCode || null);
       setShowPhoneVerification(true);
     } catch (err) {
+      console.error('[Phone Code] Frontend - Social Onboarding - Failed to send phone code:', err);
       setError(err instanceof Error ? err.message : "Failed to send verification code");
     } finally {
       setIsSendingPhoneCode(false);
@@ -174,7 +182,12 @@ export default function SocialOnboardingPage() {
 
   const handleVerifyPhoneCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[Phone Code] Frontend - Social Onboarding - Verifying phone code:', {
+      codeLength: phoneCode.length,
+      code: phoneCode ? '****' : 'missing'
+    });
     if (phoneCode.length !== 4) {
+      console.log('[Phone Code] Frontend - Social Onboarding - Invalid code length');
       setError("Please enter a 4-digit code");
       return;
     }
@@ -183,6 +196,10 @@ export default function SocialOnboardingPage() {
     setIsVerifyingPhone(true);
     try {
       const user = await verifySocialPhone(phoneCode, registrationData);
+      console.log('[Phone Code] Frontend - Social Onboarding - Phone verified, user created:', {
+        userId: user?.id,
+        email: user?.email
+      });
 
       // Navigate based on user role
       if (user.role === "professional") {
@@ -503,39 +520,24 @@ export default function SocialOnboardingPage() {
               )}
 
               {/* Phone Number */}
-              <div>
-                <Label htmlFor="phone" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                  Phone Number *
-                </Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+44 7123 456789"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      if (fieldErrors.phone) {
-                        setFieldErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.phone;
-                          return newErrors;
-                        });
-                      }
-                    }}
-                    className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                      fieldErrors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                    }`}
-                    required
-                  />
-                </div>
-                {fieldErrors.phone && (
-                  <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                    {fieldErrors.phone}
-                  </p>
-                )}
-              </div>
+              <PhoneInput
+                id="phone"
+                label="Phone Number"
+                value={phone}
+                onChange={(value) => {
+                  setPhone(value);
+                  if (fieldErrors.phone) {
+                    setFieldErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.phone;
+                      return newErrors;
+                    });
+                  }
+                }}
+                placeholder="7123 456789"
+                error={fieldErrors.phone}
+                required
+              />
 
               {/* Email */}
               <div>

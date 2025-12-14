@@ -177,6 +177,7 @@ const {
   TWILIO_ACCOUNT_SID,
   TWILIO_AUTH_TOKEN,
   TWILIO_FROM = process.env.TWILIO_FROM_NUMBER || 'TRADEPPLHUB',
+  TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER, // Actual Twilio phone number for countries that don't support alphanumeric sender IDs
 } = process.env;
 
 // Debug logging for SMTP credentials
@@ -195,7 +196,8 @@ console.log('[Notifier] Twilio configuration check:', {
   hasAuthToken: !!TWILIO_AUTH_TOKEN,
   accountSidLength: TWILIO_ACCOUNT_SID?.length || 0,
   authTokenLength: TWILIO_AUTH_TOKEN?.length || 0,
-  fromNumber: TWILIO_FROM
+  fromNumber: TWILIO_FROM,
+  phoneNumber: TWILIO_PHONE_NUMBER || 'not configured (required for US/Canada)'
 });
 
 let mailTransporter;
@@ -529,7 +531,8 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
 
 export async function sendSmsVerificationCode(to, code) {
   if (!to || !code) {
-    return;
+    console.warn('[SMS] Missing phone number or code');
+    throw new Error('Phone number and code are required');
   }
 
   logCode('sms', to, code);
@@ -541,25 +544,63 @@ export async function sendSmsVerificationCode(to, code) {
       TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID ? 'present' : 'missing',
       TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN ? 'present' : 'missing'
     });
-    return;
+    throw new Error('Twilio is not configured');
   }
 
   try {
+    console.log('[SMS] Attempting to send verification code to:', to);
+    
+    // Determine the appropriate sender ID based on the destination country
+    // Alphanumeric sender IDs (like 'TRADEPPLHUB') don't work for all countries
+    // For US/Canada (+1), we need to use an actual Twilio phone number
+    let fromNumber = TWILIO_FROM;
+    
+    // Check if the destination is US/Canada (+1)
+    const isUSCanada = to.trim().startsWith('+1');
+    
+    if (isUSCanada && TWILIO_PHONE_NUMBER) {
+      fromNumber = TWILIO_PHONE_NUMBER;
+      console.log('[SMS] Using Twilio phone number for US/Canada destination:', fromNumber);
+    } else if (isUSCanada && !TWILIO_PHONE_NUMBER) {
+      console.warn('[SMS] Warning: US/Canada destination detected but TWILIO_PHONE_NUMBER not configured. Using alphanumeric sender ID may fail.');
+    }
+    
+    console.log('[SMS] Sending with from:', fromNumber, 'to:', to);
+    
     const message = await twilioClient.messages.create({
-    to,
-    from: TWILIO_FROM,
-    body: `Your TradePplHub verification code is ${code}`,
-  });
-    console.log('[SMS] Message sent successfully:', message.sid);
+      to,
+      from: fromNumber,
+      body: `Your TradePplHub verification code is ${code}`,
+    });
+    console.log('[SMS] Message sent successfully:', {
+      sid: message.sid,
+      to: message.to,
+      from: message.from,
+      status: message.status
+    });
+    return { success: true, messageSid: message.sid };
   } catch (error) {
     console.error('[SMS] Failed to send verification SMS:', error);
     console.error('[SMS] Error details:', {
       message: error.message,
       code: error.code,
-      status: error.status
+      status: error.status,
+      moreInfo: error.moreInfo,
+      to: to,
+      from: TWILIO_FROM
     });
-    // Don't throw error - allow flow to continue even if SMS sending fails
-    // This is useful when Twilio is not yet configured in production
+    
+    // If error is 21612 (invalid From/To combination), provide helpful message
+    if (error.code === 21612) {
+      console.error('[SMS] Twilio Error 21612: Invalid From/To combination.');
+      console.error('[SMS] This usually means:');
+      console.error('[SMS] 1. Alphanumeric sender ID (TRADEPPLHUB) is not supported for the destination country');
+      console.error('[SMS] 2. For US/Canada (+1), you need to use a Twilio phone number');
+      console.error('[SMS] 3. Set TWILIO_PHONE_NUMBER in your .env file with your Twilio phone number (e.g., +1234567890)');
+    }
+    
+    // Re-throw error so caller can handle it appropriately
+    throw error;
   }
 }
 

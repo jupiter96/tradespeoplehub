@@ -28,6 +28,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 const sanitizeUser = (user) => user.toSafeObject();
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
+
+// Normalize phone number: remove spaces, ensure consistent format
+const normalizePhone = (phone) => {
+  if (!phone || typeof phone !== 'string') {
+    return null;
+  }
+  // Remove all spaces and keep the format with country code
+  return phone.trim().replace(/\s+/g, '');
+};
+
 const cookieOptions = {
   path: '/',
   httpOnly: true,
@@ -627,6 +637,12 @@ router.post('/register/initiate', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
+    // Normalize phone number
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
     // Check for deleted users first - they cannot re-register
     const deletedUser = await User.findOne({ email: normalizedEmail, isDeleted: true });
     if (deletedUser) {
@@ -637,6 +653,21 @@ router.post('/register/initiate', async (req, res) => {
     const existingUser = await User.findOne({ email: normalizedEmail, isDeleted: { $ne: true } });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+
+    // Check if phone number is already in use by another active user
+    const existingPhoneUser = await User.findOne({ 
+      phone: normalizedPhone, 
+      isDeleted: { $ne: true },
+      _id: { $ne: existingUser?._id } // Exclude current user if checking during update
+    });
+    if (existingPhoneUser) {
+      console.log('[Registration] Phone number already in use:', {
+        phone: normalizedPhone,
+        existingUserId: existingPhoneUser._id,
+        existingUserEmail: existingPhoneUser.email
+      });
+      return res.status(409).json({ error: 'This phone number is already registered to another account' });
     }
 
     // Check if there's an existing pending registration
@@ -1095,17 +1126,31 @@ router.post('/register/verify-email', async (req, res) => {
     }
 
     const smsCode = generateCode();
+    console.log('[Phone Code] Backend - Regular Registration - Generated SMS code:', smsCode);
     const smsCodeHash = await bcrypt.hash(smsCode, 10);
+    console.log('[Phone Code] Backend - Regular Registration - Code hash created');
 
     try {
-      await sendSmsVerificationCode(pendingRegistration.phone, smsCode);
+      console.log('[Phone Code] Backend - Regular Registration - Sending SMS to:', pendingRegistration.phone);
+      const smsResult = await sendSmsVerificationCode(pendingRegistration.phone, smsCode);
+      if (smsResult?.success) {
+        console.log('[Phone Code] Backend - Regular Registration - SMS sent successfully:', {
+          messageSid: smsResult.messageSid,
+          phone: pendingRegistration.phone
+        });
+      }
     } catch (notificationError) {
-      console.error('Failed to send SMS code', notificationError);
+      console.error('[Phone Code] Backend - Regular Registration - Failed to send SMS code:', notificationError);
+      console.error('[Phone Code] Backend - Regular Registration - Error details:', {
+        message: notificationError.message,
+        code: notificationError.code,
+        status: notificationError.status
+      });
       // In production, continue even if SMS sending fails (Twilio may not be configured yet)
       if (isProduction) {
-        console.warn('Continuing registration flow despite SMS send failure (production mode)');
+        console.warn('[Phone Code] Backend - Regular Registration - Continuing despite SMS send failure (production mode)');
       } else {
-      return res.status(502).json({ error: 'Failed to send SMS code' });
+        return res.status(502).json({ error: 'Failed to send SMS code' });
       }
     }
 
@@ -1115,8 +1160,10 @@ router.post('/register/verify-email', async (req, res) => {
     pendingRegistration.phoneCodeHash = smsCodeHash;
     pendingRegistration.phoneCodeExpiresAt = codeExpiryDate();
     await pendingRegistration.save();
+    console.log('[Phone Code] Backend - Regular Registration - Code hash saved to database');
 
     // Include code in response for testing
+    console.log('[Phone Code] Backend - Regular Registration - Returning success response with code:', smsCode);
     return res.json({ 
       message: 'Email verified. SMS code sent',
       phoneCode: smsCode
@@ -1130,20 +1177,23 @@ router.post('/register/verify-email', async (req, res) => {
 router.post('/register/verify-phone', async (req, res) => {
   try {
     const { code, email } = req.body || {};
-    console.log('[Phone Verification] Registration - Received code:', code ? '****' : 'missing');
+    console.log('[Phone Code] Backend - Regular Registration - Received phone code verification request:', {
+      code: code ? '****' : 'missing',
+      email: email
+    });
     
     if (!isValidCode(code)) {
-      console.log('[Phone Verification] Registration - Invalid code format');
+      console.log('[Phone Code] Backend - Regular Registration - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
     const pendingRegistration = await loadPendingRegistration(req, email);
     if (!pendingRegistration) {
-      console.log('[Phone Verification] Registration - No pending registration found');
+      console.log('[Phone Code] Backend - Regular Registration - No pending registration found');
       return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
 
-    console.log('[Phone Verification] Registration - Pending registration found for:', pendingRegistration.email);
+    console.log('[Phone Code] Backend - Regular Registration - Pending registration found for:', pendingRegistration.email);
     console.log('[Phone Verification] Registration - Pending registration data:', {
       tradingName: pendingRegistration.tradingName,
       address: pendingRegistration.address,
@@ -1153,7 +1203,7 @@ router.post('/register/verify-phone', async (req, res) => {
     });
 
     if (!pendingRegistration.emailVerified) {
-      console.log('[Phone Verification] Registration - Email not verified yet');
+      console.log('[Phone Code] Backend - Regular Registration - Email not verified yet');
       return res.status(400).json({ error: 'Email must be verified first' });
     }
 
@@ -1161,18 +1211,20 @@ router.post('/register/verify-phone', async (req, res) => {
       pendingRegistration.phoneCodeExpiresAt &&
       pendingRegistration.phoneCodeExpiresAt < new Date()
     ) {
-      console.log('[Phone Verification] Registration - Code expired');
+      console.log('[Phone Code] Backend - Regular Registration - Code expired');
       await pendingRegistration.deleteOne();
       clearPendingRegistrationSession(req);
       return res.status(410).json({ error: 'SMS code expired. Please restart registration.' });
     }
 
+    console.log('[Phone Code] Backend - Regular Registration - Comparing code with hash');
     const phoneMatch = await bcrypt.compare(code, pendingRegistration.phoneCodeHash || '');
-    console.log('[Phone Verification] Registration - Code match result:', phoneMatch);
+    console.log('[Phone Code] Backend - Regular Registration - Code match result:', phoneMatch);
     if (!phoneMatch) {
-      console.log('[Phone Verification] Registration - Invalid verification code');
+      console.log('[Phone Code] Backend - Regular Registration - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
+    console.log('[Phone Code] Backend - Regular Registration - Phone code verified successfully');
 
     const existingUser = await User.findOne({ email: pendingRegistration.email });
     if (existingUser) {
@@ -1223,7 +1275,7 @@ router.post('/register/verify-phone', async (req, res) => {
       lastName: pendingRegistration.lastName,
       email: pendingRegistration.email,
       passwordHash: pendingRegistration.passwordHash,
-      phone: pendingRegistration.phone,
+      phone: normalizedPhone || pendingRegistration.phone, // Use normalized phone
       postcode: pendingRegistration.postcode,
       referralCode: pendingRegistration.referralCode,
       role: pendingRegistration.role,
@@ -1390,19 +1442,29 @@ router.get('/social/pending', (req, res) => {
 // Send phone verification code for social registration
 router.post('/social/send-phone-code', async (req, res) => {
   try {
+    console.log('[Phone Code] Backend - Social Registration - Received request to send phone code');
     const pending = getPendingSocialProfile(req);
     if (!pending) {
+      console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
       return res.status(400).json({ error: 'No pending social registration' });
     }
+    console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
+      provider: pending.provider,
+      email: pending.email
+    });
 
     const { phone } = req.body;
     if (!phone || !phone.trim()) {
+      console.log('[Phone Code] Backend - Social Registration - Phone number missing');
       return res.status(400).json({ error: 'Phone number is required' });
     }
+    console.log('[Phone Code] Backend - Social Registration - Phone number received:', phone.trim());
 
     const smsCode = generateCode();
+    console.log('[Phone Code] Backend - Social Registration - Generated SMS code:', smsCode);
     const smsCodeHash = await bcrypt.hash(smsCode, 10);
     const expiresAt = codeExpiryDate();
+    console.log('[Phone Code] Backend - Social Registration - Code hash created, expires at:', expiresAt);
 
     // Store phone code in session
     if (!req.session[socialSessionKey]) {
@@ -1417,24 +1479,38 @@ router.post('/social/send-phone-code', async (req, res) => {
         else resolve(undefined);
       });
     });
+    console.log('[Phone Code] Backend - Social Registration - Code stored in session');
 
     try {
-      await sendSmsVerificationCode(phone.trim(), smsCode);
+      console.log('[Phone Code] Backend - Social Registration - Attempting to send SMS to:', phone.trim());
+      const smsResult = await sendSmsVerificationCode(phone.trim(), smsCode);
+      if (smsResult?.success) {
+        console.log('[Phone Code] Backend - Social Registration - SMS sent successfully:', {
+          messageSid: smsResult.messageSid,
+          phone: phone.trim()
+        });
+      }
     } catch (notificationError) {
-      console.error('Failed to send SMS code', notificationError);
+      console.error('[Phone Code] Backend - Social Registration - Failed to send SMS code:', notificationError);
+      console.error('[Phone Code] Backend - Social Registration - Error details:', {
+        message: notificationError.message,
+        code: notificationError.code,
+        status: notificationError.status
+      });
       if (isProduction) {
-        console.warn('Continuing registration flow despite SMS send failure (production mode)');
+        console.warn('[Phone Code] Backend - Social Registration - Continuing despite SMS send failure (production mode)');
       } else {
         return res.status(502).json({ error: 'Failed to send SMS code' });
       }
     }
 
+    console.log('[Phone Code] Backend - Social Registration - Returning success response with code:', smsCode);
     return res.json({
       message: 'Phone verification code sent',
       phoneCode: smsCode, // Include in response for development/testing
     });
   } catch (error) {
-    console.error('Send phone code error', error);
+    console.error('[Phone Code] Backend - Social Registration - Error:', error);
     return res.status(500).json({ error: 'Failed to send phone verification code' });
   }
 });
@@ -1442,32 +1518,46 @@ router.post('/social/send-phone-code', async (req, res) => {
 // Verify phone code and complete social registration
 router.post('/social/verify-phone', async (req, res) => {
   try {
+    console.log('[Phone Code] Backend - Social Registration - Received phone code verification request');
     const pending = getPendingSocialProfile(req);
     if (!pending) {
+      console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
       return res.status(400).json({ error: 'No pending social registration' });
     }
+    console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
+      provider: pending.provider,
+      email: pending.email
+    });
 
     const { code, ...registrationData } = req.body;
+    console.log('[Phone Code] Backend - Social Registration - Code received:', code ? '****' : 'missing');
 
     if (!code || !isValidCode(code)) {
+      console.log('[Phone Code] Backend - Social Registration - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
     // Check phone code from session
     const sessionData = req.session[socialSessionKey];
     if (!sessionData || !sessionData.phoneCodeHash) {
+      console.log('[Phone Code] Backend - Social Registration - No phone code hash in session');
       return res.status(400).json({ error: 'No phone verification code found. Please request a new code.' });
     }
 
     if (sessionData.phoneCodeExpiresAt && new Date(sessionData.phoneCodeExpiresAt) < new Date()) {
+      console.log('[Phone Code] Backend - Social Registration - Code expired');
       delete req.session[socialSessionKey];
       return res.status(410).json({ error: 'Phone verification code expired. Please request a new code.' });
     }
 
+    console.log('[Phone Code] Backend - Social Registration - Comparing code with hash');
     const phoneMatch = await bcrypt.compare(code, sessionData.phoneCodeHash);
+    console.log('[Phone Code] Backend - Social Registration - Code match result:', phoneMatch);
     if (!phoneMatch) {
+      console.log('[Phone Code] Backend - Social Registration - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
+    console.log('[Phone Code] Backend - Social Registration - Phone code verified successfully');
 
     // Phone verified, now complete registration
     const mergedPayload = {
@@ -1562,7 +1652,7 @@ router.post('/social/verify-phone', async (req, res) => {
       lastName,
       email: normalizedEmail,
       passwordHash,
-      phone: verifiedPhone,
+      phone: normalizedPhone, // Use normalized phone number
       postcode,
       referralCode,
       role: userType,
@@ -1676,7 +1766,7 @@ router.post('/social/complete', async (req, res) => {
       lastName,
       email: normalizedEmail,
       passwordHash,
-      phone,
+      phone: normalizedPhone, // Use normalized phone number
       postcode,
       referralCode,
       role: userType,
@@ -1926,18 +2016,38 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
-    const trimmedPhone = phone.trim();
-    console.log('[Phone Verification] Profile Change - Current phone:', user.phone, 'New phone:', trimmedPhone);
+    const normalizedPhone = normalizePhone(phone);
     
-    if (trimmedPhone === user.phone) {
+    if (!normalizedPhone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+    
+    console.log('[Phone Verification] Profile Change - Current phone:', user.phone, 'New phone:', normalizedPhone);
+    
+    if (normalizedPhone === user.phone) {
       console.log('[Phone Verification] Profile Change - New phone same as current phone');
       return res.status(400).json({ error: 'New phone must be different from current phone' });
     }
 
     const otpCode = generateCode();
     const otpHash = await bcrypt.hash(otpCode, 10);
+    // Check if phone number is already in use by another active user
+    const existingPhoneUser = await User.findOne({ 
+      phone: normalizedPhone, 
+      isDeleted: { $ne: true },
+      _id: { $ne: user._id } // Exclude current user
+    });
+    if (existingPhoneUser) {
+      console.log('[Phone Verification] Profile Change - Phone number already in use:', {
+        phone: normalizedPhone,
+        existingUserId: existingPhoneUser._id,
+        existingUserEmail: existingPhoneUser.email
+      });
+      return res.status(409).json({ error: 'This phone number is already registered to another account' });
+    }
+
     req.session[phoneChangeOTPKey] = {
-      phone: trimmedPhone,
+      phone: normalizedPhone,
       otpHash,
       expiresAt: codeExpiryDate(),
     };
@@ -1945,8 +2055,8 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
     console.log('[Phone Verification] Profile Change - OTP generated and stored in session');
 
     try {
-      await sendSmsVerificationCode(trimmedPhone, otpCode);
-      console.log('[Phone Verification] Profile Change - SMS sent successfully to:', trimmedPhone);
+      await sendSmsVerificationCode(normalizedPhone, otpCode);
+      console.log('[Phone Verification] Profile Change - SMS sent successfully to:', normalizedPhone);
     } catch (notificationError) {
       console.error('[Phone Verification] Profile Change - Failed to send SMS OTP:', notificationError);
       if (isProduction) {
@@ -2051,7 +2161,11 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const trimmedPhone = phone.trim();
+    const normalizedPhone = normalizePhone(phone);
+    
+    if (!normalizedPhone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
 
     // Check if email is being changed
     if (normalizedEmail !== user.email) {
@@ -2068,12 +2182,26 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     // Check if phone is being changed
-    if (trimmedPhone !== user.phone) {
+    if (normalizedPhone !== user.phone) {
+      // Check if phone number is already in use by another active user
+      const existingPhoneUser = await User.findOne({ 
+        phone: normalizedPhone, 
+        isDeleted: { $ne: true },
+        _id: { $ne: user._id } // Exclude current user
+      });
+      if (existingPhoneUser) {
+        console.log('[Profile Update] Phone number already in use:', {
+          phone: normalizedPhone,
+          existingUserId: existingPhoneUser._id,
+          existingUserEmail: existingPhoneUser.email
+        });
+        return res.status(409).json({ error: 'This phone number is already registered to another account' });
+      }
       const phoneOTP = req.session[phoneChangeOTPKey];
-      if (!phoneOTP || !phoneOTP.verified || phoneOTP.phone !== trimmedPhone) {
+      if (!phoneOTP || !phoneOTP.verified || phoneOTP.phone !== normalizedPhone) {
         return res.status(403).json({ error: 'Phone change requires OTP verification' });
       }
-      user.phone = trimmedPhone;
+      user.phone = normalizedPhone;
       delete req.session[phoneChangeOTPKey];
     }
 
@@ -2139,7 +2267,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     // Update phone verification status if phone was changed and verified
-    if (trimmedPhone !== user.phone) {
+    if (normalizedPhone !== user.phone) {
       console.log('[Phone Verification] Profile Update - Phone changed, updating verification status');
       // Phone was changed and verified via OTP
       if (!user.verification.phone) {

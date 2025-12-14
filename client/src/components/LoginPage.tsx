@@ -22,6 +22,7 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import PhoneInput from "./PhoneInput";
 import { Checkbox } from "./ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Separator } from "./ui/separator";
@@ -289,12 +290,19 @@ export default function LoginPage() {
     setRegisterError(null);
     setIsVerifyingEmail(true);
     try {
+      console.log('[Phone Code] Frontend - Verifying email code, will request phone code next');
       const response = await verifyRegistrationEmail(emailVerificationCode, registerEmail);
+      console.log('[Phone Code] Frontend - Email verified, phone code received:', {
+        hasPhoneCode: !!response?.phoneCode,
+        phoneCode: response?.phoneCode || 'not provided',
+        message: response?.message
+      });
       setPhoneCodeHint(response?.phoneCode || null);
       setEmailCodeHint(null);
       setVerificationStep(2);
       setEmailVerificationCode("");
     } catch (error) {
+      console.error('[Phone Code] Frontend - Email verification failed:', error);
       setRegisterError(error instanceof Error ? error.message : "Email verification failed");
     } finally {
       setIsVerifyingEmail(false);
@@ -303,10 +311,14 @@ export default function LoginPage() {
 
   const handleVerifyPhoneCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[Phone Verification] Frontend - Starting phone verification, code length:', phoneVerificationCode.length);
+    console.log('[Phone Code] Frontend - Starting phone code verification:', {
+      codeLength: phoneVerificationCode.length,
+      code: phoneVerificationCode ? '****' : 'missing',
+      email: registerEmail
+    });
     
     if (phoneVerificationCode.length !== 4) {
-      console.log('[Phone Verification] Frontend - Invalid code length');
+      console.log('[Phone Code] Frontend - Invalid code length, expected 4 digits');
       alert("Please enter a 4-digit code");
       return;
     }
@@ -314,9 +326,9 @@ export default function LoginPage() {
     setIsRegistering(true);
     setIsCompletingRegistration(true);
     try {
-      console.log('[Phone Verification] Frontend - Calling completeRegistration API');
+      console.log('[Phone Code] Frontend - Calling completeRegistration API with phone code');
       const user = await completeRegistration(phoneVerificationCode, registerEmail);
-      console.log('[Phone Verification] Frontend - Registration completed successfully:', {
+      console.log('[Phone Code] Frontend - Registration completed successfully:', {
         userId: user.id,
         email: user.email,
         phone: user.phone,
@@ -1029,39 +1041,24 @@ export default function LoginPage() {
                   )}
 
                   {/* Phone Number */}
-                  <div>
-                    <Label htmlFor="register-phone" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                      Phone Number *
-                    </Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                      <Input
-                        id="register-phone"
-                        type="tel"
-                        placeholder="+44 7123 456789"
-                        value={registerPhone}
-                        onChange={(e) => {
-                          setRegisterPhone(e.target.value);
-                          if (fieldErrors.phone) {
-                            setFieldErrors(prev => {
-                              const newErrors = { ...prev };
-                              delete newErrors.phone;
-                              return newErrors;
-                            });
-                          }
-                        }}
-                        className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                          fieldErrors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                        }`}
-                        required
-                      />
-                    </div>
-                    {fieldErrors.phone && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                        {fieldErrors.phone}
-                      </p>
-                    )}
-                  </div>
+                  <PhoneInput
+                    id="register-phone"
+                    label="Phone Number"
+                    value={registerPhone}
+                    onChange={(value) => {
+                      setRegisterPhone(value);
+                      if (fieldErrors.phone) {
+                        setFieldErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.phone;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    placeholder="7123 456789"
+                    error={fieldErrors.phone}
+                    required
+                  />
 
                   {/* Email */}
                   <div>
@@ -1351,11 +1348,6 @@ export default function LoginPage() {
                           maxLength={4}
                           required
                         />
-                        {emailCodeHint && (
-                          <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
-                            Hint: {emailCodeHint}
-                          </p>
-                        )}
                       </div>
                       
                       <Button
@@ -1424,11 +1416,6 @@ export default function LoginPage() {
                           maxLength={4}
                           required
                         />
-                        {phoneCodeHint && (
-                          <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
-                            Hint: {phoneCodeHint}
-                          </p>
-                        )}
                       </div>
                       
                       <Button

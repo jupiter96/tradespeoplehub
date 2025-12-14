@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import PhoneInput from "./PhoneInput";
 import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
 import {
@@ -1028,21 +1029,33 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
             ) : /* Email or Phone with verification code */
             verificationStep === "input" ? (
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor={currentItem?.id} className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                    {currentItem?.title}
-                  </Label>
-                  <Input
+                {currentItem?.id === "phone" ? (
+                  <PhoneInput
                     id={currentItem?.id}
-                    type={currentItem?.id === "email" ? "email" : "tel"}
-                    placeholder={currentItem?.id === "email" ? "your.email@gmail.com" : "+44 7XXX XXXXXX"}
+                    label={currentItem?.title || "Phone Number"}
                     value={formData[currentItem?.id as keyof typeof formData] || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, [currentItem?.id || ""]: e.target.value })
+                    onChange={(value) =>
+                      setFormData({ ...formData, [currentItem?.id || ""]: value })
                     }
-                    className="font-['Poppins',sans-serif]"
+                    placeholder="7XXX XXXXXX"
                   />
-                </div>
+                ) : (
+                  <div>
+                    <Label htmlFor={currentItem?.id} className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                      {currentItem?.title}
+                    </Label>
+                    <Input
+                      id={currentItem?.id}
+                      type="email"
+                      placeholder="your.email@gmail.com"
+                      value={formData[currentItem?.id as keyof typeof formData] || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, [currentItem?.id || ""]: e.target.value })
+                      }
+                      className="font-['Poppins',sans-serif]"
+                    />
+                  </div>
+                )}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                   <div className="flex items-start gap-2">

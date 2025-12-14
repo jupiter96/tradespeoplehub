@@ -41,6 +41,7 @@ const userSchema = new mongoose.Schema(
         return this.role !== 'admin' && this.role !== 'subadmin';
       },
       trim: true,
+      sparse: true, // Allow multiple null/undefined values
     },
     postcode: {
       type: String,
@@ -410,6 +411,10 @@ userSchema.methods.toSafeObject = function toSafeObject() {
   }
   return userObject;
 };
+
+// Create unique sparse index on phone field (allows multiple null/undefined, but unique non-null values)
+// This ensures one phone number per user, but allows admin/subadmin to have no phone
+userSchema.index({ phone: 1 }, { unique: true, sparse: true });
 
 const User = mongoose.models?.User || mongoose.model('User', userSchema);
 
