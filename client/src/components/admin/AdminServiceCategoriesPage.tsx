@@ -272,7 +272,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
               className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
             >
               <FolderTree className="h-4 w-4 mr-2" />
-              View Child Category
+              Child Category
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onManageTitles(serviceCategory)}
@@ -2192,7 +2192,7 @@ export default function AdminServiceCategoriesPage() {
                                         className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
                                       >
                                         <FolderTree className="h-4 w-4 mr-2" />
-                                        View Child Categories
+                                        Child Categories
                                       </DropdownMenuItem>
                                     )}
                                     <DropdownMenuItem
