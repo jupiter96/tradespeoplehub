@@ -210,9 +210,14 @@ const generateServiceSubCategoryData = (name, serviceCategoryId, parentSubCatego
   // Each level has its own parent context
   const baseName = name;
   
+  // Level 3-7 must have a parentSubCategory
+  if (level >= 3 && level <= 7 && !parentSubCategoryId) {
+    throw new Error(`Level ${level} subcategory must have a parentSubCategory`);
+  }
+  
   return {
     serviceCategory: parentSubCategoryId ? null : serviceCategoryId,
-    parentSubCategory: parentSubCategoryId || null,
+    parentSubCategory: parentSubCategoryId || null, // Level 2 can be null, Level 3-7 must have value
     name: baseName,
     slug: generateSlug(baseName),
     description: `Professional ${baseName.toLowerCase()} services with expert care and attention to detail.`,

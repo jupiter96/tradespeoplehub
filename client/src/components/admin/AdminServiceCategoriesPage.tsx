@@ -1233,9 +1233,20 @@ export default function AdminServiceCategoriesPage() {
       return;
     }
     
+    // For Level 3-7, parentSubCategory is required - set default from selectedParentSubCategory or first available parent
+    let defaultParentSubCategory = "";
+    if (!isFirstTabNow && targetLevel >= 3) {
+      if (selectedParentSubCategory) {
+        defaultParentSubCategory = selectedParentSubCategory._id;
+      } else if (serviceSubCategories.length > 0) {
+        // Use first available parent subcategory from current level
+        defaultParentSubCategory = serviceSubCategories[0]._id;
+      }
+    }
+    
     setSubCategoryFormData({
       serviceCategory: selectedServiceCategory._id,
-      parentSubCategory: isFirstTabNow ? "" : "", // Empty for user to select in non-first tabs
+      parentSubCategory: defaultParentSubCategory, // Set default parent for Level 3-7
       name: "",
       slug: "",
       description: "",
@@ -1301,7 +1312,13 @@ export default function AdminServiceCategoriesPage() {
       subCategoryFormData.slug = generateSlug(subCategoryFormData.name);
     }
 
-    // Parent category is optional, so we don't validate it
+    // Validate parentSubCategory for Level 3-7 (required)
+    if (subCategoryFormData.level >= 3 && subCategoryFormData.level <= 7) {
+      if (!subCategoryFormData.parentSubCategory || subCategoryFormData.parentSubCategory.trim() === "") {
+        toast.error("Parent category is required for Level 3-7 subcategories");
+        return;
+      }
+    }
 
     try {
       setIsSaving(true);
@@ -3328,13 +3345,14 @@ export default function AdminServiceCategoriesPage() {
                 return (
                   <div>
                     <Label className="text-black dark:text-white">
-                      Parent Category
+                      Parent Category {subCategoryFormData.level >= 3 && subCategoryFormData.level <= 7 && <span className="text-red-500">*</span>}
                     </Label>
                     <Select
                       value={subCategoryFormData.parentSubCategory}
                       onValueChange={(value) => {
                         setSubCategoryFormData({ ...subCategoryFormData, parentSubCategory: value });
                       }}
+                      required={subCategoryFormData.level >= 3 && subCategoryFormData.level <= 7}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder={`Select a ${parentTabLabel}`} />

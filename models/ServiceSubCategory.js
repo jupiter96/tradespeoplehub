@@ -13,6 +13,10 @@ const serviceSubCategorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ServiceSubCategory',
       default: null,
+      required: function() {
+        // Level 3-7 must have a parentSubCategory
+        return this.level >= 3 && this.level <= 7;
+      },
       // If parentSubCategory is set, serviceCategory is not required
     },
     level: {

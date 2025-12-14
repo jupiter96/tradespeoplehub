@@ -338,11 +338,12 @@ router.get('/', async (req, res) => {
     
     let serviceSubCategoriesQuery = ServiceSubCategory.find(query);
     
+    // Always populate parentSubCategory to show parent information in the table
+    serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('parentSubCategory', 'name slug');
+    
     // Include service category information if requested
     if (includeServiceCategory === 'true') {
       serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('serviceCategory', 'name slug');
-      // Also populate parentSubCategory to show parent information in the table
-      serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('parentSubCategory', 'name slug');
     }
     
     // Pagination
@@ -478,6 +479,16 @@ router.post('/', async (req, res) => {
       if (calculatedLevel < 2 || calculatedLevel > 7) {
         return res.status(400).json({ error: 'Level must be between 2 and 7' });
       }
+      
+      // Level 3-7 must have a parentSubCategory
+      if (calculatedLevel >= 3 && calculatedLevel <= 7) {
+        return res.status(400).json({ error: `Level ${calculatedLevel} subcategories must have a parentSubCategory` });
+      }
+    }
+    
+    // Additional validation: Level 3-7 must have parentSubCategory
+    if (calculatedLevel >= 3 && calculatedLevel <= 7 && !parentSubCategoryDoc) {
+      return res.status(400).json({ error: `Level ${calculatedLevel} subcategories require a parentSubCategory` });
     }
     
     // Generate slug automatically from name (ignore provided slug)
