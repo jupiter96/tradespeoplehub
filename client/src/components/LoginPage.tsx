@@ -268,7 +268,6 @@ export default function LoginPage() {
     setVerificationPhone(registerPhone);
     try {
       const response = await initiateRegistration(registerData);
-      setEmailCodeHint(response?.emailCode || null);
       setPhoneCodeHint(null);
       setVerificationStep(1);
       setEmailVerificationCode("");
@@ -297,7 +296,6 @@ export default function LoginPage() {
         phoneCode: response?.phoneCode || 'not provided',
         message: response?.message
       });
-      setPhoneCodeHint(response?.phoneCode || null);
       setEmailCodeHint(null);
       setVerificationStep(2);
       setEmailVerificationCode("");

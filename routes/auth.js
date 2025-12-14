@@ -1233,6 +1233,26 @@ router.post('/register/verify-phone', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
+    // Normalize phone number from pending registration
+    const normalizedPhone = normalizePhone(pendingRegistration.phone);
+    if (normalizedPhone) {
+      // Check if phone number is already in use by another active user
+      const existingPhoneUser = await User.findOne({ 
+        phone: normalizedPhone, 
+        isDeleted: { $ne: true }
+      });
+      if (existingPhoneUser) {
+        console.log('[Phone Code] Backend - Regular Registration - Phone number already in use:', {
+          phone: normalizedPhone,
+          existingUserId: existingPhoneUser._id,
+          existingUserEmail: existingPhoneUser.email
+        });
+        clearPendingRegistrationSession(req);
+        await pendingRegistration.deleteOne();
+        return res.status(409).json({ error: 'This phone number is already registered to another account' });
+      }
+    }
+
     // Debug: Log pendingRegistration data before creating user
     console.log('[Phone Verification] Registration - PendingRegistration data:', {
       id: pendingRegistration._id,
