@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAccount } from "./AccountContext";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -23,6 +24,7 @@ import {
   Trash2,
   CheckCheck,
   Send,
+  Settings,
 } from "lucide-react";
 import {
   Dialog,
@@ -53,6 +55,7 @@ interface AccountVerificationSectionProps {
 }
 
 export default function AccountVerificationSection({ onVerificationStatusChange }: AccountVerificationSectionProps = {}) {
+  const navigate = useNavigate();
   const { userInfo, refreshUserInfo } = useAccount();
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -103,70 +106,75 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
   }, []);
 
   // Build verification items from API data
-  const verificationItems: VerificationItem[] = [
-    {
-      id: "email",
-      title: "Email Address",
-      description: "Verify your email address to receive important notifications",
-      icon: Mail,
-      status: (verificationData?.email?.status as VerificationItem["status"]) || (userInfo?.email ? "verified" : "not-started"),
-      type: "input",
-      value: userInfo?.email,
-    },
-    {
-      id: "phone",
-      title: "Phone Number",
-      description: "Add and verify your phone number for account security",
-      icon: Phone,
-      status: (verificationData?.phone?.status as VerificationItem["status"]) || (userInfo?.phone ? "verified" : "not-started"),
-      type: "input",
-      value: userInfo?.phone,
-    },
-    {
-      id: "address",
-      title: "Address Verification",
-      description: "Upload a bill statement or bank statement to verify your address",
-      icon: MapPin,
-      status: (verificationData?.address?.status as VerificationItem["status"]) || "not-started",
-      type: "upload",
-      documentUrl: verificationData?.address?.documentUrl,
-      documentName: verificationData?.address?.documentName,
-      rejectionReason: verificationData?.address?.rejectionReason,
-    },
-    {
-      id: "payment",
-      title: "Payment Method",
-      description: "Verify your bank account to receive earnings",
-      icon: CreditCard,
-      status: (verificationData?.paymentMethod?.status as VerificationItem["status"]) || "not-started",
-      type: "upload",
-      documentUrl: verificationData?.paymentMethod?.documentUrl,
-      documentName: verificationData?.paymentMethod?.documentName,
-      rejectionReason: verificationData?.paymentMethod?.rejectionReason,
-    },
-    {
-      id: "id-card",
-      title: "ID Verification",
-      description: "Upload a government-issued ID card or passport",
-      icon: FileText,
-      status: (verificationData?.idCard?.status as VerificationItem["status"]) || "not-started",
-      type: "upload",
-      documentUrl: verificationData?.idCard?.documentUrl,
-      documentName: verificationData?.idCard?.documentName,
-      rejectionReason: verificationData?.idCard?.rejectionReason,
-    },
-    {
-      id: "public-liability",
-      title: "Public Liability Insurance",
-      description: "Upload proof of public liability insurance coverage",
-      icon: Shield,
-      status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || "not-started",
-      type: "upload",
-      documentUrl: verificationData?.publicLiabilityInsurance?.documentUrl,
-      documentName: verificationData?.publicLiabilityInsurance?.documentName,
-      rejectionReason: verificationData?.publicLiabilityInsurance?.rejectionReason,
-    },
-  ];
+  const verificationItems: VerificationItem[] = useMemo(() => {
+    const allItems: VerificationItem[] = [
+      {
+        id: "email",
+        title: "Email Address",
+        description: "Verify your email address to receive important notifications",
+        icon: Mail,
+        status: (verificationData?.email?.status as VerificationItem["status"]) || (userInfo?.email ? "verified" : "not-started"),
+        type: "input",
+        value: userInfo?.email,
+      },
+      {
+        id: "phone",
+        title: "Phone Number",
+        description: "Add and verify your phone number for account security",
+        icon: Phone,
+        status: (verificationData?.phone?.status as VerificationItem["status"]) || (userInfo?.phone ? "verified" : "not-started"),
+        type: "input",
+        value: userInfo?.phone,
+      },
+      {
+        id: "address",
+        title: "Address Verification",
+        description: "Upload a bill statement or bank statement to verify your address",
+        icon: MapPin,
+        status: (verificationData?.address?.status as VerificationItem["status"]) || "not-started",
+        type: "upload",
+        documentUrl: verificationData?.address?.documentUrl,
+        documentName: verificationData?.address?.documentName,
+        rejectionReason: verificationData?.address?.rejectionReason,
+      },
+      {
+        id: "payment",
+        title: "Payment Method",
+        description: "Verify your bank account to receive earnings",
+        icon: CreditCard,
+        status: (verificationData?.paymentMethod?.status as VerificationItem["status"]) || "not-started",
+        type: "upload",
+        documentUrl: verificationData?.paymentMethod?.documentUrl,
+        documentName: verificationData?.paymentMethod?.documentName,
+        rejectionReason: verificationData?.paymentMethod?.rejectionReason,
+      },
+      {
+        id: "id-card",
+        title: "ID Verification",
+        description: "Upload a government-issued ID card or passport",
+        icon: FileText,
+        status: (verificationData?.idCard?.status as VerificationItem["status"]) || "not-started",
+        type: "upload",
+        documentUrl: verificationData?.idCard?.documentUrl,
+        documentName: verificationData?.idCard?.documentName,
+        rejectionReason: verificationData?.idCard?.rejectionReason,
+      },
+      {
+        id: "public-liability",
+        title: "Public Liability Insurance",
+        description: "Upload proof of public liability insurance coverage",
+        icon: Shield,
+        status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || "not-started",
+        type: "upload",
+        documentUrl: verificationData?.publicLiabilityInsurance?.documentUrl,
+        documentName: verificationData?.publicLiabilityInsurance?.documentName,
+        rejectionReason: verificationData?.publicLiabilityInsurance?.rejectionReason,
+      },
+    ];
+
+    // Always show all items (don't filter out insurance)
+    return allItems;
+  }, [verificationData, userInfo]);
 
   const [formData, setFormData] = useState({
     email: userInfo?.email || "",
@@ -724,12 +732,29 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                         </p>
                       </div>
                     )}
+
+                    {/* Show message for insurance when set to "no" */}
+                    {item.id === "public-liability" && userInfo?.hasPublicLiability === "no" && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-blue-800">
+                          Please go to <strong>"My Details"</strong> page and add your insurance information before you can upload verification documents.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Right Side - Action Button */}
                 <div className="flex gap-2 md:flex-shrink-0">
-                  {item.status === "verified" ? (
+                  {item.id === "public-liability" && userInfo?.hasPublicLiability === "no" ? (
+                    <Button
+                      onClick={() => navigate("/account?tab=details")}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Go to My Details
+                    </Button>
+                  ) : item.status === "verified" ? (
                     <Button
                       variant="outline"
                       onClick={() => handleOpenDialog(item.id)}
