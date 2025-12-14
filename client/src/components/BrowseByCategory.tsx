@@ -145,29 +145,22 @@ export default function BrowseByCategory() {
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .slice(0, 6);
 
-  // Build categories: For each sector, show the first service category or the sector itself
+  // Build categories: Show sectors directly (not service categories)
   const categories = topSectors.map((sector: Sector) => {
-    const sectorServiceCategories = serviceCategoriesBySector[sector._id] || [];
-    const firstServiceCategory = sectorServiceCategories[0];
-    
-    // If sector has service categories, use the first one; otherwise use sector
-    const displayName = firstServiceCategory?.name || sector.name;
-    const displaySlug = firstServiceCategory?.slug || sector.slug;
-    const displayIcon = firstServiceCategory?.icon || sector.icon;
     const IconComponent = iconMap[sector.name] || Home;
     const styles = categoryStyles[sector.name] || categoryStyles["Home & Garden"];
     
     return {
-      id: firstServiceCategory?._id || sector._id,
-      name: displayName,
-      subtitle: firstServiceCategory ? sector.name : undefined,
+      id: sector._id,
+      name: sector.name,
+      subtitle: undefined,
       icon: IconComponent,
-      iconImage: displayIcon, // Service category icon or sector icon
+      iconImage: sector.icon, // Sector icon
       styles: styles,
-      categoryName: displayName,
+      categoryName: sector.name,
       sectorSlug: sector.slug,
-      serviceCategorySlug: firstServiceCategory?.slug,
-      isServiceCategory: !!firstServiceCategory,
+      serviceCategorySlug: undefined,
+      isServiceCategory: false,
     };
   });
 
@@ -211,9 +204,7 @@ export default function BrowseByCategory() {
             return (
               <Link
                 key={category.id}
-                to={category.isServiceCategory && category.serviceCategorySlug
-                  ? `/sector/${category.sectorSlug}/${category.serviceCategorySlug}`
-                  : `/sector/${category.sectorSlug}`}
+                to={`/sector/${category.sectorSlug}`}
                 className="relative overflow-hidden rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl group cursor-pointer flex-shrink-0 w-[110px] aspect-[4/3]"
               >
                 {/* Background Image */}
@@ -279,9 +270,7 @@ export default function BrowseByCategory() {
           return (
             <Link
               key={category.id}
-              to={category.isServiceCategory && category.serviceCategorySlug
-                ? `/sector/${category.sectorSlug}/${category.serviceCategorySlug}`
-                : `/sector/${category.sectorSlug}`}
+              to={`/sector/${category.sectorSlug}`}
               className="relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-2xl group cursor-pointer aspect-[4/3]"
             >
               {/* Background Image */}

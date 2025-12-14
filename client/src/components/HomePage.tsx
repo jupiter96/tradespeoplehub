@@ -33,7 +33,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f0f0]">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
@@ -200,7 +200,7 @@ export default function HomePage() {
         </section>
 
         {/* Category and Featured Services Section */}
-        <section className="relative md:-mt-[20%] z-40 bg-white pt-8">
+        <section className="relative md:-mt-[20%] z-40 bg-white pt-0">
           <div className="max-w-[1200px] mx-auto px-4 md:px-6">
             {/* Browse Service by Category */}
             <div className="w-full py-6 md:py-8">
