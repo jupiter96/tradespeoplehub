@@ -1362,8 +1362,7 @@ export default function SectorPage() {
                     const handleServiceCategoryClick = (e: React.MouseEvent) => {
                       e.preventDefault();
                       const serviceCategorySlug = item.slug || nameToSlug(item.name);
-                      const targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}`;
-                      window.open(targetUrl, '_blank');
+                      navigate(`/sector/${sectorSlug}/${serviceCategorySlug}`);
                     };
                     
                     // Handle subcategory click
@@ -1377,8 +1376,7 @@ export default function SectorPage() {
                       // If we already know it has subcategories, navigate directly
                       if (hasSubCategories) {
                         const currentPathSlugs = subCategorySlugs.length > 0 ? [...subCategorySlugs, subCategorySlug].join('/') : subCategorySlug;
-                        targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
-                        window.open(targetUrl, '_blank');
+                        navigate(`/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`);
                         return;
                       }
                       
@@ -1395,8 +1393,7 @@ export default function SectorPage() {
                           
                           if (hasNestedSubCategories) {
                             const currentPathSlugs = subCategorySlugs.length > 0 ? [...subCategorySlugs, subCategorySlug].join('/') : subCategorySlug;
-                            targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
-                            window.open(targetUrl, '_blank');
+                            navigate(`/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`);
                           } else {
                             const sectorName = sector?.name || '';
                             const serviceCategorySlugValue = serviceCategorySlug || '';
@@ -1410,8 +1407,7 @@ export default function SectorPage() {
                             }
                             
                             filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
-                            targetUrl = `${window.location.origin}${filterUrl}`;
-                            window.open(targetUrl, '_blank');
+                            navigate(filterUrl);
                           }
                         } else {
                           const sectorName = sector?.name || '';
@@ -1426,8 +1422,7 @@ export default function SectorPage() {
                           }
                           
                           filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
-                          targetUrl = `${window.location.origin}${filterUrl}`;
-                          window.open(targetUrl, '_blank');
+                          navigate(filterUrl);
                         }
                       } catch (error) {
                         console.error('Error checking subcategory:', error);
@@ -1443,8 +1438,7 @@ export default function SectorPage() {
                         }
                         
                         filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
-                        targetUrl = `${window.location.origin}${filterUrl}`;
-                        window.open(targetUrl, '_blank');
+                        navigate(filterUrl);
                       }
                     };
                     
