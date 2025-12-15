@@ -693,7 +693,7 @@ export default function Nav() {
   }, {} as Record<string, string>);
   
   // Generate categoryDropdownData from service categories, sorted by order
-  const categoryDropdownData: { [key: string]: { title: string; items: string[]; serviceCategorySlug?: string }[] } = {};
+  const categoryDropdownData: { [key: string]: { title: string; items: string[]; serviceCategorySlug?: string; subCategorySlugs?: string[] }[] } = {};
   
   if (apiSectors.length > 0 && Object.keys(serviceCategoriesBySector).length > 0) {
     // Use service categories (new system)
@@ -704,15 +704,18 @@ export default function Nav() {
         const sortedServiceCategories = [...serviceCategories].sort((a, b) => (a.order || 0) - (b.order || 0));
         
         categoryDropdownData[sector.name] = sortedServiceCategories.map((serviceCategory: ServiceCategory) => {
-          // Sort subcategories by order and take first 4
+          // Sort subcategories by order - show all subcategories (no limit)
           const sortedSubCategories = serviceCategory.subCategories 
-            ? [...serviceCategory.subCategories].sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 4)
+            ? [...serviceCategory.subCategories]
+                .filter((subCat: ServiceSubCategory) => subCat.level === 2 && !subCat.parentSubCategory) // Only Level 2 subcategories (direct children)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
             : [];
           
           return {
             title: serviceCategory.name,
             items: sortedSubCategories.map((subCat: ServiceSubCategory) => subCat.name),
-            serviceCategorySlug: serviceCategory.slug
+            serviceCategorySlug: serviceCategory.slug,
+            subCategorySlugs: sortedSubCategories.map((subCat: ServiceSubCategory) => subCat.slug)
           };
         });
       }
@@ -1238,12 +1241,15 @@ export default function Nav() {
                             (sc: ServiceCategory) => sc.name === column.title
                           );
                           const subCategory = serviceCategory?.subCategories?.find(
-                            (subCat: ServiceSubCategory) => subCat.name === item
+                            (subCat: ServiceSubCategory) => subCat.name === item && subCat.level === 2 && !subCat.parentSubCategory
                           );
-                          const subCategorySlug = subCategory?.slug;
+                          const subCategorySlug = subCategory?.slug || (column.subCategorySlugs && column.subCategorySlugs[idx]);
                           
+                          // Build URL: /sector/{sectorSlug}/{serviceCategorySlug}/{subCategorySlug}
                           const linkTo = column.serviceCategorySlug && sectorNameToSlug[activeDropdown] && subCategorySlug
                             ? `/sector/${sectorNameToSlug[activeDropdown]}/${column.serviceCategorySlug}/${subCategorySlug}`
+                            : column.serviceCategorySlug && sectorNameToSlug[activeDropdown]
+                            ? `/sector/${sectorNameToSlug[activeDropdown]}/${column.serviceCategorySlug}`
                             : `/services?category=${encodeURIComponent(activeDropdown)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`;
                           
                           return (
@@ -1321,12 +1327,15 @@ export default function Nav() {
                           (sc: ServiceCategory) => sc.name === column.title
                         );
                         const subCategory = serviceCategory?.subCategories?.find(
-                          (subCat: ServiceSubCategory) => subCat.name === item
+                          (subCat: ServiceSubCategory) => subCat.name === item && subCat.level === 2 && !subCat.parentSubCategory
                         );
-                        const subCategorySlug = subCategory?.slug;
+                        const subCategorySlug = subCategory?.slug || (column.subCategorySlugs && column.subCategorySlugs[itemIdx]);
                         
+                        // Build URL: /sector/{sectorSlug}/{serviceCategorySlug}/{subCategorySlug}
                         const linkTo = column.serviceCategorySlug && sectorNameToSlug[expandedCategory] && subCategorySlug
                           ? `/sector/${sectorNameToSlug[expandedCategory]}/${column.serviceCategorySlug}/${subCategorySlug}`
+                          : column.serviceCategorySlug && sectorNameToSlug[expandedCategory]
+                          ? `/sector/${sectorNameToSlug[expandedCategory]}/${column.serviceCategorySlug}`
                           : `/services?category=${encodeURIComponent(expandedCategory)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`;
                         
                         return (

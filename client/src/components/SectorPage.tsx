@@ -24,7 +24,8 @@ type MainCategory = {
 };
 import { 
   ChevronLeft, 
-  ChevronRight, 
+  ChevronRight,
+  ChevronDown, 
   Star, 
   MapPin, 
   Award, 
@@ -712,6 +713,7 @@ export default function SectorPage() {
   // Filter state
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
@@ -1102,27 +1104,37 @@ export default function SectorPage() {
         <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-[#FE8A0F] to-transparent" />
       </div>
 
-      {/* Sub-categories Slider - Show below banner if current category/subcategory has subcategories */}
+      {/* Sub-categories Slider - Show below banner */}
       {(() => {
-        // Determine which subcategories to show
-        let subCategoriesToShow: any[] = [];
+        // Determine what to show: service categories (when viewing sector) or subcategories (when viewing category/subcategory)
+        let itemsToShow: any[] = [];
         let parentPath = '';
+        let isServiceCategories = false; // Flag to determine if we're showing service categories or subcategories
         
         if (currentServiceSubCategory && currentServiceSubCategory.subCategories) {
           // Show subcategories of current service subcategory
-          subCategoriesToShow = [...currentServiceSubCategory.subCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          itemsToShow = [...currentServiceSubCategory.subCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
           // Build parent path with all subcategory slugs
           const parentPathSlugs = subCategorySlugs.length > 0 ? subCategorySlugs.join('/') : '';
           parentPath = parentPathSlugs 
             ? `/sector/${sectorSlug}/${serviceCategorySlug}/${parentPathSlugs}`
             : `/sector/${sectorSlug}/${serviceCategorySlug}`;
         } else if (currentServiceCategory && currentServiceCategory.subCategories && subCategorySlugs.length === 0) {
-          // Show subcategories of current service category (first level)
-          subCategoriesToShow = [...currentServiceCategory.subCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          // Show Level 2 subcategories of current service category (direct children, no parent)
+          itemsToShow = [...currentServiceCategory.subCategories]
+            .filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory)
+            .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
           parentPath = `/sector/${sectorSlug}/${serviceCategorySlug}`;
+        } else if (!serviceCategorySlug && !subCategorySlugs.length && apiServiceCategories && apiServiceCategories.length > 0) {
+          // Show service categories when viewing sector page (no service category selected)
+          itemsToShow = [...apiServiceCategories]
+            .filter((sc: any) => sc.isActive !== false)
+            .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          parentPath = `/sector/${sectorSlug}`;
+          isServiceCategories = true;
         }
         
-        if (subCategoriesToShow.length === 0) return null;
+        if (itemsToShow.length === 0) return null;
         
         return (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 md:-mt-6 relative z-20 mb-6">
@@ -1147,54 +1159,32 @@ export default function SectorPage() {
                   className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
-                  {subCategoriesToShow.map((subCategory: any) => {
-                    const iconData = categoryIcons[subCategory.name] || { 
+                  {itemsToShow.map((item: any) => {
+                    const iconData = categoryIcons[item.name] || { 
                       icon: Home, 
                       color: "#4A90E2", 
                       bgColor: "#E8F2FF" 
                     };
                     const IconComponent = iconData.icon;
-                    const subCategorySlug = subCategory.slug || nameToSlug(subCategory.name);
                     
-                    // Check if subcategory has nested subcategories
-                    // First check if subCategories array exists and has items
-                    const hasSubCategories = subCategory.subCategories && subCategory.subCategories.length > 0;
-                    
-                    // Helper function to build full subcategory path (all parent subcategories)
-                    const buildFullSubCategoryPath = () => {
-                      const allSubCategoryNames: string[] = [];
-                      const allSubCategorySlugs: string[] = [];
-                      
-                      // Add all parent subcategories from the current path
-                      if (subCategorySlugs.length > 0) {
-                        // Fetch parent subcategory names by traversing the path
-                        // For now, we'll use the slugs and fetch names if needed
-                        // But we can also build from currentServiceSubCategory if available
-                        if (currentServiceSubCategory) {
-                          // We need to build the full path by traversing up
-                          // For simplicity, we'll use the subcategory names we have
-                          allSubCategorySlugs.push(...subCategorySlugs);
-                        } else {
-                          allSubCategorySlugs.push(...subCategorySlugs);
-                        }
-                      }
-                      
-                      // Add current subcategory
-                      allSubCategorySlugs.push(subCategorySlug);
-                      
-                      return { names: allSubCategoryNames, slugs: allSubCategorySlugs };
+                    // Handle service category click
+                    const handleServiceCategoryClick = (e: React.MouseEvent) => {
+                      e.preventDefault();
+                      const serviceCategorySlug = item.slug || nameToSlug(item.name);
+                      const targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}`;
+                      window.open(targetUrl, '_blank');
                     };
                     
-                    // Handle click to check for nested subcategories via API
+                    // Handle subcategory click
                     const handleSubCategoryClick = async (e: React.MouseEvent) => {
                       e.preventDefault();
                       
-                      // Build the URL to open in new tab
+                      const subCategorySlug = item.slug || nameToSlug(item.name);
+                      const hasSubCategories = item.subCategories && item.subCategories.length > 0;
                       let targetUrl = '';
                       
                       // If we already know it has subcategories, navigate directly
                       if (hasSubCategories) {
-                        // Build path with current subcategory path
                         const currentPathSlugs = subCategorySlugs.length > 0 ? [...subCategorySlugs, subCategorySlug].join('/') : subCategorySlug;
                         targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
                         window.open(targetUrl, '_blank');
@@ -1204,7 +1194,7 @@ export default function SectorPage() {
                       // Check via API if this subcategory has nested subcategories
                       try {
                         const response = await fetch(
-                          resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${subCategory._id}&activeOnly=true&limit=1`),
+                          resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${item._id}&activeOnly=true&limit=1`),
                           { credentials: 'include' }
                         );
                         
@@ -1213,69 +1203,55 @@ export default function SectorPage() {
                           const hasNestedSubCategories = data.serviceSubCategories && data.serviceSubCategories.length > 0;
                           
                           if (hasNestedSubCategories) {
-                            // Navigate to subcategory page in new tab
                             const currentPathSlugs = subCategorySlugs.length > 0 ? [...subCategorySlugs, subCategorySlug].join('/') : subCategorySlug;
                             targetUrl = `${window.location.origin}/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`;
                             window.open(targetUrl, '_blank');
                           } else {
-                            // This is the last level subcategory - navigate to services page with filter in new tab
                             const sectorName = sector?.name || '';
                             const serviceCategorySlugValue = serviceCategorySlug || '';
                             
-                            // Build filter URL with sector and service category slugs
                             let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategorySlugValue)}`;
                             
-                            // Add all parent subcategory slugs in order
                             if (subCategorySlugs.length > 0) {
                               subCategorySlugs.forEach((slug) => {
                                 filterUrl += `&serviceSubCategory=${encodeURIComponent(slug)}`;
                               });
                             }
                             
-                            // Add current subcategory slug
                             filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
-                            
                             targetUrl = `${window.location.origin}${filterUrl}`;
                             window.open(targetUrl, '_blank');
                           }
                         } else {
-                          // If API fails, assume no subcategories and go to services page in new tab
                           const sectorName = sector?.name || '';
                           const serviceCategorySlugValue = serviceCategorySlug || '';
                           
                           let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategorySlugValue)}`;
                           
-                          // Add all parent subcategory slugs
                           if (subCategorySlugs.length > 0) {
                             subCategorySlugs.forEach((slug) => {
                               filterUrl += `&serviceSubCategory=${encodeURIComponent(slug)}`;
                             });
                           }
                           
-                          // Add current subcategory slug
                           filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
-                          
                           targetUrl = `${window.location.origin}${filterUrl}`;
                           window.open(targetUrl, '_blank');
                         }
                       } catch (error) {
                         console.error('Error checking subcategory:', error);
-                        // On error, navigate to services page in new tab
                         const sectorName = sector?.name || '';
                         const serviceCategorySlugValue = serviceCategorySlug || '';
                         
                         let filterUrl = `/services?sector=${encodeURIComponent(sectorName)}&serviceCategory=${encodeURIComponent(serviceCategorySlugValue)}`;
                         
-                        // Add all parent subcategory slugs
                         if (subCategorySlugs.length > 0) {
                           subCategorySlugs.forEach((slug) => {
                             filterUrl += `&serviceSubCategory=${encodeURIComponent(slug)}`;
                           });
                         }
                         
-                        // Add current subcategory slug
                         filterUrl += `&serviceSubCategory=${encodeURIComponent(subCategorySlug)}`;
-                        
                         targetUrl = `${window.location.origin}${filterUrl}`;
                         window.open(targetUrl, '_blank');
                       }
@@ -1283,8 +1259,8 @@ export default function SectorPage() {
                     
                     return (
                       <div
-                        key={subCategory._id}
-                        onClick={handleSubCategoryClick}
+                        key={item._id}
+                        onClick={isServiceCategories ? handleServiceCategoryClick : handleSubCategoryClick}
                         className="group flex-shrink-0 bg-white border border-gray-200 rounded-[10px] hover:border-[#FE8A0F] hover:shadow-[0px_2px_12px_rgba(254,138,15,0.15)] transition-all duration-200 cursor-pointer"
                         style={{ minWidth: "200px", maxWidth: "240px" }}
                       >
@@ -1294,10 +1270,10 @@ export default function SectorPage() {
                             className="flex-shrink-0 w-10 h-10 rounded-[8px] flex items-center justify-center group-hover:scale-105 transition-transform"
                             style={{ backgroundColor: iconData.bgColor }}
                           >
-                            {subCategory.icon ? (
+                            {item.icon ? (
                               <img 
-                                src={subCategory.icon} 
-                                alt={subCategory.name}
+                                src={item.icon} 
+                                alt={item.name}
                                 className="w-6 h-6 object-contain"
                               />
                             ) : (
@@ -1311,7 +1287,7 @@ export default function SectorPage() {
                           {/* Text */}
                           <div className="flex-1 min-w-0">
                             <h3 className="font-['Poppins',sans-serif] text-[#2c2c2c] text-[13px] group-hover:text-[#FE8A0F] transition-colors truncate">
-                              {subCategory.name}
+                              {item.name}
                             </h3>
                           </div>
 
@@ -1377,33 +1353,170 @@ export default function SectorPage() {
                   </button>
                 )}
 
-                {/* Main Categories */}
-                {!currentMainCategory && categoriesToShow.length > 0 && (
+                {/* Categories Tree - Show service categories and their subcategories */}
+                {Array.isArray(categoriesToShow) && categoriesToShow.length > 0 && (
                   <div>
                     <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Categories
                     </h3>
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                      {Array.isArray(categoriesToShow) && (categoriesToShow as MainCategory[]).map((mainCat) => {
-                        const isSelected = selectedMainCategories.includes(mainCat.name);
+                    <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
+                      {(categoriesToShow as any[]).map((item) => {
+                        const itemId = item._id || item.id || item.name;
+                        const itemName = item.name;
+                        const isExpanded = expandedCategories.has(itemId);
+                        const hasSubCategories = item.subCategories && item.subCategories.length > 0;
+                        
+                        // Get Level 2 subcategories (direct children)
+                        const level2SubCategories = hasSubCategories
+                          ? item.subCategories.filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory)
+                          : [];
+                        
                         return (
-                          <button
-                            key={mainCat.id || mainCat.name || `category-${(mainCat as any)._id || Math.random()}`}
-                            onClick={() => {
-                              setSelectedMainCategories(prev =>
-                                prev.includes(mainCat.name)
-                                  ? prev.filter(s => s !== mainCat.name)
-                                  : [...prev, mainCat.name]
-                              );
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-lg font-['Poppins',sans-serif] text-[13px] transition-colors ${
-                              isSelected
-                                ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
-                                : "hover:bg-gray-50 text-[#5b5b5b]"
-                            }`}
-                          >
-                            {mainCat.name}
-                          </button>
+                          <div key={itemId} className="space-y-0.5">
+                            {/* Category/Service Category Item */}
+                            <div className="flex items-center gap-2">
+                              {hasSubCategories && level2SubCategories.length > 0 && (
+                                <button
+                                  onClick={() => {
+                                    setExpandedCategories(prev => {
+                                      const newSet = new Set(prev);
+                                      if (newSet.has(itemId)) {
+                                        newSet.delete(itemId);
+                                      } else {
+                                        newSet.add(itemId);
+                                      }
+                                      return newSet;
+                                    });
+                                  }}
+                                  className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                              {!hasSubCategories || level2SubCategories.length === 0 ? (
+                                <div className="w-5" /> // Spacer for alignment
+                              ) : null}
+                              <button
+                                onClick={() => {
+                                  if (currentServiceCategory) {
+                                    // If viewing a service category, select subcategory
+                                    setSelectedSubCategories(prev =>
+                                      prev.includes(itemName)
+                                        ? prev.filter(s => s !== itemName)
+                                        : [...prev, itemName]
+                                    );
+                                  } else {
+                                    // If viewing a sector, select service category
+                                    setSelectedMainCategories(prev =>
+                                      prev.includes(itemName)
+                                        ? prev.filter(s => s !== itemName)
+                                        : [...prev, itemName]
+                                    );
+                                  }
+                                }}
+                                className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                                  (currentServiceCategory && selectedSubCategories.includes(itemName)) ||
+                                  (!currentServiceCategory && selectedMainCategories.includes(itemName))
+                                    ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
+                                    : "hover:bg-gray-50 text-[#5b5b5b]"
+                                }`}
+                              >
+                                {itemName}
+                              </button>
+                            </div>
+                            
+                            {/* Subcategories (nested) */}
+                            {isExpanded && hasSubCategories && level2SubCategories.length > 0 && (
+                              <div className="ml-7 space-y-0.5">
+                                {level2SubCategories.map((subCat: any) => {
+                                  const subCatId = subCat._id || subCat.id || subCat.name;
+                                  const subCatName = subCat.name;
+                                  const isSubExpanded = expandedCategories.has(subCatId);
+                                  const hasNestedSubCategories = subCat.subCategories && subCat.subCategories.length > 0;
+                                  
+                                  return (
+                                    <div key={subCatId} className="space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        {hasNestedSubCategories && (
+                                          <button
+                                            onClick={() => {
+                                              setExpandedCategories(prev => {
+                                                const newSet = new Set(prev);
+                                                if (newSet.has(subCatId)) {
+                                                  newSet.delete(subCatId);
+                                                } else {
+                                                  newSet.add(subCatId);
+                                                }
+                                                return newSet;
+                                              });
+                                            }}
+                                            className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
+                                          >
+                                            {isSubExpanded ? (
+                                              <ChevronDown className="w-4 h-4" />
+                                            ) : (
+                                              <ChevronRight className="w-4 h-4" />
+                                            )}
+                                          </button>
+                                        )}
+                                        {!hasNestedSubCategories ? (
+                                          <div className="w-5" /> // Spacer
+                                        ) : null}
+                                        <button
+                                          onClick={() => {
+                                            setSelectedSubCategories(prev =>
+                                              prev.includes(subCatName)
+                                                ? prev.filter(s => s !== subCatName)
+                                                : [...prev, subCatName]
+                                            );
+                                          }}
+                                          className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
+                                            selectedSubCategories.includes(subCatName)
+                                              ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
+                                              : "hover:bg-gray-50 text-[#5b5b5b]"
+                                          }`}
+                                        >
+                                          {subCatName}
+                                        </button>
+                                      </div>
+                                      
+                                      {/* Nested subcategories (Level 3+) */}
+                                      {isSubExpanded && hasNestedSubCategories && (
+                                        <div className="ml-7 space-y-0.5">
+                                          {subCat.subCategories.map((nestedSubCat: any) => {
+                                            const nestedSubCatName = nestedSubCat.name;
+                                            return (
+                                              <button
+                                                key={nestedSubCat._id || nestedSubCat.id || nestedSubCatName}
+                                                onClick={() => {
+                                                  setSelectedSubCategories(prev =>
+                                                    prev.includes(nestedSubCatName)
+                                                      ? prev.filter(s => s !== nestedSubCatName)
+                                                      : [...prev, nestedSubCatName]
+                                                  );
+                                                }}
+                                                className={`w-full text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
+                                                  selectedSubCategories.includes(nestedSubCatName)
+                                                    ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
+                                                    : "hover:bg-gray-50 text-[#5b5b5b]"
+                                                }`}
+                                              >
+                                                {nestedSubCatName}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -1576,33 +1689,170 @@ export default function SectorPage() {
               </div>
 
               <div className="space-y-6">
-                {/* Main Categories (2nd level - sector page) */}
-                {!currentMainCategory && Array.isArray(categoriesToShow) && categoriesToShow.length > 0 && (
+                {/* Categories Tree - Show service categories and their subcategories */}
+                {Array.isArray(categoriesToShow) && categoriesToShow.length > 0 && (
                   <div>
                     <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Categories
                     </h3>
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                      {(categoriesToShow as MainCategory[]).map((mainCat) => {
-                        const isSelected = selectedMainCategories.includes(mainCat.name);
+                    <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
+                      {(categoriesToShow as any[]).map((item) => {
+                        const itemId = item._id || item.id || item.name;
+                        const itemName = item.name;
+                        const isExpanded = expandedCategories.has(itemId);
+                        const hasSubCategories = item.subCategories && item.subCategories.length > 0;
+                        
+                        // Get Level 2 subcategories (direct children)
+                        const level2SubCategories = hasSubCategories
+                          ? item.subCategories.filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory)
+                          : [];
+                        
                         return (
-                          <button
-                            key={mainCat.id || mainCat.name || `category-${(mainCat as any)._id || Math.random()}`}
-                            onClick={() => {
-                              setSelectedMainCategories(prev =>
-                                prev.includes(mainCat.name)
-                                  ? prev.filter(s => s !== mainCat.name)
-                                  : [...prev, mainCat.name]
-                              );
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-lg font-['Poppins',sans-serif] text-[13px] transition-colors ${
-                              isSelected
-                                ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
-                                : 'text-[#5b5b5b] hover:bg-gray-50'
-                            }`}
-                          >
-                            {mainCat.name}
-                          </button>
+                          <div key={itemId} className="space-y-0.5">
+                            {/* Category/Service Category Item */}
+                            <div className="flex items-center gap-2">
+                              {hasSubCategories && level2SubCategories.length > 0 && (
+                                <button
+                                  onClick={() => {
+                                    setExpandedCategories(prev => {
+                                      const newSet = new Set(prev);
+                                      if (newSet.has(itemId)) {
+                                        newSet.delete(itemId);
+                                      } else {
+                                        newSet.add(itemId);
+                                      }
+                                      return newSet;
+                                    });
+                                  }}
+                                  className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                              {!hasSubCategories || level2SubCategories.length === 0 ? (
+                                <div className="w-5" /> // Spacer for alignment
+                              ) : null}
+                              <button
+                                onClick={() => {
+                                  if (currentServiceCategory) {
+                                    // If viewing a service category, select subcategory
+                                    setSelectedSubCategories(prev =>
+                                      prev.includes(itemName)
+                                        ? prev.filter(s => s !== itemName)
+                                        : [...prev, itemName]
+                                    );
+                                  } else {
+                                    // If viewing a sector, select service category
+                                    setSelectedMainCategories(prev =>
+                                      prev.includes(itemName)
+                                        ? prev.filter(s => s !== itemName)
+                                        : [...prev, itemName]
+                                    );
+                                  }
+                                }}
+                                className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                                  (currentServiceCategory && selectedSubCategories.includes(itemName)) ||
+                                  (!currentServiceCategory && selectedMainCategories.includes(itemName))
+                                    ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
+                                    : 'text-[#5b5b5b] hover:bg-gray-50'
+                                }`}
+                              >
+                                {itemName}
+                              </button>
+                            </div>
+                            
+                            {/* Subcategories (nested) */}
+                            {isExpanded && hasSubCategories && level2SubCategories.length > 0 && (
+                              <div className="ml-7 space-y-0.5">
+                                {level2SubCategories.map((subCat: any) => {
+                                  const subCatId = subCat._id || subCat.id || subCat.name;
+                                  const subCatName = subCat.name;
+                                  const isSubExpanded = expandedCategories.has(subCatId);
+                                  const hasNestedSubCategories = subCat.subCategories && subCat.subCategories.length > 0;
+                                  
+                                  return (
+                                    <div key={subCatId} className="space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        {hasNestedSubCategories && (
+                                          <button
+                                            onClick={() => {
+                                              setExpandedCategories(prev => {
+                                                const newSet = new Set(prev);
+                                                if (newSet.has(subCatId)) {
+                                                  newSet.delete(subCatId);
+                                                } else {
+                                                  newSet.add(subCatId);
+                                                }
+                                                return newSet;
+                                              });
+                                            }}
+                                            className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
+                                          >
+                                            {isSubExpanded ? (
+                                              <ChevronDown className="w-4 h-4" />
+                                            ) : (
+                                              <ChevronRight className="w-4 h-4" />
+                                            )}
+                                          </button>
+                                        )}
+                                        {!hasNestedSubCategories ? (
+                                          <div className="w-5" /> // Spacer
+                                        ) : null}
+                                        <button
+                                          onClick={() => {
+                                            setSelectedSubCategories(prev =>
+                                              prev.includes(subCatName)
+                                                ? prev.filter(s => s !== subCatName)
+                                                : [...prev, subCatName]
+                                            );
+                                          }}
+                                          className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
+                                            selectedSubCategories.includes(subCatName)
+                                              ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
+                                              : 'text-[#5b5b5b] hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          {subCatName}
+                                        </button>
+                                      </div>
+                                      
+                                      {/* Nested subcategories (Level 3+) */}
+                                      {isSubExpanded && hasNestedSubCategories && (
+                                        <div className="ml-7 space-y-0.5">
+                                          {subCat.subCategories.map((nestedSubCat: any) => {
+                                            const nestedSubCatName = nestedSubCat.name;
+                                            return (
+                                              <button
+                                                key={nestedSubCat._id || nestedSubCat.id || nestedSubCatName}
+                                                onClick={() => {
+                                                  setSelectedSubCategories(prev =>
+                                                    prev.includes(nestedSubCatName)
+                                                      ? prev.filter(s => s !== nestedSubCatName)
+                                                      : [...prev, nestedSubCatName]
+                                                  );
+                                                }}
+                                                className={`w-full text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
+                                                  selectedSubCategories.includes(nestedSubCatName)
+                                                    ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
+                                                    : 'text-[#5b5b5b] hover:bg-gray-50'
+                                                }`}
+                                              >
+                                                {nestedSubCatName}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
