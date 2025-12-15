@@ -802,10 +802,29 @@ export default function SectorPage() {
     }
   }, [sector, sectorLoading, serviceCategoryLoading, categoryLoading, serviceCategoriesLoading, nestedSubCategoriesLoading, subCategoryLoading, sectorSlug, serviceCategorySlug, categorySlug, apiCategory, apiServiceCategory, apiSector, currentServiceCategory, navigate]);
 
+  // Helpers to build navigation URLs for categories/subcategories
+  const getSlug = (obj: any) => obj?.slug || nameToSlug(obj?.name || "");
+  const buildSubCategoryUrl = (slugChain: string[]) => {
+    if (sectorSlug && serviceCategorySlug) {
+      return `/sector/${sectorSlug}/${serviceCategorySlug}/${slugChain.join("/")}`;
+    }
+    if (categorySlug) {
+      return `/category/${categorySlug}/${slugChain.join("/")}`;
+    }
+    return "#";
+  };
+  const buildServiceCategoryUrl = (serviceCategorySlugParam: string) => {
+    if (sectorSlug) {
+      return `/sector/${sectorSlug}/${serviceCategorySlugParam}`;
+    }
+    return "#";
+  };
+
   // Recursive component to render subcategory tree
-  const renderSubCategoryTree = useCallback((subCategory: any, depth: number = 0): JSX.Element => {
+  const renderSubCategoryTree = useCallback((subCategory: any, depth: number = 0, parentPath: string[] = []): JSX.Element => {
     const subCatId = subCategory._id || subCategory.id || subCategory.name;
     const subCatName = subCategory.name;
+    const subCatSlug = getSlug(subCategory);
     const isExpanded = expandedCategories.has(subCatId);
     const hasNestedSubCategories = subCategory.subCategories && subCategory.subCategories.length > 0;
     // Calculate indentation: base 7 (1.75rem) + 4 (1rem) per depth level
@@ -841,11 +860,10 @@ export default function SectorPage() {
           ) : null}
           <button
             onClick={() => {
-              setSelectedSubCategories(prev =>
-                prev.includes(subCatName)
-                  ? prev.filter(s => s !== subCatName)
-                  : [...prev, subCatName]
-              );
+              if (subCatSlug) {
+                const url = buildSubCategoryUrl([...parentPath, subCatSlug]);
+                window.open(url, "_blank", "noopener");
+              }
             }}
             className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
               selectedSubCategories.includes(subCatName)
@@ -862,14 +880,14 @@ export default function SectorPage() {
           <div style={{ marginLeft: `${indentPx}px` }}>
             <div className="space-y-0.5">
               {subCategory.subCategories.map((nestedSubCat: any) => 
-                renderSubCategoryTree(nestedSubCat, depth + 1)
+                renderSubCategoryTree(nestedSubCat, depth + 1, [...parentPath, subCatSlug])
               )}
             </div>
           </div>
         )}
       </div>
     );
-  }, [expandedCategories, selectedSubCategories]);
+  }, [expandedCategories, selectedSubCategories, sectorSlug, serviceCategorySlug, categorySlug]);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
@@ -1573,27 +1591,18 @@ export default function SectorPage() {
                               ) : null}
                               <button
                                 onClick={() => {
+                                  const itemSlug = getSlug(item);
+                                  if (!itemSlug) return;
                                   if (currentServiceCategory) {
-                                    // If viewing a service category, select subcategory
-                                    setSelectedSubCategories(prev =>
-                                      prev.includes(itemName)
-                                        ? prev.filter(s => s !== itemName)
-                                        : [...prev, itemName]
-                                    );
-                                  } else {
-                                    // If viewing a sector, select service category
-                                    setSelectedMainCategories(prev =>
-                                      prev.includes(itemName)
-                                        ? prev.filter(s => s !== itemName)
-                                        : [...prev, itemName]
-                                    );
+                                    const url = buildSubCategoryUrl([itemSlug]);
+                                    window.open(url, "_blank", "noopener");
+                                  } else if (sectorSlug) {
+                                    const url = buildServiceCategoryUrl(itemSlug);
+                                    window.open(url, "_blank", "noopener");
                                   }
                                 }}
                                 className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
-                                  (currentServiceCategory && selectedSubCategories.includes(itemName)) ||
-                                  (!currentServiceCategory && selectedMainCategories.includes(itemName))
-                                    ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
-                                    : "hover:bg-gray-50 text-[#5b5b5b]"
+                                  "hover:bg-gray-50 text-[#5b5b5b]"
                                 }`}
                               >
                                 {itemName}
@@ -1603,7 +1612,7 @@ export default function SectorPage() {
                             {/* Subcategories (nested) - Recursive tree */}
                             {isExpanded && hasSubCategories && subCategoriesToShow.length > 0 && (
                               <div className="ml-7 space-y-0.5">
-                                {subCategoriesToShow.map((subCat: any) => renderSubCategoryTree(subCat, 0))}
+                                {subCategoriesToShow.map((subCat: any) => renderSubCategoryTree(subCat, 0, [getSlug(item)]))}
                               </div>
                             )}
                           </div>
@@ -1826,27 +1835,18 @@ export default function SectorPage() {
                               ) : null}
                               <button
                                 onClick={() => {
+                                  const itemSlug = getSlug(item);
+                                  if (!itemSlug) return;
                                   if (currentServiceCategory) {
-                                    // If viewing a service category, select subcategory
-                                    setSelectedSubCategories(prev =>
-                                      prev.includes(itemName)
-                                        ? prev.filter(s => s !== itemName)
-                                        : [...prev, itemName]
-                                    );
-                                  } else {
-                                    // If viewing a sector, select service category
-                                    setSelectedMainCategories(prev =>
-                                      prev.includes(itemName)
-                                        ? prev.filter(s => s !== itemName)
-                                        : [...prev, itemName]
-                                    );
+                                    const url = buildSubCategoryUrl([itemSlug]);
+                                    window.open(url, "_blank", "noopener");
+                                  } else if (sectorSlug) {
+                                    const url = buildServiceCategoryUrl(itemSlug);
+                                    window.open(url, "_blank", "noopener");
                                   }
                                 }}
                                 className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
-                                  (currentServiceCategory && selectedSubCategories.includes(itemName)) ||
-                                  (!currentServiceCategory && selectedMainCategories.includes(itemName))
-                                    ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
-                                    : 'text-[#5b5b5b] hover:bg-gray-50'
+                                  'text-[#5b5b5b] hover:bg-gray-50'
                                 }`}
                               >
                                 {itemName}
@@ -1856,7 +1856,7 @@ export default function SectorPage() {
                             {/* Subcategories (nested) */}
                             {isExpanded && hasSubCategories && subCategoriesToShow.length > 0 && (
                               <div className="ml-7 space-y-0.5">
-                                {subCategoriesToShow.map((subCat: any) => renderSubCategoryTree(subCat, 0))}
+                                {subCategoriesToShow.map((subCat: any) => renderSubCategoryTree(subCat, 0, [getSlug(item)]))}
                               </div>
                             )}
                           </div>
