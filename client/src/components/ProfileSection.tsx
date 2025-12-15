@@ -115,65 +115,51 @@ export default function ProfileSection() {
     true // include subcategories to convert IDs to names
   );
   
-  // Fetch all job categories from all sectors for skills dropdown
+  // Fetch job categories for skills dropdown (filtered to user's sector subcategories)
   const [allJobCategories, setAllJobCategories] = useState<Array<{ id: string; name: string; sector?: string }>>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [skillsPopoverOpen, setSkillsPopoverOpen] = useState(false);
   
+  // Build skills options: only subcategories for the user's selected sector
   useEffect(() => {
-    const fetchAllCategories = async () => {
+    const buildSectorSubCategories = () => {
       try {
         setIsLoadingCategories(true);
-        // Fetch all categories from all sectors (no sectorId filter)
-        const response = await fetch(`${API_BASE_URL}/api/categories?activeOnly=true&includeSubCategories=true&limit=1000&sortBy=name&sortOrder=asc`, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
+        if (!selectedSectorId || availableCategories.length === 0) {
+          setAllJobCategories([]);
+          return;
         }
-        
-        const data = await response.json();
-        const categoriesList: Array<{ id: string; name: string; sector?: string }> = [];
-        
-        // Add all categories and subcategories to the list
-        if (data.categories) {
-          data.categories.forEach((cat: Category & { subCategories?: SubCategory[] }) => {
-            // Add category itself
-            categoriesList.push({
-              id: cat._id,
-              name: cat.name,
-              sector: typeof cat.sector === 'object' ? (cat.sector as Sector).name : undefined,
-            });
-            
-            // Add subcategories
-            if (cat.subCategories && cat.subCategories.length > 0) {
-              cat.subCategories.forEach((subcat: SubCategory) => {
-                categoriesList.push({
-                  id: subcat._id,
-                  name: subcat.name,
-                  sector: typeof cat.sector === 'object' ? (cat.sector as Sector).name : undefined,
-                });
+
+        const subCategoryList: Array<{ id: string; name: string; sector?: string }> = [];
+
+        availableCategories.forEach((cat: Category & { subCategories?: SubCategory[] }) => {
+          if (cat.subCategories && cat.subCategories.length > 0) {
+            cat.subCategories.forEach((subcat: SubCategory) => {
+              subCategoryList.push({
+                id: subcat._id,
+                name: subcat.name,
+                sector: typeof cat.sector === 'object' ? (cat.sector as Sector).name : selectedSectorObj?.name,
               });
-            }
-          });
-        }
-        
+            });
+          }
+        });
+
         // Remove duplicates by name (keep first occurrence)
-        const uniqueCategories = Array.from(
-          new Map(categoriesList.map(item => [item.name.toLowerCase(), item])).values()
+        const uniqueSubCategories = Array.from(
+          new Map(subCategoryList.map(item => [item.name.toLowerCase(), item])).values()
         );
-        
-        setAllJobCategories(uniqueCategories.sort((a, b) => a.name.localeCompare(b.name)));
+
+        setAllJobCategories(uniqueSubCategories.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (error) {
-        console.error('Error fetching all categories:', error);
+        console.error('Error building sector subcategories:', error);
+        setAllJobCategories([]);
       } finally {
         setIsLoadingCategories(false);
       }
     };
-    
-    fetchAllCategories();
-  }, []);
+
+    buildSectorSubCategories();
+  }, [availableCategories, selectedSectorId, selectedSectorObj]);
   
   // Convert service IDs to category/subcategory names
   const convertServiceIdsToNames = (serviceIds: string[]): string[] => {
