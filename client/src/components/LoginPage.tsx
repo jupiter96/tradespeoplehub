@@ -299,9 +299,29 @@ export default function LoginPage() {
       setEmailCodeHint(null);
       setVerificationStep(2);
       setEmailVerificationCode("");
-    } catch (error) {
-      console.error('[Phone Code] Frontend - Email verification failed:', error);
-      setRegisterError(error instanceof Error ? error.message : "Email verification failed");
+    } catch (error: any) {
+      console.error('[Phone Code] Frontend - Email verification failed');
+      console.error('[Phone Code] Frontend - Error object:', error);
+      console.error('[Phone Code] Frontend - Error message:', error?.message);
+      console.error('[Phone Code] Frontend - Twilio error code:', error?.twilioErrorCode);
+      console.error('[Phone Code] Frontend - Twilio error message:', error?.twilioErrorMessage);
+      console.error('[Phone Code] Frontend - Twilio error moreInfo:', error?.twilioErrorMoreInfo);
+      
+      // Extract detailed error message
+      let errorMessage = "Email verification failed";
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Add Twilio error details if available
+      if (error?.twilioErrorCode) {
+        errorMessage += ` (Twilio Error Code: ${error.twilioErrorCode})`;
+      }
+      if (error?.twilioErrorMoreInfo) {
+        errorMessage += ` - ${error.twilioErrorMoreInfo}`;
+      }
+      
+      setRegisterError(errorMessage);
     } finally {
       setIsVerifyingEmail(false);
     }

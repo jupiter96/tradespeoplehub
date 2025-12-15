@@ -185,7 +185,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const data = rawText ? JSON.parse(rawText) : {};
 
     if (!response.ok) {
-      throw new Error(data.error || "Something went wrong");
+      // Create error with detailed Twilio information
+      const error: any = new Error(data.error || "Something went wrong");
+      error.twilioErrorCode = data.twilioErrorCode;
+      error.twilioErrorMessage = data.twilioErrorMessage;
+      error.twilioErrorMoreInfo = data.twilioErrorMoreInfo;
+      throw error;
     }
 
     return data;

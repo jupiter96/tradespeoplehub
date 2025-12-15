@@ -530,65 +530,116 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
 }
 
 export async function sendSmsVerificationCode(to, code) {
+  console.log('[SMS] Step 1: Starting sendSmsVerificationCode function');
+  console.log('[SMS] Step 1.1: Input parameters:', { to: to ? 'provided' : 'missing', code: code ? 'provided' : 'missing' });
+  
   if (!to || !code) {
-    console.warn('[SMS] Missing phone number or code');
+    console.warn('[SMS] Step 1.2: Validation failed - Missing phone number or code');
     throw new Error('Phone number and code are required');
   }
+  console.log('[SMS] Step 1.3: Validation passed');
 
+  console.log('[SMS] Step 2: Logging code for manual verification');
   logCode('sms', to, code);
+  console.log('[SMS] Step 2.1: Code logged successfully');
 
+  console.log('[SMS] Step 3: Checking Twilio client configuration');
   if (!twilioClient) {
-    console.warn('[SMS] Twilio credentials are not configured. Code logged for manual verification.');
-    console.warn('[SMS] Please check that TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set in your .env file');
-    console.warn('[SMS] Current env check:', {
+    console.warn('[SMS] Step 3.1: Twilio credentials are not configured. Code logged for manual verification.');
+    console.warn('[SMS] Step 3.2: Please check that TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set in your .env file');
+    console.warn('[SMS] Step 3.3: Current env check:', {
       TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID ? 'present' : 'missing',
       TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN ? 'present' : 'missing'
     });
     throw new Error('Twilio is not configured');
   }
+  console.log('[SMS] Step 3.4: Twilio client is configured');
 
   try {
-    console.log('[SMS] Attempting to send verification code to:', to);
+    console.log('[SMS] Step 4: Attempting to send verification code to:', to);
     
     // Determine the appropriate sender ID based on the destination country
     // Alphanumeric sender IDs (like 'TRADEPPLHUB') don't work for all countries
     // For US/Canada (+1), we need to use an actual Twilio phone number
+    console.log('[SMS] Step 4.1: Determining sender number');
     let fromNumber = TWILIO_FROM;
+    console.log('[SMS] Step 4.2: Default from number:', fromNumber);
     
     // Check if the destination is US/Canada (+1)
     const isUSCanada = to.trim().startsWith('+1');
+    console.log('[SMS] Step 4.3: Is US/Canada destination?', isUSCanada);
     
     if (isUSCanada && TWILIO_PHONE_NUMBER) {
       fromNumber = TWILIO_PHONE_NUMBER;
-      console.log('[SMS] Using Twilio phone number for US/Canada destination:', fromNumber);
+      console.log('[SMS] Step 4.4: Using Twilio phone number for US/Canada destination:', fromNumber);
     } else if (isUSCanada && !TWILIO_PHONE_NUMBER) {
-      console.warn('[SMS] Warning: US/Canada destination detected but TWILIO_PHONE_NUMBER not configured. Using alphanumeric sender ID may fail.');
+      console.warn('[SMS] Step 4.5: Warning: US/Canada destination detected but TWILIO_PHONE_NUMBER not configured. Using alphanumeric sender ID may fail.');
+    } else {
+      console.log('[SMS] Step 4.6: Using alphanumeric sender ID for non-US/Canada destination');
     }
     
-    console.log('[SMS] Sending with from:', fromNumber, 'to:', to);
+    console.log('[SMS] Step 5: Preparing Twilio API call');
+    console.log('[SMS] Step 5.1: From:', fromNumber, 'To:', to);
+    console.log('[SMS] Step 5.2: Message body will contain verification code');
     
+    console.log('[SMS] Step 6: Calling Twilio API - messages.create()');
     const message = await twilioClient.messages.create({
-    to,
+      to,
       from: fromNumber,
-    body: `Your TradePplHub verification code is ${code}`,
-  });
-    console.log('[SMS] Message sent successfully:', {
+      body: `Your TradePplHub verification code is ${code}`,
+    });
+    
+    console.log('[SMS] Step 7: Twilio API call successful');
+    console.log('[SMS] Step 7.1: Message sent successfully:', {
       sid: message.sid,
       to: message.to,
       from: message.from,
-      status: message.status
+      status: message.status,
+      dateCreated: message.dateCreated,
+      dateUpdated: message.dateUpdated
     });
+    
+    console.log('[SMS] Step 8: Returning success result');
     return { success: true, messageSid: message.sid };
   } catch (error) {
-    console.error('[SMS] Failed to send verification SMS:', error);
-    console.error('[SMS] Error details:', {
+    console.error('[SMS] Step ERROR: Failed to send verification SMS');
+    console.error('[SMS] Step ERROR.1: Error object:', error);
+    console.error('[SMS] Step ERROR.2: Error type:', error.constructor.name);
+    console.error('[SMS] Step ERROR.3: Error message:', error.message);
+    console.error('[SMS] Step ERROR.4: Error code:', error.code);
+    console.error('[SMS] Step ERROR.5: Error status:', error.status);
+    console.error('[SMS] Step ERROR.6: Error moreInfo:', error.moreInfo);
+    console.error('[SMS] Step ERROR.7: Error stack:', error.stack);
+    console.error('[SMS] Step ERROR.8: Full error details:', {
       message: error.message,
       code: error.code,
       status: error.status,
       moreInfo: error.moreInfo,
+      statusCode: error.statusCode,
       to: to,
-      from: TWILIO_FROM
+      from: TWILIO_FROM,
+      twilioErrorCode: error.code,
+      twilioErrorMessage: error.message,
+      twilioErrorMoreInfo: error.moreInfo
     });
+    
+    // Create a detailed error message for the user
+    let userErrorMessage = 'Failed to send SMS verification code. ';
+    if (error.code) {
+      userErrorMessage += `Twilio Error Code: ${error.code}. `;
+    }
+    if (error.message) {
+      userErrorMessage += `Error: ${error.message}. `;
+    }
+    if (error.moreInfo) {
+      userErrorMessage += `Details: ${error.moreInfo}.`;
+    }
+    
+    // Attach user-friendly error message to the error object
+    error.userMessage = userErrorMessage;
+    error.twilioErrorCode = error.code;
+    error.twilioErrorMessage = error.message;
+    error.twilioErrorMoreInfo = error.moreInfo;
     
     throw error;
   }

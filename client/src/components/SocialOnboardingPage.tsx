@@ -172,9 +172,31 @@ export default function SocialOnboardingPage() {
       });
       setPhoneCodeHint(response?.phoneCode || null);
       setShowPhoneVerification(true);
-    } catch (err) {
-      console.error('[Phone Code] Frontend - Social Onboarding - Failed to send phone code:', err);
-      setError(err instanceof Error ? err.message : "Failed to send verification code");
+    } catch (err: any) {
+      console.error('[Phone Code] Frontend - Social Onboarding - Failed to send phone code');
+      console.error('[Phone Code] Frontend - Social Onboarding - Error object:', err);
+      console.error('[Phone Code] Frontend - Social Onboarding - Error message:', err?.message);
+      console.error('[Phone Code] Frontend - Social Onboarding - Twilio error code:', err?.twilioErrorCode);
+      console.error('[Phone Code] Frontend - Social Onboarding - Twilio error message:', err?.twilioErrorMessage);
+      console.error('[Phone Code] Frontend - Social Onboarding - Twilio error moreInfo:', err?.twilioErrorMoreInfo);
+      
+      // Extract detailed error message from response
+      let errorMessage = "Failed to send verification code";
+      if (err?.error) {
+        errorMessage = err.error;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      // Add Twilio error details if available
+      if (err?.twilioErrorCode) {
+        errorMessage += ` (Twilio Error Code: ${err.twilioErrorCode})`;
+      }
+      if (err?.twilioErrorMoreInfo) {
+        errorMessage += ` - ${err.twilioErrorMoreInfo}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSendingPhoneCode(false);
     }

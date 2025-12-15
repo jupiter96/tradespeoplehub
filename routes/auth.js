@@ -824,13 +824,45 @@ router.post('/register/initiate', async (req, res) => {
             await existingPending.save();
             
             try {
+              console.log('[Phone Code] Backend - Existing Registration - Step 1: Preparing to send SMS');
+              console.log('[Phone Code] Backend - Existing Registration - Step 1.1: Phone number:', existingPending.phone);
+              console.log('[Phone Code] Backend - Existing Registration - Step 1.2: SMS code generated:', smsCode);
+              console.log('[Phone Code] Backend - Existing Registration - Step 2: Calling sendSmsVerificationCode');
               await sendSmsVerificationCode(existingPending.phone, smsCode);
+              console.log('[Phone Code] Backend - Existing Registration - Step 3: SMS sent successfully');
             } catch (notificationError) {
-              console.error('Failed to send SMS code', notificationError);
+              console.error('[Phone Code] Backend - Existing Registration - ERROR: Failed to send SMS code');
+              console.error('[Phone Code] Backend - Existing Registration - ERROR.1: Error object:', notificationError);
+              console.error('[Phone Code] Backend - Existing Registration - ERROR.2: Error message:', notificationError.message);
+              console.error('[Phone Code] Backend - Existing Registration - ERROR.3: Twilio error code:', notificationError.code);
+              console.error('[Phone Code] Backend - Existing Registration - ERROR.4: Twilio error status:', notificationError.status);
+              console.error('[Phone Code] Backend - Existing Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+              console.error('[Phone Code] Backend - Existing Registration - ERROR.6: Full error details:', {
+                message: notificationError.message,
+                code: notificationError.code,
+                status: notificationError.status,
+                moreInfo: notificationError.moreInfo,
+                twilioErrorCode: notificationError.twilioErrorCode,
+                twilioErrorMessage: notificationError.twilioErrorMessage,
+                twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+                userMessage: notificationError.userMessage,
+                stack: notificationError.stack
+              });
+              
               if (isProduction) {
-                console.warn('Continuing registration flow despite SMS send failure (production mode)');
+                console.warn('[Phone Code] Backend - Existing Registration - Continuing registration flow despite SMS send failure (production mode)');
               } else {
-                return res.status(502).json({ error: 'Failed to send SMS code' });
+                // Return detailed error message to user
+                const errorMessage = notificationError.userMessage || 
+                  `Failed to send SMS code. ${notificationError.message || 'Unknown error'}. ` +
+                  (notificationError.code ? `Twilio Error Code: ${notificationError.code}. ` : '') +
+                  (notificationError.moreInfo ? `Details: ${notificationError.moreInfo}` : '');
+                return res.status(502).json({ 
+                  error: errorMessage,
+                  twilioErrorCode: notificationError.code,
+                  twilioErrorMessage: notificationError.message,
+                  twilioErrorMoreInfo: notificationError.moreInfo
+                });
               }
             }
             
@@ -1131,26 +1163,54 @@ router.post('/register/verify-email', async (req, res) => {
     console.log('[Phone Code] Backend - Regular Registration - Code hash created');
 
     try {
-      console.log('[Phone Code] Backend - Regular Registration - Sending SMS to:', pendingRegistration.phone);
+      console.log('[Phone Code] Backend - Regular Registration - Step 1: Preparing to send SMS');
+      console.log('[Phone Code] Backend - Regular Registration - Step 1.1: Phone number:', pendingRegistration.phone);
+      console.log('[Phone Code] Backend - Regular Registration - Step 1.2: SMS code generated:', smsCode);
+      console.log('[Phone Code] Backend - Regular Registration - Step 2: Calling sendSmsVerificationCode');
       const smsResult = await sendSmsVerificationCode(pendingRegistration.phone, smsCode);
+      console.log('[Phone Code] Backend - Regular Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
-        console.log('[Phone Code] Backend - Regular Registration - SMS sent successfully:', {
+        console.log('[Phone Code] Backend - Regular Registration - Step 3.1: SMS sent successfully:', {
           messageSid: smsResult.messageSid,
           phone: pendingRegistration.phone
         });
+      } else {
+        console.warn('[Phone Code] Backend - Regular Registration - Step 3.2: SMS function returned but success is false');
       }
     } catch (notificationError) {
-      console.error('[Phone Code] Backend - Regular Registration - Failed to send SMS code:', notificationError);
-      console.error('[Phone Code] Backend - Regular Registration - Error details:', {
+      console.error('[Phone Code] Backend - Regular Registration - ERROR: Failed to send SMS code');
+      console.error('[Phone Code] Backend - Regular Registration - ERROR.1: Error object:', notificationError);
+      console.error('[Phone Code] Backend - Regular Registration - ERROR.2: Error message:', notificationError.message);
+      console.error('[Phone Code] Backend - Regular Registration - ERROR.3: Twilio error code:', notificationError.code);
+      console.error('[Phone Code] Backend - Regular Registration - ERROR.4: Twilio error status:', notificationError.status);
+      console.error('[Phone Code] Backend - Regular Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+      console.error('[Phone Code] Backend - Regular Registration - ERROR.6: Full error details:', {
         message: notificationError.message,
         code: notificationError.code,
-        status: notificationError.status
+        status: notificationError.status,
+        moreInfo: notificationError.moreInfo,
+        twilioErrorCode: notificationError.twilioErrorCode,
+        twilioErrorMessage: notificationError.twilioErrorMessage,
+        twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+        userMessage: notificationError.userMessage,
+        stack: notificationError.stack
       });
+      
       // In production, continue even if SMS sending fails (Twilio may not be configured yet)
       if (isProduction) {
         console.warn('[Phone Code] Backend - Regular Registration - Continuing despite SMS send failure (production mode)');
       } else {
-      return res.status(502).json({ error: 'Failed to send SMS code' });
+        // Return detailed error message to user
+        const errorMessage = notificationError.userMessage || 
+          `Failed to send SMS code. ${notificationError.message || 'Unknown error'}. ` +
+          (notificationError.code ? `Twilio Error Code: ${notificationError.code}. ` : '') +
+          (notificationError.moreInfo ? `Details: ${notificationError.moreInfo}` : '');
+        return res.status(502).json({ 
+          error: errorMessage,
+          twilioErrorCode: notificationError.code,
+          twilioErrorMessage: notificationError.message,
+          twilioErrorMoreInfo: notificationError.moreInfo
+        });
       }
     }
 
@@ -1502,25 +1562,53 @@ router.post('/social/send-phone-code', async (req, res) => {
     console.log('[Phone Code] Backend - Social Registration - Code stored in session');
 
     try {
-      console.log('[Phone Code] Backend - Social Registration - Attempting to send SMS to:', phone.trim());
+      console.log('[Phone Code] Backend - Social Registration - Step 1: Preparing to send SMS');
+      console.log('[Phone Code] Backend - Social Registration - Step 1.1: Phone number:', phone.trim());
+      console.log('[Phone Code] Backend - Social Registration - Step 1.2: SMS code generated:', smsCode);
+      console.log('[Phone Code] Backend - Social Registration - Step 2: Calling sendSmsVerificationCode');
       const smsResult = await sendSmsVerificationCode(phone.trim(), smsCode);
+      console.log('[Phone Code] Backend - Social Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
-        console.log('[Phone Code] Backend - Social Registration - SMS sent successfully:', {
+        console.log('[Phone Code] Backend - Social Registration - Step 3.1: SMS sent successfully:', {
           messageSid: smsResult.messageSid,
           phone: phone.trim()
         });
+      } else {
+        console.warn('[Phone Code] Backend - Social Registration - Step 3.2: SMS function returned but success is false');
       }
     } catch (notificationError) {
-      console.error('[Phone Code] Backend - Social Registration - Failed to send SMS code:', notificationError);
-      console.error('[Phone Code] Backend - Social Registration - Error details:', {
+      console.error('[Phone Code] Backend - Social Registration - ERROR: Failed to send SMS code');
+      console.error('[Phone Code] Backend - Social Registration - ERROR.1: Error object:', notificationError);
+      console.error('[Phone Code] Backend - Social Registration - ERROR.2: Error message:', notificationError.message);
+      console.error('[Phone Code] Backend - Social Registration - ERROR.3: Twilio error code:', notificationError.code);
+      console.error('[Phone Code] Backend - Social Registration - ERROR.4: Twilio error status:', notificationError.status);
+      console.error('[Phone Code] Backend - Social Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+      console.error('[Phone Code] Backend - Social Registration - ERROR.6: Full error details:', {
         message: notificationError.message,
         code: notificationError.code,
-        status: notificationError.status
+        status: notificationError.status,
+        moreInfo: notificationError.moreInfo,
+        twilioErrorCode: notificationError.twilioErrorCode,
+        twilioErrorMessage: notificationError.twilioErrorMessage,
+        twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+        userMessage: notificationError.userMessage,
+        stack: notificationError.stack
       });
+      
       if (isProduction) {
         console.warn('[Phone Code] Backend - Social Registration - Continuing despite SMS send failure (production mode)');
       } else {
-        return res.status(502).json({ error: 'Failed to send SMS code' });
+        // Return detailed error message to user
+        const errorMessage = notificationError.userMessage || 
+          `Failed to send SMS code. ${notificationError.message || 'Unknown error'}. ` +
+          (notificationError.code ? `Twilio Error Code: ${notificationError.code}. ` : '') +
+          (notificationError.moreInfo ? `Details: ${notificationError.moreInfo}` : '');
+        return res.status(502).json({ 
+          error: errorMessage,
+          twilioErrorCode: notificationError.code,
+          twilioErrorMessage: notificationError.message,
+          twilioErrorMoreInfo: notificationError.moreInfo
+        });
       }
     }
 
@@ -2075,15 +2163,46 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
     console.log('[Phone Verification] Profile Change - OTP generated and stored in session');
 
     try {
+      console.log('[Phone Verification] Profile Change - Step 1: Preparing to send SMS OTP');
+      console.log('[Phone Verification] Profile Change - Step 1.1: Phone number:', normalizedPhone);
+      console.log('[Phone Verification] Profile Change - Step 1.2: OTP code generated:', otpCode);
+      console.log('[Phone Verification] Profile Change - Step 2: Calling sendSmsVerificationCode');
       await sendSmsVerificationCode(normalizedPhone, otpCode);
-      console.log('[Phone Verification] Profile Change - SMS sent successfully to:', normalizedPhone);
+      console.log('[Phone Verification] Profile Change - Step 3: SMS sent successfully to:', normalizedPhone);
     } catch (notificationError) {
-      console.error('[Phone Verification] Profile Change - Failed to send SMS OTP:', notificationError);
+      console.error('[Phone Verification] Profile Change - ERROR: Failed to send SMS OTP');
+      console.error('[Phone Verification] Profile Change - ERROR.1: Error object:', notificationError);
+      console.error('[Phone Verification] Profile Change - ERROR.2: Error message:', notificationError.message);
+      console.error('[Phone Verification] Profile Change - ERROR.3: Twilio error code:', notificationError.code);
+      console.error('[Phone Verification] Profile Change - ERROR.4: Twilio error status:', notificationError.status);
+      console.error('[Phone Verification] Profile Change - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+      console.error('[Phone Verification] Profile Change - ERROR.6: Full error details:', {
+        message: notificationError.message,
+        code: notificationError.code,
+        status: notificationError.status,
+        moreInfo: notificationError.moreInfo,
+        twilioErrorCode: notificationError.twilioErrorCode,
+        twilioErrorMessage: notificationError.twilioErrorMessage,
+        twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+        userMessage: notificationError.userMessage,
+        stack: notificationError.stack
+      });
+      
       if (isProduction) {
         console.warn('[Phone Verification] Profile Change - Continuing despite SMS send failure (production mode)');
       } else {
         delete req.session[phoneChangeOTPKey];
-        return res.status(502).json({ error: 'Failed to send verification SMS' });
+        // Return detailed error message to user
+        const errorMessage = notificationError.userMessage || 
+          `Failed to send verification SMS. ${notificationError.message || 'Unknown error'}. ` +
+          (notificationError.code ? `Twilio Error Code: ${notificationError.code}. ` : '') +
+          (notificationError.moreInfo ? `Details: ${notificationError.moreInfo}` : '');
+        return res.status(502).json({ 
+          error: errorMessage,
+          twilioErrorCode: notificationError.code,
+          twilioErrorMessage: notificationError.message,
+          twilioErrorMoreInfo: notificationError.moreInfo
+        });
       }
     }
 

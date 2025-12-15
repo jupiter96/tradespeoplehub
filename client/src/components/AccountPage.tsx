@@ -2283,9 +2283,29 @@ function DetailsSection() {
                           setPhoneOTPHint(null);
                         }
                         toast.success("Verification code sent to your phone number");
-                      } catch (error) {
-                        console.error('[Phone Verification] AccountPage - Failed to send phone change OTP:', error);
-                        toast.error(error instanceof Error ? error.message : "Failed to send verification code");
+                      } catch (error: any) {
+                        console.error('[Phone Verification] AccountPage - Failed to send phone change OTP');
+                        console.error('[Phone Verification] AccountPage - Error object:', error);
+                        console.error('[Phone Verification] AccountPage - Error message:', error?.message);
+                        console.error('[Phone Verification] AccountPage - Twilio error code:', error?.twilioErrorCode);
+                        console.error('[Phone Verification] AccountPage - Twilio error message:', error?.twilioErrorMessage);
+                        console.error('[Phone Verification] AccountPage - Twilio error moreInfo:', error?.twilioErrorMoreInfo);
+                        
+                        // Extract detailed error message
+                        let errorMessage = "Failed to send verification code";
+                        if (error?.message) {
+                          errorMessage = error.message;
+                        }
+                        
+                        // Add Twilio error details if available
+                        if (error?.twilioErrorCode) {
+                          errorMessage += ` (Twilio Error Code: ${error.twilioErrorCode})`;
+                        }
+                        if (error?.twilioErrorMoreInfo) {
+                          errorMessage += ` - ${error.twilioErrorMoreInfo}`;
+                        }
+                        
+                        toast.error(errorMessage);
                       } finally {
                         setIsSendingPhoneOTP(false);
                       }
