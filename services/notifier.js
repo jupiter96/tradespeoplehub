@@ -586,7 +586,7 @@ export async function sendSmsVerificationCode(to, code) {
     const message = await twilioClient.messages.create({
       to,
       from: fromNumber,
-      body: `Your TradePplHub verification code is ${code}`,
+      body: `Your SORTARS verification code is ${code}`,
     });
     
     console.log('[SMS] Step 7: Twilio API call successful');
@@ -660,7 +660,7 @@ export async function sendPasswordResetEmail(to, resetUrl) {
   await mailTransporter.sendMail({
     from: SMTP_USER,
     to,
-    subject: 'Reset your TradePplHub password',
+    subject: 'Reset your SORTARS password',
     text: `You requested to reset your password. Click the link to continue: ${resetUrl}`,
     html: `
       <p>You requested to reset your password.</p>
