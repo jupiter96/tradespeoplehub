@@ -242,7 +242,7 @@ const createSubCategoriesForLevel = async (serviceCategory, parentSubCategories,
   const created = [];
   const serviceCategoryName = serviceCategory.name;
   const serviceCategoryId = serviceCategory._id;
-
+  
   // Determine how many subcategories to create per parent
   const countPerParent = Math.floor(Math.random() * 3) + 2; // 2-4 subcategories per parent
 
@@ -262,7 +262,7 @@ const createSubCategoriesForLevel = async (serviceCategory, parentSubCategories,
       .lean();
     const maxOrder = maxOrderResult?.order || 0;
 
-    for (let i = 0; i < selectedNames.length; i++) {
+  for (let i = 0; i < selectedNames.length; i++) {
       const name = selectedNames[i];
       const order = maxOrder + i + 1;
 
@@ -359,7 +359,7 @@ const createLevel2SubCategories = async (serviceCategory) => {
       console.log(`    ⚠️  Sub Category "${name}" (Level 2) already exists, skipping...`);
       continue;
     }
-    
+
     // Create Level 2 subcategory (no parentSubCategory, no attributeType, categoryLevel=2)
     const subCategoryData = generateServiceSubCategoryData(
       name,
@@ -372,12 +372,12 @@ const createLevel2SubCategories = async (serviceCategory) => {
       serviceCategoryName,
       ''
     );
-    
+
     const subCategory = await ServiceSubCategory.create(subCategoryData);
     created.push(subCategory);
     console.log(`    ✅ Created Level 2 Sub Category: ${name} (Order: ${order})`);
   }
-  
+
   return created;
 };
 

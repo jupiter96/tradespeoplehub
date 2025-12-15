@@ -98,7 +98,7 @@ router.get('/', async (req, res) => {
             query.attributeType = attributeType;
           }
         }
-      } else {
+    } else {
         // Fallback: filter by service category only (for backward compatibility)
         query.serviceCategory = serviceCategoryId;
         query.parentSubCategory = null;
@@ -117,8 +117,8 @@ router.get('/', async (req, res) => {
         if (attributeType) {
           query.attributeType = attributeType;
         }
-      }
-    } else if (serviceCategorySlug) {
+        }
+      } else if (serviceCategorySlug) {
         const serviceCategory = await ServiceCategory.findOne({ slug: serviceCategorySlug });
         if (!serviceCategory) {
           return res.status(404).json({ error: 'Service category not found' });
@@ -140,7 +140,7 @@ router.get('/', async (req, res) => {
         // Filter by attributeType for level 3+ subcategories (Service Type, Size, etc. tabs)
         if (attributeType) {
           query.attributeType = attributeType;
-        }
+      }
     }
     
     // Filter by active status

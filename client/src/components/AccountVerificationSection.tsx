@@ -108,69 +108,69 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
   // Build verification items from API data
   const verificationItems: VerificationItem[] = useMemo(() => {
     const allItems: VerificationItem[] = [
-      {
-        id: "email",
-        title: "Email Address",
-        description: "Verify your email address to receive important notifications",
-        icon: Mail,
-        status: (verificationData?.email?.status as VerificationItem["status"]) || (userInfo?.email ? "verified" : "not-started"),
-        type: "input",
-        value: userInfo?.email,
-      },
-      {
-        id: "phone",
-        title: "Phone Number",
-        description: "Add and verify your phone number for account security",
-        icon: Phone,
-        status: (verificationData?.phone?.status as VerificationItem["status"]) || (userInfo?.phone ? "verified" : "not-started"),
-        type: "input",
-        value: userInfo?.phone,
-      },
-      {
-        id: "address",
-        title: "Address Verification",
-        description: "Upload a bill statement or bank statement to verify your address",
-        icon: MapPin,
-        status: (verificationData?.address?.status as VerificationItem["status"]) || "not-started",
-        type: "upload",
-        documentUrl: verificationData?.address?.documentUrl,
-        documentName: verificationData?.address?.documentName,
-        rejectionReason: verificationData?.address?.rejectionReason,
-      },
-      {
-        id: "payment",
-        title: "Payment Method",
-        description: "Verify your bank account to receive earnings",
-        icon: CreditCard,
-        status: (verificationData?.paymentMethod?.status as VerificationItem["status"]) || "not-started",
-        type: "upload",
-        documentUrl: verificationData?.paymentMethod?.documentUrl,
-        documentName: verificationData?.paymentMethod?.documentName,
-        rejectionReason: verificationData?.paymentMethod?.rejectionReason,
-      },
-      {
-        id: "id-card",
-        title: "ID Verification",
-        description: "Upload a government-issued ID card or passport",
-        icon: FileText,
-        status: (verificationData?.idCard?.status as VerificationItem["status"]) || "not-started",
-        type: "upload",
-        documentUrl: verificationData?.idCard?.documentUrl,
-        documentName: verificationData?.idCard?.documentName,
-        rejectionReason: verificationData?.idCard?.rejectionReason,
-      },
-      {
-        id: "public-liability",
-        title: "Public Liability Insurance",
-        description: "Upload proof of public liability insurance coverage",
-        icon: Shield,
-        status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || "not-started",
-        type: "upload",
-        documentUrl: verificationData?.publicLiabilityInsurance?.documentUrl,
-        documentName: verificationData?.publicLiabilityInsurance?.documentName,
-        rejectionReason: verificationData?.publicLiabilityInsurance?.rejectionReason,
-      },
-    ];
+    {
+      id: "email",
+      title: "Email Address",
+      description: "Verify your email address to receive important notifications",
+      icon: Mail,
+      status: (verificationData?.email?.status as VerificationItem["status"]) || (userInfo?.email ? "verified" : "not-started"),
+      type: "input",
+      value: userInfo?.email,
+    },
+    {
+      id: "phone",
+      title: "Phone Number",
+      description: "Add and verify your phone number for account security",
+      icon: Phone,
+      status: (verificationData?.phone?.status as VerificationItem["status"]) || (userInfo?.phone ? "verified" : "not-started"),
+      type: "input",
+      value: userInfo?.phone,
+    },
+    {
+      id: "address",
+      title: "Address Verification",
+      description: "Upload a bill statement or bank statement to verify your address",
+      icon: MapPin,
+      status: (verificationData?.address?.status as VerificationItem["status"]) || "not-started",
+      type: "upload",
+      documentUrl: verificationData?.address?.documentUrl,
+      documentName: verificationData?.address?.documentName,
+      rejectionReason: verificationData?.address?.rejectionReason,
+    },
+    {
+      id: "payment",
+      title: "Payment Method",
+      description: "Verify your bank account to receive earnings",
+      icon: CreditCard,
+      status: (verificationData?.paymentMethod?.status as VerificationItem["status"]) || "not-started",
+      type: "upload",
+      documentUrl: verificationData?.paymentMethod?.documentUrl,
+      documentName: verificationData?.paymentMethod?.documentName,
+      rejectionReason: verificationData?.paymentMethod?.rejectionReason,
+    },
+    {
+      id: "id-card",
+      title: "ID Verification",
+      description: "Upload a government-issued ID card or passport",
+      icon: FileText,
+      status: (verificationData?.idCard?.status as VerificationItem["status"]) || "not-started",
+      type: "upload",
+      documentUrl: verificationData?.idCard?.documentUrl,
+      documentName: verificationData?.idCard?.documentName,
+      rejectionReason: verificationData?.idCard?.rejectionReason,
+    },
+    {
+      id: "public-liability",
+      title: "Public Liability Insurance",
+      description: "Upload proof of public liability insurance coverage",
+      icon: Shield,
+      status: (verificationData?.publicLiabilityInsurance?.status as VerificationItem["status"]) || "not-started",
+      type: "upload",
+      documentUrl: verificationData?.publicLiabilityInsurance?.documentUrl,
+      documentName: verificationData?.publicLiabilityInsurance?.documentName,
+      rejectionReason: verificationData?.publicLiabilityInsurance?.rejectionReason,
+    },
+  ];
 
     // Always show all items (don't filter out insurance)
     return allItems;
@@ -1065,21 +1065,21 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                     placeholder="7XXX XXXXXX"
                   />
                 ) : (
-                  <div>
-                    <Label htmlFor={currentItem?.id} className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                      {currentItem?.title}
-                    </Label>
-                    <Input
-                      id={currentItem?.id}
+                <div>
+                  <Label htmlFor={currentItem?.id} className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                    {currentItem?.title}
+                  </Label>
+                  <Input
+                    id={currentItem?.id}
                       type="email"
                       placeholder="your.email@gmail.com"
-                      value={formData[currentItem?.id as keyof typeof formData] || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, [currentItem?.id || ""]: e.target.value })
-                      }
-                      className="font-['Poppins',sans-serif]"
-                    />
-                  </div>
+                    value={formData[currentItem?.id as keyof typeof formData] || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, [currentItem?.id || ""]: e.target.value })
+                    }
+                    className="font-['Poppins',sans-serif]"
+                  />
+                </div>
                 )}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">

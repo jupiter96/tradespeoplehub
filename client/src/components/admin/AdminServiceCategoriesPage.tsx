@@ -1049,7 +1049,7 @@ export default function AdminServiceCategoriesPage() {
     setSubCategoryPage(1);
     setSubCategorySearchTerm("");
     // Set Level 2 (Sub Category) as the first tab (selectedAttributeType = null)
-    setSelectedAttributeType(null);
+      setSelectedAttributeType(null);
     fetchServiceSubCategories(serviceCategory._id, undefined);
   };
 
@@ -1146,9 +1146,9 @@ export default function AdminServiceCategoriesPage() {
       const targetLevel = parentLevel + 1;
       
       if (targetLevel > 7) {
-        toast.error("Maximum nesting level (7) reached");
-        return;
-      }
+      toast.error("Maximum nesting level (7) reached");
+      return;
+    }
       
       // For nested subcategories, determine attributeType based on parent's level
       // Find the next level's attributeType from categoryLevelMapping
@@ -1172,27 +1172,27 @@ export default function AdminServiceCategoriesPage() {
         attributeType = undefined;
       }
       
-      setSubCategoryFormData({
-        serviceCategory: selectedServiceCategory._id,
+    setSubCategoryFormData({
+      serviceCategory: selectedServiceCategory._id,
         parentSubCategory: selectedParentSubCategory._id, // Set parent automatically
-        name: "",
-        slug: "",
-        description: "",
-        metaTitle: "",
-        metaDescription: "",
-        bannerImage: "",
-        icon: "",
-        order: serviceSubCategories.length > 0 
-          ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
-          : 1,
+      name: "",
+      slug: "",
+      description: "",
+      metaTitle: "",
+      metaDescription: "",
+      bannerImage: "",
+      icon: "",
+      order: serviceSubCategories.length > 0 
+        ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
+        : 1,
         level: targetLevel,
-        isActive: true,
+      isActive: true,
         attributeType: attributeType,
         categoryLevel: categoryLevel,
-      });
-      setEditingServiceSubCategory(null);
-      setSubCategoryIconPreview(null);
-      setSubCategoryBannerPreview(null);
+    });
+    setEditingServiceSubCategory(null);
+    setSubCategoryIconPreview(null);
+    setSubCategoryBannerPreview(null);
       setIsSubCategoryModalOpen(true);
       return;
     }
@@ -1369,7 +1369,7 @@ export default function AdminServiceCategoriesPage() {
             );
             if (nextMapping) {
               payload.attributeType = nextMapping.attributeType;
-            } else {
+      } else {
               // If no mapping found, keep the one from formData or set to null
               payload.attributeType = subCategoryFormData.attributeType || null;
             }
@@ -1412,7 +1412,7 @@ export default function AdminServiceCategoriesPage() {
         // Force a refresh with the current tab's filter
         // Use a small delay to ensure state updates are processed
         setTimeout(() => {
-          if (selectedParentSubCategory) {
+        if (selectedParentSubCategory) {
             // For nested subcategories, fetch by parent with explicit level and attributeType
             const parentLevel = selectedParentSubCategory.level || 1;
             const childLevel = parentLevel + 1;
@@ -1426,11 +1426,11 @@ export default function AdminServiceCategoriesPage() {
               }
             }
             fetchServiceSubCategories(undefined, selectedParentSubCategory._id, childLevel, childAttributeType);
-          } else if (selectedServiceCategory) {
+        } else if (selectedServiceCategory) {
             // For top-level subcategories, fetch with current tab's filter
             // fetchServiceSubCategories will use the current selectedAttributeType from closure
-            fetchServiceSubCategories(selectedServiceCategory._id, undefined);
-          }
+          fetchServiceSubCategories(selectedServiceCategory._id, undefined);
+        }
         }, 50);
       } else {
         const error = await response.json();
@@ -1740,17 +1740,17 @@ export default function AdminServiceCategoriesPage() {
           }
         } else {
           // If no sector selected, just refresh the list
-          setPage(1);
-          setSortBy("order");
-          setSortOrder("desc");
-        }
+        setPage(1);
+        setSortBy("order");
+        setSortOrder("desc");
+      }
       } else {
         // Editing existing category - just refresh the list
-        if (selectedSectorId) {
-          // Small delay to ensure state updates and database is updated
-          setTimeout(() => {
-            fetchServiceCategories(selectedSectorId);
-          }, 100);
+      if (selectedSectorId) {
+        // Small delay to ensure state updates and database is updated
+        setTimeout(() => {
+          fetchServiceCategories(selectedSectorId);
+        }, 100);
         }
       }
     } catch (error: any) {
@@ -3357,7 +3357,7 @@ export default function AdminServiceCategoriesPage() {
                 }
                 
                 return (
-                  <div>
+              <div>
                     <Label className="text-black dark:text-white">
                       Parent Category {subCategoryFormData.level >= 3 && subCategoryFormData.level <= 7 && <span className="text-red-500">*</span>}
                     </Label>
@@ -3388,12 +3388,12 @@ export default function AdminServiceCategoriesPage() {
                 return (
                   <div>
                     <Label className="text-black dark:text-white">Parent Category</Label>
-                    <Input
-                      value={selectedParentSubCategory.name}
-                      disabled
-                      className="mt-1 bg-gray-100 dark:bg-gray-800"
-                    />
-                  </div>
+                <Input
+                  value={selectedParentSubCategory.name}
+                  disabled
+                  className="mt-1 bg-gray-100 dark:bg-gray-800"
+                />
+              </div>
                 );
               }
               

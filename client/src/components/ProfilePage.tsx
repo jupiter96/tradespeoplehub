@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useParams } from "react-router";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
+import defaultCoverImage from "../assets/6bbce490789ed9401b274940c0210ca96c857be3.png";
 import { 
   Star, 
   MapPin, 
@@ -270,10 +271,16 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F] mx-auto mb-4" />
-          <p className="text-gray-600">Loading profile...</p>
+      <div className="min-h-screen bg-[#f0f0f0] relative">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
+        </header>
+        {/* Loading overlay with transparent blur */}
+        <div className="fixed inset-0 bg-transparent backdrop-blur-md z-[100] flex items-center justify-center">
+          <div className="text-center bg-white/90 rounded-2xl px-8 py-6 shadow-lg">
+            <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F] mx-auto mb-4" />
+            <p className="text-gray-600">Loading profile...</p>
+          </div>
         </div>
       </div>
     );
@@ -378,15 +385,26 @@ export default function ProfilePage() {
     ? "(1 review)" 
     : `(${reviewCount} reviews)`;
 
+  const coverImageUrl = (profile.publicProfile as any)?.coverImage || defaultCoverImage;
+
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-4 md:px-6 py-8 mt-[50px] md:mt-0">
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-8 mb-6">
+      {/* Cover Image Banner - Full Width Hero Section */}
+      <div className="w-full h-[264px] md:h-[360px] relative overflow-visible">
+        <img
+          src={coverImageUrl}
+          alt={`${displayName} cover`}
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Profile Header - Overlapping the banner */}
+        <div className="absolute bottom-0 left-0 right-0 z-10">
+          <div className="max-w-[1400px] mx-auto px-4 md:px-6">
+            <div className="bg-white rounded-2xl shadow-sm p-4 md:p-8 mb-6">
           {/* Mobile Layout - 3 Columns */}
           <div className="flex md:hidden gap-3 items-start">
             {/* First Column: Avatar - 30% */}
@@ -537,9 +555,13 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
-
+            </div>
+          </div>
         </div>
+      </div>
 
+      {/* Information Sections */}
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-8 pt-[180px] md:pt-[200px]">
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Tabs Content */}
@@ -886,7 +908,7 @@ export default function ProfilePage() {
             </Card>
           </div>
         </div>
-      </main>
+      </div>
 
       <Footer />
       {!isBlocked && (

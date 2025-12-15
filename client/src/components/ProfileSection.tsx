@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAccount } from "./AccountContext";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
+import defaultCoverImage from "../assets/6bbce490789ed9401b274940c0210ca96c857be3.png";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -78,7 +79,10 @@ export default function ProfileSection() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const coverFileInputRef = React.useRef<HTMLInputElement>(null);
   const displayNameRef = React.useRef<HTMLHeadingElement>(null);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [isUploadingCoverImage, setIsUploadingCoverImage] = useState(false);
   const [newPortfolioItem, setNewPortfolioItem] = useState({
     image: "",
     title: "",
@@ -291,6 +295,7 @@ export default function ProfileSection() {
       setBio(userInfo.publicProfile?.bio || userInfo.aboutService || "");
       setPortfolio(userInfo.publicProfile?.portfolio || []);
       setIsPublic(userInfo.publicProfile?.isPublic !== false);
+      setCoverImage((userInfo.publicProfile as any)?.coverImage || null);
       // Convert service IDs to names for display
       // Re-convert whenever availableCategories changes
       const serviceNames = userInfo.services && availableCategories.length > 0
@@ -381,6 +386,7 @@ export default function ProfileSection() {
           qualifications: qualifications.filter(q => q.trim()).join('\n'),
           certifications,
           companyDetails,
+          coverImage: coverImage || (userInfo?.publicProfile as any)?.coverImage || undefined,
         },
       };
 
@@ -609,6 +615,7 @@ export default function ProfileSection() {
   };
 
   const fullProfileUrl = userInfo?.id ? `${window.location.origin}/profile/${userInfo.id}` : "";
+  const currentCoverImage = coverImage || (userInfo?.publicProfile as any)?.coverImage || defaultCoverImage;
 
   return (
     <div className="space-y-6">
@@ -656,6 +663,7 @@ export default function ProfileSection() {
                   }
                   setCertifications((userInfo?.publicProfile as any)?.certifications || "");
                   setCompanyDetails((userInfo?.publicProfile as any)?.companyDetails || "");
+                  setCoverImage((userInfo?.publicProfile as any)?.coverImage || null);
                   if (userInfo?.insuranceExpiryDate) {
                     const date = new Date(userInfo.insuranceExpiryDate);
                     setInsuranceExpiryDate(date.toISOString().split('T')[0]);
@@ -727,6 +735,80 @@ export default function ProfileSection() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Cover Image Section */}
+      <div className="bg-white dark:bg-black rounded-XL border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,0,0,0.1)]">
+        <Label className="text-[#FE8A0F] font-semibold mb-4 block">Profile Cover Image</Label>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          This image appears as a large banner at the top of your public profile. Recommended size: 1600×400px.
+        </p>
+        <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-[#FFE5C4] via-[#FFF5EB] to-[#E0F7FA] flex items-center justify-center">
+          {currentCoverImage ? (
+            <img
+              src={currentCoverImage}
+              alt="Profile cover"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="text-center text-gray-500">
+              <p className="font-['Poppins',sans-serif] text-sm md:text-base">
+                No cover image selected
+              </p>
+              <p className="text-xs md:text-sm">Upload an image to make your profile stand out</p>
+            </div>
+          )}
+        </div>
+        {isEditing && (
+          <div className="flex flex-col sm:flex-row gap-3 mt-4 items-start sm:items-center">
+            <input
+              ref={coverFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                // Basic validation
+                const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                  toast.error("Please upload an image file (JPG, PNG, GIF, WEBP).");
+                  event.target.value = "";
+                  return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                  toast.error("Image size should be less than 5MB.");
+                  event.target.value = "";
+                  return;
+                }
+                setIsUploadingCoverImage(true);
+                try {
+                  const uploadedUrl = await handlePortfolioImageUpload(file);
+                  if (uploadedUrl) {
+                    setCoverImage(uploadedUrl);
+                    toast.success("Cover image updated");
+                  }
+                } finally {
+                  setIsUploadingCoverImage(false);
+                  if (coverFileInputRef.current) {
+                    coverFileInputRef.current.value = "";
+                  }
+                }
+              }}
+            />
+            <Button
+              type="button"
+              onClick={() => coverFileInputRef.current?.click()}
+              disabled={isUploadingCoverImage}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white disabled:opacity-70"
+            >
+              {isUploadingCoverImage ? "Uploading..." : currentCoverImage ? "Change Cover Image" : "Upload Cover Image"}
+            </Button>
+            <p className="text-xs text-gray-500">
+              Use a wide, high-quality image for the best appearance.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Avatar Section */}

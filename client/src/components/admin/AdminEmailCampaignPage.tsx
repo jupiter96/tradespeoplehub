@@ -539,16 +539,16 @@ export default function AdminEmailCampaignPage() {
           ) : (
             <div className="space-y-2">
               {globalSmtpConfig.smtpHost ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-black dark:text-white">Host:</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpHost}</span>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-black dark:text-white">Port:</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpPort}</span>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm font-medium text-black dark:text-white">Host:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpHost}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-black dark:text-white">Port:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpPort}</span>
+                    </div>
+                    </div>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   No global SMTP configuration. Click "Configure" to set up.
@@ -680,10 +680,10 @@ export default function AdminEmailCampaignPage() {
             <div className="space-y-2">
               {smtpSettings.smtpUser ? (
                 <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-black dark:text-white">SMTP User:</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{smtpSettings.smtpUser}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-black dark:text-white">SMTP User:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{smtpSettings.smtpUser}</span>
+                </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-black dark:text-white">SMTP Password:</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">••••••••</span>

@@ -24,7 +24,7 @@ type MainCategory = {
 };
 import { 
   ChevronLeft, 
-  ChevronRight,
+  ChevronRight, 
   ChevronDown, 
   Star, 
   MapPin, 
@@ -448,8 +448,8 @@ export default function SectorPage() {
   const [subCategoriesWithNested, setSubCategoriesWithNested] = useState<any[]>([]);
   const [nestedSubCategoriesLoading, setNestedSubCategoriesLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
-  const retryDelay = 2000; // 2 seconds
+  const maxRetries = 2; // Reduced from 3 to 2
+  const retryDelay = 1000; // Reduced from 2000ms to 1000ms (1 second)
   
   // Fetch service categories for the sector
   const { serviceCategories: apiServiceCategories, loading: serviceCategoriesLoading } = useServiceCategories(
@@ -538,12 +538,12 @@ export default function SectorPage() {
           if (foundSubCategory) {
             // Recursively fetch all nested subcategories
             const fetchAllSubCategories = async (parentId: string): Promise<any[]> => {
-              const response = await fetch(
+            const response = await fetch(
                 resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${parentId}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
-                { credentials: 'include' }
-              );
-              if (response.ok) {
-                const data = await response.json();
+              { credentials: 'include' }
+            );
+            if (response.ok) {
+              const data = await response.json();
                 const subCategories = data.serviceSubCategories || [];
                 // Recursively fetch subcategories for each subcategory
                 const subCategoriesWithNested = await Promise.all(
@@ -561,10 +561,10 @@ export default function SectorPage() {
             };
             
             const allSubCategories = await fetchAllSubCategories(foundSubCategory._id);
-            setCurrentServiceSubCategoryData({
-              ...foundSubCategory,
+              setCurrentServiceSubCategoryData({
+                ...foundSubCategory,
               subCategories: allSubCategories
-            });
+              });
           } else {
             setCurrentServiceSubCategoryData(null);
           }
@@ -791,7 +791,7 @@ export default function SectorPage() {
     if (!sectorLoading && !serviceCategoryLoading && !categoryLoading && !serviceCategoriesLoading && !nestedSubCategoriesLoading && !subCategoryLoading) {
       if (sectorSlug && !sector && !apiSector) {
         // If API didn't find it, redirect
-        navigate("/all-categories");
+          navigate("/all-categories");
       } else if (serviceCategorySlug && !currentServiceCategory && !apiServiceCategory) {
         // For service category pages, if no category found, redirect
         navigate(sectorSlug ? `/sector/${sectorSlug}` : "/all-categories");
@@ -862,7 +862,7 @@ export default function SectorPage() {
             onClick={() => {
               if (subCatSlug) {
                 const url = buildSubCategoryUrl([...parentPath, subCatSlug]);
-                window.open(url, "_blank", "noopener");
+                navigate(url);
               }
             }}
             className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
@@ -887,7 +887,7 @@ export default function SectorPage() {
         )}
       </div>
     );
-  }, [expandedCategories, selectedSubCategories, sectorSlug, serviceCategorySlug, categorySlug]);
+  }, [expandedCategories, selectedSubCategories, sectorSlug, serviceCategorySlug, categorySlug, navigate]);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
@@ -1053,8 +1053,8 @@ export default function SectorPage() {
     (serviceCategoryLoading && serviceCategorySlug) || 
     (categoryLoading && categorySlug) || 
     (serviceCategoriesLoading && sectorSlug && !serviceCategorySlug) ||
-    (subCategoryLoading && currentSubCategorySlug) ||
-    (nestedSubCategoriesLoading && serviceCategorySlug);
+    (subCategoryLoading && currentSubCategorySlug);
+    // Removed nestedSubCategoriesLoading from blocking render - load in background
   
   // Check if we have the minimum required data to render
   const hasRequiredData = 
@@ -1070,9 +1070,9 @@ export default function SectorPage() {
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
           <Nav />
         </header>
-        {/* Full screen loading overlay with blur */}
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-md z-[100] flex items-center justify-center">
-          <div className="text-center">
+        {/* Full screen loading overlay with transparent blur */}
+        <div className="fixed inset-0 bg-transparent backdrop-blur-md z-[100] flex items-center justify-center">
+          <div className="text-center bg-white/90 rounded-2xl px-8 py-6 shadow-lg">
             <div className="w-12 h-12 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
               Loading page data...
@@ -1559,8 +1559,8 @@ export default function SectorPage() {
                             {/* Category/Service Category Item */}
                             <div className="flex items-center gap-2">
                               {hasSubCategories && subCategoriesToShow.length > 0 && (
-                                <button
-                                  onClick={() => {
+                          <button
+                            onClick={() => {
                                     setExpandedCategories(prev => {
                                       const newSet = new Set(prev);
                                       if (newSet.has(itemId)) {
@@ -1589,18 +1589,18 @@ export default function SectorPage() {
                                   if (!itemSlug) return;
                                   if (currentServiceCategory) {
                                     const url = buildSubCategoryUrl([itemSlug]);
-                                    window.open(url, "_blank", "noopener");
+                                    navigate(url);
                                   } else if (sectorSlug) {
                                     const url = buildServiceCategoryUrl(itemSlug);
-                                    window.open(url, "_blank", "noopener");
+                                    navigate(url);
                                   }
-                                }}
+                            }}
                                 className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
                                   "hover:bg-gray-50 text-[#5b5b5b]"
-                                }`}
-                              >
+                            }`}
+                          >
                                 {itemName}
-                              </button>
+                          </button>
                             </div>
                             
                             {/* Subcategories (nested) - Recursive tree */}
@@ -1803,8 +1803,8 @@ export default function SectorPage() {
                             {/* Category/Service Category Item */}
                             <div className="flex items-center gap-2">
                               {hasSubCategories && subCategoriesToShow.length > 0 && (
-                                <button
-                                  onClick={() => {
+                          <button
+                            onClick={() => {
                                     setExpandedCategories(prev => {
                                       const newSet = new Set(prev);
                                       if (newSet.has(itemId)) {
@@ -1833,18 +1833,18 @@ export default function SectorPage() {
                                   if (!itemSlug) return;
                                   if (currentServiceCategory) {
                                     const url = buildSubCategoryUrl([itemSlug]);
-                                    window.open(url, "_blank", "noopener");
+                                    navigate(url);
                                   } else if (sectorSlug) {
                                     const url = buildServiceCategoryUrl(itemSlug);
-                                    window.open(url, "_blank", "noopener");
+                                    navigate(url);
                                   }
-                                }}
+                            }}
                                 className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
                                   'text-[#5b5b5b] hover:bg-gray-50'
-                                }`}
-                              >
+                            }`}
+                          >
                                 {itemName}
-                              </button>
+                          </button>
                             </div>
                             
                             {/* Subcategories (nested) */}
