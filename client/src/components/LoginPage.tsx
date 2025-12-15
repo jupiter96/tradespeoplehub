@@ -1040,23 +1040,23 @@ export default function LoginPage() {
 
                   {/* Phone Number */}
                   <PhoneInput
-                    id="register-phone"
+                        id="register-phone"
                     label="Phone Number"
-                    value={registerPhone}
+                        value={registerPhone}
                     onChange={(value) => {
                       setRegisterPhone(value);
-                      if (fieldErrors.phone) {
-                        setFieldErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.phone;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                          if (fieldErrors.phone) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.phone;
+                              return newErrors;
+                            });
+                          }
+                        }}
                     placeholder="7123 456789"
                     error={fieldErrors.phone}
-                    required
-                  />
+                        required
+                      />
 
                   {/* Email */}
                   <div>

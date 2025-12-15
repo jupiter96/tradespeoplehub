@@ -824,24 +824,24 @@ export default function ProfilePage() {
             {profile.services && profile.services.length > 0 && (() => {
               const subcategoryNames = convertServiceIdsToSubcategoryNames(profile.services);
               return subcategoryNames.length > 0 ? (
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
-                      Available Services
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-[#003D82] text-[18px] font-semibold mb-4">
+                    Available Services
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
                       {subcategoryNames.map((serviceName, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1 text-[14px]"
-                        >
-                          {serviceName}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="bg-blue-50 text-[#003D82] hover:bg-blue-100 px-3 py-1 text-[14px]"
+                      >
+                        {serviceName}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
               ) : null;
             })()}
 

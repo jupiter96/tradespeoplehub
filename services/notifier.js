@@ -568,10 +568,10 @@ export async function sendSmsVerificationCode(to, code) {
     console.log('[SMS] Sending with from:', fromNumber, 'to:', to);
     
     const message = await twilioClient.messages.create({
-      to,
+    to,
       from: fromNumber,
-      body: `Your TradePplHub verification code is ${code}`,
-    });
+    body: `Your TradePplHub verification code is ${code}`,
+  });
     console.log('[SMS] Message sent successfully:', {
       sid: message.sid,
       to: message.to,

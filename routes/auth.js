@@ -1150,7 +1150,7 @@ router.post('/register/verify-email', async (req, res) => {
       if (isProduction) {
         console.warn('[Phone Code] Backend - Regular Registration - Continuing despite SMS send failure (production mode)');
       } else {
-        return res.status(502).json({ error: 'Failed to send SMS code' });
+      return res.status(502).json({ error: 'Failed to send SMS code' });
       }
     }
 
