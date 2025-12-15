@@ -590,16 +590,6 @@ export async function sendSmsVerificationCode(to, code) {
       from: TWILIO_FROM
     });
     
-    // If error is 21612 (invalid From/To combination), provide helpful message
-    if (error.code === 21612) {
-      console.error('[SMS] Twilio Error 21612: Invalid From/To combination.');
-      console.error('[SMS] This usually means:');
-      console.error('[SMS] 1. Alphanumeric sender ID (TRADEPPLHUB) is not supported for the destination country');
-      console.error('[SMS] 2. For US/Canada (+1), you need to use a Twilio phone number');
-      console.error('[SMS] 3. Set TWILIO_PHONE_NUMBER in your .env file with your Twilio phone number (e.g., +1234567890)');
-    }
-    
-    // Re-throw error so caller can handle it appropriately
     throw error;
   }
 }
