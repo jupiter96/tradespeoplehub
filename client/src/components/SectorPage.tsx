@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { allServices } from "./servicesData";
@@ -441,6 +441,16 @@ export default function SectorPage() {
   // Fetch sector data from API if we have a sectorSlug
   const { sector: apiSector, loading: sectorLoading } = useSector(sectorSlug || '', false);
   
+  // Filter state - declare early to avoid initialization errors
+  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [subCategoriesWithNested, setSubCategoriesWithNested] = useState<any[]>([]);
+  const [nestedSubCategoriesLoading, setNestedSubCategoriesLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+  const retryDelay = 2000; // 2 seconds
+  
   // Fetch service categories for the sector
   const { serviceCategories: apiServiceCategories, loading: serviceCategoriesLoading } = useServiceCategories(
     apiSector?._id,
@@ -526,20 +536,35 @@ export default function SectorPage() {
           }
           
           if (foundSubCategory) {
-            // Fetch nested subcategories for the current (last) subcategory
-            const response = await fetch(
-              resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${foundSubCategory._id}&activeOnly=true&sortBy=order&sortOrder=asc`),
-              { credentials: 'include' }
-            );
-            if (response.ok) {
-              const data = await response.json();
-              setCurrentServiceSubCategoryData({
-                ...foundSubCategory,
-                subCategories: data.serviceSubCategories || []
-              });
-            } else {
-              setCurrentServiceSubCategoryData(foundSubCategory);
-            }
+            // Recursively fetch all nested subcategories
+            const fetchAllSubCategories = async (parentId: string): Promise<any[]> => {
+              const response = await fetch(
+                resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${parentId}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
+                { credentials: 'include' }
+              );
+              if (response.ok) {
+                const data = await response.json();
+                const subCategories = data.serviceSubCategories || [];
+                // Recursively fetch subcategories for each subcategory
+                const subCategoriesWithNested = await Promise.all(
+                  subCategories.map(async (subCat: any) => {
+                    const nested = await fetchAllSubCategories(subCat._id);
+                    return {
+                      ...subCat,
+                      subCategories: nested
+                    };
+                  })
+                );
+                return subCategoriesWithNested;
+              }
+              return [];
+            };
+            
+            const allSubCategories = await fetchAllSubCategories(foundSubCategory._id);
+            setCurrentServiceSubCategoryData({
+              ...foundSubCategory,
+              subCategories: allSubCategories
+            });
           } else {
             setCurrentServiceSubCategoryData(null);
           }
@@ -556,6 +581,81 @@ export default function SectorPage() {
     
     fetchSubCategoryChain();
   }, [currentSubCategorySlug, subCategorySlugs, apiServiceCategory]);
+  
+  // Recursively fetch all nested subcategories for service category's subcategories with retry logic
+  useEffect(() => {
+    const fetchNestedSubCategories = async (attempt: number = 0): Promise<void> => {
+      if (apiServiceCategory && apiServiceCategory.subCategories && apiServiceCategory.subCategories.length > 0 && serviceCategorySlug) {
+        try {
+          setNestedSubCategoriesLoading(true);
+          // Recursively fetch subcategories for each Level 2 subcategory
+          const fetchAllSubCategories = async (parentId: string): Promise<any[]> => {
+            const response = await fetch(
+              resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${parentId}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
+              { credentials: 'include' }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              const subCategories = data.serviceSubCategories || [];
+              // Recursively fetch subcategories for each subcategory
+              const subCategoriesWithNested = await Promise.all(
+                subCategories.map(async (subCat: any) => {
+                  const nested = await fetchAllSubCategories(subCat._id);
+                  return {
+                    ...subCat,
+                    subCategories: nested
+                  };
+                })
+              );
+              return subCategoriesWithNested;
+            }
+            throw new Error(`Failed to fetch subcategories for parent ${parentId}`);
+          };
+          
+          // Filter Level 2 subcategories first
+          const level2SubCategories = apiServiceCategory.subCategories.filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory);
+          
+          // Fetch nested subcategories for all Level 2 subcategories
+          const subCategoriesWithNestedData = await Promise.all(
+            level2SubCategories.map(async (subCat: any) => {
+              const nested = await fetchAllSubCategories(subCat._id);
+              return {
+                ...subCat,
+                subCategories: nested
+              };
+            })
+          );
+          
+          setSubCategoriesWithNested(subCategoriesWithNestedData);
+          setNestedSubCategoriesLoading(false);
+          setRetryCount(0);
+        } catch (error) {
+          console.error(`Error fetching nested subcategories (attempt ${attempt + 1}/${maxRetries}):`, error);
+          if (attempt < maxRetries - 1) {
+            // Retry after delay
+            setTimeout(() => {
+              fetchNestedSubCategories(attempt + 1);
+            }, retryDelay);
+          } else {
+            // Max retries reached, show error
+            console.error('Failed to fetch nested subcategories after all retries');
+            setNestedSubCategoriesLoading(false);
+            setSubCategoriesWithNested([]);
+          }
+        }
+      } else {
+        setSubCategoriesWithNested([]);
+        setNestedSubCategoriesLoading(false);
+      }
+    };
+    
+    if (apiServiceCategory && serviceCategorySlug) {
+      fetchNestedSubCategories(0);
+    } else {
+      setSubCategoriesWithNested([]);
+      setNestedSubCategoriesLoading(false);
+    }
+  }, [apiServiceCategory, serviceCategorySlug, retryCount]);
   
   useEffect(() => {
     if (categorySlug) {
@@ -604,7 +704,7 @@ export default function SectorPage() {
     }
   } else if (categorySlug) {
     // We're on /category/:categorySlug or /category/:categorySlug/:subCategorySlug route
-    // Use API category data if available
+    // Use API category data only - no fallback to static data
     if (apiCategory) {
       currentMainCategory = { 
         id: apiCategory._id, 
@@ -614,43 +714,37 @@ export default function SectorPage() {
       };
       sector = typeof apiCategory.sector === 'object' ? apiCategory.sector : null;
       categoryBannerImage = apiCategory.bannerImage || null;
-    } else {
-      // Fallback to static data
-      const foundCategory = mainCategories.find(cat => 
-        cat.id === categorySlug || nameToSlug(cat.name) === categorySlug
-      );
-      
-      if (foundCategory) {
-        currentMainCategory = foundCategory;
-        sector = getSectorByName(foundCategory.sectorName);
-        
-        // If subCategorySlug is provided, find the subcategory
-        if (subCategorySlug) {
-          currentSubCategory = foundCategory.subCategories.find(subCat =>
-            nameToSlug(subCat.name) === subCategorySlug || subCat.id === subCategorySlug
-          );
-        }
-      }
     }
   } else if (sectorSlug) {
     // We're on /sector/:sectorSlug route
-    // Use API data if available, otherwise fallback to static data
+    // Use API data only - no fallback to static data
     if (apiSector) {
       sector = apiSector;
-    } else if (!sectorLoading) {
-      // Only try static data if API loading is complete
-      sector = getSectorBySlug(sectorSlug);
     }
   }
   
   // Determine what to show in the categories slider
   // Priority: Service Categories (new system) > Legacy Categories > Static data
   let categoriesToShow;
-  if (currentServiceCategory) {
-    // Show sub-categories if we're in a service category
-    if (apiServiceCategory && apiServiceCategory.subCategories) {
+  if (currentServiceSubCategory && currentServiceSubCategoryData) {
+    // Show sub-categories of current service subcategory
+    if (currentServiceSubCategoryData.subCategories) {
       // Sort subcategories by order
-      categoriesToShow = [...apiServiceCategory.subCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      categoriesToShow = [...currentServiceSubCategoryData.subCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    } else {
+      categoriesToShow = [];
+    }
+  } else if (currentServiceCategory) {
+    // Show sub-categories if we're in a service category
+    // Use subCategoriesWithNested if available (with all nested subcategories), otherwise use apiServiceCategory.subCategories
+    if (subCategoriesWithNested.length > 0) {
+      // Sort subcategories by order
+      categoriesToShow = [...subCategoriesWithNested].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    } else if (apiServiceCategory && apiServiceCategory.subCategories) {
+      // Filter Level 2 subcategories (direct children)
+      const level2SubCategories = apiServiceCategory.subCategories.filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory);
+      // Sort subcategories by order
+      categoriesToShow = [...level2SubCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     } else {
       categoriesToShow = [];
     }
@@ -674,8 +768,8 @@ export default function SectorPage() {
       // Legacy: Use categories from useCategories hook, sorted by order
       categoriesToShow = [...apiCategories].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     } else {
-      // Fallback to static data
-      categoriesToShow = getMainCategoriesBySector(sector.name);
+      // No data available - wait for API to load
+      categoriesToShow = [];
     }
   } else {
     categoriesToShow = [];
@@ -693,13 +787,11 @@ export default function SectorPage() {
   useEffect(() => {
     // Only redirect if we're not loading and sector is still not found
     // Wait for all API calls to complete before redirecting
-    if (!sectorLoading && !serviceCategoryLoading && !categoryLoading && !serviceCategoriesLoading) {
-      if (sectorSlug && !sector) {
-        // If API didn't find it, try static data one more time
-        const staticSector = getSectorBySlug(sectorSlug);
-        if (!staticSector) {
-          navigate("/all-categories");
-        }
+    // No fallback to static data - redirect if API data is not available
+    if (!sectorLoading && !serviceCategoryLoading && !categoryLoading && !serviceCategoriesLoading && !nestedSubCategoriesLoading && !subCategoryLoading) {
+      if (sectorSlug && !sector && !apiSector) {
+        // If API didn't find it, redirect
+        navigate("/all-categories");
       } else if (serviceCategorySlug && !currentServiceCategory && !apiServiceCategory) {
         // For service category pages, if no category found, redirect
         navigate(sectorSlug ? `/sector/${sectorSlug}` : "/all-categories");
@@ -708,12 +800,77 @@ export default function SectorPage() {
         navigate("/all-categories");
       }
     }
-  }, [sector, sectorLoading, serviceCategoryLoading, categoryLoading, serviceCategoriesLoading, sectorSlug, serviceCategorySlug, categorySlug, apiCategory, apiServiceCategory, currentServiceCategory, navigate]);
+  }, [sector, sectorLoading, serviceCategoryLoading, categoryLoading, serviceCategoriesLoading, nestedSubCategoriesLoading, subCategoryLoading, sectorSlug, serviceCategorySlug, categorySlug, apiCategory, apiServiceCategory, apiSector, currentServiceCategory, navigate]);
 
-  // Filter state
-  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
-  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // Recursive component to render subcategory tree
+  const renderSubCategoryTree = useCallback((subCategory: any, depth: number = 0): JSX.Element => {
+    const subCatId = subCategory._id || subCategory.id || subCategory.name;
+    const subCatName = subCategory.name;
+    const isExpanded = expandedCategories.has(subCatId);
+    const hasNestedSubCategories = subCategory.subCategories && subCategory.subCategories.length > 0;
+    // Calculate indentation: base 7 (1.75rem) + 4 (1rem) per depth level
+    const indentPx = 28 + (depth * 16); // 28px = 7*4px (ml-7), 16px = 4*4px per level
+    
+    return (
+      <div key={subCatId} className="space-y-0.5">
+        <div className="flex items-center gap-2">
+          {hasNestedSubCategories && (
+            <button
+              onClick={() => {
+                setExpandedCategories(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(subCatId)) {
+                    newSet.delete(subCatId);
+                  } else {
+                    newSet.add(subCatId);
+                  }
+                  return newSet;
+                });
+              }}
+              className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+          )}
+          {!hasNestedSubCategories ? (
+            <div className="w-5" /> // Spacer
+          ) : null}
+          <button
+            onClick={() => {
+              setSelectedSubCategories(prev =>
+                prev.includes(subCatName)
+                  ? prev.filter(s => s !== subCatName)
+                  : [...prev, subCatName]
+              );
+            }}
+            className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
+              selectedSubCategories.includes(subCatName)
+                ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
+                : "hover:bg-gray-50 text-[#5b5b5b]"
+            }`}
+          >
+            {subCatName}
+          </button>
+        </div>
+        
+        {/* Recursively render nested subcategories */}
+        {isExpanded && hasNestedSubCategories && (
+          <div style={{ marginLeft: `${indentPx}px` }}>
+            <div className="space-y-0.5">
+              {subCategory.subCategories.map((nestedSubCat: any) => 
+                renderSubCategoryTree(nestedSubCat, depth + 1)
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }, [expandedCategories, selectedSubCategories]);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
@@ -872,34 +1029,50 @@ export default function SectorPage() {
     }
   };
 
-  // Show loading state while fetching sector/category data
-  if (sectorLoading || (serviceCategoryLoading && serviceCategorySlug) || (categoryLoading && categorySlug) || (serviceCategoriesLoading && sectorSlug && !serviceCategorySlug)) {
+  // Determine if we're still loading any required data
+  const isDataLoading = 
+    sectorLoading || 
+    (serviceCategoryLoading && serviceCategorySlug) || 
+    (categoryLoading && categorySlug) || 
+    (serviceCategoriesLoading && sectorSlug && !serviceCategorySlug) ||
+    (subCategoryLoading && currentSubCategorySlug) ||
+    (nestedSubCategoriesLoading && serviceCategorySlug);
+  
+  // Check if we have the minimum required data to render
+  const hasRequiredData = 
+    (sectorSlug && apiSector) ||
+    (serviceCategorySlug && apiServiceCategory) ||
+    (categorySlug && apiCategory) ||
+    (!sectorSlug && !serviceCategorySlug && !categorySlug);
+  
+  // Show full screen loading overlay with blur background while loading
+  if (isDataLoading || !hasRequiredData) {
     return (
-      <div className="min-h-screen bg-[#FAFBFC]">
+      <div className="min-h-screen bg-[#FAFBFC] relative">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
           <Nav />
         </header>
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin" />
+        {/* Full screen loading overlay with blur */}
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-md z-[100] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+              Loading page data...
+            </p>
+            {retryCount > 0 && (
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                Retrying... (Attempt {retryCount}/{maxRetries})
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Only return null if we're sure the sector doesn't exist (not loading and not found)
-  if (!sector) {
-    // Try one more time with static data if we have a sectorSlug and API didn't find it
-    if (sectorSlug && !apiSector) {
-      const staticSector = getSectorBySlug(sectorSlug);
-      if (staticSector) {
-        // Use static sector if found
-        sector = staticSector;
-      } else {
-        return null;
-      }
-    } else {
-      return null;
-    }
+  // If we don't have required data and not loading, redirect
+  if (!hasRequiredData && !isDataLoading) {
+    return null; // Will redirect via useEffect
   }
 
   return (
@@ -1366,16 +1539,14 @@ export default function SectorPage() {
                         const isExpanded = expandedCategories.has(itemId);
                         const hasSubCategories = item.subCategories && item.subCategories.length > 0;
                         
-                        // Get Level 2 subcategories (direct children)
-                        const level2SubCategories = hasSubCategories
-                          ? item.subCategories.filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory)
-                          : [];
+                        // Use all subcategories (already filtered to Level 2 if needed, or includes all nested if using subCategoriesWithNested)
+                        const subCategoriesToShow = hasSubCategories ? item.subCategories : [];
                         
                         return (
                           <div key={itemId} className="space-y-0.5">
                             {/* Category/Service Category Item */}
                             <div className="flex items-center gap-2">
-                              {hasSubCategories && level2SubCategories.length > 0 && (
+                              {hasSubCategories && subCategoriesToShow.length > 0 && (
                                 <button
                                   onClick={() => {
                                     setExpandedCategories(prev => {
@@ -1397,7 +1568,7 @@ export default function SectorPage() {
                                   )}
                                 </button>
                               )}
-                              {!hasSubCategories || level2SubCategories.length === 0 ? (
+                              {!hasSubCategories || subCategoriesToShow.length === 0 ? (
                                 <div className="w-5" /> // Spacer for alignment
                               ) : null}
                               <button
@@ -1429,91 +1600,10 @@ export default function SectorPage() {
                               </button>
                             </div>
                             
-                            {/* Subcategories (nested) */}
-                            {isExpanded && hasSubCategories && level2SubCategories.length > 0 && (
+                            {/* Subcategories (nested) - Recursive tree */}
+                            {isExpanded && hasSubCategories && subCategoriesToShow.length > 0 && (
                               <div className="ml-7 space-y-0.5">
-                                {level2SubCategories.map((subCat: any) => {
-                                  const subCatId = subCat._id || subCat.id || subCat.name;
-                                  const subCatName = subCat.name;
-                                  const isSubExpanded = expandedCategories.has(subCatId);
-                                  const hasNestedSubCategories = subCat.subCategories && subCat.subCategories.length > 0;
-                                  
-                                  return (
-                                    <div key={subCatId} className="space-y-0.5">
-                                      <div className="flex items-center gap-2">
-                                        {hasNestedSubCategories && (
-                                          <button
-                                            onClick={() => {
-                                              setExpandedCategories(prev => {
-                                                const newSet = new Set(prev);
-                                                if (newSet.has(subCatId)) {
-                                                  newSet.delete(subCatId);
-                                                } else {
-                                                  newSet.add(subCatId);
-                                                }
-                                                return newSet;
-                                              });
-                                            }}
-                                            className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
-                                          >
-                                            {isSubExpanded ? (
-                                              <ChevronDown className="w-4 h-4" />
-                                            ) : (
-                                              <ChevronRight className="w-4 h-4" />
-                                            )}
-                                          </button>
-                                        )}
-                                        {!hasNestedSubCategories ? (
-                                          <div className="w-5" /> // Spacer
-                                        ) : null}
-                                        <button
-                                          onClick={() => {
-                                            setSelectedSubCategories(prev =>
-                                              prev.includes(subCatName)
-                                                ? prev.filter(s => s !== subCatName)
-                                                : [...prev, subCatName]
-                                            );
-                                          }}
-                                          className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
-                                            selectedSubCategories.includes(subCatName)
-                                              ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
-                                              : "hover:bg-gray-50 text-[#5b5b5b]"
-                                          }`}
-                                        >
-                                          {subCatName}
-                                        </button>
-                                      </div>
-                                      
-                                      {/* Nested subcategories (Level 3+) */}
-                                      {isSubExpanded && hasNestedSubCategories && (
-                                        <div className="ml-7 space-y-0.5">
-                                          {subCat.subCategories.map((nestedSubCat: any) => {
-                                            const nestedSubCatName = nestedSubCat.name;
-                                            return (
-                                              <button
-                                                key={nestedSubCat._id || nestedSubCat.id || nestedSubCatName}
-                                                onClick={() => {
-                                                  setSelectedSubCategories(prev =>
-                                                    prev.includes(nestedSubCatName)
-                                                      ? prev.filter(s => s !== nestedSubCatName)
-                                                      : [...prev, nestedSubCatName]
-                                                  );
-                                                }}
-                                                className={`w-full text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
-                                                  selectedSubCategories.includes(nestedSubCatName)
-                                                    ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
-                                                    : "hover:bg-gray-50 text-[#5b5b5b]"
-                                                }`}
-                                              >
-                                                {nestedSubCatName}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                {subCategoriesToShow.map((subCat: any) => renderSubCategoryTree(subCat, 0))}
                               </div>
                             )}
                           </div>
@@ -1702,16 +1792,14 @@ export default function SectorPage() {
                         const isExpanded = expandedCategories.has(itemId);
                         const hasSubCategories = item.subCategories && item.subCategories.length > 0;
                         
-                        // Get Level 2 subcategories (direct children)
-                        const level2SubCategories = hasSubCategories
-                          ? item.subCategories.filter((subCat: any) => subCat.level === 2 && !subCat.parentSubCategory)
-                          : [];
+                        // Use all subcategories (already filtered to Level 2 if needed, or includes all nested if using subCategoriesWithNested)
+                        const subCategoriesToShow = hasSubCategories ? item.subCategories : [];
                         
                         return (
                           <div key={itemId} className="space-y-0.5">
                             {/* Category/Service Category Item */}
                             <div className="flex items-center gap-2">
-                              {hasSubCategories && level2SubCategories.length > 0 && (
+                              {hasSubCategories && subCategoriesToShow.length > 0 && (
                                 <button
                                   onClick={() => {
                                     setExpandedCategories(prev => {
@@ -1733,7 +1821,7 @@ export default function SectorPage() {
                                   )}
                                 </button>
                               )}
-                              {!hasSubCategories || level2SubCategories.length === 0 ? (
+                              {!hasSubCategories || subCategoriesToShow.length === 0 ? (
                                 <div className="w-5" /> // Spacer for alignment
                               ) : null}
                               <button
@@ -1766,90 +1854,9 @@ export default function SectorPage() {
                             </div>
                             
                             {/* Subcategories (nested) */}
-                            {isExpanded && hasSubCategories && level2SubCategories.length > 0 && (
+                            {isExpanded && hasSubCategories && subCategoriesToShow.length > 0 && (
                               <div className="ml-7 space-y-0.5">
-                                {level2SubCategories.map((subCat: any) => {
-                                  const subCatId = subCat._id || subCat.id || subCat.name;
-                                  const subCatName = subCat.name;
-                                  const isSubExpanded = expandedCategories.has(subCatId);
-                                  const hasNestedSubCategories = subCat.subCategories && subCat.subCategories.length > 0;
-                                  
-                                  return (
-                                    <div key={subCatId} className="space-y-0.5">
-                                      <div className="flex items-center gap-2">
-                                        {hasNestedSubCategories && (
-                                          <button
-                                            onClick={() => {
-                                              setExpandedCategories(prev => {
-                                                const newSet = new Set(prev);
-                                                if (newSet.has(subCatId)) {
-                                                  newSet.delete(subCatId);
-                                                } else {
-                                                  newSet.add(subCatId);
-                                                }
-                                                return newSet;
-                                              });
-                                            }}
-                                            className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[#FE8A0F] transition-colors"
-                                          >
-                                            {isSubExpanded ? (
-                                              <ChevronDown className="w-4 h-4" />
-                                            ) : (
-                                              <ChevronRight className="w-4 h-4" />
-                                            )}
-                                          </button>
-                                        )}
-                                        {!hasNestedSubCategories ? (
-                                          <div className="w-5" /> // Spacer
-                                        ) : null}
-                                        <button
-                                          onClick={() => {
-                                            setSelectedSubCategories(prev =>
-                                              prev.includes(subCatName)
-                                                ? prev.filter(s => s !== subCatName)
-                                                : [...prev, subCatName]
-                                            );
-                                          }}
-                                          className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
-                                            selectedSubCategories.includes(subCatName)
-                                              ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
-                                              : 'text-[#5b5b5b] hover:bg-gray-50'
-                                          }`}
-                                        >
-                                          {subCatName}
-                                        </button>
-                                      </div>
-                                      
-                                      {/* Nested subcategories (Level 3+) */}
-                                      {isSubExpanded && hasNestedSubCategories && (
-                                        <div className="ml-7 space-y-0.5">
-                                          {subCat.subCategories.map((nestedSubCat: any) => {
-                                            const nestedSubCatName = nestedSubCat.name;
-                                            return (
-                                              <button
-                                                key={nestedSubCat._id || nestedSubCat.id || nestedSubCatName}
-                                                onClick={() => {
-                                                  setSelectedSubCategories(prev =>
-                                                    prev.includes(nestedSubCatName)
-                                                      ? prev.filter(s => s !== nestedSubCatName)
-                                                      : [...prev, nestedSubCatName]
-                                                  );
-                                                }}
-                                                className={`w-full text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
-                                                  selectedSubCategories.includes(nestedSubCatName)
-                                                    ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
-                                                    : 'text-[#5b5b5b] hover:bg-gray-50'
-                                                }`}
-                                              >
-                                                {nestedSubCatName}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                {subCategoriesToShow.map((subCat: any) => renderSubCategoryTree(subCat, 0))}
                               </div>
                             )}
                           </div>
