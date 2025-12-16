@@ -2519,6 +2519,9 @@ router.put('/profile', requireAuth, async (req, res) => {
         if (req.body.publicProfile.bio !== undefined) {
           user.publicProfile.bio = req.body.publicProfile.bio?.trim() || undefined;
         }
+        if (req.body.publicProfile.coverImage !== undefined) {
+          user.publicProfile.coverImage = req.body.publicProfile.coverImage?.trim() || undefined;
+        }
         if (req.body.publicProfile.portfolio !== undefined) {
           user.publicProfile.portfolio = req.body.publicProfile.portfolio || [];
         }

@@ -10,6 +10,7 @@ import { useCategories, useSectors, useServiceCategories } from "../hooks/useSec
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useCart } from "./CartContext";
 import { allServices, type Service as ServiceDataType } from "./servicesData";
+import ServiceAreaMap from "./ServiceAreaMap";
 import "./ProfilePage.css";
 
 type PublicProfile = {
@@ -84,12 +85,43 @@ export default function ProfilePage() {
   const { categories } = useCategories(sectorId, undefined, true);
   const { addToCart } = useCart();
 
+  // Default cover images (Unsplash) when user hasn't set a custom cover.
+  // Chosen to be "service provider" themed and sector-relevant where possible.
   const defaultCoverImageUrl = useMemo(() => {
-    return new URL(
-      "../assets/6bbce490789ed9401b274940c0210ca96c857be3.png",
-      import.meta.url
-    ).href;
-  }, []);
+    const sectorName = (profile?.sector || "").trim();
+    const sectorCovers: Record<string, string> = {
+      "Home & Garden":
+        "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1600&q=80",
+      "Repair & Maintenance":
+        "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1600&q=80",
+      "Technology Services":
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80",
+      "Technology & IT":
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80",
+      "Business Services":
+        "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80",
+      "Education & Tutoring":
+        "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80",
+      "Health & Wellness":
+        "https://images.unsplash.com/photo-1551887373-6ef5f1f1f44b?auto=format&fit=crop&w=1600&q=80",
+      "Beauty & Wellness":
+        "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1600&q=80",
+      "Moving & Storage":
+        "https://images.unsplash.com/photo-1600518464441-9154a59a90a5?auto=format&fit=crop&w=1600&q=80",
+      "Legal & Financial":
+        "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1600&q=80",
+      "Pet Services":
+        "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?auto=format&fit=crop&w=1600&q=80",
+      "Automotive":
+        "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80",
+    };
+
+    return (
+      sectorCovers[sectorName] ||
+      // Generic, works for any service provider profile
+      "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1600&q=80"
+    );
+  }, [profile?.sector]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -136,7 +168,7 @@ export default function ProfilePage() {
 
   const tradingName = useMemo(() => (profile?.tradingName || "").trim(), [profile?.tradingName]);
 
-  const coverImageUrl = profile?.publicProfile?.coverImage || defaultCoverImageUrl;
+  const coverImageUrl = (profile?.publicProfile?.coverImage || "").trim() || defaultCoverImageUrl;
 
   const avatarInitials = useMemo(() => {
     const raw = (tradingName || displayName || "User").trim();
@@ -767,6 +799,13 @@ export default function ProfilePage() {
                 ) : (
                   <p className="text-slate-500 text-sm">No service area information available.</p>
                 )}
+
+                <ServiceAreaMap
+                  townCity={profile.townCity}
+                  postcode={profile.postcode}
+                  travelDistance={profile.travelDistance}
+                  className="mt-3"
+                />
               </div>
             </div>
           </aside>

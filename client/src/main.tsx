@@ -2,6 +2,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "leaflet/dist/leaflet.css";
 import faviconUrl from "figma:asset/e0cd63eca847c922f306abffb67a5c6de3fd7001.png";
 
 const applyFavicon = () => {

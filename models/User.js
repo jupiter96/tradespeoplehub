@@ -359,6 +359,10 @@ const userSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+      coverImage: {
+        type: String,
+        trim: true,
+      },
       portfolio: [{
         image: {
           type: String,
