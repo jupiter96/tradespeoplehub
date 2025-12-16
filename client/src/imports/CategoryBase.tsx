@@ -4,7 +4,7 @@ function Group2() {
   return (
     <div className="absolute contents left-0 top-0">
       <div className="absolute bg-[rgba(182,212,255,0.2)] h-[60px] left-0 rounded-[30px] top-0 w-[216px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[127.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[30px] translate-x-[-50%] whitespace-pre">{`Wedding & Events`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[127.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[30px] translate-x-[-50%] whitespace-pre">{`Wedding & Events`}</p>
       <WhiteCircle className="absolute left-[8px] top-[7px]" />
       <WeddingIcon className="absolute left-[16px] size-[30px] top-[13px]" />
     </div>
@@ -23,7 +23,7 @@ function Group3() {
   return (
     <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
       <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] h-[60px] ml-0 mt-0 rounded-[30px] w-[239px]" />
-      <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Assembling & Repairs`}</p>
+      <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Assembling & Repairs`}</p>
       <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
       <AssemblingIcon className="[grid-area:1_/_1] h-[21px] ml-[13px] mt-[19px] overflow-clip relative w-[36px]" />
     </div>
@@ -42,7 +42,7 @@ function Group4() {
   return (
     <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
       <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] h-[60px] ml-0 mt-0 rounded-[30px] w-[219px]" />
-      <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Health & Wellbeing `}</p>
+      <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Health & Wellbeing `}</p>
       <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
     </div>
   );
@@ -60,7 +60,7 @@ function Group5() {
   return (
     <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
       <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] h-[60px] ml-0 mt-0 rounded-[30px] w-[192px]" />
-      <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Legal & Advice`}</p>
+      <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Legal & Advice`}</p>
       <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
     </div>
   );
@@ -78,7 +78,7 @@ function Group6() {
   return (
     <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
       <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] h-[60px] ml-0 mt-0 rounded-[30px] w-[205px]" />
-      <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Fashion & Beauty`}</p>
+      <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] text-[14px] text-nowrap whitespace-pre">{`Fashion & Beauty`}</p>
       <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
       <FashionIcon className="[grid-area:1_/_1] h-[28px] ml-[21px] mt-[15px] overflow-clip relative w-[23px]" />
     </div>

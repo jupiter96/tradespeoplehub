@@ -134,10 +134,10 @@ export default function AllCategoriesPage() {
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="font-['Poppins',sans-serif] text-[#FE8A0F] mb-4 text-[42px] md:text-[56px] lg:text-[64px] drop-shadow-[0_4px_12px_rgba(254,138,15,0.3)]">
+            <h1 className="font-['Roboto',sans-serif] text-[#FE8A0F] mb-4 text-[42px] md:text-[56px] lg:text-[64px] drop-shadow-[0_4px_12px_rgba(254,138,15,0.3)]">
               All Service Categories
             </h1>
-            <p className="font-['Poppins',sans-serif] text-white/90 text-[16px] md:text-[18px] max-w-2xl mx-auto">
+            <p className="font-['Roboto',sans-serif] text-white/90 text-[16px] md:text-[18px] max-w-2xl mx-auto">
               Explore our comprehensive range of professional services across all categories
             </p>
           </div>
@@ -152,7 +152,7 @@ export default function AllCategoriesPage() {
           </div>
         ) : (sectorsError || error) ? (
           <div className="text-center py-20">
-            <p className="text-red-500 font-['Poppins',sans-serif]">{sectorsError || error}</p>
+            <p className="text-red-500 font-['Roboto',sans-serif]">{sectorsError || error}</p>
           </div>
         ) : (
           <div className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8">
@@ -184,7 +184,7 @@ export default function AllCategoriesPage() {
             {/* Sectors View */}
             {viewMode === "sectors" && (
               <div>
-                <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-6">
+                <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-6">
                   Select a Sector
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -215,10 +215,10 @@ export default function AllCategoriesPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[16px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
+                          <h3 className="font-['Roboto',sans-serif] text-[#2c353f] text-[16px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
                             {sector.name}
                           </h3>
-                          <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
+                          <p className="text-[12px] text-gray-500 font-['Roboto',sans-serif]">
                             {categories.length} {categories.length === 1 ? 'category' : 'categories'} available
                           </p>
                         </div>
@@ -235,10 +235,10 @@ export default function AllCategoriesPage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
+                    <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
                       {selectedSector.name}
                     </h2>
-                    <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
+                    <p className="text-gray-500 text-[14px] font-['Roboto',sans-serif]">
                       Select a category to view services
                     </p>
                   </div>
@@ -276,11 +276,11 @@ export default function AllCategoriesPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[15px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
+                              <h3 className="font-['Roboto',sans-serif] text-[#2c353f] text-[15px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
                                 {serviceCategory.name}
                               </h3>
                               {subCategories.length > 0 && (
-                                <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
+                                <p className="text-[12px] text-gray-500 font-['Roboto',sans-serif]">
                                   {subCategories.length} {subCategories.length === 1 ? 'service' : 'services'} available
                                 </p>
                               )}
@@ -292,7 +292,7 @@ export default function AllCategoriesPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif] text-[14px]">
                         No categories available in this sector
                       </p>
                     </div>
@@ -306,10 +306,10 @@ export default function AllCategoriesPage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
+                    <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
                       {selectedServiceCategory.name}
                     </h2>
-                    <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
+                    <p className="text-gray-500 text-[14px] font-['Roboto',sans-serif]">
                       Available services in this category
                     </p>
                   </div>
@@ -348,7 +348,7 @@ export default function AllCategoriesPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-medium group-hover:text-[#3D78CB] transition-colors">
+                              <span className="font-['Roboto',sans-serif] text-[#2c353f] text-[14px] font-medium group-hover:text-[#3D78CB] transition-colors">
                                 {subCategory.name}
                               </span>
                             </div>
@@ -359,7 +359,7 @@ export default function AllCategoriesPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif] text-[14px]">
                         No services available in this category
                       </p>
                     </div>

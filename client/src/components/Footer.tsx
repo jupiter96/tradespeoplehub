@@ -256,7 +256,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center">
             <p className="text-[silver] text-[14px] leading-[1.24]">
-              <span className="font-['Poppins:Bold',sans-serif]">©</span>
+              <span className="font-['Roboto:Bold',sans-serif]">©</span>
               {` 2025 Trades Peoplehub. All Right Reserved.`}
             </p>
             <div className="flex items-center gap-6">

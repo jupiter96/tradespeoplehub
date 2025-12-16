@@ -25,7 +25,7 @@ export default function ServicesBannerSection() {
                 {/* Text Content - Hidden on mobile */}
                 <div className="flex-1 hidden md:block">
                   {/* Main Heading */}
-                  <h2 className="font-['Poppins',sans-serif] text-white mb-2 md:mb-3">
+                  <h2 className="font-['Roboto',sans-serif] text-white mb-2 md:mb-3">
                     <span className="text-[18px] md:text-[28px] lg:text-[32px] leading-tight">
                       Discover{" "}
                       <span className="text-[#FE8A0F]">Thousands</span>
@@ -34,7 +34,7 @@ export default function ServicesBannerSection() {
                   </h2>
                   
                   {/* Description */}
-                  <p className="text-white/90 text-[12px] md:text-[14px] font-['Poppins',sans-serif] leading-relaxed">
+                  <p className="text-white/90 text-[12px] md:text-[14px] font-['Roboto',sans-serif] leading-relaxed">
                     Browse our complete marketplace and find the perfect professional for any task
                   </p>
                 </div>
@@ -43,7 +43,7 @@ export default function ServicesBannerSection() {
                 <div className="md:ml-8">
                   <button 
                     onClick={() => navigate("/services")}
-                    className="px-5 md:px-8 py-2.5 md:py-3.5 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white rounded-full font-['Poppins',sans-serif] text-[12px] md:text-[14px] whitespace-nowrap cursor-pointer"
+                    className="px-5 md:px-8 py-2.5 md:py-3.5 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white rounded-full font-['Roboto',sans-serif] text-[12px] md:text-[14px] whitespace-nowrap cursor-pointer"
                   >
                     <span className="flex items-center gap-2">
                       Browse All Services

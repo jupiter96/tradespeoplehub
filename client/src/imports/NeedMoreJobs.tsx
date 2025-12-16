@@ -15,8 +15,8 @@ function Component5() {
 function Component() {
   return (
     <div className="absolute contents left-[486px] top-[179px]" data-name="1">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[179px] whitespace-pre">Choose a Location</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] top-[205px] w-[522px]">Choose the location you want to work in and how much distance you can travel, get a list of posted jobs or get notified when new jobs are posted..</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[179px] whitespace-pre">Choose a Location</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] top-[205px] w-[522px]">Choose the location you want to work in and how much distance you can travel, get a list of posted jobs or get notified when new jobs are posted..</p>
       <Component5 />
     </div>
   );
@@ -42,8 +42,8 @@ function Frame() {
 function Component1() {
   return (
     <div className="absolute contents left-[495px] top-[269px]" data-name="2">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[269px] whitespace-pre">Quote Jobs</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] top-[295px] w-[522px]">Access list of jobs and provide quotes for free of charge. Discuss details.Milestone payment created.</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[269px] whitespace-pre">Quote Jobs</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] top-[295px] w-[522px]">Access list of jobs and provide quotes for free of charge. Discuss details.Milestone payment created.</p>
       <Frame />
     </div>
   );
@@ -69,8 +69,8 @@ function Component4() {
 function Component2() {
   return (
     <div className="absolute contents left-[486px] top-[359px]" data-name="3">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[359px] whitespace-pre">Deliver Work</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] top-[385px] w-[522px] whitespace-pre-wrap">{`Job done as agreed. Milestone released and payment made. Share your experience and let other Pro  know what it is like working with the client.`}</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[359px] whitespace-pre">Deliver Work</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-3.5px)] not-italic text-[#5b5b5b] text-[14px] top-[385px] w-[522px] whitespace-pre-wrap">{`Job done as agreed. Milestone released and payment made. Share your experience and let other Pro  know what it is like working with the client.`}</p>
       <Component4 />
     </div>
   );
@@ -3770,7 +3770,7 @@ function Component3() {
       <div className="absolute bg-[#f3f9ff] h-[484px] left-0 rounded-[30px] top-0 right-0">
         <div aria-hidden="true" className="absolute border-2 border-[rgba(219,238,255,0.8)] border-solid inset-0 pointer-events-none rounded-[30px] shadow-[0px_14px_20px_0px_rgba(158,197,252,0.1)]" />
       </div>
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[44px] left-[482px] not-italic text-[#2c353f] text-[36px] top-[55px] w-[593px]">Need More Jobs to fill the gap in your schedule?</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[44px] left-[482px] not-italic text-[#2c353f] text-[36px] top-[55px] w-[593px]">Need More Jobs to fill the gap in your schedule?</p>
       <Component />
       <Component1 />
       <Component2 />

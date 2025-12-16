@@ -218,7 +218,7 @@ export default function ProfessionalProfileSetup() {
           {/* Back Button */}
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 mb-4 font-['Poppins',sans-serif] text-[14px] text-[#3B82F6] hover:text-[#FE8A0F] transition-colors"
+            className="flex items-center gap-2 mb-4 font-['Roboto',sans-serif] text-[14px] text-[#3B82F6] hover:text-[#FE8A0F] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             Back
@@ -226,13 +226,13 @@ export default function ProfessionalProfileSetup() {
 
           {/* Main Card */}
           <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
-            <h1 className="font-['Poppins',sans-serif] text-[24px] sm:text-[28px] text-[#2c353f] mb-6 text-center">
+            <h1 className="font-['Roboto',sans-serif] text-[24px] sm:text-[28px] text-[#2c353f] mb-6 text-center">
               Which sectors do you cover?
             </h1>
 
             {/* Sector Selection */}
             <div className="mb-6">
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                 Select Sector <span className="text-xs text-gray-500 font-normal">(You can only select one sector)</span>
               </Label>
               <div className="space-y-2 mb-4 p-4 border border-gray-200 rounded-xl max-h-[250px] overflow-y-auto">
@@ -253,7 +253,7 @@ export default function ProfessionalProfileSetup() {
                       onChange={() => handleSectorChange(sector)}
                       className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 focus:ring-[#FE8A0F] focus:ring-2 cursor-pointer"
                     />
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed flex-1">
+                    <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] leading-relaxed flex-1">
                       {sector}
                     </span>
                     {selectedSector === sector && (
@@ -262,7 +262,7 @@ export default function ProfessionalProfileSetup() {
                   </label>
                 ))}
               </div>
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+              <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                 Note: You can only select one sector. Once selected, it cannot be changed. However, you can select multiple categories within your chosen sector.
               </p>
             </div>
@@ -270,7 +270,7 @@ export default function ProfessionalProfileSetup() {
             {/* Services Checkboxes */}
             {selectedSector && (
               <div className="mb-5">
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                   Select Categories/Services You Offer <span className="text-xs text-gray-500 font-normal">(You can select multiple)</span>
                 </Label>
                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2">
@@ -284,7 +284,7 @@ export default function ProfessionalProfileSetup() {
                       />
                       <Label
                         htmlFor={`service-${selectedSector}-${service}-${index}`}
-                        className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
+                        className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
                       >
                         {service}
                       </Label>
@@ -298,7 +298,7 @@ export default function ProfessionalProfileSetup() {
                 {/* Selected Count */}
                 {selectedServices.length > 0 && (
                   <div className="mt-3 p-2.5 bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                       <span className="text-[#FE8A0F]">{selectedServices.length}</span> service{selectedServices.length !== 1 ? 's' : ''} selected
                     </p>
                   </div>
@@ -310,7 +310,7 @@ export default function ProfessionalProfileSetup() {
             <div className="flex justify-center pt-2">
               <Button
                 onClick={handleSaveAndContinue}
-                className="w-full sm:w-auto px-12 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[15px]"
+                className="w-full sm:w-auto px-12 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[15px]"
               >
                 Save and Continue
               </Button>
@@ -319,7 +319,7 @@ export default function ProfessionalProfileSetup() {
 
           {/* Help Text */}
           <div className="mt-4 text-center">
-            <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+            <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
               You can always update your services later in your account settings
             </p>
           </div>

@@ -865,7 +865,7 @@ export default function SectorPage() {
                 navigate(url);
               }
             }}
-            className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[12px] transition-colors ${
+            className={`flex-1 text-left px-2 py-1.5 rounded font-['Roboto',sans-serif] text-[12px] transition-colors ${
               selectedSubCategories.includes(subCatName)
                 ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
                 : "hover:bg-gray-50 text-[#5b5b5b]"
@@ -1074,11 +1074,11 @@ export default function SectorPage() {
         <div className="fixed inset-0 bg-transparent backdrop-blur-md z-[100] flex items-center justify-center">
           <div className="text-center bg-white/90 rounded-2xl px-8 py-6 shadow-lg">
             <div className="w-12 h-12 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+            <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
               Loading page data...
             </p>
             {retryCount > 0 && (
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+              <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
                 Retrying... (Attempt {retryCount}/{maxRetries})
               </p>
             )}
@@ -1243,12 +1243,12 @@ export default function SectorPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="max-w-3xl mx-auto text-center">
               {/* Title */}
-              <h1 className="font-['Poppins',sans-serif] text-white mb-3 md:mb-4 text-[28px] md:text-[38px] lg:text-[44px] leading-tight">
+              <h1 className="font-['Roboto',sans-serif] text-white mb-3 md:mb-4 text-[28px] md:text-[38px] lg:text-[44px] leading-tight">
                 {currentTitle}
               </h1>
 
               {/* Simple Description */}
-              <p className="font-['Poppins',sans-serif] text-white/90 text-[14px] md:text-[16px] leading-relaxed mb-5">
+              <p className="font-['Roboto',sans-serif] text-white/90 text-[14px] md:text-[16px] leading-relaxed mb-5">
                 Find trusted professionals for your needs
               </p>
 
@@ -1259,8 +1259,8 @@ export default function SectorPage() {
                     <Award className="w-3 h-3 text-white" />
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[#2c2c2c] font-['Poppins',sans-serif] text-[13px]">{sectorServices.length}+</span>
-                    <span className="text-[#2c2c2c]/60 font-['Poppins',sans-serif] text-[10px]">Services</span>
+                    <span className="text-[#2c2c2c] font-['Roboto',sans-serif] text-[13px]">{sectorServices.length}+</span>
+                    <span className="text-[#2c2c2c]/60 font-['Roboto',sans-serif] text-[10px]">Services</span>
                   </div>
                 </div>
 
@@ -1269,8 +1269,8 @@ export default function SectorPage() {
                     <CheckCircle className="w-3 h-3 text-white" />
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[#2c2c2c] font-['Poppins',sans-serif] text-[13px]">Verified</span>
-                    <span className="text-[#2c2c2c]/60 font-['Poppins',sans-serif] text-[10px]">Pros</span>
+                    <span className="text-[#2c2c2c] font-['Roboto',sans-serif] text-[13px]">Verified</span>
+                    <span className="text-[#2c2c2c]/60 font-['Roboto',sans-serif] text-[10px]">Pros</span>
                   </div>
                 </div>
 
@@ -1279,8 +1279,8 @@ export default function SectorPage() {
                     <Clock className="w-3 h-3 text-white" />
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[#2c2c2c] font-['Poppins',sans-serif] text-[13px]">Same-Day</span>
-                    <span className="text-[#2c2c2c]/60 font-['Poppins',sans-serif] text-[10px]">Available</span>
+                    <span className="text-[#2c2c2c] font-['Roboto',sans-serif] text-[13px]">Same-Day</span>
+                    <span className="text-[#2c2c2c]/60 font-['Roboto',sans-serif] text-[10px]">Available</span>
                   </div>
                 </div>
               </div>
@@ -1471,7 +1471,7 @@ export default function SectorPage() {
 
                           {/* Text */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-['Poppins',sans-serif] text-[#2c2c2c] text-[13px] group-hover:text-[#FE8A0F] transition-colors truncate">
+                            <h3 className="font-['Roboto',sans-serif] text-[#2c2c2c] text-[13px] group-hover:text-[#FE8A0F] transition-colors truncate">
                               {item.name}
                             </h3>
                           </div>
@@ -1511,10 +1511,10 @@ export default function SectorPage() {
           <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
             <SheetContent side="left" className="w-[85%] max-w-[320px] overflow-y-auto px-6 pb-6">
               <SheetHeader>
-                <SheetTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                <SheetTitle className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
                   Filters
                 </SheetTitle>
-                <SheetDescription className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
+                <SheetDescription className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
                   Refine your search results
                 </SheetDescription>
               </SheetHeader>
@@ -1532,7 +1532,7 @@ export default function SectorPage() {
                       setLocationSearch("");
                       setShowRadiusSlider(false);
                     }}
-                    className="w-full text-center py-2 px-4 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#FE8A0F] font-['Poppins',sans-serif] text-[14px] transition-colors"
+                    className="w-full text-center py-2 px-4 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#FE8A0F] font-['Roboto',sans-serif] text-[14px] transition-colors"
                   >
                     Clear All Filters
                   </button>
@@ -1541,7 +1541,7 @@ export default function SectorPage() {
                 {/* Categories Tree - Show service categories and their subcategories */}
                 {Array.isArray(categoriesToShow) && categoriesToShow.length > 0 && (
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Categories
                     </h3>
                     <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
@@ -1595,7 +1595,7 @@ export default function SectorPage() {
                                     navigate(url);
                                   }
                             }}
-                                className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                                className={`flex-1 text-left px-2 py-1.5 rounded font-['Roboto',sans-serif] text-[13px] transition-colors ${
                                   "hover:bg-gray-50 text-[#5b5b5b]"
                             }`}
                           >
@@ -1619,7 +1619,7 @@ export default function SectorPage() {
                 {/* Sub Categories */}
                 {currentMainCategory && (currentMainCategory as MainCategory).subCategories && (currentMainCategory as MainCategory).subCategories.length > 0 && (
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Subcategories
                     </h3>
                     <div className="space-y-1.5 max-h-64 overflow-y-auto">
@@ -1635,7 +1635,7 @@ export default function SectorPage() {
                                   : [...prev, subCat.name]
                               );
                             }}
-                            className={`w-full text-left px-3 py-2 rounded-lg font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                            className={`w-full text-left px-3 py-2 rounded-lg font-['Roboto',sans-serif] text-[13px] transition-colors ${
                               isSelected
                                 ? "bg-[#FFF5EB] text-[#FE8A0F] font-medium"
                                 : "hover:bg-gray-50 text-[#5b5b5b]"
@@ -1653,7 +1653,7 @@ export default function SectorPage() {
 
                 {/* Rating Filter */}
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                     Minimum Rating
                   </h3>
                   <div className="space-y-2">
@@ -1661,7 +1661,7 @@ export default function SectorPage() {
                       <button
                         key={rating}
                         onClick={() => setSelectedRating(rating === selectedRating ? 0 : rating)}
-                        className={`w-full text-left px-3 py-2 rounded-lg font-['Poppins',sans-serif] text-[13px] transition-colors flex items-center gap-2 ${
+                        className={`w-full text-left px-3 py-2 rounded-lg font-['Roboto',sans-serif] text-[13px] transition-colors flex items-center gap-2 ${
                           selectedRating === rating
                             ? "bg-[#FFF5EB] text-[#FE8A0F]"
                             : "hover:bg-gray-50 text-[#5b5b5b]"
@@ -1682,7 +1682,7 @@ export default function SectorPage() {
 
                 {/* Price Range */}
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                     Price Range
                   </h3>
                   <div className="space-y-3">
@@ -1695,10 +1695,10 @@ export default function SectorPage() {
                       className="w-full"
                     />
                     <div className="flex items-center justify-between">
-                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         £{priceRange[0].toLocaleString()}
                       </span>
-                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         £{priceRange[1].toLocaleString()}
                       </span>
                     </div>
@@ -1709,7 +1709,7 @@ export default function SectorPage() {
 
                 {/* Location Filter */}
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                     Location
                   </h3>
                   <div className="space-y-3">
@@ -1721,18 +1721,18 @@ export default function SectorPage() {
                         value={locationSearch}
                         onChange={(e) => setLocationSearch(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
-                        className="pl-10 font-['Poppins',sans-serif] text-[13px] h-10"
+                        className="pl-10 font-['Roboto',sans-serif] text-[13px] h-10"
                       />
                     </div>
                     <Button
                       onClick={handleLocationSearch}
-                      className="w-full h-10 bg-[#003D82] hover:bg-[#002554] font-['Poppins',sans-serif] text-[13px]"
+                      className="w-full h-10 bg-[#003D82] hover:bg-[#002554] font-['Roboto',sans-serif] text-[13px]"
                     >
                       Search Location
                     </Button>
                     {showRadiusSlider && (
                       <div className="space-y-2">
-                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b]">
+                        <Label className="font-['Roboto',sans-serif] text-[13px] text-[#5b5b5b]">
                           Radius: {radiusMiles} miles
                         </Label>
                         <Slider
@@ -1743,8 +1743,8 @@ export default function SectorPage() {
                           step={1}
                         />
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">1 mi</span>
-                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">50 mi</span>
+                          <span className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">1 mi</span>
+                          <span className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">50 mi</span>
                         </div>
                       </div>
                     )}
@@ -1760,7 +1760,7 @@ export default function SectorPage() {
           <aside className="hidden md:block w-[280px] flex-shrink-0">
             <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-[140px]">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                <h2 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                   Filters
                 </h2>
                 {(selectedMainCategories.length > 0 || selectedSubCategories.length > 0 || selectedRating > 0 || priceRange[0] !== 0 || priceRange[1] !== 100000 || locationSearch) && (
@@ -1774,7 +1774,7 @@ export default function SectorPage() {
                       setLocationSearch("");
                       setShowRadiusSlider(false);
                     }}
-                    className="text-[#FE8A0F] hover:text-[#ff9d3a] font-['Poppins',sans-serif] text-[12px] transition-colors"
+                    className="text-[#FE8A0F] hover:text-[#ff9d3a] font-['Roboto',sans-serif] text-[12px] transition-colors"
                   >
                     Clear All
                   </button>
@@ -1785,7 +1785,7 @@ export default function SectorPage() {
                 {/* Categories Tree - Show service categories and their subcategories */}
                 {Array.isArray(categoriesToShow) && categoriesToShow.length > 0 && (
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Categories
                     </h3>
                     <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
@@ -1839,7 +1839,7 @@ export default function SectorPage() {
                                     navigate(url);
                                   }
                             }}
-                                className={`flex-1 text-left px-2 py-1.5 rounded font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                                className={`flex-1 text-left px-2 py-1.5 rounded font-['Roboto',sans-serif] text-[13px] transition-colors ${
                                   'text-[#5b5b5b] hover:bg-gray-50'
                             }`}
                           >
@@ -1863,7 +1863,7 @@ export default function SectorPage() {
                 {/* Sub Categories (3rd level - main category page) */}
                 {currentMainCategory && (
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Services
                     </h3>
                     <div className="space-y-1.5 max-h-64 overflow-y-auto">
@@ -1879,7 +1879,7 @@ export default function SectorPage() {
                                   : [...prev, subCat.name]
                               );
                             }}
-                            className={`w-full text-left px-3 py-2 rounded-lg font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                            className={`w-full text-left px-3 py-2 rounded-lg font-['Roboto',sans-serif] text-[13px] transition-colors ${
                               isSelected
                                 ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
                                 : 'text-[#5b5b5b] hover:bg-gray-50'
@@ -1895,7 +1895,7 @@ export default function SectorPage() {
 
                   {/* Price Range */}
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Price Range
                     </h3>
                     <div className="space-y-2">
@@ -1905,14 +1905,14 @@ export default function SectorPage() {
                           value={priceRange[0]}
                           onChange={(e) => setPriceRange([parseFloat(e.target.value) || 0, priceRange[1]])}
                           placeholder="Min"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg font-['Poppins',sans-serif] text-[13px]"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg font-['Roboto',sans-serif] text-[13px]"
                         />
                         <input
                           type="number"
                           value={priceRange[1]}
                           onChange={(e) => setPriceRange([priceRange[0], parseFloat(e.target.value) || 100000])}
                           placeholder="Max"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg font-['Poppins',sans-serif] text-[13px]"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg font-['Roboto',sans-serif] text-[13px]"
                         />
                       </div>
                     </div>
@@ -1920,7 +1920,7 @@ export default function SectorPage() {
 
                   {/* Rating Filter */}
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Minimum Rating
                     </h3>
                     <div className="space-y-2">
@@ -1928,7 +1928,7 @@ export default function SectorPage() {
                         <button
                           key={rating}
                           onClick={() => setSelectedRating(selectedRating === rating ? 0 : rating)}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg font-['Roboto',sans-serif] text-[13px] transition-colors ${
                             selectedRating === rating
                               ? 'bg-[#FFF5EB] text-[#FE8A0F]'
                               : 'text-[#5b5b5b] hover:bg-gray-50'
@@ -1947,13 +1947,13 @@ export default function SectorPage() {
 
                   {/* Sort By */}
                   <div>
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                       Sort By
                     </h3>
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg font-['Poppins',sans-serif] text-[13px] bg-white"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg font-['Roboto',sans-serif] text-[13px] bg-white"
                     >
                       <option value="relevance">Relevance</option>
                       <option value="rating">Highest Rated</option>
@@ -1978,7 +1978,7 @@ export default function SectorPage() {
                     placeholder="Search services or providers..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-12 border-0 border-b-2 border-gray-200 rounded-none font-['Poppins',sans-serif] text-[14px] bg-white focus-visible:ring-0 focus-visible:border-[#FE8A0F]"
+                    className="pl-10 h-12 border-0 border-b-2 border-gray-200 rounded-none font-['Roboto',sans-serif] text-[14px] bg-white focus-visible:ring-0 focus-visible:border-[#FE8A0F]"
                   />
                 </div>
 
@@ -1992,13 +1992,13 @@ export default function SectorPage() {
                         value={locationSearch}
                         onChange={(e) => setLocationSearch(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
-                        className="pl-10 h-12 border-0 border-b-2 border-gray-200 rounded-none font-['Poppins',sans-serif] text-[14px] bg-white focus-visible:ring-0 focus-visible:border-[#FE8A0F]"
+                        className="pl-10 h-12 border-0 border-b-2 border-gray-200 rounded-none font-['Roboto',sans-serif] text-[14px] bg-white focus-visible:ring-0 focus-visible:border-[#FE8A0F]"
                       />
                     </div>
                     {locationSearch && (
                       <Button
                         onClick={handleLocationSearch}
-                        className="h-12 px-6 bg-[#FE8A0F] hover:bg-[#FFB347] transition-colors font-['Poppins',sans-serif] text-[14px] whitespace-nowrap"
+                        className="h-12 px-6 bg-[#FE8A0F] hover:bg-[#FFB347] transition-colors font-['Roboto',sans-serif] text-[14px] whitespace-nowrap"
                       >
                         Search
                       </Button>
@@ -2009,7 +2009,7 @@ export default function SectorPage() {
                   {showRadiusSlider && (
                     <div className="bg-[#FFF5EB] rounded-lg p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                        <Label className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f]">
                           Within {radiusMiles} miles
                         </Label>
                         <button
@@ -2017,7 +2017,7 @@ export default function SectorPage() {
                             setLocationSearch("");
                             setShowRadiusSlider(false);
                           }}
-                          className="text-[#FE8A0F] hover:text-[#ff9d3a] font-['Poppins',sans-serif] text-[11px]"
+                          className="text-[#FE8A0F] hover:text-[#ff9d3a] font-['Roboto',sans-serif] text-[11px]"
                         >
                           Clear
                         </button>
@@ -2039,11 +2039,11 @@ export default function SectorPage() {
             {/* Title Section with View Mode Toggle */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex-1">
-                <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px] mb-1">
+                <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[20px] md:text-[24px] mb-1">
                   {hasActiveFilters ? 'Filtered Services' : 'Featured Services'}
                 </h2>
                 {/* Desktop only subtitle */}
-                <p className="hidden md:block font-['Poppins',sans-serif] text-[#8d8d8d] text-[13px]">
+                <p className="hidden md:block font-['Roboto',sans-serif] text-[#8d8d8d] text-[13px]">
                   {currentMainCategory 
                     ? hasActiveFilters
                       ? `Showing ${displayServices.length} services in ${currentMainCategory.name}`
@@ -2101,10 +2101,10 @@ export default function SectorPage() {
 
             {displayServices.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                <h3 className="font-['Poppins',sans-serif] text-[24px] text-[#5a5a5a] mb-4">
+                <h3 className="font-['Roboto',sans-serif] text-[24px] text-[#5a5a5a] mb-4">
                   No services found
                 </h3>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#7a7a7a] mb-6">
+                <p className="font-['Roboto',sans-serif] text-[14px] text-[#7a7a7a] mb-6">
                   Try adjusting your filters to see more results.
                 </p>
                 <button
@@ -2117,7 +2117,7 @@ export default function SectorPage() {
                     setLocationSearch("");
                     setShowRadiusSlider(false);
                   }}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] px-8 py-3 rounded-lg transition-colors"
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Roboto',sans-serif] px-8 py-3 rounded-lg transition-colors"
                 >
                   Clear All Filters
                 </button>
@@ -2144,7 +2144,7 @@ export default function SectorPage() {
                       {/* Badges - Top Left */}
                       {service.badges && service.badges.length > 0 && (
                         <div className="absolute top-1.5 md:top-3 left-1.5 md:left-3">
-                          <span className="bg-[#FE8A0F] text-white text-[7px] md:text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
+                          <span className="bg-[#FE8A0F] text-white text-[7px] md:text-[8px] font-['Roboto',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                             {service.badges[0]}
                           </span>
                         </div>
@@ -2161,14 +2161,14 @@ export default function SectorPage() {
                           className="w-5 h-5 md:w-8 md:h-8 rounded-full object-cover"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[14px] text-[#2c353f] block truncate">
+                          <span className="font-['Roboto',sans-serif] text-[10px] md:text-[14px] text-[#2c353f] block truncate">
                             {service.tradingName}
                           </span>
                         </div>
                       </div>
 
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b] mb-1.5 md:mb-3 line-clamp-2">
+                      <p className="font-['Roboto',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b] mb-1.5 md:mb-3 line-clamp-2">
                         {service.description}
                       </p>
 
@@ -2188,14 +2188,14 @@ export default function SectorPage() {
                                 }`}
                               />
                             ))}
-                            <span className="font-['Poppins',sans-serif] text-[8px] md:text-[13px] text-[#2c353f] ml-0.5 md:ml-1">
+                            <span className="font-['Roboto',sans-serif] text-[8px] md:text-[13px] text-[#2c353f] ml-0.5 md:ml-1">
                               {service.rating} <span className="text-[#8d8d8d]">({service.completedTasks})</span>
                             </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 md:gap-2 text-[#8d8d8d] text-[8px] md:text-[12px]">
                             <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#E5E5E5] text-[#E5E5E5]" />
-                            <span className="font-['Poppins',sans-serif]">New</span>
+                            <span className="font-['Roboto',sans-serif]">New</span>
                           </div>
                         )}
                       </div>
@@ -2203,11 +2203,11 @@ export default function SectorPage() {
                       {/* Price and Discount */}
                       {service.originalPrice && (
                         <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                          <span className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#c0c0c0] line-through">
+                          <span className="font-['Roboto',sans-serif] text-[9px] md:text-[13px] text-[#c0c0c0] line-through">
                             £{service.originalPrice}
                           </span>
                           <div className="px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] rounded">
-                            <span className="font-['Poppins',sans-serif] text-[7px] md:text-[10px] text-[#3D78CB]">
+                            <span className="font-['Roboto',sans-serif] text-[7px] md:text-[10px] text-[#3D78CB]">
                               {Math.round(((parseFloat(service.originalPrice) - parseFloat(service.price)) / parseFloat(service.originalPrice)) * 100)}% OFF
                             </span>
                           </div>
@@ -2216,7 +2216,7 @@ export default function SectorPage() {
 
                       {/* Price Display and Delivery Badge */}
                       <div className="flex items-center justify-between gap-1 md:gap-2 mb-2 md:mb-3">
-                        <span className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b]">
+                        <span className="font-['Roboto',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b]">
                           {service.originalPrice && "From "}
                           <span className="text-[13px] md:text-[18px] text-[#2c353f] font-medium">
                             £{service.price}
@@ -2227,11 +2227,11 @@ export default function SectorPage() {
                         {/* Delivery Badge */}
                         <div className="flex-shrink-0">
                           {service.deliveryType === "same-day" ? (
-                            <div className="inline-flex items-center px-1 md:px-2 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                            <div className="inline-flex items-center px-1 md:px-2 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
                               <span className="font-semibold">⚡ Same Day</span>
                             </div>
                           ) : (
-                            <div className="inline-flex items-center gap-0.5 px-1 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                            <div className="inline-flex items-center gap-0.5 px-1 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
                               <span className="font-semibold">Standard</span>
                             </div>
                           )}
@@ -2245,7 +2245,7 @@ export default function SectorPage() {
                             e.preventDefault();
                             navigate(`/service/${service.id}`);
                           }}
-                          className="w-full h-[26px] md:h-[38px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          className="w-full h-[26px] md:h-[38px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                         >
                           <Zap className="w-3 h-3 md:w-4 md:h-4" />
                           <span>Buy Now!</span>
@@ -2257,7 +2257,7 @@ export default function SectorPage() {
                             setSelectedServiceForCart(service);
                             setShowAddToCartModal(true);
                           }}
-                          className="w-full h-[26px] md:h-[38px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          className="w-full h-[26px] md:h-[38px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                         >
                           <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
                           <span>Add to cart</span>
@@ -2288,7 +2288,7 @@ export default function SectorPage() {
                           {/* Badges */}
                           {service.badges && service.badges.length > 0 && (
                             <div className="absolute top-1.5 left-1.5">
-                              <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
+                              <span className="bg-[#FE8A0F] text-white text-[8px] font-['Roboto',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                                 {service.badges[0]}
                               </span>
                             </div>
@@ -2307,13 +2307,13 @@ export default function SectorPage() {
                                   alt={service.tradingName}
                                   className="w-5 h-5 rounded-full object-cover"
                                 />
-                                <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] truncate">
+                                <span className="font-['Roboto',sans-serif] text-[11px] text-[#2c353f] truncate">
                                   {service.tradingName}
                                 </span>
                               </div>
 
                               {/* Description */}
-                              <p className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
+                              <p className="font-['Roboto',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
                                 {service.description}
                               </p>
 
@@ -2335,10 +2335,10 @@ export default function SectorPage() {
                                         />
                                       ))}
                                     </div>
-                                    <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
+                                    <span className="font-['Roboto',sans-serif] text-[9px] text-[#2c353f]">
                                       {service.rating}
                                     </span>
-                                    <span className="font-['Poppins',sans-serif] text-[8px] text-[#8d8d8d]">
+                                    <span className="font-['Roboto',sans-serif] text-[8px] text-[#8d8d8d]">
                                       ({service.completedTasks})
                                     </span>
                                   </div>
@@ -2349,11 +2349,11 @@ export default function SectorPage() {
                                 {/* Delivery Badge */}
                                 <div className="flex-shrink-0">
                                   {service.deliveryType === "same-day" ? (
-                                    <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                    <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
                                       <span className="font-medium">⚡ Same Day</span>
                                     </div>
                                   ) : (
-                                    <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                    <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
                                       <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M3 9h4l3 9 3-16 3 9h4"/>
                                       </svg>
@@ -2370,11 +2370,11 @@ export default function SectorPage() {
                             {/* Price - Left Bottom */}
                             <div className="flex flex-col">
                               {service.originalPrice && (
-                                <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
+                                <span className="font-['Roboto',sans-serif] text-[9px] text-[#c0c0c0] line-through">
                                   £{service.originalPrice}
                                 </span>
                               )}
-                              <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                              <span className="font-['Roboto',sans-serif] text-[9px] text-[#5b5b5b]">
                                 {service.originalPrice && "From "}
                                 <span className="text-[14px] text-[#2c353f] font-medium">
                                   £{service.price}
@@ -2390,7 +2390,7 @@ export default function SectorPage() {
                                   e.preventDefault();
                                   navigate(`/service/${service.id}`);
                                 }}
-                                className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
+                                className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                               >
                                 <Zap className="w-3.5 h-3.5" />
                               </button>
@@ -2400,7 +2400,7 @@ export default function SectorPage() {
                                   setSelectedServiceForCart(service);
                                   setShowAddToCartModal(true);
                                 }}
-                                className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
+                                className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                               >
                                 <ShoppingCart className="w-3.5 h-3.5" />
                               </button>

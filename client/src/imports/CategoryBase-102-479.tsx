@@ -68,7 +68,7 @@ function Component9() {
     return <div className="absolute h-[7px] left-[124px] overflow-clip top-[31px] w-[11px]" data-name="21243359731558965381 (1) 1"><Layer1 /></div>;
 }
 function Group1() {
-    return <div className="absolute contents left-0 top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-0 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[159px]"/><p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[63px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Builders</p><div className="absolute bg-[#f0f6ff] left-[8px] size-[45px] top-[12px]"/><Component6 /><Component9 /></div>;
+    return <div className="absolute contents left-0 top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-0 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[159px]"/><p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[63px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Builders</p><div className="absolute bg-[#f0f6ff] left-[8px] size-[45px] top-[12px]"/><Component6 /><Component9 /></div>;
 }
 function Category1() {
     return <div className="absolute contents left-0 top-0" data-name="Category 7"><Group1 /></div>;
@@ -109,7 +109,7 @@ function Component3() { }
     return <div className="absolute h-[7px] left-[317px] overflow-clip top-[31px] w-[11px]" data-name="21243359731558965381 (1) 1"><Layer3 /></div>;
 }
 function Group2() {
-    return <div className="absolute contents left-[169px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[169px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[182px]"/><div className="absolute bg-[#f0f6ff] left-[177px] size-[45px] top-[12px]"/><p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[232px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Handymen</p><Component8 /><Component3 />.1243359731558966e+21 /></div>;
+    return <div className="absolute contents left-[169px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[169px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[182px]"/><div className="absolute bg-[#f0f6ff] left-[177px] size-[45px] top-[12px]"/><p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[232px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Handymen</p><Component8 /><Component3 />.1243359731558966e+21 /></div>;
 }
 function Category2() {
     return <div className="absolute contents left-[169px] top-0" data-name="Category 8"><Group2 /></div>;
@@ -157,7 +157,7 @@ function Component3() { }
     return <div className="absolute h-[7px] left-[497px] overflow-clip top-[31px] w-[11px]" data-name="21243359731558965381 (1) 1"><Layer5 /></div>;
 }
 function Group6() {
-    return <div className="absolute contents left-[361px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[361px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[168px]"/><div className="absolute bg-[#f0f6ff] left-[369px] size-[45px] top-[12px]"/><p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[424px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Gardners</p><div className="absolute flex inset-[40%_63.34%_20%_33.36%] items-center justify-center"><div className="flex-none h-[24px] rotate-[180deg] scale-y-[-100%] w-[37px]"><Frame /></div></div><Component3 />.1243359731558966e+22 /></div>;
+    return <div className="absolute contents left-[361px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[361px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[168px]"/><div className="absolute bg-[#f0f6ff] left-[369px] size-[45px] top-[12px]"/><p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[424px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Gardners</p><div className="absolute flex inset-[40%_63.34%_20%_33.36%] items-center justify-center"><div className="flex-none h-[24px] rotate-[180deg] scale-y-[-100%] w-[37px]"><Frame /></div></div><Component3 />.1243359731558966e+22 /></div>;
 }
 function Category3() {
     return <div className="absolute contents left-[361px] top-0" data-name="Category 9"><Group6 /></div>;
@@ -198,7 +198,7 @@ function Component4() {
     </svg></div>;
 }
 function Group7() {
-    return <div className="absolute contents left-[539px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[539px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[225px]"/><div className="absolute bg-[#f0f6ff] left-[547px] size-[45px] top-[12px]"/><p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[602px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Bathroom Fitters</p><Component3 />.1243359731558966e+23 /><Component4 /></div>;
+    return <div className="absolute contents left-[539px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[539px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[225px]"/><div className="absolute bg-[#f0f6ff] left-[547px] size-[45px] top-[12px]"/><p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[602px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[34px] whitespace-pre">Bathroom Fitters</p><Component3 />.1243359731558966e+23 /><Component4 /></div>;
 }
 function Category() {
     return <div className="absolute contents left-[539px] top-0" data-name="Category 6"><Group7 /></div>;
@@ -242,13 +242,13 @@ function Component7() {
     return <div className="absolute h-[25px] left-[787px] overflow-clip top-[21px] w-[35px]" data-name="5745716691621160443 (1) 1"><Group8 /></div>;
 }
 function Group9() {
-    return <div className="absolute contents left-[774px] top-[-1px]"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[774px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-[-1px] w-[169px]"/><div className="absolute bg-[#f0f6ff] left-[782px] size-[45px] top-[11px]"/><p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[837px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[33px] whitespace-pre">Cleaners</p><Component3 />.1243359731558966e+24 /><Component7 /></div>;
+    return <div className="absolute contents left-[774px] top-[-1px]"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[774px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-[-1px] w-[169px]"/><div className="absolute bg-[#f0f6ff] left-[782px] size-[45px] top-[11px]"/><p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[837px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[33px] whitespace-pre">Cleaners</p><Component3 />.1243359731558966e+24 /><Component7 /></div>;
 }
 function Category4() {
     return <div className="absolute contents left-[774px] top-[-1px]" data-name="Category 10"><Group9 /></div>;
 }
 function Group10() {
-    return <div className="absolute contents left-[953px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[953px] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-14px_-38px] mask-size-[182px_155px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[197px]" style={{ maskImage: `url('${imgRectangle72}')` }}/><div className="absolute bg-[#f0f6ff] h-[45px] left-[961px] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-22px_-50px] mask-size-[182px_155px] top-[12px] w-[48px]" style={{ maskImage: `url('${imgRectangle72}')` }}/><p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[1016px] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-77px_-68px] mask-size-[182px_155px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre" style={{ maskImage: `url('${imgRectangle72}')` }}>{`Legal & Advice`}</p></div>;
+    return <div className="absolute contents left-[953px] top-0"><div className="absolute bg-[rgba(255,255,255,0.2)] h-[68px] left-[953px] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-14px_-38px] mask-size-[182px_155px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.15)] top-0 w-[197px]" style={{ maskImage: `url('${imgRectangle72}')` }}/><div className="absolute bg-[#f0f6ff] h-[45px] left-[961px] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-22px_-50px] mask-size-[182px_155px] top-[12px] w-[48px]" style={{ maskImage: `url('${imgRectangle72}')` }}/><p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[1016px] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-77px_-68px] mask-size-[182px_155px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre" style={{ maskImage: `url('${imgRectangle72}')` }}>{`Legal & Advice`}</p></div>;
 }
 function LayerX() {
     return <div className="absolute bottom-[0.59%] left-[-0.01%] right-0 top-[0.59%]" data-name="Layer_x0020_1"><svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
@@ -280,5 +280,5 @@ function MaskGroup() {
     return <div className="absolute contents left-[939px] top-[-38px]" data-name="Mask group"><Category5 /></div>;
 }
 export default function CategoryBase() {
-    return <div className="relative size-full" data-name="Category Base"><p className="absolute font-['Poppins:Bold',sans-serif] leading-none left-[calc(50%-559.5px)] not-italic text-[#5b5b5b] text-[16px] text-nowrap top-[-39px] whitespace-pre">Top Home and Garden Categories</p><L /><div className="absolute flex h-[24.532px] items-center justify-center left-[1068px] top-[-33.27px] w-[53px]"><div className="flex-none rotate-[180deg] scale-y-[-100%]"><R /></div></div><Category1 /><Category2 /><Category3 /><Category /><Category4 /><MaskGroup /></div>;
+    return <div className="relative size-full" data-name="Category Base"><p className="absolute font-['Roboto:Bold',sans-serif] leading-none left-[calc(50%-559.5px)] not-italic text-[#5b5b5b] text-[16px] text-nowrap top-[-39px] whitespace-pre">Top Home and Garden Categories</p><L /><div className="absolute flex h-[24.532px] items-center justify-center left-[1068px] top-[-33.27px] w-[53px]"><div className="flex-none rotate-[180deg] scale-y-[-100%]"><R /></div></div><Category1 /><Category2 /><Category3 /><Category /><Category4 /><MaskGroup /></div>;
 }

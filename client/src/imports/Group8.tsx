@@ -120,7 +120,7 @@ function Review() {
 
       {/* Text */}
       <motion.p 
-        className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[150px] not-italic text-[14px] text-nowrap text-white top-[12px] whitespace-pre"
+        className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[150px] not-italic text-[14px] text-nowrap text-white top-[12px] whitespace-pre"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ 

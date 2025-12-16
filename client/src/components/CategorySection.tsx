@@ -21,7 +21,7 @@ export default function CategorySection() {
             <div className="flex items-center justify-center size-[45px] bg-white rounded-full shrink-0">
               <IconComponent className="w-6 h-6 text-[#3D78CB]" />
             </div>
-            <span className="font-['Poppins',sans-serif] text-[14px] text-[#5b5b5b] group-hover:text-[#3D78CB] transition-colors whitespace-nowrap">
+            <span className="font-['Roboto',sans-serif] text-[14px] text-[#5b5b5b] group-hover:text-[#3D78CB] transition-colors whitespace-nowrap">
               {tagline.name}
             </span>
           </button>

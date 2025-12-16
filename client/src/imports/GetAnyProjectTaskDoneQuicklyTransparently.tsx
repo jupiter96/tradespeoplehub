@@ -35,8 +35,8 @@ function Frame() {
 function Component() {
   return (
     <div className="absolute contents left-0 top-[73px]" data-name="1">
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[36px] leading-[1.24] left-0 not-italic text-[#5b5b5b] text-[14px] top-[169px] w-[212px]">{`Clear & Transparent Pricing:`}</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[97px] leading-[1.24] left-0 not-italic text-[#5b5b5b] text-[14px] top-[207px] w-[253px]">No hidden fees or endless negotiations—just straightforward, upfront pricing to help you stay on budget.</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[36px] leading-[1.24] left-0 not-italic text-[#5b5b5b] text-[14px] top-[169px] w-[212px]">{`Clear & Transparent Pricing:`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[97px] leading-[1.24] left-0 not-italic text-[#5b5b5b] text-[14px] top-[207px] w-[253px]">No hidden fees or endless negotiations—just straightforward, upfront pricing to help you stay on budget.</p>
       <Component4 />
       <Frame />
     </div>
@@ -71,8 +71,8 @@ function Group1() {
 function Component1() {
   return (
     <div className="absolute contents left-[352px] top-[95px]" data-name="2">
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[36px] leading-[1.24] left-[352px] not-italic text-[#5b5b5b] text-[14px] top-[169px] w-[212px]">Flexible Payment Options:</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[69px] leading-[1.24] left-[352px] not-italic text-[#5b5b5b] text-[14px] top-[207px] w-[243px]">Choose from per-service, hourly, or square metre rates to best fit your budget.</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[36px] leading-[1.24] left-[352px] not-italic text-[#5b5b5b] text-[14px] top-[169px] w-[212px]">Flexible Payment Options:</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[69px] leading-[1.24] left-[352px] not-italic text-[#5b5b5b] text-[14px] top-[207px] w-[243px]">Choose from per-service, hourly, or square metre rates to best fit your budget.</p>
       <Group1 />
     </div>
   );
@@ -138,8 +138,8 @@ function Component6() {
 function Component2() {
   return (
     <div className="absolute contents left-[671px] top-[91px]" data-name="3">
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[36px] leading-[1.24] left-[671px] not-italic text-[#5b5b5b] text-[14px] top-[169px] w-[212px]">Money Back Guarantee:</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[69px] leading-[1.24] left-[671px] not-italic text-[#5b5b5b] text-[14px] top-[207px] w-[252px]">Order confidently with a satisfaction guarantee and refunds for non-delivery.</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[36px] leading-[1.24] left-[671px] not-italic text-[#5b5b5b] text-[14px] top-[169px] w-[212px]">Money Back Guarantee:</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[69px] leading-[1.24] left-[671px] not-italic text-[#5b5b5b] text-[14px] top-[207px] w-[252px]">Order confidently with a satisfaction guarantee and refunds for non-delivery.</p>
       <Component5 />
       <Component6 />
     </div>
@@ -150,7 +150,7 @@ function Cta() {
   return (
     <div className="absolute contents left-[calc(50%+48px)] top-[442px] translate-x-[-50%]" data-name="CTA">
       <div className="absolute bg-[#fe8a0f] inset-[104.25%_34.74%_-13.68%_46.27%] rounded-[20px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[normal] left-[464.5px] not-italic text-[15px] text-center text-white top-[451px] translate-x-[-50%] w-[127px]">Order Pro Now!</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[normal] left-[464.5px] not-italic text-[15px] text-center text-white top-[451px] translate-x-[-50%] w-[127px]">Order Pro Now!</p>
     </div>
   );
 }
@@ -163,15 +163,15 @@ export default function GetAnyProjectTaskDoneQuicklyTransparently() {
           <path d={svgPaths.p14fe7200} fill="var(--fill-0, #FAFCFF)" id="Vector 3" />
         </svg>
       </div>
-      <div className="absolute font-['Poppins:Bold',sans-serif] font-['Poppins_Medium:Regular',sans-serif] leading-[0] left-[calc(50%+48px)] not-italic text-[#2c353f] text-[24px] text-center text-nowrap top-[-120px] translate-x-[-50%] whitespace-pre">
+      <div className="absolute font-['Roboto:Bold',sans-serif] font-['Roboto_Medium:Regular',sans-serif] leading-[0] left-[calc(50%+48px)] not-italic text-[#2c353f] text-[24px] text-center text-nowrap top-[-120px] translate-x-[-50%] whitespace-pre">
         <p className="leading-none mb-0">{`Task Done, `}</p>
         <p className="leading-[1.24]">{`Quickly & Transparently`}</p>
       </div>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[52px] leading-[1.24] left-[464px] not-italic text-[#5b5b5b] text-[16px] text-center top-[-27px] translate-x-[-50%] w-[568px]">Discover the most efficient way to hire top-rated professionals for any task—whether it’s around the home, for your business, or specialised services like driving instruction or legal support.</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[52px] leading-[1.24] left-[464px] not-italic text-[#5b5b5b] text-[16px] text-center top-[-27px] translate-x-[-50%] w-[568px]">Discover the most efficient way to hire top-rated professionals for any task—whether it’s around the home, for your business, or specialised services like driving instruction or legal support.</p>
       <Component />
       <Component1 />
       <Component2 />
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[52px] leading-[1.24] left-[464px] not-italic text-[#9c9c9c] text-[14px] text-center top-[397px] translate-x-[-50%] w-[696px]">*Order confidently with a satisfaction guarantee and refunds for non-delivery.*</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[52px] leading-[1.24] left-[464px] not-italic text-[#9c9c9c] text-[14px] text-center top-[397px] translate-x-[-50%] w-[696px]">*Order confidently with a satisfaction guarantee and refunds for non-delivery.*</p>
       <Cta />
       <div className="absolute flex h-[59.304px] items-center justify-center left-[1029px] top-[286px] w-[122.5px]">
         <div className="flex-none rotate-[180deg] scale-y-[-100%]">

@@ -70,7 +70,7 @@ export default function ClientFaqSection() {
   return (
     <div className="w-full">
       {/* Title */}
-      <h2 className="font-['Poppins:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
+      <h2 className="font-['Roboto:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
         Frequently Asked Questions
       </h2>
 
@@ -86,10 +86,10 @@ export default function ClientFaqSection() {
               onClick={() => toggleFaq(index)}
               className="w-full flex items-center justify-between px-6 md:px-8 py-5 text-left hover:bg-gray-50 transition-colors"
             >
-              <span className="font-['Poppins:Bold',sans-serif] text-[#3d78cb] text-[16px] md:text-[20px] pr-4">
+              <span className="font-['Roboto:Bold',sans-serif] text-[#3d78cb] text-[16px] md:text-[20px] pr-4">
                 {faq.question}
               </span>
-              <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f] text-[24px] flex-shrink-0">
+              <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f] text-[24px] flex-shrink-0">
                 {openIndex === index ? "-" : "+"}
               </span>
             </button>
@@ -97,7 +97,7 @@ export default function ClientFaqSection() {
             {/* Answer */}
             {openIndex === index && faq.answer && (
               <div className="px-6 md:px-8 pb-5 pt-2">
-                <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.43]">
+                <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.43]">
                   {faq.answer}
                 </p>
               </div>

@@ -219,11 +219,11 @@ export default function CustomOrderModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="w-[70vw] h-[85vh] p-0 flex flex-col gap-0">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
-          <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
+          <DialogTitle className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-[#FE8A0F]" />
             Custom Order
           </DialogTitle>
-          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+          <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
             {step === "select" 
               ? `Select a service from ${professionalName}`
               : step === "payment"
@@ -237,7 +237,7 @@ export default function CustomOrderModal({
             <div className="space-y-3 py-4">
               {services.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
+                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d]">
                     No services available for this professional
                   </p>
                 </div>
@@ -251,22 +251,22 @@ export default function CustomOrderModal({
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
+                          <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
                             {service.name}
                           </h3>
-                          <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                          <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[11px]">
                             {service.category}
                           </Badge>
                         </div>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
+                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
                           Professional service by {professionalName}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+                        <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">
                           {service.price}
                         </p>
-                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                        <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
                           Starting from
                         </p>
                       </div>
@@ -284,7 +284,7 @@ export default function CustomOrderModal({
                 {selectedServiceData && (
                   <div className="bg-gradient-to-r from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                         {selectedServiceData.name}
                       </h3>
                       <Button
@@ -297,10 +297,10 @@ export default function CustomOrderModal({
                       </Button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[11px]">
                         {selectedServiceData.category}
                       </Badge>
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+                      <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">
                         {selectedServiceData.price}
                       </p>
                     </div>
@@ -309,7 +309,7 @@ export default function CustomOrderModal({
                 
                 {/* Payment Type Selection */}
                 <div className="space-y-4">
-                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                     Choose Payment Method
                   </h4>
                   
@@ -328,10 +328,10 @@ export default function CustomOrderModal({
                           <CreditCard className={`w-5 h-5 ${paymentType === "single" ? "text-white" : "text-gray-600"}`} />
                         </div>
                         <div>
-                          <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
+                          <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-1">
                             Single Payment
                           </h5>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                             Pay the full amount at once
                           </p>
                         </div>
@@ -352,10 +352,10 @@ export default function CustomOrderModal({
                           <Target className={`w-5 h-5 ${paymentType === "milestone" ? "text-white" : "text-gray-600"}`} />
                         </div>
                         <div>
-                          <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
+                          <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-1">
                             Milestone Payment
                           </h5>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                             Split into multiple payments
                           </p>
                         </div>
@@ -367,7 +367,7 @@ export default function CustomOrderModal({
                   {paymentType === "milestone" && (
                     <div className="mt-6 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
+                        <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
                           Configure Milestones
                         </h5>
                         <Button
@@ -388,7 +388,7 @@ export default function CustomOrderModal({
                             className="p-4 bg-white border-2 border-gray-200 rounded-lg space-y-3"
                           >
                             <div className="flex items-center justify-between">
-                              <h6 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              <h6 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                                 Milestone {index + 1}
                               </h6>
                               {milestones.length > 1 && (
@@ -405,7 +405,7 @@ export default function CustomOrderModal({
 
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Milestone Name
                                 </Label>
                                 <Input
@@ -413,11 +413,11 @@ export default function CustomOrderModal({
                                   placeholder="e.g., Initial Setup"
                                   value={milestone.name}
                                   onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
-                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 />
                               </div>
                               <div>
-                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Amount (£)
                                 </Label>
                                 <Input
@@ -425,32 +425,32 @@ export default function CustomOrderModal({
                                   placeholder="0"
                                   value={milestone.amount}
                                   onChange={(e) => updateMilestone(milestone.id, "amount", e.target.value)}
-                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 />
                               </div>
                             </div>
 
                             <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Description
                               </Label>
                               <Textarea
                                 placeholder="Describe what will be delivered..."
                                 value={milestone.description}
                                 onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
+                                className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
                               />
                             </div>
 
                             <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Due Date
                               </Label>
                               <Input
                                 type="date"
                                 value={milestone.dueDate}
                                 onChange={(e) => updateMilestone(milestone.id, "dueDate", e.target.value)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 min={new Date().toISOString().split('T')[0]}
                               />
                             </div>
@@ -462,18 +462,18 @@ export default function CustomOrderModal({
                       {selectedServiceData && (
                         <div className="p-4 bg-[#EFF6FF] border border-[#3D78CB]/20 rounded-lg">
                           <div className="flex items-center justify-between">
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                               Total Milestones:
                             </span>
-                            <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                            <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                               £{milestones.reduce((sum, m) => sum + parseFloat(m.amount || "0"), 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between mt-1">
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                               Service Price:
                             </span>
-                            <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
+                            <span className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F]">
                               {selectedServiceData.price}
                             </span>
                           </div>
@@ -490,14 +490,14 @@ export default function CustomOrderModal({
               <Button
                 onClick={() => setStep("select")}
                 variant="outline"
-                className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
+                className="flex-1 font-['Roboto',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
               >
                 <X className="w-4 h-4 mr-2" />
                 Back
               </Button>
               <Button
                 onClick={handlePaymentTypeSelect}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
               >
                 Continue
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -512,7 +512,7 @@ export default function CustomOrderModal({
                 {selectedServiceData && (
                   <div className="bg-gradient-to-r from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                         {selectedServiceData.name}
                       </h3>
                       <Button
@@ -526,14 +526,14 @@ export default function CustomOrderModal({
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                        <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[11px]">
                           {selectedServiceData.category}
                         </Badge>
-                        <Badge className="bg-white/80 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[11px]">
+                        <Badge className="bg-white/80 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Roboto',sans-serif] text-[11px]">
                           {paymentType === "single" ? "Single Payment" : `${milestones.length} Milestones`}
                         </Badge>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+                      <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">
                         {selectedServiceData.price}
                       </p>
                     </div>
@@ -543,7 +543,7 @@ export default function CustomOrderModal({
                 {/* Order Details Form */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
+                    <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-[#FE8A0F]" />
                       Preferred Date
                     </Label>
@@ -551,12 +551,12 @@ export default function CustomOrderModal({
                       type="date"
                       value={scheduledDate}
                       onChange={(e) => setScheduledDate(e.target.value)}
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                      className="font-['Roboto',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
                   <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
+                    <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
                       <Clock className="w-4 h-4 text-[#FE8A0F]" />
                       Preferred Time
                     </Label>
@@ -564,7 +564,7 @@ export default function CustomOrderModal({
                       type="time"
                       value={scheduledTime}
                       onChange={(e) => setScheduledTime(e.target.value)}
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                      className="font-['Roboto',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
                     />
                   </div>
                 </div>
@@ -592,20 +592,20 @@ export default function CustomOrderModal({
                     showTownCityField={true}
                     showCountyField={true}
                     addressLabel="Address"
-                    className="font-['Poppins',sans-serif]"
+                    className="font-['Roboto',sans-serif]"
                   />
                 </div>
 
                 {/* Additional Notes */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
+                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2">
                     Additional Notes (Optional)
                   </Label>
                   <Textarea
                     placeholder="Any special requirements or details..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[100px]"
+                    className="font-['Roboto',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[100px]"
                   />
                 </div>
               </div>
@@ -616,7 +616,7 @@ export default function CustomOrderModal({
               <Button
                 onClick={() => setStep("payment")}
                 variant="outline"
-                className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
+                className="flex-1 font-['Roboto',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
               >
                 <X className="w-4 h-4 mr-2" />
                 Back
@@ -624,7 +624,7 @@ export default function CustomOrderModal({
               <Button
                 onClick={handlePlaceOrder}
                 disabled={!selectedService || !scheduledDate || !scheduledTime || !address || !postcode}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
               >
                 <Check className="w-4 h-4 mr-2" />
                 Place Order

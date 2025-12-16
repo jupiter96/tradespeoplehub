@@ -65,13 +65,13 @@ export default function TrustTransparencySection() {
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 relative z-10">
         {/* Header */}
         <div className="text-center mb-8 md:mb-16">
-          <h2 className="font-['Poppins',sans-serif] text-[24px] md:text-[42px] lg:text-[48px] mb-2 md:mb-4">
+          <h2 className="font-['Roboto',sans-serif] text-[24px] md:text-[42px] lg:text-[48px] mb-2 md:mb-4">
             <span className="text-[#2c353f]">Built for </span>
             <span className="text-[#FE8A0F]">Trust</span>
             <span className="text-[#2c353f]\"> & </span>
             <span className="text-[#FE8A0F]">Transparency</span>
           </h2>
-          <p className="font-['Poppins',sans-serif] text-[14px] md:text-[18px] text-[#5b5b5b]">
+          <p className="font-['Roboto',sans-serif] text-[14px] md:text-[18px] text-[#5b5b5b]">
             Your peace of mind is our{" "}
             <span className="text-[#FE8A0F]">priority</span>.
           </p>
@@ -104,12 +104,12 @@ export default function TrustTransparencySection() {
                     </div>
 
                     {/* Title */}
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] text-center mb-2">
+                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] text-center mb-2">
                       {feature.title}
                     </h3>
 
                     {/* Description */}
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center leading-relaxed">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] text-center leading-relaxed">
                       {feature.description}
                     </p>
                   </div>
@@ -152,12 +152,12 @@ export default function TrustTransparencySection() {
                 </div>
 
                 {/* Title */}
-                <h3 className="font-['Poppins',sans-serif] text-[20px] md:text-[22px] text-[#2c353f] text-center mb-3">
+                <h3 className="font-['Roboto',sans-serif] text-[20px] md:text-[22px] text-[#2c353f] text-center mb-3">
                   {feature.title}
                 </h3>
 
                 {/* Description */}
-                <p className="font-['Poppins',sans-serif] text-[14px] md:text-[15px] text-[#6b6b6b] text-center leading-relaxed">
+                <p className="font-['Roboto',sans-serif] text-[14px] md:text-[15px] text-[#6b6b6b] text-center leading-relaxed">
                   {feature.description}
                 </p>
               </div>

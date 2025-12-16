@@ -23,8 +23,8 @@ function Image() {
       <div className="absolute bg-gradient-to-b from-[69.844%] from-[rgba(0,0,0,0)] h-[218.846px] left-[1034.51px] rounded-[12px] to-[97.473%] to-[rgba(0,0,0,0.7)] top-[156.62px] w-[142.489px]">
         <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.5)] border-solid inset-0 pointer-events-none rounded-[12px]" />
       </div>
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] h-[15.961px] leading-[normal] left-[1045.48px] not-italic text-[12px] text-white top-[331.07px] w-[56.863px]">Morgan</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[15.961px] leading-[normal] left-[1045.48px] not-italic text-[12px] text-white top-[345.04px] w-[124.699px]">{`Pet Specialist `}</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] h-[15.961px] leading-[normal] left-[1045.48px] not-italic text-[12px] text-white top-[331.07px] w-[56.863px]">Morgan</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[15.961px] leading-[normal] left-[1045.48px] not-italic text-[12px] text-white top-[345.04px] w-[124.699px]">{`Pet Specialist `}</p>
     </div>
   );
 }
@@ -56,8 +56,8 @@ function Image1() {
       <div className="absolute bg-gradient-to-b from-[69.844%] from-[rgba(0,0,0,0)] h-[218.846px] left-[783.61px] rounded-[12px] to-[97.473%] to-[rgba(0,0,0,0.7)] top-[155.85px] w-[142.489px]">
         <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.5)] border-solid inset-0 pointer-events-none rounded-[12px]" />
       </div>
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] h-[15.961px] leading-[normal] left-[794.58px] not-italic text-[12px] text-white top-[330.31px] w-[56.863px]">Amber</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[15.961px] leading-[normal] left-[794.58px] not-italic text-[12px] text-white top-[344.27px] w-[124.699px]">Professional</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] h-[15.961px] leading-[normal] left-[794.58px] not-italic text-[12px] text-white top-[330.31px] w-[56.863px]">Amber</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[15.961px] leading-[normal] left-[794.58px] not-italic text-[12px] text-white top-[344.27px] w-[124.699px]">Professional</p>
     </div>
   );
 }
@@ -90,8 +90,8 @@ function Image2() {
       <div className="absolute bg-gradient-to-b from-[69.844%] from-[rgba(0,0,0,0)] h-[262.615px] left-[889.59px] rounded-[12px] to-[97.473%] to-[rgba(0,0,0,0.7)] top-[134.69px] w-[174.821px]">
         <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.5)] border-solid inset-0 pointer-events-none rounded-[12px]" />
       </div>
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] h-[19.583px] leading-[normal] left-[903.06px] not-italic text-[12px] text-white top-[346.68px] w-[69.765px]">Pamela</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[19.583px] leading-[normal] left-[903.06px] not-italic text-[12px] text-white top-[363.81px] w-[152.993px]">Training Instructor</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] h-[19.583px] leading-[normal] left-[903.06px] not-italic text-[12px] text-white top-[346.68px] w-[69.765px]">Pamela</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[19.583px] leading-[normal] left-[903.06px] not-italic text-[12px] text-white top-[363.81px] w-[152.993px]">Training Instructor</p>
     </div>
   );
 }
@@ -107,7 +107,7 @@ function Group2() {
 function Cta() {
   return (
     <div className="absolute left-[60px] top-[383px]" data-name="CTA">
-      <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-6 py-3 font-['Poppins:Regular',sans-serif] text-[15px] text-white cursor-pointer">
+      <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-6 py-3 font-['Roboto:Regular',sans-serif] text-[15px] text-white cursor-pointer">
         Join US Now
       </button>
     </div>
@@ -170,12 +170,12 @@ function Hero() {
   return (
     <div className="absolute h-[507px] left-[calc(50%+0.5px)] top-0 translate-x-[-50%] w-[1241px]" data-name="Hero">
       <Banner />
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[108px] leading-[32px] left-[calc(50%-560.5px)] not-italic text-[0px] text-[24px] text-white top-[113px] w-[478px]">
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[108px] leading-[32px] left-[calc(50%-560.5px)] not-italic text-[0px] text-[24px] text-white top-[113px] w-[478px]">
         <span>{`Join a Thriving Community of Skilled Professionals and Watch Your Business `}</span>
-        <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">Flourish!</span>
+        <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f]">Flourish!</span>
       </p>
-      <div className="absolute font-['Poppins:Bold',sans-serif] leading-[20px] left-[calc(50%-560.5px)] not-italic text-[14px] text-white top-[236px] w-[661px]">
-        <p className="font-['Poppins:Regular',sans-serif] mb-0 whitespace-pre-wrap">{`With thousands of services sold every month, the opportunities for growth are limitless. Whether you're an experienced professional offering your expertise or someone just starting out, this platform connects you with clients ready to  to purchase your services..`}</p>
+      <div className="absolute font-['Roboto:Bold',sans-serif] leading-[20px] left-[calc(50%-560.5px)] not-italic text-[14px] text-white top-[236px] w-[661px]">
+        <p className="font-['Roboto:Regular',sans-serif] mb-0 whitespace-pre-wrap">{`With thousands of services sold every month, the opportunities for growth are limitless. Whether you're an experienced professional offering your expertise or someone just starting out, this platform connects you with clients ready to  to purchase your services..`}</p>
         <p className="mb-0">&nbsp;</p>
         <p className="mb-0">Start today, build your reputation, and unlock your potential to earn and grow.</p>
         <p>&nbsp;</p>

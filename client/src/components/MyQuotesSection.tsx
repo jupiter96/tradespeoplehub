@@ -85,28 +85,28 @@ export default function MyQuotesSection() {
     switch (status) {
       case "pending":
         return (
-          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Roboto',sans-serif]">
             <Hourglass className="w-3 h-3 mr-1" />
             Pending
           </Badge>
         );
       case "accepted":
         return (
-          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Roboto',sans-serif]">
             <CheckCircle className="w-3 h-3 mr-1" />
             Accepted
           </Badge>
         );
       case "awarded":
         return (
-          <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Roboto',sans-serif]">
             <CheckCircle className="w-3 h-3 mr-1" />
             Awarded
           </Badge>
         );
       case "rejected":
         return (
-          <Badge className="bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-red-50 text-red-700 border-red-200 font-['Roboto',sans-serif]">
             <XCircle className="w-3 h-3 mr-1" />
             Rejected
           </Badge>
@@ -130,60 +130,60 @@ export default function MyQuotesSection() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-gradient-to-br from-[#E3F2FD] to-white border-2 border-[#3B82F6] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
               Total
             </p>
             <MessageCircle className="w-5 h-5 text-[#3B82F6]" />
           </div>
-          <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f]">
             {stats.total}
           </p>
         </div>
 
         <div className="bg-gradient-to-br from-[#FFF9E6] to-white border-2 border-[#FFB347] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
               Pending
             </p>
             <Hourglass className="w-5 h-5 text-[#FFB347]" />
           </div>
-          <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f]">
             {stats.pending}
           </p>
         </div>
 
         <div className="bg-gradient-to-br from-[#E8F5E9] to-white border-2 border-[#4CAF50] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
               Accepted
             </p>
             <CheckCircle className="w-5 h-5 text-[#4CAF50]" />
           </div>
-          <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f]">
             {stats.accepted}
           </p>
         </div>
 
         <div className="bg-gradient-to-br from-[#E0F2F1] to-white border-2 border-[#00897B] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
               Awarded
             </p>
             <CheckCircle className="w-5 h-5 text-[#00897B]" />
           </div>
-          <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f]">
             {stats.awarded}
           </p>
         </div>
 
         <div className="bg-gradient-to-br from-[#FFEBEE] to-white border-2 border-[#F44336] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
               Rejected
             </p>
             <XCircle className="w-5 h-5 text-[#F44336]" />
           </div>
-          <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f]">
             {stats.rejected}
           </p>
         </div>
@@ -197,12 +197,12 @@ export default function MyQuotesSection() {
             placeholder="Search quotes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 font-['Poppins',sans-serif]"
+            className="pl-10 font-['Roboto',sans-serif]"
           />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-[180px] font-['Poppins',sans-serif]">
+          <SelectTrigger className="w-full md:w-[180px] font-['Roboto',sans-serif]">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -216,7 +216,7 @@ export default function MyQuotesSection() {
         </Select>
 
         <Select value={sortField} onValueChange={setSortField}>
-          <SelectTrigger className="w-full md:w-[180px] font-['Poppins',sans-serif]">
+          <SelectTrigger className="w-full md:w-[180px] font-['Roboto',sans-serif]">
             <ArrowUpDown className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -232,7 +232,7 @@ export default function MyQuotesSection() {
           onClick={() =>
             setSortDirection(sortDirection === "asc" ? "desc" : "asc")
           }
-          className="font-['Poppins',sans-serif]"
+          className="font-['Roboto',sans-serif]"
         >
           {sortDirection === "asc" ? "↑" : "↓"}
         </Button>
@@ -242,10 +242,10 @@ export default function MyQuotesSection() {
       {filteredQuotes.length === 0 ? (
         <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
           <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+          <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
             No quotes found
           </h3>
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+          <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
             {searchQuery || statusFilter !== "all"
               ? "Try adjusting your filters"
               : "Start bidding on available jobs to see your quotes here"}
@@ -253,7 +253,7 @@ export default function MyQuotesSection() {
           {searchQuery === "" && statusFilter === "all" && (
             <Button
               onClick={() => navigate("/account")}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
             >
               Browse Available Jobs
             </Button>
@@ -272,12 +272,12 @@ export default function MyQuotesSection() {
                 <div className="flex-1">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                      <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
                         {job.title}
                       </h3>
                       <div className="flex flex-wrap items-center gap-3 mb-3">
                         {getStatusBadge(quote.status)}
-                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                           Submitted: {formatDate(quote.submittedAt)}
                         </span>
                       </div>
@@ -286,18 +286,18 @@ export default function MyQuotesSection() {
 
                   {/* Job Details */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                    <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                    <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                       <MapPin className="w-4 h-4" />
                       {job.location}
                     </div>
-                    <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                    <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                       <Calendar className="w-4 h-4" />
                       Posted: {formatDate(job.postedAt)}
                     </div>
                   </div>
 
                   {/* Quote Message Preview */}
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] line-clamp-2 mb-3">
+                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] line-clamp-2 mb-3">
                     {quote.message}
                   </p>
                 </div>
@@ -305,15 +305,15 @@ export default function MyQuotesSection() {
                 {/* Right Side - Quote Details */}
                 <div className="flex flex-col items-start md:items-end gap-3">
                   <div className="text-right">
-                    <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                    <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
                       £{quote.price}
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                       Your Quote
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                  <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                     <Clock className="w-4 h-4" />
                     {quote.deliveryTime}
                   </div>
@@ -324,7 +324,7 @@ export default function MyQuotesSection() {
                       navigate(`/job/${job.id}`);
                     }}
                     variant="outline"
-                    className="w-full md:w-auto font-['Poppins',sans-serif]"
+                    className="w-full md:w-auto font-['Roboto',sans-serif]"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     View Job

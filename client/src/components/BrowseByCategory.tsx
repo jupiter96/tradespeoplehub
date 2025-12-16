@@ -168,7 +168,7 @@ export default function BrowseByCategory() {
     return (
       <div className="w-full">
         <div className="flex items-center justify-between mb-8 md:mb-10">
-          <h2 className="font-['Poppins',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
+          <h2 className="font-['Roboto',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
             Browse Service by Category
           </h2>
         </div>
@@ -183,12 +183,12 @@ export default function BrowseByCategory() {
     <div className="w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 md:mb-10">
-        <h2 className="font-['Poppins',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
+        <h2 className="font-['Roboto',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
           Browse Service by Category
         </h2>
         <Link 
           to="/all-categories" 
-          className="flex items-center gap-2 text-[#FE8A0F] font-['Poppins',sans-serif] text-[14px] font-medium hover:text-[#E67A00] transition-colors cursor-pointer group"
+          className="flex items-center gap-2 text-[#FE8A0F] font-['Roboto',sans-serif] text-[14px] font-medium hover:text-[#E67A00] transition-colors cursor-pointer group"
         >
           Browse all
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -245,7 +245,7 @@ export default function BrowseByCategory() {
                   </div>
                   
                   {/* Category Name */}
-                  <div className="text-center font-['Poppins',sans-serif]">
+                  <div className="text-center font-['Roboto',sans-serif]">
                     <p className="text-white text-[11px] font-semibold leading-tight drop-shadow-md">
                       {category.name}
                     </p>
@@ -311,7 +311,7 @@ export default function BrowseByCategory() {
                 </div>
                 
                 {/* Category Name */}
-                <div className="text-center font-['Poppins',sans-serif]">
+                <div className="text-center font-['Roboto',sans-serif]">
                   <p className="text-white text-[14px] font-semibold leading-tight drop-shadow-md">
                     {category.name}
                   </p>

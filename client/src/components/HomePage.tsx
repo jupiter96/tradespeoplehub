@@ -79,7 +79,7 @@ export default function HomePage() {
 
                 {/* Hero Title - Desktop Responsive */}
                 <h1 className="mb-4 md:mb-5 lg:mb-6 xl:mb-7 text-center w-full px-2">
-                  <div className="text-white font-['Poppins',sans-serif] text-[24px] md:text-[28px] lg:text-[36px] xl:text-[44px] 2xl:text-[52px] leading-[1.2] md:leading-[1.2] lg:leading-[1.25]"
+                  <div className="text-white font-['Roboto',sans-serif] text-[24px] md:text-[28px] lg:text-[36px] xl:text-[44px] 2xl:text-[52px] leading-[1.2] md:leading-[1.2] lg:leading-[1.25]"
                     style={{
                       textShadow: '0 2px 30px rgba(0, 0, 0, 0.3)'
                     }}>
@@ -107,7 +107,7 @@ export default function HomePage() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleSearchEnter}
                     />
-                    <button className="h-[54px] md:h-[56px] lg:h-[60px] xl:h-[64px] 2xl:h-[70px] px-5 md:px-6 lg:px-7 xl:px-9 2xl:px-10 bg-[#FE8A0F] text-white font-['Poppins',sans-serif] font-semibold hover:bg-[#FF9E2C] transition-all duration-300 text-[14px] md:text-[14px] lg:text-[15px] xl:text-[16px] 2xl:text-[17px] flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
+                    <button className="h-[54px] md:h-[56px] lg:h-[60px] xl:h-[64px] 2xl:h-[70px] px-5 md:px-6 lg:px-7 xl:px-9 2xl:px-10 bg-[#FE8A0F] text-white font-['Roboto',sans-serif] font-semibold hover:bg-[#FF9E2C] transition-all duration-300 text-[14px] md:text-[14px] lg:text-[15px] xl:text-[16px] 2xl:text-[17px] flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
                       onClick={handleSearch}
                     >
                       Search
@@ -156,7 +156,7 @@ export default function HomePage() {
               <div className="max-w-[600px] mx-auto w-full flex flex-col items-center">
                 {/* Hero Title - Mobile */}
                 <h1 className="mb-4 text-center px-2">
-                  <div className="text-white font-['Poppins',sans-serif] text-[22px] sm:text-[26px] leading-[1.2]"
+                  <div className="text-white font-['Roboto',sans-serif] text-[22px] sm:text-[26px] leading-[1.2]"
                     style={{
                       textShadow: '0 2px 30px rgba(0, 0, 0, 0.3)'
                     }}>
@@ -184,7 +184,7 @@ export default function HomePage() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleSearchEnter}
                     />
-                    <button className="h-[52px] sm:h-[56px] px-6 sm:px-8 bg-[#FE8A0F] text-white font-['Poppins',sans-serif] font-semibold hover:bg-[#FF9E2C] transition-all duration-300 text-[14px] sm:text-[15px] flex items-center gap-2"
+                    <button className="h-[52px] sm:h-[56px] px-6 sm:px-8 bg-[#FE8A0F] text-white font-['Roboto',sans-serif] font-semibold hover:bg-[#FF9E2C] transition-all duration-300 text-[14px] sm:text-[15px] flex items-center gap-2"
                       onClick={handleSearch}
                     >
                       <span className="hidden xs:inline">Search</span>

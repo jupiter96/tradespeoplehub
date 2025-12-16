@@ -23,11 +23,11 @@ function Group1() {
   return (
     <div className="absolute contents left-[-84px] top-[78px]">
       <div className="absolute bg-white h-[244px] left-[-84px] rounded-[10px] shadow-[0px_8px_20px_0px_rgba(61,120,203,0.1)] top-[78px] w-[351px]" />
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[21px] leading-[1.24] left-[-65px] not-italic text-[#5b5b5b] text-[16px] top-[174px] w-[182px]">Janathan Dall</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[21px] leading-[1.24] left-[-65px] not-italic text-[#5b5b5b] text-[14px] top-[199px] w-[182px]">Lorem ipsum dolor</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[87px] leading-[1.24] left-[-65px] not-italic text-[#5b5b5b] text-[14px] top-[239px] w-[321px]">{`Lorem ipsum dolor sit amet consectetur. Iaculis eget sed amet ut adipiscing nec nulla elit. Purus morbi neque fames elit feugiat. `}</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[21px] leading-[1.24] left-[-65px] not-italic text-[#5b5b5b] text-[16px] top-[174px] w-[182px]">Janathan Dall</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[21px] leading-[1.24] left-[-65px] not-italic text-[#5b5b5b] text-[14px] top-[199px] w-[182px]">Lorem ipsum dolor</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[87px] leading-[1.24] left-[-65px] not-italic text-[#5b5b5b] text-[14px] top-[239px] w-[321px]">{`Lorem ipsum dolor sit amet consectetur. Iaculis eget sed amet ut adipiscing nec nulla elit. Purus morbi neque fames elit feugiat. `}</p>
       <Stars />
-      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[136px] not-italic text-[#5b5b5b] text-[20px] text-nowrap top-[113px] whitespace-pre">4.9</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[136px] not-italic text-[#5b5b5b] text-[20px] text-nowrap top-[113px] whitespace-pre">4.9</p>
       <div className="absolute left-[-65px] size-[55px] top-[101px]">
         <img alt="" className="block max-w-none size-full" height="55" src={imgEllipse17} width="55" />
       </div>
@@ -63,11 +63,11 @@ function Group3() {
   return (
     <div className="absolute contents left-[300px] top-[78px]">
       <div className="absolute bg-white h-[244px] left-[300px] rounded-[10px] shadow-[0px_8px_20px_0px_rgba(61,120,203,0.1)] top-[78px] w-[351px]" />
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[21px] leading-[1.24] left-[319px] not-italic text-[#5b5b5b] text-[16px] top-[174px] w-[182px]">Josef Flores</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[21px] leading-[1.24] left-[319px] not-italic text-[#5b5b5b] text-[14px] top-[199px] w-[182px]">Lorem ipsum dolor</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[87px] leading-[1.24] left-[319px] not-italic text-[#5b5b5b] text-[14px] top-[239px] w-[321px]">{`Lorem ipsum dolor sit amet consectetur. Iaculis eget sed amet ut adipiscing nec nulla elit. Purus morbi neque fames elit feugiat. `}</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[21px] leading-[1.24] left-[319px] not-italic text-[#5b5b5b] text-[16px] top-[174px] w-[182px]">Josef Flores</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[21px] leading-[1.24] left-[319px] not-italic text-[#5b5b5b] text-[14px] top-[199px] w-[182px]">Lorem ipsum dolor</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[87px] leading-[1.24] left-[319px] not-italic text-[#5b5b5b] text-[14px] top-[239px] w-[321px]">{`Lorem ipsum dolor sit amet consectetur. Iaculis eget sed amet ut adipiscing nec nulla elit. Purus morbi neque fames elit feugiat. `}</p>
       <Stars1 />
-      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[520px] not-italic text-[#5b5b5b] text-[20px] text-nowrap top-[113px] whitespace-pre">4.8</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[520px] not-italic text-[#5b5b5b] text-[20px] text-nowrap top-[113px] whitespace-pre">4.8</p>
       <div className="absolute left-[319px] size-[55px] top-[101px]">
         <img alt="" className="block max-w-none size-full" height="55" src={imgEllipse18} width="55" />
       </div>
@@ -95,11 +95,11 @@ function Group2() {
   return (
     <div className="absolute contents left-[685px] top-[78px]">
       <div className="absolute bg-white h-[244px] left-[685px] rounded-[10px] shadow-[0px_8px_20px_0px_rgba(61,120,203,0.1)] top-[78px] w-[351px]" />
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[21px] leading-[1.24] left-[704px] not-italic text-[#5b5b5b] text-[16px] top-[174px] w-[182px]">Josef Flores</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[21px] leading-[1.24] left-[704px] not-italic text-[#5b5b5b] text-[14px] top-[199px] w-[182px]">Lorem ipsum dolor</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[87px] leading-[1.24] left-[704px] not-italic text-[#5b5b5b] text-[14px] top-[239px] w-[321px]">{`Lorem ipsum dolor sit amet consectetur. Iaculis eget sed amet ut adipiscing nec nulla elit. Purus morbi neque fames elit feugiat. `}</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[21px] leading-[1.24] left-[704px] not-italic text-[#5b5b5b] text-[16px] top-[174px] w-[182px]">Josef Flores</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[21px] leading-[1.24] left-[704px] not-italic text-[#5b5b5b] text-[14px] top-[199px] w-[182px]">Lorem ipsum dolor</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[87px] leading-[1.24] left-[704px] not-italic text-[#5b5b5b] text-[14px] top-[239px] w-[321px]">{`Lorem ipsum dolor sit amet consectetur. Iaculis eget sed amet ut adipiscing nec nulla elit. Purus morbi neque fames elit feugiat. `}</p>
       <Stars2 />
-      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[905px] not-italic text-[#5b5b5b] text-[20px] text-nowrap top-[113px] whitespace-pre">4.8</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[905px] not-italic text-[#5b5b5b] text-[20px] text-nowrap top-[113px] whitespace-pre">4.8</p>
       <div className="absolute left-[704px] size-[55px] top-[102px]">
         <img alt="" className="block max-w-none size-full" height="55" src={imgEllipse16} width="55" />
       </div>
@@ -237,7 +237,7 @@ export default function LoveUs() {
       <Group2 />
       <L />
       <R />
-      <p className="absolute font-['Poppins:Bold',sans-serif] leading-none left-[479.5px] not-italic text-[#2c353f] text-[24px] text-center text-nowrap top-0 translate-x-[-50%] whitespace-pre">People Love Us</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] leading-none left-[479.5px] not-italic text-[#2c353f] text-[24px] text-center text-nowrap top-0 translate-x-[-50%] whitespace-pre">People Love Us</p>
     </div>
   );
 }

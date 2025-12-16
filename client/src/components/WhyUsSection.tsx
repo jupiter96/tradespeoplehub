@@ -73,7 +73,7 @@ export default function WhyUsSection() {
 
   return (
     <div className="w-full">
-      <h2 className="font-['Poppins:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] lg:text-[36px] text-center mb-8 md:mb-12 px-4">
+      <h2 className="font-['Roboto:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] lg:text-[36px] text-center mb-8 md:mb-12 px-4">
         Why You Should Join Us
       </h2>
       

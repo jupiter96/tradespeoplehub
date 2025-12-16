@@ -421,7 +421,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className={`font-['Poppins',sans-serif] text-[14px] px-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                className={`font-['Roboto',sans-serif] text-[14px] px-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
                   isDarkMode ? "text-white" : "text-gray-600"
                 }`}
               >

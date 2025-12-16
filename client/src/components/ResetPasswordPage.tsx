@@ -72,22 +72,22 @@ export default function ResetPasswordPage() {
             {!isComplete ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="text-center">
-                  <h1 className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] mb-2">
+                  <h1 className="font-['Roboto',sans-serif] text-[26px] text-[#2c353f] mb-2">
                     Reset Password
                   </h1>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                   Choose a new password for your account.
                 </p>
                 </div>
 
                 {!token && (
-                  <p className="text-center text-[13px] text-red-600 font-['Poppins',sans-serif]">
+                  <p className="text-center text-[13px] text-red-600 font-['Roboto',sans-serif]">
                     This reset link is invalid or has expired. Please request a new one.
                   </p>
                 )}
 
                 <div>
-                  <Label htmlFor="new-password" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                  <Label htmlFor="new-password" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                     New Password
                   </Label>
                   <Input
@@ -99,17 +99,17 @@ export default function ResetPasswordPage() {
                       setPassword(e.target.value);
                       setError(null);
                     }}
-                    className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                    className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                     disabled={!token || isSubmitting}
                     required
                   />
                   {password && !error && (
-                    <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                    <p className="mt-1 text-[11px] text-gray-500 font-['Roboto',sans-serif]">
                       {getPasswordHint(password)}
                     </p>
                   )}
                   {!password && (
-                    <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                    <p className="mt-1 text-[11px] text-gray-500 font-['Roboto',sans-serif]">
                       Password must include uppercase, lowercase, and numbers
                     </p>
                   )}
@@ -118,7 +118,7 @@ export default function ResetPasswordPage() {
                 <div>
                   <Label
                     htmlFor="confirm-password"
-                    className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5"
+                    className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5"
                   >
                     Confirm New Password
                   </Label>
@@ -128,14 +128,14 @@ export default function ResetPasswordPage() {
                     placeholder="Re-enter new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                    className="h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                     disabled={!token || isSubmitting}
                     required
                   />
                 </div>
 
                 {error && (
-                  <p className="text-[13px] text-red-600 text-center font-['Poppins',sans-serif]">
+                  <p className="text-[13px] text-red-600 text-center font-['Roboto',sans-serif]">
                     {error}
                   </p>
                 )}
@@ -143,7 +143,7 @@ export default function ResetPasswordPage() {
                 <Button
                   type="submit"
                   disabled={!token || isSubmitting}
-                  className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[15px] disabled:opacity-60"
+                  className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[15px] disabled:opacity-60"
                 >
                   {isSubmitting ? "Updating password..." : "Update Password"}
                 </Button>
@@ -163,15 +163,15 @@ export default function ResetPasswordPage() {
                     <path d="M20 6 9 17l-5-5" />
                   </svg>
                 </div>
-                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
                   Password updated!
                 </h2>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                   You can now sign in with your new password.
                 </p>
                 <Button
                   onClick={handleBackToLogin}
-                  className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[15px]"
+                  className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[15px]"
                 >
                   Back to login
                 </Button>

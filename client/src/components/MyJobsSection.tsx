@@ -149,16 +149,16 @@ export default function MyJobsSection() {
       <div className="flex flex-col gap-3 mb-4 md:mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
+            <h2 className="font-['Roboto',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
               My Jobs
             </h2>
-            <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
               Manage your posted jobs and view quotes from professionals
             </p>
           </div>
           <Button
             onClick={() => navigate("/post-job")}
-            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] w-full sm:w-auto whitespace-nowrap"
+            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] w-full sm:w-auto whitespace-nowrap"
           >
             <FileText className="w-4 h-4 mr-2" />
             Post New Job
@@ -174,11 +174,11 @@ export default function MyJobsSection() {
             placeholder="Search jobs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 font-['Poppins',sans-serif] text-[14px]"
+            className="pl-10 font-['Roboto',sans-serif] text-[14px]"
           />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
+          <SelectTrigger className="w-full md:w-[200px] font-['Roboto',sans-serif] text-[14px]">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
@@ -198,10 +198,10 @@ export default function MyJobsSection() {
         {filteredJobs.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
               No jobs found
             </h3>
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
               {searchQuery || filterStatus !== "all"
                 ? "Try adjusting your filters"
                 : "Post your first job to get started"}
@@ -209,7 +209,7 @@ export default function MyJobsSection() {
             {!searchQuery && filterStatus === "all" && (
               <Button
                 onClick={() => window.location.href = "/post-job"}
-                className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Roboto',sans-serif]"
               >
                 Post a Job
               </Button>
@@ -226,18 +226,18 @@ export default function MyJobsSection() {
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                        <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                           {job.title}
                         </h3>
                         {getTimingIcon(job.timing)}
-                        <Badge className={`${getStatusBadge(job.status)} border font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(job.status)} border font-['Roboto',sans-serif] text-[11px]`}>
                           {job.status === "awaiting-accept" ? "Awaiting Accept" : job.status === "in-progress" ? "In Progress" : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                         </Badge>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
                         {job.description}
                       </p>
-                      <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                      <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Roboto',sans-serif]">
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-4 h-4" />
                           {job.location}
@@ -264,7 +264,7 @@ export default function MyJobsSection() {
                     variant="outline"
                     size="sm"
                     onClick={() => navigate(`/job/${job.id}`)}
-                    className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
+                    className="font-['Roboto',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
                     View ({job.quotes.length})
@@ -276,7 +276,7 @@ export default function MyJobsSection() {
                       setSelectedJob(job.id);
                       setIsEditDialogOpen(true);
                     }}
-                    className="font-['Poppins',sans-serif] hover:bg-[#FFF5EB] hover:text-[#FE8A0F] hover:border-[#FE8A0F]"
+                    className="font-['Roboto',sans-serif] hover:bg-[#FFF5EB] hover:text-[#FE8A0F] hover:border-[#FE8A0F]"
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -284,7 +284,7 @@ export default function MyJobsSection() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteJob(job.id)}
-                    className="font-['Poppins',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
+                    className="font-['Roboto',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -299,10 +299,10 @@ export default function MyJobsSection() {
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[24px]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[24px]">
               {currentJob?.title}
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px]">
               Job details and quotes from professionals
             </DialogDescription>
           </DialogHeader>
@@ -312,48 +312,48 @@ export default function MyJobsSection() {
               <div className="space-y-6">
                 {/* Job Details */}
                 <div className="bg-[#f8f9fa] rounded-xl p-6">
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4">
                     Job Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                         Sector
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.sector}
                       </p>
                     </div>
                     <div>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                         Categories
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.categories.join(", ")}
                       </p>
                     </div>
                     <div>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                         Location
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.location} ({currentJob.postcode})
                       </p>
                     </div>
                     <div>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                         Budget
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                         £{currentJob.budgetAmount} ({currentJob.budgetType})
                       </p>
                     </div>
                   </div>
                   <div>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       Description
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                       {currentJob.description}
                     </p>
                   </div>
@@ -361,13 +361,13 @@ export default function MyJobsSection() {
 
                 {/* Quotes */}
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4">
                     Quotes ({currentJob.quotes.length})
                   </h3>
                   {currentJob.quotes.length === 0 ? (
                     <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
                       <MessageCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         No quotes yet. Professionals will start sending quotes soon.
                       </p>
                     </div>
@@ -388,15 +388,15 @@ export default function MyJobsSection() {
                             <div className="flex items-start gap-3">
                               <Avatar className="w-12 h-12">
                                 <AvatarImage src={quote.professionalAvatar} />
-                                <AvatarFallback className="bg-[#1976D2] text-white font-['Poppins',sans-serif]">
+                                <AvatarFallback className="bg-[#1976D2] text-white font-['Roboto',sans-serif]">
                                   {quote.professionalName.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                                <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-1">
                                   {quote.professionalName}
                                 </h4>
-                                <div className="flex items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                                <div className="flex items-center gap-3 text-[13px] text-[#6b6b6b] font-['Roboto',sans-serif]">
                                   <div className="flex items-center gap-1">
                                     <Star className="w-4 h-4 text-[#FE8A0F] fill-[#FE8A0F]" />
                                     {quote.professionalRating} ({quote.professionalReviews})
@@ -409,7 +409,7 @@ export default function MyJobsSection() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-1">
+                              <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-1">
                                 £{quote.price}
                               </p>
                               {quote.status === "accepted" && (
@@ -424,17 +424,17 @@ export default function MyJobsSection() {
                               )}
                             </div>
                           </div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                          <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-4">
                             {quote.message}
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mb-4">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mb-4">
                             Submitted {formatDate(quote.submittedAt)}
                           </p>
                           {quote.status === "pending" && (
                             <div className="flex items-center gap-2">
                               <Button
                                 onClick={() => handleAcceptQuote(quote.id)}
-                                className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                                className="bg-green-600 hover:bg-green-700 text-white font-['Roboto',sans-serif]"
                               >
                                 <CheckCircle2 className="w-4 h-4 mr-2" />
                                 Accept Quote
@@ -442,7 +442,7 @@ export default function MyJobsSection() {
                               <Button
                                 onClick={() => handleStartChat(quote)}
                                 variant="outline"
-                                className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
+                                className="font-['Roboto',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                               >
                                 <MessageCircle className="w-4 h-4 mr-2" />
                                 Message
@@ -450,7 +450,7 @@ export default function MyJobsSection() {
                               <Button
                                 onClick={() => handleRejectQuote(quote.id)}
                                 variant="outline"
-                                className="font-['Poppins',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
+                                className="font-['Roboto',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Reject
@@ -460,7 +460,7 @@ export default function MyJobsSection() {
                           {quote.status === "accepted" && (
                             <Button
                               onClick={() => handleStartChat(quote)}
-                              className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif]"
+                              className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Roboto',sans-serif]"
                             >
                               <MessageCircle className="w-4 h-4 mr-2" />
                               Chat with Professional
@@ -481,10 +481,10 @@ export default function MyJobsSection() {
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
         <DialogContent className="w-[70vw] max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[20px]">
               Chat with {selectedQuote?.professionalName}
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px]">
               Discuss the job details and finalize the arrangement
             </DialogDescription>
           </DialogHeader>
@@ -493,17 +493,17 @@ export default function MyJobsSection() {
             <ScrollArea className="flex-1 p-4 bg-[#f8f9fa] rounded-lg mb-4">
               <div className="space-y-4">
                 <div className="text-center">
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                     Chat started • {new Date().toLocaleDateString()}
                   </p>
                 </div>
                 {/* Mock messages */}
                 <div className="flex justify-start">
                   <div className="bg-white rounded-lg px-4 py-2 max-w-[70%]">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
                       {selectedQuote?.professionalName}
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                       Thanks for considering my quote! I'm available to start this week.
                     </p>
                   </div>
@@ -517,11 +517,11 @@ export default function MyJobsSection() {
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                className="flex-1 font-['Poppins',sans-serif] text-[14px]"
+                className="flex-1 font-['Roboto',sans-serif] text-[14px]"
               />
               <Button
                 onClick={handleSendMessage}
-                className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif]"
+                className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Roboto',sans-serif]"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -534,15 +534,15 @@ export default function MyJobsSection() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[20px]">
               Edit Job
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px]">
               Update your job details
             </DialogDescription>
           </DialogHeader>
           <div className="text-center py-8">
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
               Job editing functionality will be available soon.
             </p>
           </div>

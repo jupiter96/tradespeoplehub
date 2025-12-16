@@ -920,14 +920,14 @@ export default function App() {
     <div className="relative size-full" data-name="App">
       <Frame />
       <div className="absolute bg-[#dbeaff] h-[375px] left-0 rounded-[20px] top-[26px] w-[541px]" />
-      <div className="absolute font-['Poppins:Bold',sans-serif] leading-[44px] left-[672px] not-italic text-[#2c353f] text-[36px] text-nowrap top-[35px] whitespace-pre">
+      <div className="absolute font-['Roboto:Bold',sans-serif] leading-[44px] left-[672px] not-italic text-[#2c353f] text-[36px] text-nowrap top-[35px] whitespace-pre">
         <p className="mb-0">{`Download Our App Now `}</p>
         <p>and Get Started!</p>
       </div>
-      <div className="absolute font-['Poppins:Regular',sans-serif] h-[164px] leading-[normal] left-[672px] not-italic text-[#5b5b5b] text-[14px] top-[131px] w-[448px]">
+      <div className="absolute font-['Roboto:Regular',sans-serif] h-[164px] leading-[normal] left-[672px] not-italic text-[#5b5b5b] text-[14px] top-[131px] w-[448px]">
         <p className="mb-0">{`Whether you're a client searching for top-notch services or a professional looking to connect with potential clients, our app has you covered.Easily browse and buy services with clear pricing, schedule appointments, chat, post tasks, make payments, and manage everything on the go—all in one convenient app.`}</p>
         <p className="mb-0">&nbsp;</p>
-        <p className="font-['Poppins:Bold',sans-serif] mb-0">Don’t wait—download now and simplify your life!</p>
+        <p className="font-['Roboto:Bold',sans-serif] mb-0">Don’t wait—download now and simplify your life!</p>
         <p>&nbsp;</p>
       </div>
       <DownloadOnTheAppStoreAppleLogoSvgrepoCom />

@@ -87,10 +87,10 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
           )}
         </div>
         <div>
-          <p className={`font-['Poppins',sans-serif] text-[14px] ${timeLeft.isOverdue ? 'text-red-700' : 'text-[#6b6b6b]'}`}>
+          <p className={`font-['Roboto',sans-serif] text-[14px] ${timeLeft.isOverdue ? 'text-red-700' : 'text-[#6b6b6b]'}`}>
             {timeLeft.isOverdue ? '⚠️ Delivery overdue by:' : 'Expected delivery:'}
           </p>
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             {formatDeliveryDate(expectedDelivery)}
           </p>
         </div>
@@ -104,12 +104,12 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
       }`}>
         {/* Days */}
         <div className="text-center">
-          <div className={`font-['Poppins',sans-serif] text-[32px] mb-1 ${
+          <div className={`font-['Roboto',sans-serif] text-[32px] mb-1 ${
             timeLeft.isOverdue ? 'text-red-700' : 'text-[#2c353f]'
           }`}>
             {timeLeft.days}
           </div>
-          <div className={`font-['Poppins',sans-serif] text-[13px] ${
+          <div className={`font-['Roboto',sans-serif] text-[13px] ${
             timeLeft.isOverdue ? 'text-red-600' : 'text-[#6b6b6b]'
           }`}>
             Days
@@ -118,12 +118,12 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
 
         {/* Hours */}
         <div className="text-center">
-          <div className={`font-['Poppins',sans-serif] text-[32px] mb-1 ${
+          <div className={`font-['Roboto',sans-serif] text-[32px] mb-1 ${
             timeLeft.isOverdue ? 'text-red-700' : 'text-[#2c353f]'
           }`}>
             {timeLeft.hours}
           </div>
-          <div className={`font-['Poppins',sans-serif] text-[13px] ${
+          <div className={`font-['Roboto',sans-serif] text-[13px] ${
             timeLeft.isOverdue ? 'text-red-600' : 'text-[#6b6b6b]'
           }`}>
             Hours
@@ -132,12 +132,12 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
 
         {/* Minutes */}
         <div className="text-center">
-          <div className={`font-['Poppins',sans-serif] text-[32px] mb-1 ${
+          <div className={`font-['Roboto',sans-serif] text-[32px] mb-1 ${
             timeLeft.isOverdue ? 'text-red-700' : 'text-[#2c353f]'
           }`}>
             {timeLeft.minutes}
           </div>
-          <div className={`font-['Poppins',sans-serif] text-[13px] ${
+          <div className={`font-['Roboto',sans-serif] text-[13px] ${
             timeLeft.isOverdue ? 'text-red-600' : 'text-[#6b6b6b]'
           }`}>
             Minutes
@@ -148,7 +148,7 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
       {/* Warning message for overdue */}
       {timeLeft.isOverdue && (
         <div className="mt-4 bg-red-100 border border-red-200 rounded-lg p-3">
-          <p className="font-['Poppins',sans-serif] text-[13px] text-red-700 text-center">
+          <p className="font-['Roboto',sans-serif] text-[13px] text-red-700 text-center">
             Please contact the professional or request support
           </p>
         </div>

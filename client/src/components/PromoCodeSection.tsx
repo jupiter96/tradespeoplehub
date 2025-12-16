@@ -167,12 +167,12 @@ export default function PromoCodeSection() {
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
-        <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#3D78CB]">
+        <h2 className="font-['Roboto',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#3D78CB]">
           Promo Code
         </h2>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
-          className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] w-full sm:w-auto whitespace-nowrap"
+          className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Roboto',sans-serif] text-[13px] w-full sm:w-auto whitespace-nowrap"
         >
           <Plus className="w-4 h-4 mr-2" />
           Generate Promotion Code
@@ -182,11 +182,11 @@ export default function PromoCodeSection() {
       {/* Table Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             Show
           </span>
           <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
-            <SelectTrigger className="w-20 font-['Poppins',sans-serif] text-[13px]">
+            <SelectTrigger className="w-20 font-['Roboto',sans-serif] text-[13px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -196,19 +196,19 @@ export default function PromoCodeSection() {
               <SelectItem value="100">100</SelectItem>
             </SelectContent>
           </Select>
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             entries
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             Search:
           </span>
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64 font-['Poppins',sans-serif] text-[13px]"
+            className="w-64 font-['Roboto',sans-serif] text-[13px]"
             placeholder=""
           />
         </div>
@@ -219,31 +219,31 @@ export default function PromoCodeSection() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 id #
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Code
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Is Limited
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Limited User
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Exceeded Limit
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Discount
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Discount Type
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px]">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px]">
                 Status
               </TableHead>
-              <TableHead className="font-['Poppins',sans-serif] text-[13px] text-center">
+              <TableHead className="font-['Roboto',sans-serif] text-[13px] text-center">
                 Action
               </TableHead>
             </TableRow>
@@ -252,7 +252,7 @@ export default function PromoCodeSection() {
             {currentPromoCodes.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                     No promo codes found
                   </p>
                 </TableCell>
@@ -260,10 +260,10 @@ export default function PromoCodeSection() {
             ) : (
               currentPromoCodes.map((promo) => (
                 <TableRow key={promo.id} className="hover:bg-gray-50">
-                  <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <TableCell className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.id}
                   </TableCell>
-                  <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <TableCell className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.code}
                   </TableCell>
                   <TableCell>
@@ -272,25 +272,25 @@ export default function PromoCodeSection() {
                         promo.isLimited
                           ? "bg-green-500 hover:bg-green-600"
                           : "bg-red-500 hover:bg-red-600"
-                      } text-white font-['Poppins',sans-serif] text-[11px]`}
+                      } text-white font-['Roboto',sans-serif] text-[11px]`}
                     >
                       {promo.isLimited ? "Yes" : "No"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <TableCell className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.limitedUser}
                   </TableCell>
-                  <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <TableCell className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.exceededLimit}
                   </TableCell>
-                  <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <TableCell className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.discount}
                   </TableCell>
-                  <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <TableCell className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.discountType}
                   </TableCell>
                   <TableCell>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] capitalize">
+                    <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] capitalize">
                       {promo.status}
                     </span>
                   </TableCell>
@@ -306,16 +306,16 @@ export default function PromoCodeSection() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="font-['Poppins',sans-serif] text-[13px]">
+                        <DropdownMenuItem className="font-['Roboto',sans-serif] text-[13px]">
                           <Eye className="w-4 h-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="font-['Poppins',sans-serif] text-[13px]">
+                        <DropdownMenuItem className="font-['Roboto',sans-serif] text-[13px]">
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="font-['Poppins',sans-serif] text-[13px] text-red-600"
+                          className="font-['Roboto',sans-serif] text-[13px] text-red-600"
                           onClick={() => handleDeletePromoCode(promo.id)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
@@ -333,7 +333,7 @@ export default function PromoCodeSection() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
-        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
           Showing {startIndex + 1} to {endIndex} of {totalEntries} entries
         </p>
         <div className="flex items-center gap-2">
@@ -342,7 +342,7 @@ export default function PromoCodeSection() {
             size="sm"
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="font-['Poppins',sans-serif] text-[13px]"
+            className="font-['Roboto',sans-serif] text-[13px]"
           >
             <ChevronLeft className="w-4 h-4 mr-1" />
             Previous
@@ -354,7 +354,7 @@ export default function PromoCodeSection() {
                 variant={currentPage === page ? "default" : "outline"}
                 size="sm"
                 onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 p-0 font-['Poppins',sans-serif] text-[13px] ${
+                className={`w-8 h-8 p-0 font-['Roboto',sans-serif] text-[13px] ${
                   currentPage === page
                     ? "bg-[#3D78CB] hover:bg-[#2d5ca3] text-white"
                     : ""
@@ -369,7 +369,7 @@ export default function PromoCodeSection() {
             size="sm"
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="font-['Poppins',sans-serif] text-[13px]"
+            className="font-['Roboto',sans-serif] text-[13px]"
           >
             Next
             <ChevronRight className="w-4 h-4 ml-1" />
@@ -381,7 +381,7 @@ export default function PromoCodeSection() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
               Add coupons
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -392,27 +392,27 @@ export default function PromoCodeSection() {
           <div className="space-y-4">
             {/* Code */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Code:
               </Label>
               <Input
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 placeholder="Enter Code"
-                className="font-['Poppins',sans-serif] text-[14px]"
+                className="font-['Roboto',sans-serif] text-[14px]"
               />
             </div>
 
             {/* Is Limited */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Select Is Limited:
               </Label>
               <Select
                 value={formData.isLimited}
                 onValueChange={(value) => setFormData({ ...formData, isLimited: value })}
               >
-                <SelectTrigger className="font-['Poppins',sans-serif] text-[14px]">
+                <SelectTrigger className="font-['Roboto',sans-serif] text-[14px]">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -424,14 +424,14 @@ export default function PromoCodeSection() {
 
             {/* Discount Type */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Select Discount type:
               </Label>
               <Select
                 value={formData.discountType}
                 onValueChange={(value) => setFormData({ ...formData, discountType: value })}
               >
-                <SelectTrigger className="font-['Poppins',sans-serif] text-[14px]">
+                <SelectTrigger className="font-['Roboto',sans-serif] text-[14px]">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -443,7 +443,7 @@ export default function PromoCodeSection() {
 
             {/* Discount */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Discount:
               </Label>
               <Input
@@ -451,20 +451,20 @@ export default function PromoCodeSection() {
                 onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
                 placeholder="Enter Discount"
                 type="number"
-                className="font-['Poppins',sans-serif] text-[14px]"
+                className="font-['Roboto',sans-serif] text-[14px]"
               />
             </div>
 
             {/* Status */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Select Status:
               </Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value })}
               >
-                <SelectTrigger className="font-['Poppins',sans-serif] text-[14px]">
+                <SelectTrigger className="font-['Roboto',sans-serif] text-[14px]">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
@@ -476,14 +476,14 @@ export default function PromoCodeSection() {
 
             {/* Validity */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Validity:
               </Label>
               <Input
                 type="date"
                 value={formData.validity}
                 onChange={(e) => setFormData({ ...formData, validity: e.target.value })}
-                className="font-['Poppins',sans-serif] text-[14px]"
+                className="font-['Roboto',sans-serif] text-[14px]"
               />
             </div>
           </div>
@@ -503,13 +503,13 @@ export default function PromoCodeSection() {
                   validity: "",
                 });
               }}
-              className="font-['Poppins',sans-serif] text-[13px]"
+              className="font-['Roboto',sans-serif] text-[13px]"
             >
               Close
             </Button>
             <Button
               onClick={handleCreatePromoCode}
-              className="bg-[#5BC2E7] hover:bg-[#4ab3d6] text-white font-['Poppins',sans-serif] text-[13px]"
+              className="bg-[#5BC2E7] hover:bg-[#4ab3d6] text-white font-['Roboto',sans-serif] text-[13px]"
             >
               Save
             </Button>

@@ -138,12 +138,12 @@ export default function JobDetailPage() {
           <Nav />
         </header>
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-12 text-center mt-[50px] md:mt-0">
-          <h1 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
+          <h1 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-4">
             Job not found
           </h1>
           <Button
             onClick={() => navigate("/account")}
-            className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
+            className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Roboto',sans-serif]"
           >
             Back to Account
           </Button>
@@ -451,7 +451,7 @@ export default function JobDetailPage() {
   const getTimingBadge = () => {
     if (job.timing === "urgent") {
       return (
-        <Badge className="bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif]">
+        <Badge className="bg-red-50 text-red-700 border-red-200 font-['Roboto',sans-serif]">
           <Flame className="w-3 h-3 mr-1" />
           Urgent
         </Badge>
@@ -459,14 +459,14 @@ export default function JobDetailPage() {
     }
     if (job.timing === "flexible") {
       return (
-        <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif]">
+        <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Roboto',sans-serif]">
           <Clock className="w-3 h-3 mr-1" />
           Flexible
         </Badge>
       );
     }
     return (
-      <Badge className="bg-gray-50 text-gray-700 border-gray-200 font-['Poppins',sans-serif]">
+      <Badge className="bg-gray-50 text-gray-700 border-gray-200 font-['Roboto',sans-serif]">
         <Calendar className="w-3 h-3 mr-1" />
         {job.specificDate || "Specific Date"}
       </Badge>
@@ -481,35 +481,35 @@ export default function JobDetailPage() {
     switch (job.status) {
       case "active":
         return (
-          <Badge className={`bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
+          <Badge className={`bg-green-50 text-green-700 border-green-200 font-['Roboto',sans-serif] ${sizeClasses}`}>
             <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
             Active
           </Badge>
         );
       case "awaiting-accept":
         return (
-          <Badge className={`bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
+          <Badge className={`bg-blue-50 text-blue-700 border-blue-200 font-['Roboto',sans-serif] ${sizeClasses}`}>
             <Clock className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
             Awaiting Accept
           </Badge>
         );
       case "in-progress":
         return (
-          <Badge className={`bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
+          <Badge className={`bg-blue-50 text-blue-700 border-blue-200 font-['Roboto',sans-serif] ${sizeClasses}`}>
             <Clock className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
             In Progress
           </Badge>
         );
       case "completed":
         return (
-          <Badge className={`bg-purple-50 text-purple-700 border-purple-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
+          <Badge className={`bg-purple-50 text-purple-700 border-purple-200 font-['Roboto',sans-serif] ${sizeClasses}`}>
             <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
             Completed
           </Badge>
         );
       case "cancelled":
         return (
-          <Badge className={`bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
+          <Badge className={`bg-red-50 text-red-700 border-red-200 font-['Roboto',sans-serif] ${sizeClasses}`}>
             <XCircle className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
             Cancelled
           </Badge>
@@ -532,7 +532,7 @@ export default function JobDetailPage() {
           <Button
             variant="ghost"
             onClick={() => navigate("/account")}
-            className="text-[#2c353f] hover:bg-gray-100 mb-3 md:mb-4 font-['Poppins',sans-serif] text-[13px] md:text-[14px] h-8 md:h-10 px-2 md:px-4"
+            className="text-[#2c353f] hover:bg-gray-100 mb-3 md:mb-4 font-['Roboto',sans-serif] text-[13px] md:text-[14px] h-8 md:h-10 px-2 md:px-4"
           >
             <ChevronLeft className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
             {isJobOwner ? "Back to My Jobs" : "Back to Available Jobs"}
@@ -540,7 +540,7 @@ export default function JobDetailPage() {
           
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
-              <h1 className="font-['Poppins',sans-serif] text-[20px] sm:text-[28px] md:text-[40px] text-[#2c353f] leading-tight">
+              <h1 className="font-['Roboto',sans-serif] text-[20px] sm:text-[28px] md:text-[40px] text-[#2c353f] leading-tight">
                 {job.title}
               </h1>
             </div>
@@ -549,14 +549,14 @@ export default function JobDetailPage() {
               {!isJobOwner && job.status === "active" && !hasSubmittedQuote && (
                 <Button
                   onClick={() => setShowQuoteDialog(true)}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] h-9 sm:h-10 px-4 sm:px-6"
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif] text-[13px] sm:text-[14px] h-9 sm:h-10 px-4 sm:px-6"
                 >
                   Submit Quote
                 </Button>
               )}
               {/* Professional: Already submitted */}
               {!isJobOwner && hasSubmittedQuote && (
-                <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
+                <Badge className="bg-green-50 text-green-700 border-green-200 font-['Roboto',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
                   <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                   Quote Submitted
                 </Badge>
@@ -576,7 +576,7 @@ export default function JobDetailPage() {
               <TabsList className="bg-transparent border-0 h-auto p-0 gap-2 flex-nowrap inline-flex min-w-full md:min-w-0">
                 <TabsTrigger
                   value="details"
-                  className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                  className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Roboto',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
                 >
                   Details
                 </TabsTrigger>
@@ -584,7 +584,7 @@ export default function JobDetailPage() {
                 {isJobOwner && (
                   <TabsTrigger
                     value="quotes"
-                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Roboto',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
                   >
                     Quotes ({job.quotes.length})
                   </TabsTrigger>
@@ -593,14 +593,14 @@ export default function JobDetailPage() {
                 {(job.status === "awaiting-accept" || job.status === "in-progress") && (
                   <TabsTrigger
                     value="payment"
-                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Roboto',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
                   >
                     Payment
                   </TabsTrigger>
                 )}
                 <TabsTrigger
                   value="activity"
-                  className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                  className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Roboto',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
                 >
                   Activity
                 </TabsTrigger>
@@ -619,14 +619,14 @@ export default function JobDetailPage() {
             {activeTab === "details" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-start justify-between mb-6">
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                  <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
                     Job Details
                   </h2>
                   <div className="text-right">
-                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
+                    <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-1">
                       £{job.budgetAmount.toFixed(0)} - £{(job.budgetAmount * 1.2).toFixed(0)}
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                       Posted: {formatDate(job.postedAt)}
                     </p>
                   </div>
@@ -634,20 +634,20 @@ export default function JobDetailPage() {
                 
                 <div className="space-y-4">
                   <div className="py-3">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-4">
                       {job.description}
                     </p>
                   </div>
 
                   <div className="py-3 border-t border-gray-100">
-                    <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                    <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                       Skill Required
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {job.categories.map((category, idx) => (
                         <Badge
                           key={idx}
-                          className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif]"
+                          className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Roboto',sans-serif]"
                         >
                           {category}
                         </Badge>
@@ -664,7 +664,7 @@ export default function JobDetailPage() {
 
                 {/* Project ID - Bottom Right */}
                 <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-                  <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                  <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
                     {job.id.toUpperCase()}
                   </span>
                 </div>
@@ -677,65 +677,65 @@ export default function JobDetailPage() {
                 {/* Professional: Awarded Section */}
                 {userRole === "professional" && myAwardedQuote && (
                   <div className="bg-white rounded-xl shadow-sm p-6">
-                    <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+                    <h2 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
                       Awarded Professionals
                     </h2>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#f8f9fa] p-4 sm:p-5 rounded-lg">
                       <div className="flex items-start gap-4 flex-1">
                         <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 flex-shrink-0">
                           <AvatarImage src={myAwardedQuote.professionalAvatar} />
-                          <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
+                          <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[18px]">
                             {myAwardedQuote.professionalName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1">
+                          <h3 className="font-['Roboto',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1">
                             {myAwardedQuote.professionalName}
                           </h3>
-                          <button className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#3B82F6] hover:underline mb-2">
+                          <button className="font-['Roboto',sans-serif] text-[12px] sm:text-[13px] text-[#3B82F6] hover:underline mb-2">
                             View profile
                           </button>
                           <div className="flex items-center gap-2 mb-2">
                             <div className="flex items-center gap-1 bg-[#FE8A0F] px-2 py-1 rounded">
                               <Star className="w-3 h-3 sm:w-4 sm:h-4 text-white fill-white" />
-                              <span className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-white">
+                              <span className="font-['Roboto',sans-serif] text-[12px] sm:text-[13px] text-white">
                                 {myAwardedQuote.professionalRating}
                               </span>
                             </div>
-                            <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                            <span className="font-['Roboto',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
                               ({myAwardedQuote.professionalReviews} reviews)
                             </span>
                           </div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                          <p className="font-['Roboto',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
                             {myAwardedQuote.message || "will do"}
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-4 w-full sm:w-auto">
                         <div className="text-left sm:text-right flex-1 sm:flex-none">
-                          <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
+                          <p className="font-['Roboto',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
                             £{myAwardedQuote.price.toFixed(2)} GBP
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                          <p className="font-['Roboto',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
                             in {myAwardedQuote.deliveryTime}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                           <Button
                             onClick={() => handleStartChat(myAwardedQuote)}
-                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Roboto',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
                           >
                             Chat
                           </Button>
                           <Button
                             onClick={handleAcceptAward}
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Roboto',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
                           >
                             Accept
                           </Button>
                           <Button
                             onClick={handleRejectAward}
-                            className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                            className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Roboto',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
                           >
                             Reject
                           </Button>
@@ -750,7 +750,7 @@ export default function JobDetailPage() {
                     <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center bg-[#3B82F6] rounded-lg">
                       <img src={hourglassIcon} alt="Hourglass" className="w-10 h-10 brightness-0 invert" />
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b7280] leading-relaxed max-w-xl mx-auto">
+                    <p className="font-['Roboto',sans-serif] text-[15px] text-[#6b7280] leading-relaxed max-w-xl mx-auto">
                       Thank you for posting your job, our vetted professionals will quote soon.
                     </p>
                   </div>
@@ -773,12 +773,12 @@ export default function JobDetailPage() {
                         <div className="flex items-start gap-3 mb-3">
                           <Avatar className="w-12 h-12 flex-shrink-0">
                             <AvatarImage src={quote.professionalAvatar} />
-                            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
                               {quote.professionalName.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium truncate mb-1">
+                            <h3 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] font-medium truncate mb-1">
                               {quote.professionalName}
                             </h3>
                             <div className="flex items-center gap-2 text-[12px] text-[#6b6b6b] mb-1">
@@ -802,13 +802,13 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                            <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
                               £{quote.price}
                             </p>
                           </div>
                         </div>
                         
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3 line-clamp-2">
+                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-3 line-clamp-2">
                           {quote.message}
                         </p>
 
@@ -816,14 +816,14 @@ export default function JobDetailPage() {
                           <div className="flex gap-2">
                             <Button
                               onClick={() => handleOpenAwardModal(quote)}
-                              className="flex-1 bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[13px] h-9"
+                              className="flex-1 bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Roboto',sans-serif] text-[13px] h-9"
                             >
                               Award
                             </Button>
                             <Button
                               onClick={() => handleStartChat(quote)}
                               variant="outline"
-                              className="flex-1 font-['Poppins',sans-serif] text-[13px] h-9"
+                              className="flex-1 font-['Roboto',sans-serif] text-[13px] h-9"
                             >
                               Message
                             </Button>
@@ -832,7 +832,7 @@ export default function JobDetailPage() {
                         {quote.status === "accepted" && (
                           <Button
                             onClick={() => handleStartChat(quote)}
-                            className="w-full bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[13px] h-9"
+                            className="w-full bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Roboto',sans-serif] text-[13px] h-9"
                           >
                             Chat
                           </Button>
@@ -845,12 +845,12 @@ export default function JobDetailPage() {
                           <div className="flex items-center gap-4 flex-1">
                             <Avatar className="w-14 h-14 flex-shrink-0">
                               <AvatarImage src={quote.professionalAvatar} />
-                              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
                                 {quote.professionalName.charAt(0)}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium mb-1">
+                              <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium mb-1">
                                 {quote.professionalName}
                               </h3>
                               <div className="flex items-center gap-4 text-[13px] text-[#6b6b6b]">
@@ -877,13 +877,13 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right ml-4 flex-shrink-0">
-                            <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                            <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
                               £{quote.price}
                             </p>
                           </div>
                         </div>
 
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 pl-[72px]">
+                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-4 pl-[72px]">
                           {quote.message}
                         </p>
 
@@ -892,21 +892,21 @@ export default function JobDetailPage() {
                             <div className="flex items-center gap-2">
                               <Button
                                 onClick={() => handleOpenAwardModal(quote)}
-                                className="bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                className="bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Roboto',sans-serif] text-[14px] h-10 px-6"
                               >
                                 Award
                               </Button>
                               <Button
                                 onClick={() => handleStartChat(quote)}
                                 variant="outline"
-                                className="font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                className="font-['Roboto',sans-serif] text-[14px] h-10 px-6"
                               >
                                 Message
                               </Button>
                               <Button
                                 onClick={() => handleRejectQuote(quote.id)}
                                 variant="ghost"
-                                className="font-['Poppins',sans-serif] text-[14px] h-10 px-6 text-red-600 hover:bg-red-50"
+                                className="font-['Roboto',sans-serif] text-[14px] h-10 px-6 text-red-600 hover:bg-red-50"
                               >
                                 Reject
                               </Button>
@@ -920,7 +920,7 @@ export default function JobDetailPage() {
                           {quote.status === "accepted" && (
                             <Button
                               onClick={() => handleStartChat(quote)}
-                              className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                              className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Roboto',sans-serif] text-[14px] h-10 px-6"
                             >
                               <MessageCircle className="w-4 h-4 mr-2" />
                               Chat with Professional
@@ -947,13 +947,13 @@ export default function JobDetailPage() {
             {activeTab === "payment" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                  <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
                     Milestone Payments
                   </h2>
                   {isJobOwner && (
                     <Button
                       onClick={() => setShowNewMilestoneDialog(true)}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif]"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       New Milestone
@@ -965,16 +965,16 @@ export default function JobDetailPage() {
                 {(!job.milestones || job.milestones.length === 0) && (
                   <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
                     <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                    <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
                       No Milestones Yet
                     </h3>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 max-w-md mx-auto">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-4 max-w-md mx-auto">
                       Milestone payments allow you to pay in stages. Create your first milestone to get started.
                     </p>
                     {isJobOwner && (
                       <Button
                         onClick={() => setShowNewMilestoneDialog(true)}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Create First Milestone
@@ -993,38 +993,38 @@ export default function JobDetailPage() {
                         {/* Left side - Description and date */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] truncate">
+                            <h3 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] truncate">
                               {milestone.description}
                             </h3>
                             {/* Status Badge */}
                             {milestone.status === "awaiting-accept" && (
-                              <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
+                              <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-['Roboto',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
                                 Awaiting Accept
                               </Badge>
                             )}
 
                             {milestone.status === "in-progress" && (
-                              <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
+                              <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Roboto',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
                                 In Progress
                               </Badge>
                             )}
                             {milestone.status === "released" && (
-                              <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
+                              <Badge className="bg-green-50 text-green-700 border-green-200 font-['Roboto',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
                                 Released
                               </Badge>
                             )}
                             {milestone.status === "disputed" && (
-                              <Badge className="bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
+                              <Badge className="bg-red-50 text-red-700 border-red-200 font-['Roboto',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
                                 Disputed
                               </Badge>
                             )}
                           </div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
                             Created: {formatDate(milestone.createdAt)}
                             {milestone.releasedAt && ` • Released: ${formatDate(milestone.releasedAt)}`}
                           </p>
                           {/* Status Helper Text */}
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 italic">
+                          <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] mt-1 italic">
                             {milestone.status === "awaiting-accept" && isJobOwner && "Waiting for professional to accept"}
                             {milestone.status === "awaiting-accept" && !isJobOwner && "Review and accept this milestone to start work"}
                             {milestone.status === "in-progress" && isJobOwner && "Professional is working on this - review and release when complete"}
@@ -1036,7 +1036,7 @@ export default function JobDetailPage() {
 
                         {/* Right side - Amount and Actions */}
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                          <p className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                             £{milestone.amount}
                           </p>
                           
@@ -1047,7 +1047,7 @@ export default function JobDetailPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => deleteMilestone(job.id, milestone.id)}
-                                className="h-8 px-3 font-['Poppins',sans-serif] text-[13px] border-red-300 text-red-600 hover:bg-red-50"
+                                className="h-8 px-3 font-['Roboto',sans-serif] text-[13px] border-red-300 text-red-600 hover:bg-red-50"
                               >
                                 Cancel
                               </Button>
@@ -1055,7 +1055,7 @@ export default function JobDetailPage() {
                               <Button
                                 size="sm"
                                 onClick={() => acceptMilestone(job.id, milestone.id)}
-                                className="h-8 px-3 font-['Poppins',sans-serif] text-[13px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white"
+                                className="h-8 px-3 font-['Roboto',sans-serif] text-[13px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white"
                               >
                                 Accept
                               </Button>
@@ -1072,7 +1072,7 @@ export default function JobDetailPage() {
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56 font-['Poppins',sans-serif]">
+                              <DropdownMenuContent align="end" className="w-56 font-['Roboto',sans-serif]">
                                 {isJobOwner ? (
                                   <>
                                     {/* Client Actions */}
@@ -1173,18 +1173,18 @@ export default function JobDetailPage() {
                   {/* Total Summary */}
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <div className="flex items-center justify-between">
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                         Total Milestones:
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
                         £{job.milestones.reduce((sum, m) => sum + m.amount, 0)}
                       </p>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         Released:
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-green-600">
+                      <p className="font-['Roboto',sans-serif] text-[16px] text-green-600">
                         £{job.milestones.filter(m => m.status === "released").reduce((sum, m) => sum + m.amount, 0)}
                       </p>
                     </div>
@@ -1197,17 +1197,17 @@ export default function JobDetailPage() {
             {/* Activity Tab */}
             {activeTab === "activity" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
+                <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-4">
                   Activity
                 </h2>
                 <div className="space-y-4">
                   <div className="flex gap-4 pb-4 border-b border-gray-100">
                     <div className="w-2 h-2 bg-[#1976D2] rounded-full mt-2"></div>
                     <div className="flex-1">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-1">
                         Job posted
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                         {formatDate(job.postedAt)}
                       </p>
                     </div>
@@ -1216,10 +1216,10 @@ export default function JobDetailPage() {
                     <div key={idx} className="flex gap-4 pb-4 border-b border-gray-100">
                       <div className="w-2 h-2 bg-[#FE8A0F] rounded-full mt-2"></div>
                       <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-1">
                           Quote received from {quote.professionalName}
                         </p>
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                           {formatDate(quote.submittedAt)}
                         </p>
                       </div>
@@ -1232,27 +1232,27 @@ export default function JobDetailPage() {
             {/* More Tab */}
             {activeTab === "more" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
+                <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-4">
                   More Options
                 </h2>
                 <div className="space-y-3">
                   <Button
                     variant="outline"
-                    className="w-full justify-start font-['Poppins',sans-serif]"
+                    className="w-full justify-start font-['Roboto',sans-serif]"
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     Edit Job Details
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start font-['Poppins',sans-serif]"
+                    className="w-full justify-start font-['Roboto',sans-serif]"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download Job Summary
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif]"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 font-['Roboto',sans-serif]"
                   >
                     <Flag className="w-4 h-4 mr-2" />
                     Cancel Job
@@ -1265,7 +1265,7 @@ export default function JobDetailPage() {
           {/* Right Column - Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
-              <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+              <h2 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
                 About the Client
               </h2>
               
@@ -1273,12 +1273,12 @@ export default function JobDetailPage() {
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={userInfo?.avatar} />
-                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
                       {userInfo?.name?.charAt(0) || "C"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                       {userInfo?.name || "Client"}
                     </p>
                   </div>
@@ -1295,7 +1295,7 @@ export default function JobDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                   <Clock className="w-4 h-4" />
                   Member Since {new Date(job.postedAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
                 </div>
@@ -1303,10 +1303,10 @@ export default function JobDetailPage() {
                 <Separator />
 
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                  <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                     Location
                   </h3>
-                  <div className="flex items-center gap-2 text-[#2c353f] font-['Poppins',sans-serif] text-[14px]">
+                  <div className="flex items-center gap-2 text-[#2c353f] font-['Roboto',sans-serif] text-[14px]">
                     <MapPin className="w-4 h-4" />
                     {job.location}
                   </div>
@@ -1315,17 +1315,17 @@ export default function JobDetailPage() {
                 <Separator />
 
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                  <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                     Category
                   </h3>
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                     {job.sector}
                   </p>
                 </div>
 
                 <Separator />
 
-                <button className="text-[#1976D2] hover:text-[#1565C0] font-['Poppins',sans-serif] text-[14px] flex items-center gap-2 w-full">
+                <button className="text-[#1976D2] hover:text-[#1565C0] font-['Roboto',sans-serif] text-[14px] flex items-center gap-2 w-full">
                   <Flag className="w-4 h-4" />
                   Report this job
                 </button>
@@ -1341,17 +1341,17 @@ export default function JobDetailPage() {
       <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[20px]">
               Submit Your Quote
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px]">
               Provide your best quote for this job. The client will review all quotes and may contact you.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="quote-price" className="font-['Poppins',sans-serif] text-[14px]">
+              <Label htmlFor="quote-price" className="font-['Roboto',sans-serif] text-[14px]">
                 Your Price (£)
               </Label>
               <Input
@@ -1360,15 +1360,15 @@ export default function JobDetailPage() {
                 placeholder="150"
                 value={quoteForm.price}
                 onChange={(e) => setQuoteForm({ ...quoteForm, price: e.target.value })}
-                className="font-['Poppins',sans-serif] mt-2"
+                className="font-['Roboto',sans-serif] mt-2"
               />
-              <p className="text-[12px] text-[#6b6b6b] mt-1 font-['Poppins',sans-serif]">
+              <p className="text-[12px] text-[#6b6b6b] mt-1 font-['Roboto',sans-serif]">
                 Client's budget: £{job.budgetAmount} - £{(job.budgetAmount * 1.2).toFixed(0)}
               </p>
             </div>
 
             <div>
-              <Label htmlFor="quote-delivery" className="font-['Poppins',sans-serif] text-[14px]">
+              <Label htmlFor="quote-delivery" className="font-['Roboto',sans-serif] text-[14px]">
                 Delivery Time
               </Label>
               <Input
@@ -1377,12 +1377,12 @@ export default function JobDetailPage() {
                 placeholder="e.g., Same day, 2-3 days, Within a week"
                 value={quoteForm.deliveryTime}
                 onChange={(e) => setQuoteForm({ ...quoteForm, deliveryTime: e.target.value })}
-                className="font-['Poppins',sans-serif] mt-2"
+                className="font-['Roboto',sans-serif] mt-2"
               />
             </div>
 
             <div>
-              <Label htmlFor="quote-message" className="font-['Poppins',sans-serif] text-[14px]">
+              <Label htmlFor="quote-message" className="font-['Roboto',sans-serif] text-[14px]">
                 Cover Message
               </Label>
               <Textarea
@@ -1390,7 +1390,7 @@ export default function JobDetailPage() {
                 placeholder="Describe your experience, approach, and why you're the best fit for this job..."
                 value={quoteForm.message}
                 onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })}
-                className="font-['Poppins',sans-serif] mt-2 min-h-[240px]"
+                className="font-['Roboto',sans-serif] mt-2 min-h-[240px]"
               />
             </div>
 
@@ -1406,14 +1406,14 @@ export default function JobDetailPage() {
                         className="flex items-center gap-2 text-[#6b6b6b] hover:text-[#2c353f] transition-colors"
                       >
                         <Plus className="w-4 h-4" />
-                        <span className="font-['Poppins',sans-serif] text-[12px]">
+                        <span className="font-['Roboto',sans-serif] text-[12px]">
                           Suggest Milestone Payment
                         </span>
                         <Info className="w-4 h-4" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[300px]">
-                      <p className="font-['Poppins',sans-serif] text-[12px]">
+                      <p className="font-['Roboto',sans-serif] text-[12px]">
                         Break down your quote into smaller milestones to help build trust with the client. 
                         Each milestone represents a stage of work and its corresponding payment.
                       </p>
@@ -1432,10 +1432,10 @@ export default function JobDetailPage() {
                           placeholder="Define the tasks that you will complete for this"
                           value={milestone.description}
                           onChange={(e) => updateMilestone(index, "description", e.target.value)}
-                          className="flex-1 font-['Poppins',sans-serif] text-[14px]"
+                          className="flex-1 font-['Roboto',sans-serif] text-[14px]"
                         />
                         <div className="relative w-32">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[14px]">
                             £
                           </span>
                           <Input
@@ -1443,7 +1443,7 @@ export default function JobDetailPage() {
                             placeholder="0"
                             value={milestone.amount}
                             onChange={(e) => updateMilestone(index, "amount", e.target.value)}
-                            className="pl-7 font-['Poppins',sans-serif] text-[14px]"
+                            className="pl-7 font-['Roboto',sans-serif] text-[14px]"
                           />
                         </div>
                         {milestones.length > 1 && (
@@ -1466,7 +1466,7 @@ export default function JobDetailPage() {
                     variant="ghost"
                     size="sm"
                     onClick={addMilestoneToForm}
-                    className="mt-3 text-[#3B82F6] hover:text-[#2563EB] hover:bg-blue-50 font-['Poppins',sans-serif]"
+                    className="mt-3 text-[#3B82F6] hover:text-[#2563EB] hover:bg-blue-50 font-['Roboto',sans-serif]"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add another milestone
@@ -1480,13 +1480,13 @@ export default function JobDetailPage() {
             <Button
               variant="outline"
               onClick={() => setShowQuoteDialog(false)}
-              className="flex-1 font-['Poppins',sans-serif]"
+              className="flex-1 font-['Roboto',sans-serif]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmitQuote}
-              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
             >
               Submit Quote
             </Button>
@@ -1498,10 +1498,10 @@ export default function JobDetailPage() {
       <Dialog open={showAwardModal} onOpenChange={setShowAwardModal}>
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader className="mb-4 sm:mb-6">
-            <DialogTitle className="font-['Poppins',sans-serif] text-[18px] sm:text-[22px] text-[#2c353f] mb-2">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[18px] sm:text-[22px] text-[#2c353f] mb-2">
               Set up Milestone Payments
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-[#6b6b6b]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[12px] sm:text-[14px] text-[#6b6b6b]">
               You only have to pay for work when it has been completed and you're 100% satisfied.
             </DialogDescription>
           </DialogHeader>
@@ -1512,12 +1512,12 @@ export default function JobDetailPage() {
               <div className="flex items-center gap-3 bg-[#f8f9fa] p-3 rounded-lg">
                 <Avatar className="w-10 h-10 border-2 border-gray-200 flex-shrink-0">
                   <AvatarImage src={selectedQuoteForAward.professionalAvatar} />
-                  <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
+                  <AvatarFallback className="bg-[#3B82F6] text-white font-['Roboto',sans-serif]">
                     {selectedQuoteForAward.professionalName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-[#2c353f]">
+                  <p className="font-['Roboto',sans-serif] text-[12px] sm:text-[14px] text-[#2c353f]">
                     <strong>{selectedQuoteForAward.professionalName}</strong> has requested the following Milestone Payment:
                   </p>
                 </div>
@@ -1537,14 +1537,14 @@ export default function JobDetailPage() {
                   >
                     <div className="flex items-start gap-2">
                       <RadioGroupItem value="with" id="with-milestone" className="flex-shrink-0 mt-0.5" />
-                      <Label htmlFor="with-milestone" className="font-['Poppins',sans-serif] text-[13px] cursor-pointer flex-1">
+                      <Label htmlFor="with-milestone" className="font-['Roboto',sans-serif] text-[13px] cursor-pointer flex-1">
                         With milestone
                       </Label>
                       {awardWithMilestone && (
                         <CheckCircle2 className="w-4 h-4 text-[#3B82F6] flex-shrink-0" />
                       )}
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] pl-6">
+                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] pl-6">
                       Pay in stages
                     </p>
                   </div>
@@ -1560,14 +1560,14 @@ export default function JobDetailPage() {
                   >
                     <div className="flex items-start gap-2">
                       <RadioGroupItem value="without" id="without-milestone" className="flex-shrink-0 mt-0.5" />
-                      <Label htmlFor="without-milestone" className="font-['Poppins',sans-serif] text-[13px] cursor-pointer flex-1">
+                      <Label htmlFor="without-milestone" className="font-['Roboto',sans-serif] text-[13px] cursor-pointer flex-1">
                         Without milestone
                       </Label>
                       {!awardWithMilestone && (
                         <CheckCircle2 className="w-4 h-4 text-[#3B82F6] flex-shrink-0" />
                       )}
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] pl-6">
+                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] pl-6">
                       Pay after completion
                     </p>
                   </div>
@@ -1578,12 +1578,12 @@ export default function JobDetailPage() {
               {awardWithMilestone && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] w-6 sm:w-8">£</span>
+                    <span className="font-['Roboto',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] w-6 sm:w-8">£</span>
                     <Input
                       type="number"
                       value={milestoneAmount}
                       onChange={(e) => setMilestoneAmount(e.target.value)}
-                      className="flex-1 font-['Poppins',sans-serif] text-[14px] sm:text-[16px]"
+                      className="flex-1 font-['Roboto',sans-serif] text-[14px] sm:text-[16px]"
                       placeholder="122.00"
                     />
                   </div>
@@ -1592,7 +1592,7 @@ export default function JobDetailPage() {
 
               {/* Total */}
               <div className="border-t border-gray-200 pt-3 sm:pt-4">
-                <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
+                <p className="font-['Roboto',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
                   Total: <strong>£{awardWithMilestone ? (milestoneAmount || "0.00") : selectedQuoteForAward.price} GBP</strong>
                 </p>
               </div>
@@ -1600,10 +1600,10 @@ export default function JobDetailPage() {
               {/* Info Text */}
               {awardWithMilestone && (
                 <div className="bg-[#EFF6FF] border border-[#3B82F6]/30 rounded-lg p-3 sm:p-4">
-                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[13px] text-[#2c353f] mb-2">
+                  <p className="font-['Roboto',sans-serif] text-[11px] sm:text-[13px] text-[#2c353f] mb-2">
                     <strong>{selectedQuoteForAward.professionalName}</strong> will receive a notification to accept this milestone. Once they accept and complete the work to your satisfaction, you can release the payment.
                   </p>
-                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[13px] text-[#2c353f]">
+                  <p className="font-['Roboto',sans-serif] text-[11px] sm:text-[13px] text-[#2c353f]">
                     Milestone Payments are refundable subject to our{" "}
                     <a href="#" className="text-[#3B82F6] underline">
                       terms and conditions
@@ -1616,7 +1616,7 @@ export default function JobDetailPage() {
               {/* Award Button */}
               <Button
                 onClick={handleAwardJob}
-                className="w-full bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] py-5 sm:py-6 text-[14px] sm:text-[16px]"
+                className="w-full bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Roboto',sans-serif] py-5 sm:py-6 text-[14px] sm:text-[16px]"
               >
                 {awardWithMilestone 
                   ? `Award and Create £${milestoneAmount || "0.00"} GBP Milestone`
@@ -1626,7 +1626,7 @@ export default function JobDetailPage() {
 
               {/* Guide Tip with Steps - Moved below button */}
               <div className="bg-[#f8f9fa] border border-gray-200 rounded-lg p-4">
-                <h4 className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-3">
+                <h4 className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] mb-3">
                   How Milestone Payments Work
                 </h4>
                 
@@ -1636,7 +1636,7 @@ export default function JobDetailPage() {
                     <div className="w-7 h-7 flex-shrink-0">
                       <img src={milestoneStep1} alt="Step 1" className="w-full h-full object-contain" />
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] leading-tight">
+                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] leading-tight">
                       Deposit funds to create milestone
                     </p>
                   </div>
@@ -1645,7 +1645,7 @@ export default function JobDetailPage() {
                     <div className="w-7 h-7 flex-shrink-0">
                       <img src={milestoneStep2} alt="Step 2" className="w-full h-full object-contain" />
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] leading-tight">
+                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] leading-tight">
                       Funds held securely while work progresses
                     </p>
                   </div>
@@ -1654,7 +1654,7 @@ export default function JobDetailPage() {
                     <div className="w-7 h-7 flex-shrink-0">
                       <img src={milestoneStep3} alt="Step 3" className="w-full h-full object-contain" />
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] leading-tight">
+                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] leading-tight">
                       Release payment when 100% satisfied
                     </p>
                   </div>
@@ -1667,12 +1667,12 @@ export default function JobDetailPage() {
 
       {/* New Milestone Dialog */}
       <Dialog open={showNewMilestoneDialog} onOpenChange={setShowNewMilestoneDialog}>
-        <DialogContent className="w-[70vw] p-6 font-['Poppins',sans-serif]">
+        <DialogContent className="w-[70vw] p-6 font-['Roboto',sans-serif]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
               Create New Milestone
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
               Add a new milestone payment to this job. The professional will need to complete this milestone to request payment release.
             </DialogDescription>
           </DialogHeader>
@@ -1680,7 +1680,7 @@ export default function JobDetailPage() {
           <div className="space-y-4 mt-4">
             {/* Description */}
             <div>
-              <Label htmlFor="milestone-description" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label htmlFor="milestone-description" className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Milestone Description
               </Label>
               <Textarea
@@ -1688,24 +1688,24 @@ export default function JobDetailPage() {
                 value={newMilestoneForm.description}
                 onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, description: e.target.value })}
                 placeholder="e.g., Complete plumbing installation"
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[80px]"
+                className="font-['Roboto',sans-serif] text-[14px] min-h-[80px]"
               />
             </div>
 
             {/* Amount */}
             <div>
-              <Label htmlFor="milestone-amount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label htmlFor="milestone-amount" className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Amount (£)
               </Label>
               <div className="flex items-center gap-2">
-                <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">£</span>
+                <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">£</span>
                 <Input
                   id="milestone-amount"
                   type="number"
                   value={newMilestoneForm.amount}
                   onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, amount: e.target.value })}
                   placeholder="0.00"
-                  className="flex-1 font-['Poppins',sans-serif] text-[14px]"
+                  className="flex-1 font-['Roboto',sans-serif] text-[14px]"
                   step="0.01"
                   min="0"
                 />
@@ -1714,7 +1714,7 @@ export default function JobDetailPage() {
 
             {/* Info Box */}
             <div className="bg-[#EFF6FF] border border-[#3B82F6]/30 rounded-lg p-4">
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+              <p className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f]">
                 The milestone will be created with "Pending" status. Once the professional requests release, you can approve the payment.
               </p>
             </div>
@@ -1727,13 +1727,13 @@ export default function JobDetailPage() {
                   setShowNewMilestoneDialog(false);
                   setNewMilestoneForm({ description: "", amount: "" });
                 }}
-                className="flex-1 font-['Poppins',sans-serif]"
+                className="flex-1 font-['Roboto',sans-serif]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateMilestone}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif]"
               >
                 Create Milestone
               </Button>
@@ -1744,12 +1744,12 @@ export default function JobDetailPage() {
 
       {/* Dispute Modal */}
       <Dialog open={showDisputeModal} onOpenChange={setShowDisputeModal}>
-        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto font-['Poppins',sans-serif]">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto font-['Roboto',sans-serif]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
               Dispute Milestone
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
               If there's an issue with the milestone, you can raise a dispute. Our support team will review and help resolve the issue.
             </DialogDescription>
           </DialogHeader>
@@ -1757,7 +1757,7 @@ export default function JobDetailPage() {
           <div className="space-y-6">
             {/* Info Box - Yellow Background */}
             <div className="bg-[#FEF3C7] border border-[#FCD34D] rounded-lg p-4">
-              <ul className="space-y-2 font-['Poppins',sans-serif] text-[13px] text-[#78350F] list-disc list-inside">
+              <ul className="space-y-2 font-['Roboto',sans-serif] text-[13px] text-[#78350F] list-disc list-inside">
                 <li>Most disputes are the result of a simple misunderstanding.</li>
                 <li>Our dispute resolution system is designed to allow both parties to resolve the issue amongst themselves.</li>
                 <li>Most disputes are resolved without arbitration.</li>
@@ -1767,43 +1767,43 @@ export default function JobDetailPage() {
 
             {/* Requirements Description */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Please describe in detail what the requirements were for the milestone(s) you wish to dispute.
               </Label>
               <Textarea
                 value={disputeForm.requirements}
                 onChange={(e) => setDisputeForm({ ...disputeForm, requirements: e.target.value })}
                 placeholder="Describe the requirements..."
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[120px]"
+                className="font-['Roboto',sans-serif] text-[14px] min-h-[120px]"
               />
             </div>
 
             {/* Not Completed Description */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Please describe in detail which of these requirements were not completed.
               </Label>
               <Textarea
                 value={disputeForm.notCompleted}
                 onChange={(e) => setDisputeForm({ ...disputeForm, notCompleted: e.target.value })}
                 placeholder="Describe what was not completed..."
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[120px]"
+                className="font-['Roboto',sans-serif] text-[14px] min-h-[120px]"
               />
             </div>
 
             {/* Evidence Upload */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Please include evidence of how the milestone requirements we communicated, as well as any other evidence that supports your case.
               </Label>
               <Input
                 type="file"
                 multiple
                 onChange={handleFileChange}
-                className="font-['Poppins',sans-serif] text-[14px]"
+                className="font-['Roboto',sans-serif] text-[14px]"
               />
               {disputeForm.evidenceFiles.length > 0 && (
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
                   {disputeForm.evidenceFiles.length} file(s) selected
                 </p>
               )}
@@ -1811,7 +1811,7 @@ export default function JobDetailPage() {
 
             {/* Milestone Selection */}
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                 Select the milestone you want to dispute
               </Label>
               <div className="space-y-2">
@@ -1827,14 +1827,14 @@ export default function JobDetailPage() {
                         />
                         <label
                           htmlFor={`dispute-${milestone.id}`}
-                          className="flex-1 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                          className="flex-1 font-['Roboto',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
                         >
                           {milestone.description} - £{milestone.amount}
                         </label>
                       </div>
                     ))
                 ) : (
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                     No milestones available to dispute
                   </p>
                 )}
@@ -1846,13 +1846,13 @@ export default function JobDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowDisputeModal(false)}
-                className="flex-1 font-['Poppins',sans-serif]"
+                className="flex-1 font-['Roboto',sans-serif]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmitDispute}
-                className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white font-['Poppins',sans-serif]"
+                className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white font-['Roboto',sans-serif]"
               >
                 Submit Dispute
               </Button>

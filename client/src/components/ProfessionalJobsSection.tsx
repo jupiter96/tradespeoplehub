@@ -40,10 +40,10 @@ export default function ProfessionalJobsSection() {
     <div>
       {/* Header */}
       <div className="mb-4 md:mb-6">
-        <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
+        <h2 className="font-['Roboto',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
           My Jobs
         </h2>
-        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+        <p className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
           Manage available jobs, your quotes, and active projects
         </p>
       </div>
@@ -54,7 +54,7 @@ export default function ProfessionalJobsSection() {
           <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-3 bg-gray-100 p-1 rounded-xl h-auto gap-1">
             <TabsTrigger
               value="available"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              className="font-['Roboto',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
               <Briefcase className="w-4 h-4" />
               Available Jobs
@@ -66,7 +66,7 @@ export default function ProfessionalJobsSection() {
             </TabsTrigger>
             <TabsTrigger
               value="quotes"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              className="font-['Roboto',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
               <MessageCircle className="w-4 h-4" />
               My Quotes
@@ -78,7 +78,7 @@ export default function ProfessionalJobsSection() {
             </TabsTrigger>
             <TabsTrigger
               value="active"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              className="font-['Roboto',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
               <CheckCircle className="w-4 h-4" />
               Active Jobs
@@ -161,10 +161,10 @@ function ActiveJobsSection() {
       <div className="bg-gradient-to-br from-green-50 to-white border-2 border-green-200 rounded-xl p-6 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
+            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
               Active Projects
             </p>
-            <h3 className="font-['Poppins',sans-serif] text-[32px] text-[#2c353f]">
+            <h3 className="font-['Roboto',sans-serif] text-[32px] text-[#2c353f]">
               {activeJobs.length}
             </h3>
           </div>
@@ -182,12 +182,12 @@ function ActiveJobsSection() {
             placeholder="Search active jobs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 font-['Poppins',sans-serif]"
+            className="pl-10 font-['Roboto',sans-serif]"
           />
         </div>
 
         <Select value={sortField} onValueChange={setSortField}>
-          <SelectTrigger className="w-full md:w-[180px] font-['Poppins',sans-serif]">
+          <SelectTrigger className="w-full md:w-[180px] font-['Roboto',sans-serif]">
             <ArrowUpDown className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -202,7 +202,7 @@ function ActiveJobsSection() {
           onClick={() =>
             setSortDirection(sortDirection === "asc" ? "desc" : "asc")
           }
-          className="font-['Poppins',sans-serif]"
+          className="font-['Roboto',sans-serif]"
         >
           {sortDirection === "asc" ? "↑" : "↓"}
         </Button>
@@ -212,10 +212,10 @@ function ActiveJobsSection() {
       {filteredJobs.length === 0 ? (
         <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
           <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+          <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
             No active jobs
           </h3>
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+          <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
             {searchQuery
               ? "No jobs match your search"
               : "Submit quotes on available jobs to get started"}
@@ -239,11 +239,11 @@ function ActiveJobsSection() {
                   <div className="flex-1">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="flex-1">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                        <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
                           {job.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif]">
+                          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Roboto',sans-serif]">
                             <CheckCircle className="w-3 h-3 mr-1" />
                             In Progress
                           </Badge>
@@ -252,16 +252,16 @@ function ActiveJobsSection() {
                     </div>
 
                     {/* Job Details */}
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
                       {job.description}
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                         <MapPin className="w-4 h-4" />
                         {job.location}
                       </div>
-                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                         <Calendar className="w-4 h-4" />
                         Started: {formatDate(job.postedAt)}
                       </div>
@@ -271,10 +271,10 @@ function ActiveJobsSection() {
                   {/* Right Side */}
                   <div className="flex flex-col items-start md:items-end gap-3">
                     <div className="text-right">
-                      <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                      <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
                         £{acceptedQuote?.price || job.budgetAmount}
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         Your Quote
                       </p>
                     </div>
@@ -284,7 +284,7 @@ function ActiveJobsSection() {
                         e.stopPropagation();
                         navigate(`/job/${job.id}`);
                       }}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       View Details

@@ -195,28 +195,28 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
     switch (status) {
       case "verified":
         return (
-          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Roboto',sans-serif]">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Verified
           </Badge>
         );
       case "pending":
         return (
-          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Roboto',sans-serif]">
             <Clock className="w-3 h-3 mr-1" />
             Pending Review
           </Badge>
         );
       case "rejected":
         return (
-          <Badge className="bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-red-50 text-red-700 border-red-200 font-['Roboto',sans-serif]">
             <XCircle className="w-3 h-3 mr-1" />
             Rejected
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-gray-50 text-gray-700 border-gray-200 font-['Poppins',sans-serif]">
+          <Badge className="bg-gray-50 text-gray-700 border-gray-200 font-['Roboto',sans-serif]">
             <AlertCircle className="w-3 h-3 mr-1" />
             Not Started
           </Badge>
@@ -539,7 +539,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading verification status...</p>
+          <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">Loading verification status...</p>
         </div>
       </div>
     );
@@ -549,10 +549,10 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
     <div>
       {/* Header */}
       <div className="mb-4 md:mb-6">
-        <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
+        <h2 className="font-['Roboto',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
           Account Verification
         </h2>
-        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+        <p className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
           Complete your profile verification to build trust with clients and unlock all features
         </p>
       </div>
@@ -566,10 +566,10 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 <Shield className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
+                <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-1">
                   Verification Progress
                 </h3>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                   {verifiedCount} of {verificationItems.length} items verified
                 </p>
               </div>
@@ -577,10 +577,10 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
             
             <div className="mb-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                   Overall Progress
                 </span>
-                <span className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F]">
+                <span className="font-['Roboto',sans-serif] text-[18px] text-[#FE8A0F]">
                   {progress}%
                 </span>
               </div>
@@ -595,7 +595,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
             {progress === 100 && (
               <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2 mt-3">
                 <CheckCheck className="w-5 h-5 text-green-600" />
-                <p className="font-['Poppins',sans-serif] text-[13px] text-green-700">
+                <p className="font-['Roboto',sans-serif] text-[13px] text-green-700">
                   Congratulations! Your account is fully verified
                 </p>
               </div>
@@ -607,10 +607,10 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
               </div>
-              <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+              <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
                 {verifiedCount}
               </p>
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+              <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                 Verified
               </p>
             </div>
@@ -620,10 +620,10 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Clock className="w-5 h-5 text-yellow-600" />
                 </div>
-                <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
                   {pendingCount}
                 </p>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                   Pending
                 </p>
               </div>
@@ -635,7 +635,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <p className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
+              <p className="font-['Roboto',sans-serif] text-[13px] text-blue-800">
                 Complete all verification steps to increase your chances of winning jobs and earning client trust
               </p>
             </div>
@@ -689,18 +689,18 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
 
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                      <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                         {item.title}
                       </h3>
                       {getStatusBadge(item.status)}
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
                       {item.description}
                     </p>
 
                     {/* Show value/document info */}
                     {item.value && item.status === "verified" && (
-                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
+                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[13px]">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
                         {item.value}
                       </div>
@@ -710,7 +710,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       <div className="flex items-center gap-2 mt-2">
                         <div className="bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
                           <FileText className="w-4 h-4 text-gray-600" />
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                             {item.documentName}
                           </span>
                         </div>
@@ -718,7 +718,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                           size="sm"
                           variant="ghost"
                           onClick={() => handleDeleteDocument(item.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif]"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Roboto',sans-serif]"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -727,7 +727,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
 
                     {item.status === "rejected" && item.rejectionReason && (
                       <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-2">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-red-700">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-red-700">
                           <strong>Reason:</strong> {item.rejectionReason}
                         </p>
                       </div>
@@ -736,7 +736,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                     {/* Show message for insurance when set to "no" */}
                     {item.id === "public-liability" && userInfo?.hasPublicLiability === "no" && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mt-2">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-blue-800">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-blue-800">
                           Please go to <strong>"My Details"</strong> page and add your insurance information before you can upload verification documents.
                         </p>
                       </div>
@@ -749,7 +749,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                   {item.id === "public-liability" && userInfo?.hasPublicLiability === "no" ? (
                     <Button
                       onClick={() => navigate("/account?tab=details")}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
                     >
                       <Settings className="w-4 h-4 mr-2" />
                       Go to My Details
@@ -758,20 +758,20 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                     <Button
                       variant="outline"
                       onClick={() => handleOpenDialog(item.id)}
-                      className="font-['Poppins',sans-serif] text-[#3B82F6] border-[#3B82F6] hover:bg-[#EFF6FF]"
+                      className="font-['Roboto',sans-serif] text-[#3B82F6] border-[#3B82F6] hover:bg-[#EFF6FF]"
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       Update
                     </Button>
                   ) : item.status === "pending" ? (
-                    <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Poppins',sans-serif] px-4 py-2">
+                    <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Roboto',sans-serif] px-4 py-2">
                       <Clock className="w-4 h-4 mr-2" />
                       Under Review
                     </Badge>
                   ) : (
                     <Button
                       onClick={() => handleOpenDialog(item.id)}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
                     >
                       {item.type === "upload" ? (
                         <>
@@ -804,7 +804,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       }}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+            <DialogTitle className="font-['Roboto',sans-serif] text-[20px]">
               {currentItem?.type === "upload" 
                 ? "Upload Document" 
                 : currentItem?.id === "payment"
@@ -813,7 +813,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 ? "Enter Verification Code"
                 : "Verify Information"}
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
+            <DialogDescription className="font-['Roboto',sans-serif] text-[14px]">
               {currentItem?.description}
             </DialogDescription>
           </DialogHeader>
@@ -825,7 +825,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-blue-800">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-blue-800">
                       Please upload a bank statement issued within the last 3 months. The statement should show your account number and sort code.
                     </p>
                   </div>
@@ -833,7 +833,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                    <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                       First Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -843,11 +843,11 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       onChange={(e) =>
                         setFormData({ ...formData, firstName: e.target.value })
                       }
-                      className="font-['Poppins',sans-serif]"
+                      className="font-['Roboto',sans-serif]"
                     />
                   </div>
                   <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                    <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                       Last Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -857,13 +857,13 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       onChange={(e) =>
                         setFormData({ ...formData, lastName: e.target.value })
                       }
-                      className="font-['Poppins',sans-serif]"
+                      className="font-['Roboto',sans-serif]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                  <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                     Address <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -873,13 +873,13 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                     onChange={(e) =>
                       setFormData({ ...formData, address: e.target.value })
                     }
-                    className="font-['Poppins',sans-serif]"
+                    className="font-['Roboto',sans-serif]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                    <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                       Sort Code <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -900,11 +900,11 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                         }
                       }}
                       maxLength={8}
-                      className="font-['Poppins',sans-serif]"
+                      className="font-['Roboto',sans-serif]"
                     />
                   </div>
                   <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                    <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                       Account Number <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -918,13 +918,13 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                         }
                       }}
                       maxLength={10}
-                      className="font-['Poppins',sans-serif]"
+                      className="font-['Roboto',sans-serif]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                  <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                     Bank Statement Issue Date <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -934,15 +934,15 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       setFormData({ ...formData, bankStatementDate: e.target.value })
                     }
                     max={new Date().toISOString().split('T')[0]}
-                    className="font-['Poppins',sans-serif]"
+                    className="font-['Roboto',sans-serif]"
                   />
-                  <p className="font-['Poppins',sans-serif] text-[11px] text-gray-500 mt-1">
+                  <p className="font-['Roboto',sans-serif] text-[11px] text-gray-500 mt-1">
                     Must be within the last 3 months
                   </p>
                 </div>
 
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                  <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                     Upload Bank Statement <span className="text-red-500">*</span>
                   </Label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#FE8A0F] transition-colors">
@@ -965,19 +965,19 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       <Upload className="w-8 h-8 text-gray-400" />
                       {formData.bankStatementFile ? (
                         <div className="text-center">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
+                          <p className="font-['Roboto',sans-serif] text-[14px] text-[#FE8A0F]">
                             {formData.bankStatementFile.name}
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-gray-500 mt-1">
+                          <p className="font-['Roboto',sans-serif] text-[11px] text-gray-500 mt-1">
                             Click to change file
                           </p>
                         </div>
                       ) : (
                         <div className="text-center">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-gray-600">
+                          <p className="font-['Roboto',sans-serif] text-[14px] text-gray-600">
                             Click to upload or drag and drop
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-gray-500 mt-1">
+                          <p className="font-['Roboto',sans-serif] text-[11px] text-gray-500 mt-1">
                             PDF, JPG, or PNG (max 10MB)
                           </p>
                         </div>
@@ -989,7 +989,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
                   <div className="flex items-start gap-2">
                     <Shield className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-green-800">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-green-800">
                       Your bank account information is encrypted and secure. Documents are reviewed within 24-48 hours.
                     </p>
                   </div>
@@ -999,7 +999,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                   <Button
                     variant="outline"
                     onClick={() => setIsDialogOpen(false)}
-                    className="flex-1 font-['Poppins',sans-serif]"
+                    className="flex-1 font-['Roboto',sans-serif]"
                     disabled={uploadingFile}
                   >
                     Cancel
@@ -1007,7 +1007,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                   <Button
                     onClick={handleSubmitPaymentMethod}
                     disabled={uploadingFile}
-                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-50"
+                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] disabled:opacity-50"
                   >
                     {uploadingFile ? "Uploading..." : "Submit"}
                   </Button>
@@ -1016,7 +1016,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
             ) : /* Document Upload - for other upload types */
             currentItem?.type === "upload" ? (
               <div>
-                <Label className="font-['Poppins',sans-serif] text-[14px] mb-3 block">
+                <Label className="font-['Roboto',sans-serif] text-[14px] mb-3 block">
                   Upload {currentItem.title}
                 </Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FE8A0F] transition-all cursor-pointer">
@@ -1033,10 +1033,10 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                     className="cursor-pointer"
                   >
                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-1">
                       {uploadingFile ? "Uploading..." : "Click to upload or drag and drop"}
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                       PDF, JPG, PNG (max 10MB)
                     </p>
                   </label>
@@ -1045,7 +1045,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mt-4">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-blue-800">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-blue-800">
                       Documents are reviewed within 24-48 hours. Make sure your document is clear and valid.
                     </p>
                   </div>
@@ -1066,7 +1066,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                   />
                 ) : (
                 <div>
-                  <Label htmlFor={currentItem?.id} className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                  <Label htmlFor={currentItem?.id} className="font-['Roboto',sans-serif] text-[14px] mb-2">
                     {currentItem?.title}
                   </Label>
                   <Input
@@ -1077,7 +1077,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                     onChange={(e) =>
                       setFormData({ ...formData, [currentItem?.id || ""]: e.target.value })
                     }
-                    className="font-['Poppins',sans-serif]"
+                    className="font-['Roboto',sans-serif]"
                   />
                 </div>
                 )}
@@ -1085,7 +1085,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-blue-800">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-blue-800">
                       We'll send you a verification code to confirm your {currentItem?.id}
                     </p>
                   </div>
@@ -1095,13 +1095,13 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                   <Button
                     variant="outline"
                     onClick={() => setIsDialogOpen(false)}
-                    className="flex-1 font-['Poppins',sans-serif]"
+                    className="flex-1 font-['Roboto',sans-serif]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleSendVerificationCode}
-                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
                   >
                     <Send className="w-4 h-4 mr-2" />
                     Send Code
@@ -1112,7 +1112,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
               /* Verification Code Entry */
               <div className="space-y-4">
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
+                  <Label className="font-['Roboto',sans-serif] text-[14px] mb-2">
                     Enter 4-Digit Code
                   </Label>
                   <Input
@@ -1126,9 +1126,9 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       }
                     }}
                     maxLength={4}
-                    className="font-['Poppins',sans-serif] text-center text-[32px] tracking-[0.5em]"
+                    className="font-['Roboto',sans-serif] text-center text-[32px] tracking-[0.5em]"
                   />
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2 text-center">
+                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mt-2 text-center">
                     Code sent to {formData[currentItem?.id as keyof typeof formData]}
                   </p>
                 </div>
@@ -1137,12 +1137,12 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-green-800 mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-green-800 mb-1">
                         Verification code sent successfully!
                       </p>
                       <button
                         onClick={handleSendVerificationCode}
-                        className="font-['Poppins',sans-serif] text-[12px] text-green-700 underline hover:text-green-900"
+                        className="font-['Roboto',sans-serif] text-[12px] text-green-700 underline hover:text-green-900"
                       >
                         Resend code
                       </button>
@@ -1157,14 +1157,14 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                       setVerificationStep("input");
                       setVerificationCode("");
                     }}
-                    className="flex-1 font-['Poppins',sans-serif]"
+                    className="flex-1 font-['Roboto',sans-serif]"
                   >
                     Back
                   </Button>
                   <Button
                     onClick={handleVerifyCode}
                     disabled={verificationCode.length !== 4}
-                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
                     Verify

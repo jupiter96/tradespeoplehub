@@ -109,7 +109,7 @@ export default function TopCategoriesSection() {
       <div className="w-full max-w-[1200px] mx-auto px-4 md:px-6">
         {/* Title and Navigation */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-[#5b5b5b] text-[16px] font-['Poppins',sans-serif]">
+          <h2 className="text-[#5b5b5b] text-[16px] font-['Roboto',sans-serif]">
             Top Home and Garden Categories
           </h2>
           
@@ -168,7 +168,7 @@ export default function TopCategoriesSection() {
                   
                   {/* Category Name */}
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors">
+                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors">
                       {serviceCategory.name}
                     </span>
                     <ChevronRight className="w-[11px] h-[7px] text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />

@@ -289,7 +289,9 @@ export default function ProfessionalRegistrationSteps() {
       await updateProfile(updateData);
 
       toast.success("Profile setup completed!");
-      navigate("/account");
+      // After completing setup, take PRO users directly to the Verification section
+      // so they can finish KYC / verification documents.
+      navigate("/account?tab=verification");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to complete setup");
     } finally {
@@ -403,10 +405,10 @@ export default function ProfessionalRegistrationSteps() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-[#2c353f] font-['Poppins',sans-serif] mb-2">
+                <h1 className="text-3xl font-bold text-[#2c353f] font-['Roboto',sans-serif] mb-2">
                   Complete Your Profile
                 </h1>
-                <p className="text-[#6b6b6b] font-['Poppins',sans-serif]">
+                <p className="text-[#6b6b6b] font-['Roboto',sans-serif]">
                   Let's set up your professional profile step by step
                 </p>
               </div>
@@ -446,7 +448,7 @@ export default function ProfessionalRegistrationSteps() {
                     </div>
                     <div className="mt-2 text-center">
                       <p
-                        className={`text-xs font-medium font-['Poppins',sans-serif] ${
+                        className={`text-xs font-medium font-['Roboto',sans-serif] ${
                           isActive ? "text-[#FE8A0F]" : "text-gray-400"
                         }`}
                       >
@@ -465,10 +467,10 @@ export default function ProfessionalRegistrationSteps() {
               <div className="w-16 h-16 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-4">
                 <CurrentStepIcon className="w-8 h-8 text-[#FE8A0F]" />
               </div>
-              <h2 className="text-2xl font-bold text-[#2c353f] font-['Poppins',sans-serif] mb-2">
+              <h2 className="text-2xl font-bold text-[#2c353f] font-['Roboto',sans-serif] mb-2">
                 {STEPS[currentStep - 1]?.title}
               </h2>
-              <p className="text-[#6b6b6b] font-['Poppins',sans-serif]">
+              <p className="text-[#6b6b6b] font-['Roboto',sans-serif]">
                 {STEPS[currentStep - 1]?.description}
               </p>
             </div>
@@ -477,7 +479,7 @@ export default function ProfessionalRegistrationSteps() {
             {currentStep === 1 && (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                  <Label className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-3 block">
                     Tell us about yourself <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
@@ -494,10 +496,10 @@ export default function ProfessionalRegistrationSteps() {
                       }
                     }}
                     placeholder="Describe your experience, skills, and what makes your service special. Minimum 100 characters recommended."
-                    className="min-h-[200px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                    className="min-h-[200px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px] resize-none"
                   />
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <p className="text-xs text-[#6b6b6b] font-['Roboto',sans-serif]">
                       {aboutService.length} characters {aboutService.length < 100 && !skipAboutMe && "(minimum 100 recommended)"}
                     </p>
                     <Button
@@ -536,19 +538,19 @@ export default function ProfessionalRegistrationSteps() {
                           setIsSaving(false);
                         }
                       }}
-                      className="text-xs h-8 px-4 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif]"
+                      className="text-xs h-8 px-4 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Roboto',sans-serif]"
                     >
                       Do this later
                     </Button>
                   </div>
                   {errors.aboutService && (
-                    <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-sm text-red-600 font-['Roboto',sans-serif]">
                       {errors.aboutService}
                     </p>
                   )}
                   {skipAboutMe && (
                     <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                      <p className="text-xs text-yellow-800 font-['Poppins',sans-serif]">
+                      <p className="text-xs text-yellow-800 font-['Roboto',sans-serif]">
                         You can add this information later in your profile settings.
                       </p>
                     </div>
@@ -557,7 +559,7 @@ export default function ProfessionalRegistrationSteps() {
 
                 {/* Trade Qualification Section */}
                 <div className="pt-6 border-t border-gray-200">
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4 text-center">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4 text-center">
                     Do you have any trade qualification or accreditation?
                   </h3>
                   <RadioGroup
@@ -576,13 +578,13 @@ export default function ProfessionalRegistrationSteps() {
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="yes" id="trade-yes" className="border-2 border-gray-400 text-[#FE8A0F]" />
-                      <Label htmlFor="trade-yes" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
+                      <Label htmlFor="trade-yes" className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
                         YES
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="no" id="trade-no" className="border-2 border-gray-400 text-[#FE8A0F]" />
-                      <Label htmlFor="trade-no" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
+                      <Label htmlFor="trade-no" className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
                         NO
                       </Label>
                     </div>
@@ -592,7 +594,7 @@ export default function ProfessionalRegistrationSteps() {
                   {hasTradeQualification === "yes" && (
                     <div className="mt-6 pt-4 border-t border-gray-200">
                       <div className="flex items-center justify-between mb-3">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                           Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
                         </p>
                       </div>
@@ -608,7 +610,7 @@ export default function ProfessionalRegistrationSteps() {
                                 setQualifications(newQualifications);
                               }}
                               placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
-                              className="flex-1 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                              className="flex-1 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                             />
                             {qualifications.length > 1 && (
                               <Button
@@ -633,7 +635,7 @@ export default function ProfessionalRegistrationSteps() {
                           onClick={() => {
                             setQualifications([...qualifications, ""]);
                           }}
-                          className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] h-10"
+                          className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px] h-10"
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Add Another Qualification
@@ -649,7 +651,7 @@ export default function ProfessionalRegistrationSteps() {
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                  <Label className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-3 block">
                     Select Your Sector <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 font-normal ml-2">
                       (Select one sector only)
@@ -683,7 +685,7 @@ export default function ProfessionalRegistrationSteps() {
                                   disabled
                                   className="w-4 h-4 text-[#FE8A0F] border-gray-300 focus:ring-[#FE8A0F] cursor-not-allowed"
                                 />
-                                <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                                <span className="text-sm text-[#2c353f] font-['Roboto',sans-serif]">
                                   {sec}
                                   {isSelected && <span className="text-xs text-[#FE8A0F] ml-2">(Selected during registration)</span>}
                                 </span>
@@ -692,7 +694,7 @@ export default function ProfessionalRegistrationSteps() {
                           })}
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="text-xs text-gray-500 font-['Roboto',sans-serif]">
                         Your sector was selected during registration and cannot be changed.
                       </p>
                     </div>
@@ -717,7 +719,7 @@ export default function ProfessionalRegistrationSteps() {
                               onChange={() => handleSectorChange(sec)}
                               className="w-4 h-4 text-[#FE8A0F] border-gray-300 focus:ring-[#FE8A0F] cursor-pointer"
                             />
-                            <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                            <span className="text-sm text-[#2c353f] font-['Roboto',sans-serif]">
                               {sec}
                             </span>
                           </label>
@@ -726,12 +728,12 @@ export default function ProfessionalRegistrationSteps() {
                     </div>
                   )}
                   {errors.sector && (
-                    <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-sm text-red-600 font-['Roboto',sans-serif]">
                       {errors.sector}
                     </p>
                   )}
                   {sector && (
-                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Roboto',sans-serif]">
                       {sector} selected
                     </p>
                   )}
@@ -743,7 +745,7 @@ export default function ProfessionalRegistrationSteps() {
             {currentStep === 3 && (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                  <Label className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-3 block">
                     Select Categories <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 font-normal ml-2">
                       (Select all that apply)
@@ -751,20 +753,20 @@ export default function ProfessionalRegistrationSteps() {
                   </Label>
                   {!sector ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif]">
                         Please select a sector first
                       </p>
                     </div>
                   ) : categoriesLoading ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#FE8A0F] mb-2" />
-                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif]">
                         Loading categories...
                       </p>
                     </div>
                   ) : sortedCategories.length === 0 ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif]">
                         No categories available for this sector
                       </p>
                     </div>
@@ -796,7 +798,7 @@ export default function ProfessionalRegistrationSteps() {
                               }}
                               className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
                             />
-                            <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                            <span className="text-sm text-[#2c353f] font-['Roboto',sans-serif]">
                               {cat.name}
                             </span>
                           </label>
@@ -805,12 +807,12 @@ export default function ProfessionalRegistrationSteps() {
                     </div>
                   )}
                   {errors.categories && (
-                    <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-sm text-red-600 font-['Roboto',sans-serif]">
                       {errors.categories}
                     </p>
                   )}
                   {categories.length > 0 && (
-                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Roboto',sans-serif]">
                       {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} selected
                     </p>
                   )}
@@ -822,7 +824,7 @@ export default function ProfessionalRegistrationSteps() {
             {currentStep === 4 && (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                  <Label className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-3 block">
                     Select Subcategories <span className="text-red-500">*</span>
                     <span className="text-xs text-gray-500 font-normal ml-2">
                       (Select all that apply)
@@ -830,13 +832,13 @@ export default function ProfessionalRegistrationSteps() {
                   </Label>
                   {categories.length === 0 ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif]">
                         Please select at least one category first
                       </p>
                     </div>
                   ) : allSubcategories.length === 0 ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                      <p className="text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="text-gray-500 font-['Roboto',sans-serif]">
                         No subcategories available for selected categories
                       </p>
                     </div>
@@ -863,7 +865,7 @@ export default function ProfessionalRegistrationSteps() {
                               }}
                               className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
                             />
-                            <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
+                            <span className="text-sm text-[#2c353f] font-['Roboto',sans-serif]">
                               {subcat.name}
                             </span>
                           </label>
@@ -872,12 +874,12 @@ export default function ProfessionalRegistrationSteps() {
                     </div>
                   )}
                   {errors.subcategories && (
-                    <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-sm text-red-600 font-['Roboto',sans-serif]">
                       {errors.subcategories}
                     </p>
                   )}
                   {subcategories.length > 0 && (
-                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-xs text-[#6b6b6b] font-['Roboto',sans-serif]">
                       {subcategories.length} subcategor{subcategories.length === 1 ? 'y' : 'ies'} selected
                     </p>
                   )}
@@ -889,7 +891,7 @@ export default function ProfessionalRegistrationSteps() {
             {currentStep === 5 && (
               <div className="space-y-6">
                 <div>
-                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                  <Label className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-3 block">
                     Public Liability Insurance <span className="text-red-500">*</span>
                   </Label>
                   <div className="space-y-3">
@@ -912,10 +914,10 @@ export default function ProfessionalRegistrationSteps() {
                         className="w-5 h-5 text-[#FE8A0F] focus:ring-[#FE8A0F]"
                       />
                       <div className="flex-1">
-                        <p className="font-medium text-[#2c353f] font-['Poppins',sans-serif]">
+                        <p className="font-medium text-[#2c353f] font-['Roboto',sans-serif]">
                           Yes, I have public liability insurance
                         </p>
-                        <p className="text-xs text-[#6b6b6b] font-['Poppins',sans-serif] mt-1">
+                        <p className="text-xs text-[#6b6b6b] font-['Roboto',sans-serif] mt-1">
                           You have valid public liability insurance coverage
                         </p>
                       </div>
@@ -939,17 +941,17 @@ export default function ProfessionalRegistrationSteps() {
                         className="w-5 h-5 text-[#FE8A0F] focus:ring-[#FE8A0F]"
                       />
                       <div className="flex-1">
-                        <p className="font-medium text-[#2c353f] font-['Poppins',sans-serif]">
+                        <p className="font-medium text-[#2c353f] font-['Roboto',sans-serif]">
                           No, I don't have insurance yet
                         </p>
-                        <p className="text-xs text-[#6b6b6b] font-['Poppins',sans-serif] mt-1">
+                        <p className="text-xs text-[#6b6b6b] font-['Roboto',sans-serif] mt-1">
                           You can add this information later
                         </p>
                       </div>
                     </label>
                   </div>
                   {errors.insurance && (
-                    <p className="mt-2 text-sm text-red-600 font-['Poppins',sans-serif]">
+                    <p className="mt-2 text-sm text-red-600 font-['Roboto',sans-serif]">
                       {errors.insurance}
                     </p>
                   )}
@@ -959,7 +961,7 @@ export default function ProfessionalRegistrationSteps() {
                 {insurance === "yes" && (
                   <div className="space-y-4 pt-4 border-t border-gray-200">
                     <div>
-                      <Label htmlFor="indemnityAmount" className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-2 block">
+                      <Label htmlFor="indemnityAmount" className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-2 block">
                         How much professional indemnity insurance do you have?
                       </Label>
                       <div className="relative">
@@ -981,18 +983,18 @@ export default function ProfessionalRegistrationSteps() {
                             }
                           }}
                           placeholder="Enter amount"
-                          className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif]"
+                          className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif]"
                         />
                       </div>
                       {errors.professionalIndemnityAmount && (
-                        <p className="mt-1 text-sm text-red-600 font-['Poppins',sans-serif]">
+                        <p className="mt-1 text-sm text-red-600 font-['Roboto',sans-serif]">
                           {errors.professionalIndemnityAmount}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <Label htmlFor="expiryDate" className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-2 block">
+                      <Label htmlFor="expiryDate" className="text-[#2c353f] font-['Roboto',sans-serif] text-sm mb-2 block">
                         When is the insurance expiring?
                       </Label>
                       <div className="relative">
@@ -1012,11 +1014,11 @@ export default function ProfessionalRegistrationSteps() {
                             }
                           }}
                           min={new Date().toISOString().split('T')[0]}
-                          className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif]"
+                          className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif]"
                         />
                       </div>
                       {errors.insuranceExpiryDate && (
-                        <p className="mt-1 text-sm text-red-600 font-['Poppins',sans-serif]">
+                        <p className="mt-1 text-sm text-red-600 font-['Roboto',sans-serif]">
                           {errors.insuranceExpiryDate}
                         </p>
                       )}
@@ -1034,7 +1036,7 @@ export default function ProfessionalRegistrationSteps() {
               variant="outline"
               onClick={handleBack}
               disabled={currentStep === 1 || isSaving}
-              className="flex items-center gap-2 h-12 px-6 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 h-12 px-6 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Roboto',sans-serif] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
               Back
@@ -1045,7 +1047,7 @@ export default function ProfessionalRegistrationSteps() {
                 type="button"
                 onClick={handleNext}
                 disabled={isSaving}
-                className="flex items-center gap-2 h-12 px-8 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] shadow-lg hover:shadow-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 h-12 px-8 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] shadow-lg hover:shadow-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <>
@@ -1064,7 +1066,7 @@ export default function ProfessionalRegistrationSteps() {
                 type="button"
                 onClick={handleComplete}
                 disabled={isSaving}
-                className="flex items-center gap-2 h-12 px-8 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] shadow-lg hover:shadow-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 h-12 px-8 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] shadow-lg hover:shadow-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <>

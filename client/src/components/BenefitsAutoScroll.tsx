@@ -6,7 +6,7 @@ export default function BenefitsAutoScroll() {
       icon: <Check className="w-5 h-5 text-[#10B981]" strokeWidth={3} />,
       bgColor: "bg-[#D1FAE5]",
       text: (
-        <span className="font-['Poppins',sans-serif] text-[14px] whitespace-nowrap">
+        <span className="font-['Roboto',sans-serif] text-[14px] whitespace-nowrap">
           <span className="text-[#FE8A0F] font-medium">Free</span>
           <span className="text-[#6B7280]"> to post</span>
         </span>
@@ -16,7 +16,7 @@ export default function BenefitsAutoScroll() {
       icon: <Clock className="w-5 h-5 text-[#3B82F6]" strokeWidth={2} />,
       bgColor: "bg-[#DBEAFE]",
       text: (
-        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6B7280] whitespace-nowrap">
+        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6B7280] whitespace-nowrap">
           Quotes in <span className="text-[#FE8A0F] font-medium">24hrs</span>
         </span>
       )
@@ -25,7 +25,7 @@ export default function BenefitsAutoScroll() {
       icon: <Check className="w-5 h-5 text-[#FE8A0F]" strokeWidth={3} />,
       bgColor: "bg-[#FEF3E2]",
       text: (
-        <span className="font-['Poppins',sans-serif] text-[14px] whitespace-nowrap">
+        <span className="font-['Roboto',sans-serif] text-[14px] whitespace-nowrap">
           <span className="text-[#FE8A0F] font-medium">Verified</span>
           <span className="text-[#6B7280]"> pros only</span>
         </span>

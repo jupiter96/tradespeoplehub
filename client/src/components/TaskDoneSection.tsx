@@ -101,16 +101,16 @@ export default function TaskDoneSection() {
       <div className="relative max-w-[1000px] mx-auto px-4 md:px-6 z-10">
         {/* Title */}
         <div className="text-center mb-6 md:mb-8">
-          <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px] mb-0 leading-tight">
+          <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[20px] md:text-[24px] mb-0 leading-tight">
             Task Done,
           </h2>
-          <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px] leading-tight">
+          <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[20px] md:text-[24px] leading-tight">
             Quickly & Transparently
           </h2>
         </div>
 
         {/* Description */}
-        <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] md:text-[16px] text-center leading-[1.24] mb-12 md:mb-16 max-w-[568px] mx-auto">
+        <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] md:text-[16px] text-center leading-[1.24] mb-12 md:mb-16 max-w-[568px] mx-auto">
           Discover the most efficient way to hire top-rated professionals for any task—whether it's around the home, for your business, or specialised services like driving instruction or legal support.
         </p>
 
@@ -121,10 +121,10 @@ export default function TaskDoneSection() {
             <div className="mb-6 flex items-center justify-center h-[70px]">
               <PricingIcon />
             </div>
-            <h3 className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] mb-3 leading-[1.24]">
+            <h3 className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] mb-3 leading-[1.24]">
               Clear & Transparent Pricing
             </h3>
-            <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] min-h-[68px]">
+            <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] min-h-[68px]">
               No hidden fees—just straightforward, upfront pricing to help you stay on budget.
             </p>
           </div>
@@ -134,10 +134,10 @@ export default function TaskDoneSection() {
             <div className="mb-6 flex items-center justify-center h-[70px]">
               <PaymentIcon />
             </div>
-            <h3 className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] mb-3 leading-[1.24]">
+            <h3 className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] mb-3 leading-[1.24]">
               Flexible Payment Options
             </h3>
-            <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] min-h-[68px]">
+            <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] min-h-[68px]">
               Per-service, hourly, or square metre rates—choose what works best for your budget.
             </p>
           </div>
@@ -147,23 +147,23 @@ export default function TaskDoneSection() {
             <div className="mb-6 flex items-center justify-center h-[70px]">
               <GuaranteeIcon />
             </div>
-            <h3 className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] mb-3 leading-[1.24]">
+            <h3 className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] mb-3 leading-[1.24]">
               Money Back Guarantee
             </h3>
-            <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] min-h-[68px]">
+            <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] min-h-[68px]">
               Order with confidence—satisfaction guaranteed with refunds for non-delivery.
             </p>
           </div>
         </div>
 
         {/* Disclaimer */}
-        <p className="font-['Poppins',sans-serif] text-[#9c9c9c] text-[13px] md:text-[14px] text-center leading-[1.24] mb-8 max-w-[696px] mx-auto">
+        <p className="font-['Roboto',sans-serif] text-[#9c9c9c] text-[13px] md:text-[14px] text-center leading-[1.24] mb-8 max-w-[696px] mx-auto">
           *Order confidently with a satisfaction guarantee and refunds for non-delivery.*
         </p>
 
         {/* CTA Button */}
         <div className="flex justify-center">
-          <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white px-8 py-3 rounded-[20px] font-['Poppins',sans-serif] text-[15px] transition-all duration-300 cursor-pointer">
+          <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white px-8 py-3 rounded-[20px] font-['Roboto',sans-serif] text-[15px] transition-all duration-300 cursor-pointer">
             Order Pro Now!
           </button>
         </div>

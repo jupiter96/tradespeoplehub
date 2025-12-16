@@ -752,7 +752,7 @@ export default function ProfileSection() {
             />
           ) : (
             <div className="text-center text-gray-500">
-              <p className="font-['Poppins',sans-serif] text-sm md:text-base">
+              <p className="font-['Roboto',sans-serif] text-sm md:text-base">
                 No cover image selected
               </p>
               <p className="text-xs md:text-sm">Upload an image to make your profile stand out</p>
@@ -821,7 +821,7 @@ export default function ProfileSection() {
               alt={userInfo?.name || 'User avatar'}
               className="object-cover"
             />
-            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[32px]">
+            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[32px]">
               {userInfo?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
@@ -1388,7 +1388,7 @@ export default function ProfileSection() {
                       alt={displayName}
                       className="object-cover"
                     />
-                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[32px] md:text-[40px] rounded-2xl relative">
+                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[32px] md:text-[40px] rounded-2xl relative">
                       {(() => {
                         if (displayName) {
                           const parts = displayName.trim().split(/\s+/);
@@ -1414,7 +1414,7 @@ export default function ProfileSection() {
                   <div className="flex-1 flex flex-col justify-start min-h-0">
                     <h1 
                       ref={displayNameRef}
-                      className="text-[#003D82] font-['Poppins',sans-serif] mb-0.5 md:mb-1 whitespace-nowrap overflow-hidden"
+                      className="text-[#003D82] font-['Roboto',sans-serif] mb-0.5 md:mb-1 whitespace-nowrap overflow-hidden"
                       style={{
                         fontSize: '20px',
                         lineHeight: '1.2',

@@ -225,11 +225,11 @@ export default function CustomOfferModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="w-[70vw] h-[85vh] p-0 flex flex-col gap-0">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
-          <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
+          <DialogTitle className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-[#FE8A0F]" />
             Create Custom Offer
           </DialogTitle>
-          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+          <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
             {step === "select" 
               ? `Select a service to offer to ${clientName}`
               : step === "payment"
@@ -250,22 +250,22 @@ export default function CustomOfferModal({
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
+                        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
                           {service.name}
                         </h3>
-                        <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                        <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[11px]">
                           {service.category}
                         </Badge>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
+                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
                         Base delivery: {service.deliveryDays} {service.deliveryDays === 1 ? 'day' : 'days'}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+                      <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">
                         £{service.basePrice}
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                      <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
                         Base price
                       </p>
                     </div>
@@ -282,7 +282,7 @@ export default function CustomOfferModal({
                 {selectedService && (
                   <div className="bg-gradient-to-r from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                         {selectedService.name}
                       </h3>
                       <Button
@@ -295,10 +295,10 @@ export default function CustomOfferModal({
                       </Button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[11px]">
                         {selectedService.category}
                       </Badge>
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+                      <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">
                         £{customPrice}
                       </p>
                     </div>
@@ -307,7 +307,7 @@ export default function CustomOfferModal({
                 
                 {/* Payment Type Selection */}
                 <div className="space-y-4">
-                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                     Payment Structure
                   </h4>
                   
@@ -326,10 +326,10 @@ export default function CustomOfferModal({
                           <CreditCard className={`w-5 h-5 ${paymentType === "single" ? "text-white" : "text-gray-600"}`} />
                         </div>
                         <div>
-                          <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
+                          <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-1">
                             Single Payment
                           </h5>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                             Client pays full amount upfront
                           </p>
                         </div>
@@ -350,10 +350,10 @@ export default function CustomOfferModal({
                           <Target className={`w-5 h-5 ${paymentType === "milestone" ? "text-white" : "text-gray-600"}`} />
                         </div>
                         <div>
-                          <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
+                          <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-1">
                             Milestone Payment
                           </h5>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                             Split into multiple stages
                           </p>
                         </div>
@@ -365,7 +365,7 @@ export default function CustomOfferModal({
                   {paymentType === "milestone" && (
                     <div className="mt-6 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
+                        <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
                           Configure Milestones
                         </h5>
                         <Button
@@ -386,7 +386,7 @@ export default function CustomOfferModal({
                             className="p-4 bg-white border-2 border-gray-200 rounded-lg space-y-3"
                           >
                             <div className="flex items-center justify-between">
-                              <h6 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              <h6 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                                 Milestone {index + 1}
                               </h6>
                               {milestones.length > 1 && (
@@ -403,7 +403,7 @@ export default function CustomOfferModal({
 
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Milestone Name
                                 </Label>
                                 <Input
@@ -411,11 +411,11 @@ export default function CustomOfferModal({
                                   placeholder="e.g., Initial Setup"
                                   value={milestone.name}
                                   onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
-                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 />
                               </div>
                               <div>
-                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Amount (£)
                                 </Label>
                                 <Input
@@ -423,25 +423,25 @@ export default function CustomOfferModal({
                                   placeholder="0"
                                   value={milestone.amount || ""}
                                   onChange={(e) => updateMilestone(milestone.id, "amount", parseFloat(e.target.value) || 0)}
-                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 />
                               </div>
                             </div>
 
                             <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Description
                               </Label>
                               <Textarea
                                 placeholder="What will be delivered in this milestone..."
                                 value={milestone.description}
                                 onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
+                                className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
                               />
                             </div>
 
                             <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Due in Days
                               </Label>
                               <Input
@@ -449,7 +449,7 @@ export default function CustomOfferModal({
                                 placeholder="Number of days"
                                 value={milestone.dueInDays || ""}
                                 onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 min="1"
                               />
                             </div>
@@ -460,10 +460,10 @@ export default function CustomOfferModal({
                       {/* Total Validation */}
                       <div className="p-4 bg-[#EFF6FF] border border-[#3D78CB]/20 rounded-lg">
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Total Milestones:
                           </span>
-                          <span className={`font-['Poppins',sans-serif] text-[16px] ${
+                          <span className={`font-['Roboto',sans-serif] text-[16px] ${
                             Math.abs(totalMilestones - parseFloat(customPrice || "0")) < 0.01
                               ? "text-green-600"
                               : "text-red-600"
@@ -472,10 +472,10 @@ export default function CustomOfferModal({
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-1">
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Offer Price:
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
+                          <span className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F]">
                             £{parseFloat(customPrice || "0").toFixed(2)}
                           </span>
                         </div>
@@ -491,14 +491,14 @@ export default function CustomOfferModal({
               <Button
                 onClick={() => setStep("select")}
                 variant="outline"
-                className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
+                className="flex-1 font-['Roboto',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
               <Button
                 onClick={handleContinueToCustomize}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
               >
                 Continue
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -513,7 +513,7 @@ export default function CustomOfferModal({
                 {selectedService && (
                   <div className="bg-gradient-to-r from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                         {selectedService.name}
                       </h3>
                       <Button
@@ -526,10 +526,10 @@ export default function CustomOfferModal({
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[11px]">
                         {selectedService.category}
                       </Badge>
-                      <Badge className="bg-white/80 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[11px]">
+                      <Badge className="bg-white/80 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Roboto',sans-serif] text-[11px]">
                         {paymentType === "single" ? "Single Payment" : `${milestones.length} Milestones`}
                       </Badge>
                     </div>
@@ -538,7 +538,7 @@ export default function CustomOfferModal({
 
                 {/* Pricing */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
+                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
                     <Package className="w-4 h-4 text-[#FE8A0F]" />
                     Offer Price (£)
                   </Label>
@@ -547,12 +547,12 @@ export default function CustomOfferModal({
                     placeholder="Enter your price"
                     value={customPrice}
                     onChange={(e) => setCustomPrice(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                    className="font-['Roboto',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
                     min="1"
                     step="1"
                   />
                   {selectedService && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
                       Base price: £{selectedService.basePrice}
                     </p>
                   )}
@@ -560,7 +560,7 @@ export default function CustomOfferModal({
 
                 {/* Delivery Time */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
+                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#FE8A0F]" />
                     Delivery Time (Days)
                   </Label>
@@ -569,12 +569,12 @@ export default function CustomOfferModal({
                     placeholder="Number of days"
                     value={deliveryDays}
                     onChange={(e) => setDeliveryDays(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                    className="font-['Roboto',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
                     min="1"
                     step="1"
                   />
                   {selectedService && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
+                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
                       Standard delivery: {selectedService.deliveryDays} {selectedService.deliveryDays === 1 ? 'day' : 'days'}
                     </p>
                   )}
@@ -582,14 +582,14 @@ export default function CustomOfferModal({
 
                 {/* Description */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
+                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2">
                     Offer Description
                   </Label>
                   <Textarea
                     placeholder="Describe what's included in this offer..."
                     value={offerDescription}
                     onChange={(e) => setOfferDescription(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[120px]"
+                    className="font-['Roboto',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[120px]"
                   />
                 </div>
 
@@ -597,7 +597,7 @@ export default function CustomOfferModal({
                 {paymentType === "milestone" && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h5 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
+                      <h5 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
                         Milestone Details
                       </h5>
                       <Button
@@ -618,7 +618,7 @@ export default function CustomOfferModal({
                           className="p-4 bg-white border-2 border-gray-200 rounded-lg space-y-3"
                         >
                           <div className="flex items-center justify-between">
-                            <h6 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            <h6 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                               Milestone {index + 1}
                             </h6>
                             {milestones.length > 1 && (
@@ -635,7 +635,7 @@ export default function CustomOfferModal({
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Milestone Name
                               </Label>
                               <Input
@@ -643,11 +643,11 @@ export default function CustomOfferModal({
                                 placeholder="e.g., Initial Setup"
                                 value={milestone.name}
                                 onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                               />
                             </div>
                             <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Amount (£)
                               </Label>
                               <Input
@@ -655,25 +655,25 @@ export default function CustomOfferModal({
                                 placeholder="0"
                                 value={milestone.amount || ""}
                                 onChange={(e) => updateMilestone(milestone.id, "amount", parseFloat(e.target.value) || 0)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                               />
                             </div>
                           </div>
 
                           <div>
-                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                            <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Description
                             </Label>
                             <Textarea
                               placeholder="What will be delivered in this milestone..."
                               value={milestone.description}
                               onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
-                              className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
+                              className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
                             />
                           </div>
 
                           <div>
-                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                            <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Due in Days
                             </Label>
                             <Input
@@ -681,7 +681,7 @@ export default function CustomOfferModal({
                               placeholder="Number of days"
                               value={milestone.dueInDays || ""}
                               onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
-                              className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                              className="font-['Roboto',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                               min="1"
                             />
                           </div>
@@ -692,10 +692,10 @@ export default function CustomOfferModal({
                     {/* Total Validation */}
                     <div className="p-4 bg-[#EFF6FF] border border-[#3D78CB]/20 rounded-lg">
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                           Total Milestones:
                         </span>
-                        <span className={`font-['Poppins',sans-serif] text-[16px] ${
+                        <span className={`font-['Roboto',sans-serif] text-[16px] ${
                           Math.abs(totalMilestones - parseFloat(customPrice || "0")) < 0.01
                             ? "text-green-600"
                             : "text-red-600"
@@ -704,10 +704,10 @@ export default function CustomOfferModal({
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                           Offer Price:
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
+                        <span className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F]">
                           £{parseFloat(customPrice || "0").toFixed(2)}
                         </span>
                       </div>
@@ -722,14 +722,14 @@ export default function CustomOfferModal({
               <Button
                 onClick={() => setStep("payment")}
                 variant="outline"
-                className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
+                className="flex-1 font-['Roboto',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
               <Button
                 onClick={handleContinueToFinalize}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
               >
                 Send Offer
                 <ArrowRight className="w-4 h-4 ml-2" />

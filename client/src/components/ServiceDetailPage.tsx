@@ -178,15 +178,15 @@ export default function ServiceDetailPage() {
           <Nav />
         </header>
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-16 text-center">
-          <h1 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
+          <h1 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-4">
             Service Not Found
           </h1>
-          <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] mb-6">
+          <p className="font-['Roboto',sans-serif] text-[16px] text-[#6b6b6b] mb-6">
             The service you're looking for doesn't exist or has been removed.
           </p>
           <Button 
             onClick={() => navigate('/services')}
-            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
+            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif]"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Services
@@ -829,7 +829,7 @@ export default function ServiceDetailPage() {
       <div className="hidden md:block bg-transparent pt-[78px] mt-[50px] md:mt-0">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-3.5">
           <Breadcrumb>
-            <BreadcrumbList className="font-['Poppins',sans-serif] text-[13px]">
+            <BreadcrumbList className="font-['Roboto',sans-serif] text-[13px]">
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
                   <Link to="/" className="flex items-center gap-1.5 text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
@@ -899,16 +899,16 @@ export default function ServiceDetailPage() {
           >
             <Avatar className="w-14 h-14 border-2 border-[#FE8A0F] flex-shrink-0 group-hover:border-[#FF9E2C] transition-colors">
               <AvatarImage src={service.providerImage} alt={service.tradingName} />
-              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
                 {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1 group-hover:text-[#FE8A0F] transition-colors">
+              <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1 group-hover:text-[#FE8A0F] transition-colors">
                 {service.tradingName}
               </h3>
               {providerBadge && (
-                <Badge className="bg-[#2c353f] text-white font-['Poppins',sans-serif] text-[11px] px-2 py-0.5">
+                <Badge className="bg-[#2c353f] text-white font-['Roboto',sans-serif] text-[11px] px-2 py-0.5">
                   {providerBadge}
                 </Badge>
               )}
@@ -920,7 +920,7 @@ export default function ServiceDetailPage() {
         </div>
 
         {/* Service Title */}
-        <h1 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] leading-tight">
+        <h1 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] leading-tight">
           {service.description}
         </h1>
       </div>
@@ -935,7 +935,7 @@ export default function ServiceDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Service Title & Actions - Desktop Only */}
             <div className="hidden md:block">
-              <h1 className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] text-[#2c353f] mb-3">
+              <h1 className="font-['Roboto',sans-serif] text-[28px] md:text-[32px] text-[#2c353f] mb-3">
                 {service.description}
               </h1>
               <div className="flex items-center justify-between flex-wrap gap-4">
@@ -944,27 +944,27 @@ export default function ServiceDetailPage() {
                   <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                       {renderStars(service.rating)}
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
                         {service.rating}
                       </span>
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         ({service.reviewCount} reviews)
                       </span>
                     </div>
                     <Separator orientation="vertical" className="h-5" />
                     <div className="flex items-center gap-1.5">
                       <Check className="w-4 h-4 text-[#10B981]" />
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         {service.completedTasks} tasks completed
                       </span>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[12px]">
+                    <Badge className="bg-[#3D78CB] text-white font-['Roboto',sans-serif] text-[12px]">
                       New Professional
                     </Badge>
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                       No reviews yet
                     </span>
                   </div>
@@ -995,7 +995,7 @@ export default function ServiceDetailPage() {
               {service.badges && service.badges.length > 0 && (
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                   {service.badges.map((badge, idx) => (
-                    <Badge key={idx} className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[12px] px-3 py-1.5">
+                    <Badge key={idx} className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[12px] px-3 py-1.5">
                       {badge}
                     </Badge>
                   ))}
@@ -1015,25 +1015,25 @@ export default function ServiceDetailPage() {
                     >
                       <Avatar className="w-16 h-16 border-2 border-[#FE8A0F] flex-shrink-0 group-hover:border-[#FF9E2C] transition-colors">
                         <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                        <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                        <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
                           {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex items-center gap-6 flex-wrap">
-                        <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
+                        <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
                           {service.tradingName}
                         </h3>
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                               {service.location}
                             </span>
-                            <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                            <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                               ({service.postcode.substring(0, 3)}***)
                             </span>
                             {userDistance !== null && (
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F] font-medium">
+                              <span className="font-['Roboto',sans-serif] text-[13px] text-[#FE8A0F] font-medium">
                                 • {userDistance.toFixed(1)} mi away
                               </span>
                             )}
@@ -1044,7 +1044,7 @@ export default function ServiceDetailPage() {
                     
                     <button
                       onClick={() => setShowProviderDetails(!showProviderDetails)}
-                      className="inline-flex items-center gap-1 font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] hover:text-[#2E5FA3] transition-colors flex-shrink-0"
+                      className="inline-flex items-center gap-1 font-['Roboto',sans-serif] text-[13px] text-[#3D78CB] hover:text-[#2E5FA3] transition-colors flex-shrink-0"
                     >
                       {showProviderDetails ? (
                         <>
@@ -1066,16 +1066,16 @@ export default function ServiceDetailPage() {
                       <div className="flex items-start justify-between gap-6">
                         {/* Left Side - Badge and Specialization */}
                         <div className="flex-1 space-y-3">
-                          <Badge className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px] w-fit">
+                          <Badge className="bg-[#3D78CB] text-white font-['Roboto',sans-serif] text-[11px] w-fit">
                             {providerLevel}
                           </Badge>
 
                           {service.specialization && (
                             <div>
-                              <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                              <h4 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-1">
                                 Specialization
                               </h4>
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b]">
+                              <p className="font-['Roboto',sans-serif] text-[13px] text-[#5b5b5b]">
                                 {service.specialization}
                               </p>
                             </div>
@@ -1084,13 +1084,13 @@ export default function ServiceDetailPage() {
                         
                         {/* Right Side - Buttons */}
                         <div className="flex flex-col gap-2 w-[180px] flex-shrink-0">
-                          <Button className="bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[13px] h-10 px-4 w-full">
+                          <Button className="bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Roboto',sans-serif] text-[13px] h-10 px-4 w-full">
                             <MessageCircle className="w-4 h-4 mr-2" />
                             Contact
                           </Button>
                           <Button 
                             variant="outline" 
-                            className="border-2 border-gray-300 font-['Poppins',sans-serif] text-[13px] h-10 px-4 w-full"
+                            className="border-2 border-gray-300 font-['Roboto',sans-serif] text-[13px] h-10 px-4 w-full"
                             asChild
                           >
                             <Link to={`/profile/${service.id}`}>
@@ -1111,27 +1111,27 @@ export default function ServiceDetailPage() {
                 <TabsList className="w-full min-w-max justify-start bg-transparent rounded-none h-auto p-0 inline-flex">
                   <TabsTrigger 
                     value="overview"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
                   >
                     Overview
                   </TabsTrigger>
                   {service.reviewCount > 0 && (
                     <TabsTrigger 
                       value="reviews"
-                      className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                      className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
                     >
                       Reviews ({service.reviewCount})
                     </TabsTrigger>
                   )}
                   <TabsTrigger 
                     value="portfolio"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
                   >
                     Portfolio
                   </TabsTrigger>
                   <TabsTrigger 
                     value="faq"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
                   >
                     FAQ
                   </TabsTrigger>
@@ -1142,10 +1142,10 @@ export default function ServiceDetailPage() {
 
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
-                    <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
+                    <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-4">
                       About This Service
                     </h2>
-                    <p className="font-['Poppins',sans-serif] text-[15px] text-[#5b5b5b] leading-relaxed mb-6">
+                    <p className="font-['Roboto',sans-serif] text-[15px] text-[#5b5b5b] leading-relaxed mb-6">
                       {aboutService}
                     </p>
                     
@@ -1154,7 +1154,7 @@ export default function ServiceDetailPage() {
                       <>
                         <Separator className="my-6" />
                         
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+                        <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
                           Ideal for
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1163,7 +1163,7 @@ export default function ServiceDetailPage() {
                               <div className="w-5 h-5 rounded-full border-2 border-[#3D78CB] flex items-center justify-center flex-shrink-0">
                                 <Check className="w-3 h-3 text-[#3D78CB]" />
                               </div>
-                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#5b5b5b]">
+                              <span className="font-['Roboto',sans-serif] text-[14px] text-[#5b5b5b]">
                                 {item}
                               </span>
                             </div>
@@ -1174,14 +1174,14 @@ export default function ServiceDetailPage() {
                     
                     <Separator className="my-6" />
                     
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+                    <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
                       What's Included
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {whatsIncluded.map((item, index) => (
                         <div key={index} className="flex items-start gap-2">
                           <Check className="w-5 h-5 text-[#10B981] flex-shrink-0 mt-0.5" />
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#5b5b5b]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#5b5b5b]">
                             {item}
                           </span>
                         </div>
@@ -1195,7 +1195,7 @@ export default function ServiceDetailPage() {
                   <Card className="border-2 border-gray-200 hover:border-[#FE8A0F] transition-colors">
                     <CardContent className="p-4 text-center">
                       <Award className="w-8 h-8 text-[#FE8A0F] mx-auto mb-2" />
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         Quality Guaranteed
                       </p>
                     </CardContent>
@@ -1203,7 +1203,7 @@ export default function ServiceDetailPage() {
                   <Card className="border-2 border-gray-200 hover:border-[#3D78CB] transition-colors">
                     <CardContent className="p-4 text-center">
                       <Shield className="w-8 h-8 text-[#3D78CB] mx-auto mb-2" />
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         Verified Pro
                       </p>
                     </CardContent>
@@ -1211,7 +1211,7 @@ export default function ServiceDetailPage() {
                   <Card className="border-2 border-gray-200 hover:border-[#FE8A0F] transition-colors">
                     <CardContent className="p-4 text-center">
                       <RefreshCw className="w-8 h-8 text-[#FE8A0F] mx-auto mb-2" />
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         Satisfaction Guarantee
                       </p>
                     </CardContent>
@@ -1219,7 +1219,7 @@ export default function ServiceDetailPage() {
                   <Card className="border-2 border-gray-200 hover:border-[#3D78CB] transition-colors">
                     <CardContent className="p-4 text-center">
                       <MessageCircle className="w-8 h-8 text-[#3D78CB] mx-auto mb-2" />
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         24/7 Support
                       </p>
                     </CardContent>
@@ -1234,13 +1234,13 @@ export default function ServiceDetailPage() {
                   <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="text-center">
-                        <div className="text-[48px] font-['Poppins',sans-serif] text-[#2c353f] mb-2">
+                        <div className="text-[48px] font-['Roboto',sans-serif] text-[#2c353f] mb-2">
                           {service.rating}
                         </div>
                         <div className="flex justify-center mb-2">
                           {renderStars(service.rating)}
                         </div>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                           Based on {service.reviewCount} reviews
                         </p>
                       </div>
@@ -1250,14 +1250,14 @@ export default function ServiceDetailPage() {
                           const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
                           return (
                             <div key={star} className="flex items-center gap-3">
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] w-8">
+                              <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] w-8">
                                 {star} <Star className="w-3 h-3 inline fill-[#FE8A0F] text-[#FE8A0F]" />
                               </span>
                               <Progress 
                                 value={percentage} 
                                 className="flex-1 h-2"
                               />
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] w-12 text-right">
+                              <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] w-12 text-right">
                                 {count}
                               </span>
                             </div>
@@ -1280,17 +1280,17 @@ export default function ServiceDetailPage() {
                           <div className="flex items-start gap-4 mb-4">
                             <Avatar className="w-12 h-12">
                               <AvatarImage src={review.userAvatar} alt={review.userName} />
-                              <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif]">
+                              <AvatarFallback className="bg-[#3D78CB] text-white font-['Roboto',sans-serif]">
                                 {review.userName.split(" ").map(n => n[0]).join("").toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <div className="mb-2">
-                                <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
+                                <h4 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
                                   {review.userName}
                                 </h4>
                                 {review.userLocation && (
-                                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1">
+                                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1">
                                     <MapPin className="w-3 h-3" />
                                     {review.userLocation}
                                   </p>
@@ -1302,13 +1302,13 @@ export default function ServiceDetailPage() {
                           {/* Rating and date */}
                           <div className="flex items-center gap-2 mb-3">
                             {renderStars(review.rating)}
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                               {review.date}
                             </span>
                           </div>
 
                           {/* Review comment */}
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-relaxed mb-4">
+                          <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] leading-relaxed mb-4">
                             {review.comment}
                           </p>
 
@@ -1317,20 +1317,20 @@ export default function ServiceDetailPage() {
                             <div className="flex items-center gap-6 mb-4 pb-4 border-b border-gray-200">
                               {review.priceRange && (
                                 <div>
-                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                                     {review.priceRange}
                                   </p>
-                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                                  <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
                                     Price
                                   </p>
                                 </div>
                               )}
                               {review.duration && (
                                 <div>
-                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                                     {review.duration}
                                   </p>
-                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                                  <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
                                     Duration
                                   </p>
                                 </div>
@@ -1353,11 +1353,11 @@ export default function ServiceDetailPage() {
                                 <div className="flex items-center gap-3">
                                   <Avatar className="w-8 h-8">
                                     <AvatarImage src={review.professionalResponse.providerImage} alt={review.professionalResponse.providerName} />
-                                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[11px]">
+                                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[11px]">
                                       {review.professionalResponse.providerName.split(" ").map(n => n[0]).join("").toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                                     {review.professionalResponse.providerName}'s Response
                                   </span>
                                 </div>
@@ -1369,7 +1369,7 @@ export default function ServiceDetailPage() {
                               </button>
                               
                               {isResponseExpanded && (
-                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] leading-relaxed pl-11">
+                                <p className="font-['Roboto',sans-serif] text-[13px] text-[#5b5b5b] leading-relaxed pl-11">
                                   {review.professionalResponse.text}
                                 </p>
                               )}
@@ -1380,13 +1380,13 @@ export default function ServiceDetailPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1">
                               {voteCounts.helpful > 0 && (
-                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                                   Helpful {voteCounts.helpful}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                              <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                                 Helpful?
                               </span>
                               <button
@@ -1402,7 +1402,7 @@ export default function ServiceDetailPage() {
                                 }`}
                               >
                                 <ThumbsUp className="w-3.5 h-3.5" />
-                                <span className="font-['Poppins',sans-serif] text-[12px]">
+                                <span className="font-['Roboto',sans-serif] text-[12px]">
                                   Yes
                                 </span>
                               </button>
@@ -1419,7 +1419,7 @@ export default function ServiceDetailPage() {
                                 }`}
                               >
                                 <ThumbsDown className="w-3.5 h-3.5" />
-                                <span className="font-['Poppins',sans-serif] text-[12px]">
+                                <span className="font-['Roboto',sans-serif] text-[12px]">
                                   No
                                 </span>
                               </button>
@@ -1436,7 +1436,7 @@ export default function ServiceDetailPage() {
               <TabsContent value="portfolio" className="mt-6">
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
-                    <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-6">
+                    <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-6">
                       Portfolio Gallery
                     </h2>
                     
@@ -1452,7 +1452,7 @@ export default function ServiceDetailPage() {
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <p className="font-['Poppins',sans-serif] text-[14px] font-medium">Featured Work</p>
+                            <p className="font-['Roboto',sans-serif] text-[14px] font-medium">Featured Work</p>
                           </div>
                         </div>
                       </div>
@@ -1471,12 +1471,12 @@ export default function ServiceDetailPage() {
                     </div>
                     
                     <div className="mt-6 text-center">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
                         Showcasing {portfolioImages.length} completed projects
                       </p>
                       <Button 
                         variant="outline" 
-                        className="border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
+                        className="border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Roboto',sans-serif]"
                       >
                         View All Work
                       </Button>
@@ -1488,16 +1488,16 @@ export default function ServiceDetailPage() {
               <TabsContent value="faq" className="mt-6">
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
-                    <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
+                    <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-4">
                       Frequently Asked Questions
                     </h2>
                     <Accordion type="single" collapsible className="w-full">
                       {faqs.map((faq, index) => (
                         <AccordionItem key={index} value={`item-${index}`}>
-                          <AccordionTrigger className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] hover:text-[#FE8A0F]">
+                          <AccordionTrigger className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] hover:text-[#FE8A0F]">
                             {faq.question}
                           </AccordionTrigger>
-                          <AccordionContent className="font-['Poppins',sans-serif] text-[14px] text-[#5b5b5b] leading-relaxed">
+                          <AccordionContent className="font-['Roboto',sans-serif] text-[14px] text-[#5b5b5b] leading-relaxed">
                             {faq.answer}
                           </AccordionContent>
                         </AccordionItem>
@@ -1515,7 +1515,7 @@ export default function ServiceDetailPage() {
               <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
                 <CardContent className="p-6">
                   {/* Service Title */}
-                  <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-5 leading-tight">
+                  <h2 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-5 leading-tight">
                     {service.description}
                   </h2>
                   <Separator className="mb-6" />
@@ -1523,7 +1523,7 @@ export default function ServiceDetailPage() {
                   {/* Package Selection Tabs - Only show if service has packages */}
                   {service.packages && service.packages.length > 0 && (
                     <div className="mb-6">
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                      <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                         Select Package
                       </h3>
                       <div className="flex gap-2 mb-4">
@@ -1532,7 +1532,7 @@ export default function ServiceDetailPage() {
                             key={pkg.id}
                             type="button"
                             onClick={() => handlePackageChange(pkg.id)}
-                            className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
+                            className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all font-['Roboto',sans-serif] text-[13px] ${
                               selectedPackageId === pkg.id
                                 ? 'border-[#FE8A0F] bg-[#FE8A0F] text-white shadow-md'
                                 : 'border-gray-200 text-[#6b6b6b] hover:border-[#FE8A0F] hover:text-[#FE8A0F]'
@@ -1543,7 +1543,7 @@ export default function ServiceDetailPage() {
                         ))}
                       </div>
                       {selectedPackage && (
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
                           {selectedPackage.description}
                         </p>
                       )}
@@ -1555,21 +1555,21 @@ export default function ServiceDetailPage() {
                   <div className="mb-4">
                     <div className="flex items-baseline gap-2 mb-2">
                       {originalPrice && (
-                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] line-through">
+                        <span className="font-['Roboto',sans-serif] text-[16px] text-[#6b6b6b] line-through">
                           £{originalPrice}
                         </span>
                       )}
                     </div>
                     <div className="flex items-baseline gap-2">
-                      <span className="font-['Poppins',sans-serif] text-[32px] text-[#FE8A0F]">
+                      <span className="font-['Roboto',sans-serif] text-[32px] text-[#FE8A0F]">
                         £{basePrice}
                       </span>
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         / {selectedPackage ? selectedPackage.priceUnit : service.priceUnit}
                       </span>
                     </div>
                     {originalPrice && (
-                      <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] mt-2">
+                      <Badge className="bg-[#10B981] text-white font-['Roboto',sans-serif] text-[11px] mt-2">
                         Save £{(originalPrice - basePrice).toFixed(0)}
                       </Badge>
                     )}
@@ -1579,14 +1579,14 @@ export default function ServiceDetailPage() {
 
                   {/* Service Highlights */}
                   <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                    <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
+                    <h3 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-3">
                       {selectedPackage ? "What's Included" : "Service Highlights"}
                     </h3>
                     <div className="space-y-2.5">
                       {highlights.map((highlight, index) => (
                         <div key={index} className="flex items-start gap-2.5">
                           <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
                             {highlight}
                           </span>
                         </div>
@@ -1597,14 +1597,14 @@ export default function ServiceDetailPage() {
                   {/* Package Features - Only show if package selected */}
                   {selectedPackage && selectedPackage.features && selectedPackage.features.length > 0 && (
                     <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                      <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
+                      <h3 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-3">
                         Package Features
                       </h3>
                       <div className="space-y-2.5">
                         {selectedPackage.features.map((feature, index) => (
                           <div key={index} className="flex items-start gap-2.5">
                             <Check className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
                               {feature}
                             </span>
                           </div>
@@ -1616,33 +1616,33 @@ export default function ServiceDetailPage() {
                   <div className="space-y-3 mb-6">
                     {selectedPackage && selectedPackage.deliveryTime && (
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                           <Clock className="w-4 h-4 inline mr-1.5" />
                           Delivery Time
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                           {selectedPackage.deliveryTime}
                         </span>
                       </div>
                     )}
                     {selectedPackage && selectedPackage.revisions && (
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                           <Star className="w-4 h-4 inline mr-1.5" />
                           Revisions
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                           {selectedPackage.revisions}
                         </span>
                       </div>
                     )}
                     {!selectedPackage && (
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                           <Clock className="w-4 h-4 inline mr-1.5" />
                           Availability
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                           {service.deliveryType === "same-day" ? "Same day" : "Standard"}
                         </span>
                       </div>
@@ -1656,7 +1656,7 @@ export default function ServiceDetailPage() {
                       <Separator className="my-4" />
                       
                       <div className="mb-6">
-                        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
+                        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4">
                           Get more with Service Extra
                         </h3>
                         <div className="space-y-2.5">
@@ -1684,26 +1684,26 @@ export default function ServiceDetailPage() {
                                       <Square className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                                     )}
                                     <div className="flex-1 min-w-0">
-                                      <div className={`font-['Poppins',sans-serif] text-[14px] leading-tight mb-1 ${
+                                      <div className={`font-['Roboto',sans-serif] text-[14px] leading-tight mb-1 ${
                                         isSelected ? 'text-[#2c353f]' : 'text-[#2c353f]'
                                       }`}>
                                         {addon.title}
                                       </div>
                                       {addon.description && (
-                                        <div className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-relaxed">
+                                        <div className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] leading-relaxed">
                                           {addon.description}
                                         </div>
                                       )}
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                    <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
+                                    <span className={`font-['Roboto',sans-serif] text-[15px] font-medium ${
                                       isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                     }`}>
                                       +£{addon.price}
                                     </span>
                                     {addon.deliveryTime && (
-                                      <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                                      <span className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
                                         +{addon.deliveryTime}
                                       </span>
                                     )}
@@ -1721,7 +1721,7 @@ export default function ServiceDetailPage() {
                   
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center justify-between">
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         Quantity
                       </span>
                       <div className="flex items-center gap-3">
@@ -1733,7 +1733,7 @@ export default function ServiceDetailPage() {
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
-                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
+                        <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
                           {quantity}
                         </span>
                         <Button
@@ -1755,10 +1755,10 @@ export default function ServiceDetailPage() {
                     <div className="space-y-2">
                       {/* Base price */}
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                           Service {quantity > 1 ? `(${quantity} × £${service.price})` : ''}
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                           £{(basePrice * quantity).toFixed(2)}
                         </span>
                       </div>
@@ -1766,10 +1766,10 @@ export default function ServiceDetailPage() {
                       {/* Addons breakdown */}
                       {addonsTotal > 0 && (
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Extras {quantity > 1 ? `(${quantity}x)` : ''}
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                             £{(addonsTotal * quantity).toFixed(2)}
                           </span>
                         </div>
@@ -1778,10 +1778,10 @@ export default function ServiceDetailPage() {
                       {/* Total */}
                       <Separator className="my-2" />
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
+                        <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] font-medium">
                           Total
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
+                        <span className="font-['Roboto',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
                           £{totalPrice.toFixed(2)}
                         </span>
                       </div>
@@ -1790,7 +1790,7 @@ export default function ServiceDetailPage() {
                   
                   <Button 
                     onClick={handleAddToCart}
-                    className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[15px] py-6 mb-3"
+                    className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif] text-[15px] py-6 mb-3"
                   >
                     <ShoppingCart className="w-5 h-5 mr-2" />
                     Add to Cart
@@ -1798,7 +1798,7 @@ export default function ServiceDetailPage() {
                   
                   <Button 
                     onClick={handleOrderNow}
-                    className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
+                    className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Roboto',sans-serif] text-[15px] py-6"
                   >
                     Order Now
                   </Button>
@@ -1809,14 +1809,14 @@ export default function ServiceDetailPage() {
                     {service.completedTasks > 0 && (
                       <div className="flex items-center justify-center gap-2">
                         <TrendingUp className="w-4 h-4 text-[#10B981]" />
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                           {Math.floor(service.completedTasks / 50)} orders in the last month
                         </span>
                       </div>
                     )}
                     <div className="flex items-center justify-center gap-2">
                       <User className="w-4 h-4 text-[#3D78CB]" />
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                         {Math.floor(Math.random() * 20) + 5} people viewing now
                       </span>
                     </div>
@@ -1834,34 +1834,34 @@ export default function ServiceDetailPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col">
               {(originalPrice || (service.addons && service.addons.length > 0) || (selectedPackage && selectedPackage.addons && selectedPackage.addons.length > 0)) && (
-                <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                   {originalPrice ? "From" : "Starting at"}
                 </span>
               )}
-              <span className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+              <span className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">
                 £{basePrice}
               </span>
             </div>
             <Sheet>
               <SheetTrigger asChild>
-                <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] flex-1 max-w-[200px]">
+                <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif] flex-1 max-w-[200px]">
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Continue to Order
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
                 <SheetHeader className="px-6 pt-6 pb-0">
-                  <SheetTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                  <SheetTitle className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">
                     Service Details
                   </SheetTitle>
-                  <SheetDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <SheetDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                     View pricing, add-ons, and order this service
                   </SheetDescription>
                 </SheetHeader>
                 <Card className="border-0 shadow-none">
                   <CardContent className="p-6 pt-4">
                     {/* Service Title */}
-                    <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-5 leading-tight">
+                    <h2 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-5 leading-tight">
                       {service.description}
                     </h2>
                     <Separator className="mb-6" />
@@ -1869,7 +1869,7 @@ export default function ServiceDetailPage() {
                     {/* Package Selection Tabs - Only show if service has packages */}
                     {service.packages && service.packages.length > 0 && (
                       <div className="mb-6">
-                        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
                           Select Package
                         </h3>
                         <div className="flex gap-2 mb-4">
@@ -1878,7 +1878,7 @@ export default function ServiceDetailPage() {
                               key={pkg.id}
                               type="button"
                               onClick={() => handlePackageChange(pkg.id)}
-                              className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
+                              className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all font-['Roboto',sans-serif] text-[13px] ${
                                 selectedPackageId === pkg.id
                                   ? 'border-[#FE8A0F] bg-[#FE8A0F] text-white shadow-md'
                                   : 'border-gray-200 text-[#6b6b6b] hover:border-[#FE8A0F] hover:text-[#FE8A0F]'
@@ -1889,7 +1889,7 @@ export default function ServiceDetailPage() {
                           ))}
                         </div>
                         {selectedPackage && (
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
                             {selectedPackage.description}
                           </p>
                         )}
@@ -1901,21 +1901,21 @@ export default function ServiceDetailPage() {
                     <div className="mb-4">
                       <div className="flex items-baseline gap-2 mb-2">
                         {originalPrice && (
-                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] line-through">
+                          <span className="font-['Roboto',sans-serif] text-[16px] text-[#6b6b6b] line-through">
                             £{originalPrice}
                           </span>
                         )}
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="font-['Poppins',sans-serif] text-[32px] text-[#FE8A0F]">
+                        <span className="font-['Roboto',sans-serif] text-[32px] text-[#FE8A0F]">
                           £{basePrice}
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                           / {selectedPackage ? selectedPackage.priceUnit : service.priceUnit}
                         </span>
                       </div>
                       {originalPrice && (
-                        <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] mt-2">
+                        <Badge className="bg-[#10B981] text-white font-['Roboto',sans-serif] text-[11px] mt-2">
                           Save £{(originalPrice - basePrice).toFixed(0)}
                         </Badge>
                       )}
@@ -1925,14 +1925,14 @@ export default function ServiceDetailPage() {
 
                     {/* Service Highlights */}
                     <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                      <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
+                      <h3 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-3">
                         {selectedPackage ? "What's Included" : "Service Highlights"}
                       </h3>
                       <div className="space-y-2.5">
                         {highlights.map((highlight, index) => (
                           <div key={index} className="flex items-start gap-2.5">
                             <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
                               {highlight}
                             </span>
                           </div>
@@ -1943,14 +1943,14 @@ export default function ServiceDetailPage() {
                     {/* Package Features - Only show if package selected */}
                     {selectedPackage && selectedPackage.features && selectedPackage.features.length > 0 && (
                       <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                        <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
+                        <h3 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-3">
                           Package Features
                         </h3>
                         <div className="space-y-2.5">
                           {selectedPackage.features.map((feature, index) => (
                             <div key={index} className="flex items-start gap-2.5">
                               <Check className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                              <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
                                 {feature}
                               </span>
                             </div>
@@ -1962,33 +1962,33 @@ export default function ServiceDetailPage() {
                     <div className="space-y-3 mb-6">
                       {selectedPackage && selectedPackage.deliveryTime && (
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                             <Clock className="w-4 h-4 inline mr-1.5" />
                             Delivery Time
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                             {selectedPackage.deliveryTime}
                           </span>
                         </div>
                       )}
                       {selectedPackage && selectedPackage.revisions && (
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                             <Star className="w-4 h-4 inline mr-1.5" />
                             Revisions
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                             {selectedPackage.revisions}
                           </span>
                         </div>
                       )}
                       {!selectedPackage && (
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                             <Clock className="w-4 h-4 inline mr-1.5" />
                             Availability
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                             {service.deliveryType === "same-day" ? "Same day" : "Standard"}
                           </span>
                         </div>
@@ -2002,7 +2002,7 @@ export default function ServiceDetailPage() {
                         <Separator className="my-4" />
                         
                         <div className="mb-6">
-                          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
+                          <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4">
                             Get more with Service Extra
                           </h3>
                           <div className="space-y-2.5">
@@ -2030,26 +2030,26 @@ export default function ServiceDetailPage() {
                                         <Square className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                                       )}
                                       <div className="flex-1 min-w-0">
-                                        <div className={`font-['Poppins',sans-serif] text-[14px] leading-tight mb-1 ${
+                                        <div className={`font-['Roboto',sans-serif] text-[14px] leading-tight mb-1 ${
                                           isSelected ? 'text-[#2c353f]' : 'text-[#2c353f]'
                                         }`}>
                                           {addon.title}
                                         </div>
                                         {addon.description && (
-                                          <div className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-relaxed">
+                                          <div className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] leading-relaxed">
                                             {addon.description}
                                           </div>
                                         )}
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                      <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
+                                      <span className={`font-['Roboto',sans-serif] text-[15px] font-medium ${
                                         isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                       }`}>
                                         +£{addon.price}
                                       </span>
                                       {addon.deliveryTime && (
-                                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                                        <span className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
                                           +{addon.deliveryTime}
                                         </span>
                                       )}
@@ -2068,7 +2068,7 @@ export default function ServiceDetailPage() {
                     {/* Quantity and Price Calculation */}
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                           Quantity
                         </span>
                         <div className="flex items-center gap-3">
@@ -2081,7 +2081,7 @@ export default function ServiceDetailPage() {
                           >
                             <Minus className="w-4 h-4" />
                           </Button>
-                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
+                          <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
                             {quantity}
                           </span>
                           <Button
@@ -2099,20 +2099,20 @@ export default function ServiceDetailPage() {
                       {/* Price Breakdown */}
                       <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Base price {quantity > 1 ? `(${quantity}x)` : ''}
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                             £{(basePrice * quantity).toFixed(2)}
                           </span>
                         </div>
                         
                         {addonsTotal > 0 && (
                           <div className="flex items-center justify-between">
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                               Extras {quantity > 1 ? `(${quantity}x)` : ''}
                             </span>
-                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                               £{(addonsTotal * quantity).toFixed(2)}
                             </span>
                           </div>
@@ -2121,10 +2121,10 @@ export default function ServiceDetailPage() {
                         {/* Total */}
                         <Separator className="my-2" />
                         <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
+                          <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] font-medium">
                             Total
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
+                          <span className="font-['Roboto',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
                             £{totalPrice.toFixed(2)}
                           </span>
                         </div>
@@ -2133,7 +2133,7 @@ export default function ServiceDetailPage() {
                     
                     <Button 
                       onClick={handleAddToCart}
-                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[15px] py-6 mb-3"
+                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Roboto',sans-serif] text-[15px] py-6 mb-3"
                     >
                       <ShoppingCart className="w-5 h-5 mr-2" />
                       Add to Cart
@@ -2141,7 +2141,7 @@ export default function ServiceDetailPage() {
                     
                     <Button 
                       onClick={handleOrderNow}
-                      className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
+                      className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Roboto',sans-serif] text-[15px] py-6"
                     >
                       Order Now
                     </Button>
@@ -2152,14 +2152,14 @@ export default function ServiceDetailPage() {
                       {service.completedTasks > 0 && (
                         <div className="flex items-center justify-center gap-2">
                           <TrendingUp className="w-4 h-4 text-[#10B981]" />
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             {Math.floor(service.completedTasks / 50)} orders in the last month
                           </span>
                         </div>
                       )}
                       <div className="flex items-center justify-center gap-2">
                         <User className="w-4 h-4 text-[#3D78CB]" />
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                           {Math.floor(Math.random() * 20) + 5} people viewing now
                         </span>
                       </div>

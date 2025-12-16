@@ -126,10 +126,10 @@ export default function MobileAppSection() {
 
           {/* Right Side - Content */}
           <div className="w-full lg:w-1/2 text-center lg:text-left">
-            <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-4 md:mb-6">
+            <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-4 md:mb-6">
               Our Mobile App
             </h2>
-            <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] md:text-[16px] leading-[1.6] mb-8 max-w-[500px] mx-auto lg:mx-0">
+            <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] md:text-[16px] leading-[1.6] mb-8 max-w-[500px] mx-auto lg:mx-0">
               Stay productive on the go—download our app to manage your tasks wherever you are.
             </p>
 

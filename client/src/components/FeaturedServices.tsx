@@ -60,7 +60,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
     <div className="w-full mb-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 md:mb-10">
-        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px]">
+        <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[20px] md:text-[24px]">
           {title}
         </h2>
         <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
           {hasMore && (
             <button 
               onClick={handleViewMore}
-              className="text-[#3d78cb] font-['Poppins',sans-serif] text-[14px] hover:text-[#2d68bb] transition-colors cursor-pointer"
+              className="text-[#3d78cb] font-['Roboto',sans-serif] text-[14px] hover:text-[#2d68bb] transition-colors cursor-pointer"
             >
               View more
             </button>
@@ -125,7 +125,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       {service.badges.map((badge, idx) => (
                         <span
                           key={idx}
-                          className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Poppins',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
+                          className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Roboto',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
                         >
                           {badge}
                         </span>
@@ -144,14 +144,14 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                         alt={service.tradingName}
                         className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
                       />
-                      <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
+                      <span className="font-['Roboto',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                         {service.tradingName}
                       </span>
                     </Link>
                   </div>
 
                   {/* Description */}
-                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b] mb-2 md:mb-3 h-[28px] md:h-[36px] line-clamp-2">
+                  <p className="font-['Roboto',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b] mb-2 md:mb-3 h-[28px] md:h-[36px] line-clamp-2">
                     {service.description}
                   </p>
 
@@ -174,10 +174,10 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                           ))}
                         </div>
                         <div className="flex items-center gap-0.5 md:gap-1">
-                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
                             {service.rating}
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
+                          <span className="font-['Roboto',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
                             ({service.completedTasks})
                           </span>
                         </div>
@@ -193,11 +193,11 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     <div className="h-[18px] md:h-[24px] mb-0.5 md:mb-1 flex items-center">
                       {service.originalPrice ? (
                         <div className="flex items-center gap-1 md:gap-2">
-                          <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
+                          <span className="font-['Roboto',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
                             £{service.originalPrice}
                           </span>
                           <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
-                            <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
+                            <span className="font-['Roboto',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
                               {Math.round(((parseFloat(service.originalPrice) - parseFloat(service.price)) / parseFloat(service.originalPrice)) * 100)}% OFF
                             </span>
                           </div>
@@ -208,7 +208,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     {/* Current Price and Delivery Badge */}
                     <div className="flex items-center justify-between gap-1 md:gap-2">
                       <div className="flex items-center gap-1 md:gap-2">
-                        <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
+                        <span className="font-['Roboto',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
                           {service.originalPrice && "From "}
                           <span className="text-[14px] md:text-[18px] text-[#2c353f]">
                             £{service.price}
@@ -220,11 +220,11 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       {/* Delivery Badge */}
                       <div className="flex-shrink-0">
                         {service.deliveryType === "same-day" ? (
-                          <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                          <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
                             <span className="font-medium heartbeat-text">⚡ Same Day</span>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                          <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
                             <svg className="w-2 h-2 md:w-2.5 md:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M3 9h4l3 9 3-16 3 9h4"/>
                             </svg>
@@ -237,7 +237,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                   {/* Action Buttons - Pushed to bottom with mt-auto */}
                   <div className="flex flex-col gap-1.5 md:gap-2 items-center mt-auto">
-                    <button className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]">
+                    <button className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]">
                       <Zap className="w-3 h-3 md:w-4 md:h-4" />
                       Buy Now!
                     </button>
@@ -247,7 +247,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                         setSelectedServiceForCart(service);
                         setShowAddToCartModal(true);
                       }}
-                      className="w-[80%] h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                      className="w-[80%] h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                     >
                       <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
                       Add to cart
@@ -281,7 +281,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Badges */}
                   {service.badges && service.badges.length > 0 && (
                     <div className="absolute top-1.5 left-1.5">
-                      <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
+                      <span className="bg-[#FE8A0F] text-white text-[8px] font-['Roboto',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                         {service.badges[0]}
                       </span>
                     </div>
@@ -301,14 +301,14 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                             alt={service.tradingName}
                             className="w-5 h-5 rounded-full object-cover"
                           />
-                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
+                          <span className="font-['Roboto',sans-serif] text-[11px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                             {service.tradingName}
                           </span>
                         </Link>
                       </div>
 
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
+                      <p className="font-['Roboto',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
                         {service.description}
                       </p>
 
@@ -330,10 +330,10 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                                 />
                               ))}
                             </div>
-                            <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
+                            <span className="font-['Roboto',sans-serif] text-[9px] text-[#2c353f]">
                               {service.rating}
                             </span>
-                            <span className="font-['Poppins',sans-serif] text-[8px] text-[#8d8d8d]">
+                            <span className="font-['Roboto',sans-serif] text-[8px] text-[#8d8d8d]">
                               ({service.completedTasks})
                             </span>
                           </div>
@@ -344,11 +344,11 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                         {/* Delivery Badge */}
                         <div className="flex-shrink-0">
                           {service.deliveryType === "same-day" ? (
-                            <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                            <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
                               <span className="font-medium">⚡ Same Day</span>
                             </div>
                           ) : (
-                            <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                            <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
                               <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M3 9h4l3 9 3-16 3 9h4"/>
                               </svg>
@@ -365,11 +365,11 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     {/* Price - Left Bottom */}
                     <div className="flex flex-col">
                       {service.originalPrice && (
-                        <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
+                        <span className="font-['Roboto',sans-serif] text-[9px] text-[#c0c0c0] line-through">
                           £{service.originalPrice}
                         </span>
                       )}
-                      <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                      <span className="font-['Roboto',sans-serif] text-[9px] text-[#5b5b5b]">
                         {service.originalPrice && "From "}
                         <span className="text-[14px] text-[#2c353f] font-medium">
                           £{service.price}
@@ -380,7 +380,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                     {/* Action Buttons - Right Bottom */}
                     <div className="flex items-center gap-2">
-                      <button className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center">
+                      <button className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center">
                         <Zap className="w-3.5 h-3.5" />
                       </button>
                       <button 
@@ -389,7 +389,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                           setSelectedServiceForCart(service);
                           setShowAddToCartModal(true);
                         }}
-                        className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
+                        className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                       >
                         <ShoppingCart className="w-3.5 h-3.5" />
                       </button>
@@ -470,7 +470,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
     <div className="w-full mb-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 md:mb-10">
-        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px]">
+        <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[20px] md:text-[24px]">
           {title}
         </h2>
       </div>
@@ -504,7 +504,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                       {service.badges.map((badge, idx) => (
                         <span
                           key={idx}
-                          className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Poppins',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
+                          className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Roboto',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
                         >
                           {badge}
                         </span>
@@ -523,14 +523,14 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                         alt={service.tradingName}
                         className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover"
                       />
-                      <span className="font-['Poppins',sans-serif] text-[10px] md:text-[12px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
+                      <span className="font-['Roboto',sans-serif] text-[10px] md:text-[12px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                         {service.tradingName}
                       </span>
                     </Link>
                   </div>
 
                   {/* Description */}
-                  <p className="font-['Poppins',sans-serif] text-[9px] md:text-[11px] text-[#5b5b5b] mb-1.5 md:mb-2 min-h-[26px] md:min-h-[30px] line-clamp-2">
+                  <p className="font-['Roboto',sans-serif] text-[9px] md:text-[11px] text-[#5b5b5b] mb-1.5 md:mb-2 min-h-[26px] md:min-h-[30px] line-clamp-2">
                     {service.description}
                   </p>
 
@@ -553,10 +553,10 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                           ))}
                         </div>
                         <div className="flex items-center gap-0.5 md:gap-1">
-                          <span className="font-['Poppins',sans-serif] text-[9px] md:text-[11px] text-[#2c353f]">
+                          <span className="font-['Roboto',sans-serif] text-[9px] md:text-[11px] text-[#2c353f]">
                             {service.rating}
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[8px] md:text-[10px] text-[#8d8d8d]">
+                          <span className="font-['Roboto',sans-serif] text-[8px] md:text-[10px] text-[#8d8d8d]">
                             ({service.completedTasks})
                           </span>
                         </div>
@@ -571,11 +571,11 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                     <div className="flex items-center justify-between mb-0.5 min-h-[16px] md:min-h-[20px]">
                       {service.originalPrice ? (
                         <div className="flex items-center gap-1 md:gap-1.5">
-                          <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#c0c0c0] line-through">
+                          <span className="font-['Roboto',sans-serif] text-[11px] md:text-[13px] text-[#c0c0c0] line-through">
                             £{service.originalPrice}
                           </span>
                           <div className="px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] rounded-md">
-                            <span className="font-['Poppins',sans-serif] text-[7px] md:text-[9px] text-[#3D78CB]">
+                            <span className="font-['Roboto',sans-serif] text-[7px] md:text-[9px] text-[#3D78CB]">
                               {Math.round(((parseFloat(service.originalPrice) - parseFloat(service.price)) / parseFloat(service.originalPrice)) * 100)}% OFF
                             </span>
                           </div>
@@ -586,7 +586,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                     </div>
                     <div className="flex items-center justify-between gap-1 md:gap-2">
                       <div className="flex items-center gap-0.5 md:gap-1">
-                        <span className="font-['Poppins',sans-serif] text-[9px] md:text-[11px] text-[#5b5b5b]">
+                        <span className="font-['Roboto',sans-serif] text-[9px] md:text-[11px] text-[#5b5b5b]">
                           {service.originalPrice && "From "}
                           <span className="text-[13px] md:text-[15px] text-[#2c353f]">
                             £{service.price}
@@ -598,11 +598,11 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                       {/* Delivery Badge */}
                       <div className="flex-shrink-0">
                         {service.deliveryType === "same-day" ? (
-                          <div className="inline-flex items-center px-1 md:px-1.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[8px] tracking-wide uppercase rounded-sm">
+                          <div className="inline-flex items-center px-1 md:px-1.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[7px] md:text-[8px] tracking-wide uppercase rounded-sm">
                             <span className="font-medium heartbeat-text">⚡ Same Day</span>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-0.5 px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[8px] tracking-wide uppercase rounded-sm">
+                          <div className="inline-flex items-center gap-0.5 px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[7px] md:text-[8px] tracking-wide uppercase rounded-sm">
                             <svg className="w-1.5 h-1.5 md:w-2 md:h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M3 9h4l3 9 3-16 3 9h4"/>
                             </svg>
@@ -615,7 +615,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-1 md:gap-1.5 items-center">
-                    <button className="w-[80%] h-[24px] md:h-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_12px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[9px] md:text-[11px]">
+                    <button className="w-[80%] h-[24px] md:h-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_12px_rgba(254,138,15,0.5)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[9px] md:text-[11px]">
                       <Zap className="w-3 h-3 md:w-3.5 md:h-3.5" />
                       Buy Now!
                     </button>
@@ -625,7 +625,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                         setSelectedServiceForCart(service);
                         setShowAddToCartModal(true);
                       }}
-                      className="w-[80%] h-[24px] md:h-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[9px] md:text-[11px]"
+                      className="w-[80%] h-[24px] md:h-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[9px] md:text-[11px]"
                     >
                       <ShoppingCart className="w-3 h-3 md:w-3.5 md:h-3.5" />
                       Add to cart

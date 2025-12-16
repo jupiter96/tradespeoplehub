@@ -149,7 +149,7 @@ export default function PhoneInput({
   return (
     <div className={className}>
       {label && (
-        <Label htmlFor={id} className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+        <Label htmlFor={id} className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
           {label} {required && <span className="text-red-500">*</span>}
         </Label>
       )}
@@ -160,7 +160,7 @@ export default function PhoneInput({
             <Button
               type="button"
               variant="outline"
-              className={`h-10 px-3 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] flex items-center gap-2 ${
+              className={`h-10 px-3 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] flex items-center gap-2 ${
                 error ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
               }`}
             >
@@ -225,7 +225,7 @@ export default function PhoneInput({
             placeholder={placeholder}
             value={phoneNumber}
             onChange={(e) => handleNumberChange(e.target.value)}
-            className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+            className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
               error ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
             }`}
             required={required}
@@ -233,7 +233,7 @@ export default function PhoneInput({
         </div>
       </div>
       {error && (
-        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+        <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
           {error}
         </p>
       )}

@@ -24,8 +24,8 @@ function Component5() {
 function Component() {
   return (
     <div className="absolute contents left-[472px] top-[311px]" data-name="1">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[311px] whitespace-pre">Post a task</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[337px] w-[522px]">Describe what you need done in a few sentences. Keep it simple and clear to attract the best Taskers.</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[311px] whitespace-pre">Post a task</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[337px] w-[522px]">Describe what you need done in a few sentences. Keep it simple and clear to attract the best Taskers.</p>
       <Component5 />
     </div>
   );
@@ -53,8 +53,8 @@ function Frame() {
 function Component1() {
   return (
     <div className="absolute contents left-[483px] top-[403px]" data-name="2">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[403px] whitespace-pre">Set your budget</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[429px] w-[522px] whitespace-pre-wrap">{`Enter your preferred budget range  that you wish to get quote around`}</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[403px] whitespace-pre">Set your budget</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[429px] w-[522px] whitespace-pre-wrap">{`Enter your preferred budget range  that you wish to get quote around`}</p>
       <Frame />
     </div>
   );
@@ -92,8 +92,8 @@ function Component6() {
 function Component2() {
   return (
     <div className="absolute contents left-[483px] top-[481px]" data-name="3">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[481px] whitespace-pre">Compare quotes.</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[507px] w-[522px]">Review offers from Taskers, checking their profiles, ratings, and reviews to find the best fit for your project.</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[481px] whitespace-pre">Compare quotes.</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[507px] w-[522px]">Review offers from Taskers, checking their profiles, ratings, and reviews to find the best fit for your project.</p>
       <Component6 />
     </div>
   );
@@ -120,8 +120,8 @@ function Frame1() {
 function Component3() {
   return (
     <div className="absolute contents left-[484px] top-[573px]" data-name="4">
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[573px] whitespace-pre">Stage payments</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[599px] w-[522px]">Award the job, set up a milestone payment. Once the task is complete and your 100% satisfied with work done, release payment and leave a review.</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[573px] whitespace-pre">Stage payments</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-14.5px)] not-italic text-[#5b5b5b] text-[14px] top-[599px] w-[522px]">Award the job, set up a milestone payment. Once the task is complete and your 100% satisfied with work done, release payment and leave a review.</p>
       <Frame1 />
     </div>
   );
@@ -3960,7 +3960,7 @@ function Cta() {
   return (
     <div className="absolute contents left-[calc(50%-0.1px)] top-0 translate-x-[-50%]" data-name="CTA">
       <div className="absolute bg-[#fe8a0f] bottom-0 left-0 right-[0.13%] rounded-[20px] top-0" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[normal] left-[78.5px] not-italic text-[15px] text-center text-white top-[9px] translate-x-[-50%] w-[111px]">Post Task Now</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[normal] left-[78.5px] not-italic text-[15px] text-center text-white top-[9px] translate-x-[-50%] w-[111px]">Post Task Now</p>
     </div>
   );
 }
@@ -3979,8 +3979,8 @@ function Component4() {
       <div className="absolute bg-[#f3f9ff] h-[718px] left-1/2 rounded-[30px] top-[71px] translate-x-[-50%] w-[1119px]">
         <div aria-hidden="true" className="absolute border-2 border-[rgba(219,238,255,0.8)] border-solid inset-0 pointer-events-none rounded-[30px] shadow-[0px_14px_20px_0px_rgba(158,197,252,0.1)]" />
       </div>
-      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[44px] left-[482px] not-italic text-[#2c353f] text-[36px] top-[135px] w-[604px]">Looking for competitive quotes with staged payment options?</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-75.5px)] not-italic text-[#5b5b5b] text-[14px] top-[236px] w-[574px]">Get competitive quotes from top professionals while enjoying flexible staged payment options. Here’s how it works:</p>
+      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[44px] left-[482px] not-italic text-[#2c353f] text-[36px] top-[135px] w-[604px]">Looking for competitive quotes with staged payment options?</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-75.5px)] not-italic text-[#5b5b5b] text-[14px] top-[236px] w-[574px]">Get competitive quotes from top professionals while enjoying flexible staged payment options. Here’s how it works:</p>
       <Component />
       <Component1 />
       <Component2 />

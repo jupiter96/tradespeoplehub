@@ -88,10 +88,10 @@ export default function BookingModal({
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div>
-              <DialogTitle className="font-['Poppins',sans-serif] text-[24px] md:text-[28px] text-[#2c353f] mb-2">
+              <DialogTitle className="font-['Roboto',sans-serif] text-[24px] md:text-[28px] text-[#2c353f] mb-2">
                 Select Appointment Time
               </DialogTitle>
-              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                 Choose a convenient date and time for your service with {sellerName}
               </DialogDescription>
             </div>
@@ -100,10 +100,10 @@ export default function BookingModal({
 
         {/* Service Info Banner */}
         <div className="bg-gradient-to-r from-[#FFF5EB] to-[#FFE8CC] rounded-xl p-4 mb-6">
-          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+          <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
             <span className="font-medium">Service:</span> {serviceTitle}
           </p>
-          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
+          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
             <span className="font-medium">Professional:</span> {sellerName}
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function BookingModal({
               <div className="w-8 h-8 bg-[#FE8A0F] rounded-full flex items-center justify-center flex-shrink-0">
                 <CalendarIcon className="w-4 h-4 text-white" />
               </div>
-              <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+              <h3 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
                 Select Date
               </h3>
             </div>
@@ -133,14 +133,14 @@ export default function BookingModal({
                 selected={selectedDate}
                 onSelect={handleDateSelect}
                 disabled={(date) => date < today}
-                className="font-['Poppins',sans-serif]"
+                className="font-['Roboto',sans-serif]"
               />
             </div>
             {selectedDate && !showTimePicker && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                  <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-green-700 font-medium">
+                  <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-green-700 font-medium">
                     {formatDate(selectedDate)}
                   </p>
                 </div>
@@ -177,11 +177,11 @@ export default function BookingModal({
                   <Clock className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+                  <h3 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
                     Select Time
                   </h3>
                   {selectedDate && (
-                    <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b]">
+                    <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b]">
                       {selectedDate.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                   )}
@@ -197,7 +197,7 @@ export default function BookingModal({
                     <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6b6b6b] flex-shrink-0" />
                     <Badge 
                       variant="outline" 
-                      className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] border-[#FE8A0F] text-[#FE8A0F]"
+                      className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] border-[#FE8A0F] text-[#FE8A0F]"
                     >
                       {slotGroup.slot}
                     </Badge>
@@ -208,7 +208,7 @@ export default function BookingModal({
                         key={time}
                         onClick={() => handleTimeClick(time, slotGroup.slot)}
                         className={`
-                          py-2 md:py-2.5 px-2 md:px-3 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[12px] md:text-[13px]
+                          py-2 md:py-2.5 px-2 md:px-3 rounded-lg border-2 transition-all font-['Roboto',sans-serif] text-[12px] md:text-[13px]
                           ${selectedTime === time 
                             ? "border-[#3B82F6] bg-blue-50 text-[#3B82F6] font-medium shadow-sm" 
                             : "border-gray-200 bg-white hover:border-[#3B82F6] hover:bg-blue-50 text-[#2c353f]"
@@ -228,7 +228,7 @@ export default function BookingModal({
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-blue-700 font-medium">
+                  <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-blue-700 font-medium">
                     Selected: {selectedTime} ({selectedTimeSlot})
                   </p>
                 </div>
@@ -243,19 +243,19 @@ export default function BookingModal({
         <div>
           {selectedDate && selectedTime ? (
             <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 mb-4">
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
+              <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
                 <span className="font-medium">Your Appointment:</span>
               </p>
-              <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-medium">
+              <p className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F] font-medium">
                 {formatDate(selectedDate)} at {selectedTime}
               </p>
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+              <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
                 The professional will contact you to confirm details
               </p>
             </div>
           ) : (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-              <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800">
+              <p className="font-['Roboto',sans-serif] text-[13px] text-yellow-800">
                 Please select both date and time to continue
               </p>
             </div>
@@ -265,7 +265,7 @@ export default function BookingModal({
             <Button
               onClick={handleConfirm}
               disabled={!selectedDate || !selectedTime}
-              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="w-5 h-5 mr-2" />
               Confirm & Continue
@@ -273,7 +273,7 @@ export default function BookingModal({
             <Button
               onClick={handleClose}
               variant="outline"
-              className="px-6 py-6 rounded-xl font-['Poppins',sans-serif] text-[15px] border-2"
+              className="px-6 py-6 rounded-xl font-['Roboto',sans-serif] text-[15px] border-2"
             >
               <X className="w-5 h-5 mr-2" />
               Cancel

@@ -110,7 +110,7 @@ function GetQuote() {
         className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-[20px] py-[9px] cursor-pointer"
         data-name="Get quote"
       >
-        <p className="font-['Poppins:Regular',sans-serif] leading-[normal] not-italic text-[15px] text-center text-white whitespace-nowrap">
+        <p className="font-['Roboto:Regular',sans-serif] leading-[normal] not-italic text-[15px] text-center text-white whitespace-nowrap">
           Get Quote
         </p>
       </button>
@@ -134,7 +134,7 @@ function LoginButton() {
             src={userInfo.avatar}
             alt={userInfo.name}
           />
-          <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+          <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
             {userInfo.name
               .split(" ")
               .map((n) => n[0])
@@ -143,10 +143,10 @@ function LoginButton() {
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col items-start">
-          <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
+          <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
             Welcome
           </span>
-          <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
+          <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
             {userInfo.name.split(" ")[0]}
           </span>
         </div>
@@ -164,10 +164,10 @@ function LoginButton() {
         <User className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
       </div>
       <div className="flex flex-col items-start">
-        <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
+        <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
           My Account
         </span>
-        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
+        <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
           Login/Register
         </span>
       </div>
@@ -193,7 +193,7 @@ function MobileLoginButton() {
                 src={userInfo.avatar}
                 alt={userInfo.name}
               />
-              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
+              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[18px]">
                 {userInfo.name
                   .split(" ")
                   .map((n) => n[0])
@@ -202,10 +202,10 @@ function MobileLoginButton() {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <h3 className="font-['Poppins',sans-serif] text-[17px] text-white mb-1 truncate">
+              <h3 className="font-['Roboto',sans-serif] text-[17px] text-white mb-1 truncate">
                 {userInfo.name}
               </h3>
-              <Badge className="bg-white/20 text-white border-0 font-['Poppins',sans-serif] text-[11px] hover:bg-white/30">
+              <Badge className="bg-white/20 text-white border-0 font-['Roboto',sans-serif] text-[11px] hover:bg-white/30">
                 {userRole === "client" ? "Client" : "Professional"}
               </Badge>
             </div>
@@ -225,10 +225,10 @@ function MobileLoginButton() {
         <User className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
       </div>
       <div className="flex flex-col items-start">
-        <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
+        <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
           My Account
         </span>
-        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
+        <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
           Login/Register
         </span>
       </div>
@@ -799,7 +799,7 @@ export default function Nav() {
               to="/login"
               className="z-20 cursor-pointer flex-shrink-0 hover:opacity-80 transition-opacity"
             >
-              <span className="font-['Poppins',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] transition-colors">
+              <span className="font-['Roboto',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] transition-colors">
                 Login
               </span>
             </Link>
@@ -820,7 +820,7 @@ export default function Nav() {
                   setShowSearchSuggestions(e.target.value.length > 0);
                 }}
                 onKeyDown={handleSearchEnter}
-                className="w-full h-[48px] pl-11 pr-14 rounded-full border-2 border-[#4A90E2] bg-white font-['Poppins',sans-serif] text-[15px] text-[#2c353f] placeholder:text-[#ACACAC] focus:outline-none focus:border-[#FE8A0F] transition-all duration-200"
+                className="w-full h-[48px] pl-11 pr-14 rounded-full border-2 border-[#4A90E2] bg-white font-['Roboto',sans-serif] text-[15px] text-[#2c353f] placeholder:text-[#ACACAC] focus:outline-none focus:border-[#FE8A0F] transition-all duration-200"
               />
               <button 
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full hover:bg-[#FFF5EB] transition-colors z-10"
@@ -853,10 +853,10 @@ export default function Nav() {
                         >
                           <Search className="w-4 h-4 text-[#8d8d8d]" />
                           <div className="flex-1">
-                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                               {suggestion.name}
                             </p>
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                            <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                               in {suggestion.sectorName}
                             </p>
                           </div>
@@ -865,7 +865,7 @@ export default function Nav() {
                     </div>
                   ) : (
                     <div className="px-4 py-4 text-center">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d]">
                         No services found
                       </p>
                     </div>
@@ -913,7 +913,7 @@ export default function Nav() {
                       e.target.placeholder = "Search...";
                     }
                   }}
-                  className="w-[160px] h-[38px] pl-10 pr-4 rounded-full border-2 border-[#E5E5E5] bg-white font-['Poppins',sans-serif] text-[14px] text-[#2c353f] placeholder:text-[#8d8d8d] focus:outline-none focus:border-[#FE8A0F] focus:shadow-[0_0_0_4px_rgba(254,138,15,0.12)] focus:w-[500px] focus:h-[46px] focus:pl-14 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-[width,height]"
+                  className="w-[160px] h-[38px] pl-10 pr-4 rounded-full border-2 border-[#E5E5E5] bg-white font-['Roboto',sans-serif] text-[14px] text-[#2c353f] placeholder:text-[#8d8d8d] focus:outline-none focus:border-[#FE8A0F] focus:shadow-[0_0_0_4px_rgba(254,138,15,0.12)] focus:w-[500px] focus:h-[46px] focus:pl-14 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-[width,height]"
                   style={{ margin: '0 auto' }}
                 />
               </div>
@@ -924,7 +924,7 @@ export default function Nav() {
                 {getSearchSuggestions().length > 0 ? (
                   <div className="py-2">
                     <div className="px-4 py-2">
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] uppercase tracking-wider">
+                      <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] uppercase tracking-wider">
                         Popular Services
                       </p>
                     </div>
@@ -942,10 +942,10 @@ export default function Nav() {
                           <Search className="w-4 h-4 text-[#8d8d8d] group-hover:text-[#FE8A0F] transition-colors" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
+                          <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
                             {suggestion.name}
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                             in {suggestion.sectorName}
                           </p>
                         </div>
@@ -954,12 +954,12 @@ export default function Nav() {
                   </div>
                 ) : (
                   <div className="px-4 py-6 text-center">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d]">
                       No services found for "{searchQuery}"
                     </p>
                     <Link
                       to="/services"
-                      className="inline-block mt-3 font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F] hover:text-[#FFB347] transition-colors"
+                      className="inline-block mt-3 font-['Roboto',sans-serif] text-[13px] text-[#FE8A0F] hover:text-[#FFB347] transition-colors"
                       onClick={() => {
                         setShowSearchSuggestions(false);
                         setSearchQuery("");
@@ -987,14 +987,14 @@ export default function Nav() {
 
           <Link
             to="/services"
-            className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
+            className="font-['Roboto:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
           >
             Services
           </Link>
 
           <Link
             to="/how-it-work-pro"
-            className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
+            className="font-['Roboto:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
           >
             Become a Seller
           </Link>
@@ -1010,7 +1010,7 @@ export default function Nav() {
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFF5EB] transition-colors">
                 <Bell className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
                 {notificationsData.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Poppins',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                  <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Roboto',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
                     {notificationsData.filter(n => !n.read).length}
                   </span>
                 )}
@@ -1022,11 +1022,11 @@ export default function Nav() {
               <div className="absolute top-[calc(100%+8px)] right-0 w-[380px] bg-white rounded-lg shadow-[0px_4px_20px_rgba(0,0,0,0.15)] z-[9999999] overflow-hidden">
                 {/* Header */}
                 <div className="px-4 py-3 bg-gradient-to-r from-[#003D82] to-[#0052AC] flex items-center justify-between">
-                  <h3 className="font-['Poppins',sans-serif] font-semibold text-white text-[16px]">
+                  <h3 className="font-['Roboto',sans-serif] font-semibold text-white text-[16px]">
                     Notifications
                   </h3>
                   {notificationsData.filter(n => !n.read).length > 0 && (
-                    <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-2.5 py-1 rounded-full">
+                    <span className="bg-[#FE8A0F] text-white text-[11px] font-['Roboto',sans-serif] font-semibold px-2.5 py-1 rounded-full">
                       {notificationsData.filter(n => !n.read).length} New
                     </span>
                   )}
@@ -1080,17 +1080,17 @@ export default function Nav() {
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-['Poppins',sans-serif] font-medium text-[14px] text-[#2c353f]">
+                            <h4 className="font-['Roboto',sans-serif] font-medium text-[14px] text-[#2c353f]">
                               {notification.title}
                             </h4>
                             {!notification.read && (
                               <div className="w-2 h-2 bg-[#FE8A0F] rounded-full flex-shrink-0 mt-1.5"></div>
                             )}
                           </div>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] mt-0.5 line-clamp-2">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#5b5b5b] mt-0.5 line-clamp-2">
                             {notification.message}
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
+                          <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
                             {notification.time}
                           </p>
                         </div>
@@ -1101,7 +1101,7 @@ export default function Nav() {
 
                 {/* Footer */}
                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
-                  <button className="w-full text-center font-['Poppins',sans-serif] font-medium text-[14px] text-[#003D82] hover:text-[#FE8A0F] transition-colors">
+                  <button className="w-full text-center font-['Roboto',sans-serif] font-medium text-[14px] text-[#003D82] hover:text-[#FE8A0F] transition-colors">
                     View All Notifications
                   </button>
                 </div>
@@ -1117,16 +1117,16 @@ export default function Nav() {
             <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFF5EB] transition-colors">
               <ShoppingCart className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Poppins',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Roboto',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
                   {cartCount}
                 </span>
               )}
             </div>
             <div className="flex flex-col items-start">
-              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
+              <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
                 My Cart
               </span>
-              <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
+              <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
                 £{cartTotal.toFixed(1)}
               </span>
             </div>
@@ -1199,7 +1199,7 @@ export default function Nav() {
                 >
                   <Link
                     to={`/sector/${sectorNameToSlug[category] || sectorToSlug(category)}`}
-                    className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#8d8d8d] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
+                    className="font-['Roboto:Regular',sans-serif] text-[15px] text-[#8d8d8d] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
                     onMouseEnter={() => hasDropdown && handleCategoryHover(category)}
                   >
                     {category}
@@ -1229,7 +1229,7 @@ export default function Nav() {
                         to={column.serviceCategorySlug && sectorNameToSlug[activeDropdown]
                           ? `/sector/${sectorNameToSlug[activeDropdown]}/${column.serviceCategorySlug}`
                           : `/category/${getCategoryId(activeDropdown, column.title, sortedSectors)}`}
-                        className="font-['Poppins',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors mb-2.5 block cursor-pointer"
+                        className="font-['Roboto',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors mb-2.5 block cursor-pointer"
                       >
                         {column.title}
                       </Link>
@@ -1256,7 +1256,7 @@ export default function Nav() {
                             <li key={idx}>
                               <Link
                                 to={linkTo}
-                                className="font-['Poppins',sans-serif] font-light text-[13px] text-[#5b5b5b] hover:text-[#FE8A0F] transition-colors block"
+                                className="font-['Roboto',sans-serif] font-light text-[13px] text-[#5b5b5b] hover:text-[#FE8A0F] transition-colors block"
                               >
                                 {item}
                               </Link>
@@ -1311,7 +1311,7 @@ export default function Nav() {
                       to={column.serviceCategorySlug && sectorNameToSlug[expandedCategory]
                         ? `/sector/${sectorNameToSlug[expandedCategory]}/${column.serviceCategorySlug}`
                         : `/category/${getCategoryId(expandedCategory, column.title, sortedSectors)}`}
-                      className="font-['Poppins',sans-serif] font-semibold text-[16px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-3 block cursor-pointer"
+                      className="font-['Roboto',sans-serif] font-semibold text-[16px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-3 block cursor-pointer"
                       onClick={() => {
                         setMobileDropdownOpen(false);
                         setExpandedCategory(null);
@@ -1342,7 +1342,7 @@ export default function Nav() {
                           <li key={itemIdx}>
                             <Link
                               to={linkTo}
-                              className="font-['Poppins',sans-serif] font-light text-[14px] text-[#5b5b5b] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors block"
+                              className="font-['Roboto',sans-serif] font-light text-[14px] text-[#5b5b5b] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors block"
                               onClick={() => {
                                 setMobileDropdownOpen(false);
                                 setExpandedCategory(null);
@@ -1378,7 +1378,7 @@ export default function Nav() {
                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20">
                       <FileText className="w-5 h-5 text-white" />
                     </div>
-                    <span className="font-['Poppins',sans-serif] text-[11px] text-white text-center leading-tight">Get Quote</span>
+                    <span className="font-['Roboto',sans-serif] text-[11px] text-white text-center leading-tight">Get Quote</span>
                   </div>
                 </Link>
               )}
@@ -1388,12 +1388,12 @@ export default function Nav() {
                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white">
                   <Bell className="w-5 h-5 text-[#5b5b5b]" />
                   {notificationsData.filter(n => !n.read).length > 0 && (
-                    <span className="absolute top-2 right-[50%] translate-x-[10px] bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+                    <span className="absolute top-2 right-[50%] translate-x-[10px] bg-[#FE8A0F] text-white text-[9px] font-['Roboto',sans-serif] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
                       {notificationsData.filter(n => !n.read).length}
                     </span>
                   )}
                 </div>
-                <span className="font-['Poppins',sans-serif] text-[11px] text-[#5b5b5b] text-center leading-tight">Alerts</span>
+                <span className="font-['Roboto',sans-serif] text-[11px] text-[#5b5b5b] text-center leading-tight">Alerts</span>
               </button>
 
               {/* Shopping Cart */}
@@ -1405,12 +1405,12 @@ export default function Nav() {
                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white">
                   <ShoppingCart className="w-5 h-5 text-[#5b5b5b]" />
                   {cartCount > 0 && (
-                    <span className="absolute top-2 right-[50%] translate-x-[10px] bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+                    <span className="absolute top-2 right-[50%] translate-x-[10px] bg-[#FE8A0F] text-white text-[9px] font-['Roboto',sans-serif] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
                       {cartCount}
                     </span>
                   )}
                 </div>
-                <span className="font-['Poppins',sans-serif] text-[11px] text-[#5b5b5b] text-center leading-tight">Cart</span>
+                <span className="font-['Roboto',sans-serif] text-[11px] text-[#5b5b5b] text-center leading-tight">Cart</span>
               </Link>
             </div>
             
@@ -1420,7 +1420,7 @@ export default function Nav() {
               {(!isLoggedIn || userRole === "client") && (
                 <Link
                   to="/services"
-                  className="block font-['Poppins',sans-serif] text-[16px] text-[#2c353f] hover:text-[#FE8A0F] cursor-pointer transition-colors py-3 border-b border-[#E5E5E5]"
+                  className="block font-['Roboto',sans-serif] text-[16px] text-[#2c353f] hover:text-[#FE8A0F] cursor-pointer transition-colors py-3 border-b border-[#E5E5E5]"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Services
@@ -1431,7 +1431,7 @@ export default function Nav() {
               {!isLoggedIn && (
                 <Link
                   to="/how-it-work-pro"
-                  className="block font-['Poppins',sans-serif] text-[16px] text-[#2c353f] hover:text-[#FE8A0F] cursor-pointer transition-colors py-3 border-b border-[#E5E5E5]"
+                  className="block font-['Roboto',sans-serif] text-[16px] text-[#2c353f] hover:text-[#FE8A0F] cursor-pointer transition-colors py-3 border-b border-[#E5E5E5]"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Become a Seller
@@ -1441,7 +1441,7 @@ export default function Nav() {
               {/* Browse Categories - Hide for professionals after login */}
               {(!isLoggedIn || userRole === "client") && (
                 <div className="flex items-center justify-between py-3 border-b border-[#E5E5E5]">
-                  <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                  <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                     Browse Categories
                   </span>
                   <button
@@ -1484,7 +1484,7 @@ export default function Nav() {
                             }
                           }}
                         >
-                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
+                          <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] font-medium">
                             {category}
                           </span>
                           {hasDropdown && (
@@ -1507,7 +1507,7 @@ export default function Nav() {
                                 <div key={colIdx} className="border-b border-[#E5E5E5] last:border-b-0 pb-3 last:pb-0">
                                   <Link
                                     to={`/category/${getCategoryId(category, column.title, sortedSectors)}`}
-                                    className="font-['Poppins',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-2 block cursor-pointer"
+                                    className="font-['Roboto',sans-serif] font-semibold text-[15px] text-[#2c353f] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors mb-2 block cursor-pointer"
                                     onClick={() => {
                                       setMobileMenuOpen(false);
                                       setExpandedCategory(null);
@@ -1521,7 +1521,7 @@ export default function Nav() {
                                       <li key={itemIdx}>
                                         <Link
                                           to={`/services?category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(column.title)}&detailedSubcategory=${encodeURIComponent(item)}`}
-                                          className="font-['Poppins',sans-serif] font-light text-[13px] text-[#5b5b5b] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors block"
+                                          className="font-['Roboto',sans-serif] font-light text-[13px] text-[#5b5b5b] hover:text-[#FE8A0F] active:text-[#FE8A0F] transition-colors block"
                                           onClick={() => {
                                             setMobileMenuOpen(false);
                                             setExpandedCategory(null);
@@ -1557,7 +1557,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <User className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Overview</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Overview</span>
                     </Link>
                     <Link
                       to="/account?tab=favourites"
@@ -1565,7 +1565,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Heart className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Favourites</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Favourites</span>
                     </Link>
                     <Link
                       to="/account?tab=orders"
@@ -1573,7 +1573,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <ShoppingBag className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Orders</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Orders</span>
                     </Link>
                     <Link
                       to="/account?tab=my-jobs"
@@ -1581,7 +1581,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <FileText className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">My Jobs</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">My Jobs</span>
                     </Link>
                     <Link
                       to="/account?tab=details"
@@ -1589,7 +1589,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Settings className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">My Details</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">My Details</span>
                     </Link>
                     <Link
                       to="/account?tab=billing"
@@ -1597,7 +1597,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <CreditCard className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Billing</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Billing</span>
                     </Link>
                     <Link
                       to="/account?tab=security"
@@ -1605,7 +1605,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Lock className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Security</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Security</span>
                     </Link>
                     <Link
                       to="/account?tab=messenger"
@@ -1614,8 +1614,8 @@ export default function Nav() {
                     >
                       <MessageCircle className="w-5 h-5 text-[#5b5b5b]" />
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Messenger</span>
-                        <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-2 py-0.5 rounded-full">3</span>
+                        <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Messenger</span>
+                        <span className="bg-[#FE8A0F] text-white text-[11px] font-['Roboto',sans-serif] font-semibold px-2 py-0.5 rounded-full">3</span>
                       </div>
                     </Link>
                     <Link
@@ -1624,7 +1624,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <HelpCircle className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Support Center</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Support Center</span>
                     </Link>
                     <Link
                       to="/account?tab=invite"
@@ -1632,7 +1632,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Gift className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Invite & Earn</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Invite & Earn</span>
                     </Link>
                   </div>
                 )}
@@ -1646,7 +1646,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <User className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Overview</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Overview</span>
                     </Link>
                     <Link
                       to="/account?tab=services"
@@ -1654,7 +1654,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Briefcase className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Services</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Services</span>
                     </Link>
                     <Link
                       to="/account?tab=orders"
@@ -1662,7 +1662,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <ShoppingBag className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Orders</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Orders</span>
                     </Link>
                     <Link
                       to="/account?tab=my-jobs"
@@ -1670,7 +1670,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <FileText className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">My Jobs</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">My Jobs</span>
                     </Link>
                     <Link
                       to="/account?tab=promo-code"
@@ -1678,7 +1678,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Ticket className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Promo Code</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Promo Code</span>
                     </Link>
                     <Link
                       to="/account?tab=verification"
@@ -1686,7 +1686,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Shield className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Verification</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Verification</span>
                     </Link>
                     <Link
                       to="/account?tab=details"
@@ -1694,7 +1694,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Settings className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">My Details</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">My Details</span>
                     </Link>
                     <Link
                       to="/account?tab=withdraw"
@@ -1702,7 +1702,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Wallet className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Withdraw</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Withdraw</span>
                     </Link>
                     <Link
                       to="/account?tab=security"
@@ -1710,7 +1710,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Lock className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Security</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Security</span>
                     </Link>
                     <Link
                       to="/account?tab=messenger"
@@ -1719,8 +1719,8 @@ export default function Nav() {
                     >
                       <MessageCircle className="w-5 h-5 text-[#5b5b5b]" />
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Messenger</span>
-                        <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-2 py-0.5 rounded-full">3</span>
+                        <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Messenger</span>
+                        <span className="bg-[#FE8A0F] text-white text-[11px] font-['Roboto',sans-serif] font-semibold px-2 py-0.5 rounded-full">3</span>
                       </div>
                     </Link>
                     <Link
@@ -1729,7 +1729,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <HelpCircle className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Support Center</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Support Center</span>
                     </Link>
                     <Link
                       to="/account?tab=invite"
@@ -1737,7 +1737,7 @@ export default function Nav() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Gift className="w-5 h-5 text-[#5b5b5b]" />
-                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Invite & Earn</span>
+                      <span className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">Invite & Earn</span>
                     </Link>
                   </div>
                 )}
@@ -1753,7 +1753,7 @@ export default function Nav() {
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 hover:bg-red-100 transition-colors cursor-pointer"
                   >
                     <LogOut className="w-5 h-5 text-red-500" />
-                    <span className="font-['Poppins',sans-serif] text-[15px] text-red-500 font-medium">Logout</span>
+                    <span className="font-['Roboto',sans-serif] text-[15px] text-red-500 font-medium">Logout</span>
                   </button>
                 </div>
               </div>
@@ -1767,7 +1767,7 @@ export default function Nav() {
         <AlertDialog open={showAppModal} onOpenChange={setShowAppModal}>
           <AlertDialogContent className="max-w-[90%] sm:max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-center font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+              <AlertDialogTitle className="text-center font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
                 Continue in Tradespeoplehub App?
               </AlertDialogTitle>
               <AlertDialogDescription className="text-center text-gray-600 text-[14px]">
@@ -1777,13 +1777,13 @@ export default function Nav() {
             <AlertDialogFooter className="flex-row gap-3 justify-center">
               <AlertDialogCancel 
                 onClick={handleAppModalCancel}
-                className="font-['Poppins',sans-serif] text-[15px] flex-1"
+                className="font-['Roboto',sans-serif] text-[15px] flex-1"
               >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction 
                 onClick={handleAppModalOk}
-                className="font-['Poppins',sans-serif] text-[15px] bg-[#FE8A0F] hover:bg-[#E67A00] flex-1"
+                className="font-['Roboto',sans-serif] text-[15px] bg-[#FE8A0F] hover:bg-[#E67A00] flex-1"
               >
                 OK
               </AlertDialogAction>

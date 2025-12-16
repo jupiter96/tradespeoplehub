@@ -920,8 +920,8 @@ export default function App() {
     <div className="relative size-full" data-name="App">
       <Frame />
       <div className="absolute bg-[#dbeaff] h-[375px] left-0 rounded-[20px] top-[26px] w-[541px]" />
-      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[44px] left-[672px] not-italic text-[#2c353f] text-[36px] text-nowrap top-[105px] whitespace-pre">Our Mobile App</p>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[80px] leading-[normal] left-[672px] not-italic text-[#5b5b5b] text-[14px] top-[163px] w-[448px]">Stay productive on the go—download our app to manage your tasks wherever you are.</p>
+      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[44px] left-[672px] not-italic text-[#2c353f] text-[36px] text-nowrap top-[105px] whitespace-pre">Our Mobile App</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[80px] leading-[normal] left-[672px] not-italic text-[#5b5b5b] text-[14px] top-[163px] w-[448px]">Stay productive on the go—download our app to manage your tasks wherever you are.</p>
       <DownloadOnTheAppStoreAppleLogoSvgrepoCom />
       <GooglePlayDownloadAndroidAppLogoSvgrepoCom />
       <div className="absolute flex h-[calc(1px*((var(--transform-inner-width)*0.05488346144556999)+(var(--transform-inner-height)*0.9984927177429199)))] items-center justify-center left-[333.31px] top-[46.62px] w-[calc(1px*((var(--transform-inner-height)*0.05488346144556999)+(var(--transform-inner-width)*0.9984927177429199)))]" style={{ "--transform-inner-width": "162.6875", "--transform-inner-height": "323.21875" } as React.CSSProperties}>

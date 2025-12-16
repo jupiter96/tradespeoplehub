@@ -138,13 +138,13 @@ export default function CartPageMobileMinimalist({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1 line-clamp-2">
+                <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1 line-clamp-2">
                   {item.title}
                 </h3>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                   {item.seller}
                 </p>
-                <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-medium">
+                <p className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F] font-medium">
                   £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
                 </p>
               </div>
@@ -155,7 +155,7 @@ export default function CartPageMobileMinimalist({
 
       {/* Task Location address - Compact Display */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F] font-medium mb-3">
+        <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#FE8A0F] font-medium mb-3">
           Task Location address
         </h3>
         {skipAddress ? (
@@ -167,7 +167,7 @@ export default function CartPageMobileMinimalist({
               className="mt-1 w-5 h-5 text-[#FE8A0F] accent-[#FE8A0F]"
             />
             <div className="flex-1">
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+              <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium">
                 Skip Address - Discuss with professional
               </p>
             </div>
@@ -181,7 +181,7 @@ export default function CartPageMobileMinimalist({
               className="mt-1 w-5 h-5 text-[#FE8A0F] accent-[#FE8A0F]"
             />
             <div className="flex-1 min-w-0">
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+              <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium">
                 {selectedAddressData.addressLine1}, {selectedAddressData.postcode} - {selectedAddressData.city}, 
                 <span className="text-[#3B82F6]"> {selectedAddressData.phone}</span>
               </p>
@@ -193,7 +193,7 @@ export default function CartPageMobileMinimalist({
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
           <button
             onClick={() => setShowAddressSection(!showAddressSection)}
-            className="flex items-center gap-1.5 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]"
+            className="flex items-center gap-1.5 font-['Roboto',sans-serif] text-[13px] text-[#2c353f]"
           >
             <Edit2 className="w-4 h-4" />
             Edit
@@ -205,7 +205,7 @@ export default function CartPageMobileMinimalist({
               onChange={(e) => setSkipAddress(e.target.checked)}
               className="w-4 h-4 rounded accent-[#3B82F6]"
             />
-            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+            <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
               Skip Address
             </span>
           </label>
@@ -236,14 +236,14 @@ export default function CartPageMobileMinimalist({
                         ) : (
                           <Briefcase className="w-3.5 h-3.5 text-[#FE8A0F]" />
                         )}
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium capitalize">
+                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-medium capitalize">
                           {address.type}
                         </span>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] truncate">
                         {address.addressLine1}
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                         {address.postcode}
                       </p>
                     </Label>
@@ -258,7 +258,7 @@ export default function CartPageMobileMinimalist({
       {/* Paying With - Compact Display */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F] font-medium">
+          <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#FE8A0F] font-medium">
             Paying with
           </h3>
           <button
@@ -279,13 +279,13 @@ export default function CartPageMobileMinimalist({
               )}
             </div>
             <div className="flex-1">
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+              <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium">
                 •••• •••• {selectedPaymentData.cardNumber.slice(-4)}
               </p>
             </div>
             <button
               onClick={() => setShowPaymentSection(!showPaymentSection)}
-              className="font-['Poppins',sans-serif] text-[13px] text-[#3B82F6]"
+              className="font-['Roboto',sans-serif] text-[13px] text-[#3B82F6]"
             >
               Edit ✏️
             </button>
@@ -312,10 +312,10 @@ export default function CartPageMobileMinimalist({
                       )}
                     </div>
                     <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-medium">
                         {method.cardNumber}
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
                         Exp. {method.expiryDate}
                       </p>
                     </Label>
@@ -330,19 +330,19 @@ export default function CartPageMobileMinimalist({
       {/* Promo Code - Minimalist */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             Promo Code
           </h3>
           {!showPromoInput && !appliedPromo ? (
             <button
               onClick={() => setShowPromoInput(true)}
-              className="font-['Poppins',sans-serif] text-[13px] text-[#3B82F6]"
+              className="font-['Roboto',sans-serif] text-[13px] text-[#3B82F6]"
             >
               Enter a Code
             </button>
           ) : appliedPromo ? (
             <div className="flex items-center gap-2">
-              <span className="font-['Poppins',sans-serif] text-[13px] text-green-600">
+              <span className="font-['Roboto',sans-serif] text-[13px] text-green-600">
                 {appliedPromo} Applied
               </span>
               <button onClick={onRemovePromo}>
@@ -359,11 +359,11 @@ export default function CartPageMobileMinimalist({
               placeholder="Enter code"
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
-              className="flex-1 font-['Poppins',sans-serif] text-[14px] rounded-lg border-gray-200"
+              className="flex-1 font-['Roboto',sans-serif] text-[14px] rounded-lg border-gray-200"
             />
             <Button
               onClick={handleApplyPromo}
-              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg px-4 font-['Poppins',sans-serif] text-[13px]"
+              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg px-4 font-['Roboto',sans-serif] text-[13px]"
             >
               Apply
             </Button>
@@ -373,26 +373,26 @@ export default function CartPageMobileMinimalist({
 
       {/* Order Summary - Invoice Style */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-medium mb-4">
+        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F] font-medium mb-4">
           Order Summary
         </h3>
 
         {/* Subtotal */}
         <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300">
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             Subtotal price
           </span>
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             £{subtotal.toFixed(2)}
           </span>
         </div>
 
         {/* Service Fee */}
         <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300">
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             Service fee
           </span>
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
             {deliveryFee === 0 ? (
               <span className="text-green-600">FREE</span>
             ) : (
@@ -404,10 +404,10 @@ export default function CartPageMobileMinimalist({
         {/* Discount */}
         {discount > 0 && (
           <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300 text-green-600">
-            <span className="font-['Poppins',sans-serif] text-[14px]">
+            <span className="font-['Roboto',sans-serif] text-[14px]">
               Coupon Discount %
             </span>
-            <span className="font-['Poppins',sans-serif] text-[14px]">
+            <span className="font-['Roboto',sans-serif] text-[14px]">
               -£{discount.toFixed(2)}
             </span>
           </div>
@@ -415,10 +415,10 @@ export default function CartPageMobileMinimalist({
 
         {/* Grand Total */}
         <div className="flex items-center justify-between py-4">
-          <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
+          <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium">
             Grand Total
           </span>
-          <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
+          <span className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] font-semibold">
             £{total.toFixed(2)}
           </span>
         </div>
@@ -426,10 +426,10 @@ export default function CartPageMobileMinimalist({
         {/* Delivery Date */}
         {cartItems[0]?.booking && (
           <div className="flex items-center justify-between py-3 border-t border-dotted border-gray-300">
-            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+            <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
               Delivery Date
             </span>
-            <span className="font-['Poppins',sans-serif] text-[14px] text-[#3B82F6]">
+            <span className="font-['Roboto',sans-serif] text-[14px] text-[#3B82F6]">
               {new Date(cartItems[0].booking.date).toLocaleDateString('en-GB', { 
                 weekday: 'short',
                 day: 'numeric', 
@@ -444,7 +444,7 @@ export default function CartPageMobileMinimalist({
       {/* Place Order Button */}
       <Button 
         onClick={onPlaceOrder}
-        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white py-6 rounded-2xl transition-all duration-300 font-['Poppins',sans-serif] text-[16px] shadow-lg"
+        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white py-6 rounded-2xl transition-all duration-300 font-['Roboto',sans-serif] text-[16px] shadow-lg"
       >
         <CreditCard className="w-5 h-5 mr-2" />
         Place order

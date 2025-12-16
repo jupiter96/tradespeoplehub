@@ -175,9 +175,9 @@ export default function FloatingMessenger() {
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">Messages</p>
+            <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">Messages</p>
             {totalUnread > 0 && (
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F]">
+              <p className="font-['Roboto',sans-serif] text-[12px] text-[#FE8A0F]">
                 {totalUnread} unread
               </p>
             )}
@@ -206,7 +206,7 @@ export default function FloatingMessenger() {
         <div className="bg-gradient-to-r from-[#3D78CB] to-[#2c5aa0] px-5 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <MessageCircle className="w-5 h-5 text-white" />
-            <h3 className="font-['Poppins',sans-serif] text-[16px] text-white">
+            <h3 className="font-['Roboto',sans-serif] text-[16px] text-white">
               Messages
             </h3>
             {totalUnread > 0 && (
@@ -251,7 +251,7 @@ export default function FloatingMessenger() {
                     placeholder="Search contacts..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-10 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px] bg-white"
+                    className="pl-10 h-10 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[13px] bg-white"
                   />
                 </div>
               </div>
@@ -272,7 +272,7 @@ export default function FloatingMessenger() {
                           <div className="relative flex-shrink-0">
                             <Avatar className="w-11 h-11">
                               <AvatarImage src={contact.avatar} />
-                              <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
+                              <AvatarFallback className="bg-[#3D78CB] text-white font-['Roboto',sans-serif] text-[14px]">
                                 {contact.name
                                   ? contact.name.split(" ").map((n) => n[0]).join("")
                                   : "U"}
@@ -284,15 +284,15 @@ export default function FloatingMessenger() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 mb-0.5">
-                              <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] truncate">
+                              <h4 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] truncate">
                                 {contact.name}
                               </h4>
-                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
+                              <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
                                 {contact.timestamp}
                               </span>
                             </div>
                             <div className="flex items-center justify-between gap-2">
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] truncate flex-1">
+                              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] truncate flex-1">
                                 {contact.lastMessage}
                               </p>
                               {contact.unread > 0 && (
@@ -329,7 +329,7 @@ export default function FloatingMessenger() {
                       <div className="relative">
                         <Avatar className="w-11 h-11">
                           <AvatarImage src={selectedContact.avatar} />
-                          <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[15px]">
+                          <AvatarFallback className="bg-[#3D78CB] text-white font-['Roboto',sans-serif] text-[15px]">
                             {selectedContact.name
                               ? selectedContact.name.split(" ").map((n) => n[0]).join("")
                               : "U"}
@@ -340,10 +340,10 @@ export default function FloatingMessenger() {
                         )}
                       </div>
                       <div>
-                        <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                        <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
                           {selectedContact.name}
                         </h4>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#10b981]">
+                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#10b981]">
                           {selectedContact.online ? "Online" : "Offline"}
                         </p>
                       </div>
@@ -363,7 +363,7 @@ export default function FloatingMessenger() {
                     <div className="px-4 py-3 border-b-2 border-gray-200 bg-gradient-to-r from-[#FFF5EB] to-white flex-shrink-0">
                       <Button
                         onClick={() => setShowOrderModal(true)}
-                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Poppins',sans-serif] text-[13px] transition-all duration-300"
+                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Roboto',sans-serif] text-[13px] transition-all duration-300"
                       >
                         <ShoppingBag className="w-4 h-4 mr-2" />
                         Create Custom Offer
@@ -393,43 +393,43 @@ export default function FloatingMessenger() {
                                     <ShoppingBag className="w-5 h-5 text-[#FE8A0F]" />
                                   </div>
                                   <div className="flex-1">
-                                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
                                       {message.type === "custom_offer" ? "Custom Offer" : "Order Placed"}
                                     </p>
-                                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-2">
+                                    <h4 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-2">
                                       {message.orderDetails.service}
                                     </h4>
                                     <div className="space-y-1">
                                       <div className="flex justify-between">
-                                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                        <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                                           Amount:
                                         </span>
-                                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
+                                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#FE8A0F]">
                                           {message.orderDetails.amount}
                                         </span>
                                       </div>
                                       {message.type === "custom_offer" && message.orderDetails.deliveryDays && (
                                         <div className="flex justify-between">
-                                          <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                          <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                                             Delivery:
                                           </span>
-                                          <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                                          <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f]">
                                             {message.orderDetails.deliveryDays} {message.orderDetails.deliveryDays === 1 ? 'day' : 'days'}
                                           </span>
                                         </div>
                                       )}
                                       {message.type === "order" && message.orderDetails.date && (
                                         <div className="flex justify-between">
-                                          <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                          <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                                             Scheduled:
                                           </span>
-                                          <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                                          <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f]">
                                             {message.orderDetails.date}
                                           </span>
                                         </div>
                                       )}
                                       <div className="flex justify-between">
-                                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                        <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                                           Payment:
                                         </span>
                                         <Badge className="bg-purple-100 text-purple-700 text-[10px] h-5">
@@ -437,7 +437,7 @@ export default function FloatingMessenger() {
                                         </Badge>
                                       </div>
                                       <div className="flex justify-between">
-                                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                        <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                                           Status:
                                         </span>
                                         <Badge className="bg-blue-500 text-white text-[10px] h-5">
@@ -447,10 +447,10 @@ export default function FloatingMessenger() {
                                     </div>
                                     {message.type === "custom_offer" && message.orderDetails.description && (
                                       <div className="mt-3 pt-3 border-t border-gray-200">
-                                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                        <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                           Description:
                                         </p>
-                                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                                        <p className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f]">
                                           {message.orderDetails.description}
                                         </p>
                                       </div>
@@ -464,7 +464,7 @@ export default function FloatingMessenger() {
                                         toast.success("Offer accepted! Order created.");
                                       }}
                                       size="sm"
-                                      className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                                      className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Roboto',sans-serif] text-[12px]"
                                     >
                                       Accept Offer
                                     </Button>
@@ -474,7 +474,7 @@ export default function FloatingMessenger() {
                                       }}
                                       variant="outline"
                                       size="sm"
-                                      className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
+                                      className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Roboto',sans-serif] text-[12px]"
                                     >
                                       Decline
                                     </Button>
@@ -489,7 +489,7 @@ export default function FloatingMessenger() {
                                     }}
                                     variant="outline"
                                     size="sm"
-                                    className="w-full text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F] hover:text-white font-['Poppins',sans-serif] text-[12px]"
+                                    className="w-full text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F] hover:text-white font-['Roboto',sans-serif] text-[12px]"
                                   >
                                     <ExternalLink className="w-3 h-3 mr-1" />
                                     View Order
@@ -514,12 +514,12 @@ export default function FloatingMessenger() {
                                 {message.type === "file" && (
                                   <div className="flex items-center gap-2 mb-2 p-2 bg-white/10 rounded-lg">
                                     <Paperclip className="w-4 h-4" />
-                                    <span className="font-['Poppins',sans-serif] text-[13px]">
+                                    <span className="font-['Roboto',sans-serif] text-[13px]">
                                       {message.fileName}
                                     </span>
                                   </div>
                                 )}
-                                <p className="font-['Poppins',sans-serif] text-[14px]">
+                                <p className="font-['Roboto',sans-serif] text-[14px]">
                                   {message.text}
                                 </p>
                               </div>
@@ -529,7 +529,7 @@ export default function FloatingMessenger() {
                                 message.senderId === userInfo?.id ? "justify-end" : "justify-start"
                               }`}
                             >
-                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                              <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
                                 {message.timestamp}
                               </span>
                               {message.senderId === userInfo?.id && (
@@ -622,7 +622,7 @@ export default function FloatingMessenger() {
                                 handleSendMessage();
                               }
                             }}
-                            className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-full font-['Poppins',sans-serif] text-[13px] px-4"
+                            className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-full font-['Roboto',sans-serif] text-[13px] px-4"
                           />
                         </div>
                         <Button
@@ -642,10 +642,10 @@ export default function FloatingMessenger() {
                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex items-center justify-center mx-auto mb-6">
                       <MessageCircle className="w-12 h-12 text-[#3D78CB]" />
                     </div>
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                    <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
                       Select a Conversation
                     </h3>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] max-w-xs">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d] max-w-xs">
                       Choose a contact from the list to start chatting
                     </p>
                   </div>

@@ -536,7 +536,7 @@ export default function ProfilePage() {
                           {service.badges.slice(0, 2).map((badge, idx) => (
                             <span
                               key={idx}
-                              className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Poppins',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
+                              className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Roboto',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
                             >
                               {badge}
                             </span>
@@ -554,13 +554,13 @@ export default function ProfilePage() {
                           alt={service.tradingName}
                           className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
                         />
-                        <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
+                        <span className="font-['Roboto',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                           {service.tradingName}
                         </span>
                       </div>
 
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b] mb-2 md:mb-3 h-[28px] md:h-[36px] line-clamp-2">
+                      <p className="font-['Roboto',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b] mb-2 md:mb-3 h-[28px] md:h-[36px] line-clamp-2">
                         {service.description}
                       </p>
 
@@ -581,10 +581,10 @@ export default function ProfilePage() {
                               ))}
                             </div>
                             <div className="flex items-center gap-0.5 md:gap-1">
-                              <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
+                              <span className="font-['Roboto',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
                                 {service.rating}
                               </span>
-                              <span className="font-['Poppins',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
+                              <span className="font-['Roboto',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
                                 ({service.completedTasks})
                               </span>
                             </div>
@@ -599,23 +599,23 @@ export default function ProfilePage() {
                         <div className="h-[18px] md:h-[24px] mb-0.5 md:mb-1 flex items-center">
                           {service.originalPrice ? (
                             <div className="flex items-center gap-1 md:gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
+                              <span className="font-['Roboto',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
                                 £{service.originalPrice}
                               </span>
                             </div>
                           ) : null}
                         </div>
                         <div className="flex items-center justify-between gap-1 md:gap-2">
-                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
+                          <span className="font-['Roboto',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
                             <span className="text-[14px] md:text-[18px] text-[#2c353f]">£{service.price}</span>/{service.priceUnit}
                           </span>
                           <div className="flex-shrink-0">
                             {service.deliveryType === "same-day" ? (
-                              <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                              <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
                                 <span className="font-medium heartbeat-text">⚡ Same Day</span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                              <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
                                 <span className="font-medium">Standard</span>
                               </div>
                             )}
@@ -626,7 +626,7 @@ export default function ProfilePage() {
                       {/* Action Buttons */}
                       <div className="flex flex-col gap-1.5 md:gap-2 items-center mt-auto">
                         <button
-                          className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/service/${service.id}`);
@@ -636,7 +636,7 @@ export default function ProfilePage() {
                           Buy Now!
                         </button>
                         <button
-                          className="w-[80%] h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          className="w-[80%] h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             addToCart(

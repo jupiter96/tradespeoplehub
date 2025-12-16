@@ -175,7 +175,31 @@ export default function LoginPage() {
         localStorage.removeItem('savedEmail');
       }
 
-      navigate(user.role === "professional" ? "/professional-setup" : "/account");
+      // If PRO has any verification step not yet passed, always land on Account -> Verification
+      if (user.role === "professional") {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+            credentials: "include",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const v = data?.verification || {};
+            const requiredTypes = ["address", "idCard", "paymentMethod", "publicLiabilityInsurance"] as const;
+            const hasUnpassed = requiredTypes.some((t) => (v?.[t]?.status || "not-started") !== "verified");
+            if (hasUnpassed) {
+              navigate("/account?tab=verification");
+              return;
+            }
+          }
+        } catch {
+          // ignore and fall back to default navigation
+        }
+
+        navigate("/professional-setup");
+        return;
+      }
+
+      navigate("/account");
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : "Unable to login");
     } finally {
@@ -427,7 +451,8 @@ export default function LoginPage() {
 
         setShowEmailVerification(false);
         setVerificationStep(1);
-        navigate("/account");
+        // After PRO setup, go straight to account verification section
+        navigate("/account?tab=verification");
       } catch (error) {
         setRegisterError(error instanceof Error ? error.message : "Failed to save profile");
       } finally {
@@ -563,13 +588,13 @@ export default function LoginPage() {
               <TabsList className="grid w-full grid-cols-2 mb-5 bg-[#f5f5f5] p-1 rounded-xl h-10">
                 <TabsTrigger 
                   value="login"
-                  className="rounded-lg font-['Poppins',sans-serif] text-[14px] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm transition-all"
+                  className="rounded-lg font-['Roboto',sans-serif] text-[14px] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm transition-all"
                 >
                   Login
                 </TabsTrigger>
                 <TabsTrigger 
                   value="register"
-                  className="rounded-lg font-['Poppins',sans-serif] text-[14px] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm transition-all"
+                  className="rounded-lg font-['Roboto',sans-serif] text-[14px] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm transition-all"
                 >
                   Register
                 </TabsTrigger>
@@ -578,10 +603,10 @@ export default function LoginPage() {
               {/* Login Tab */}
               <TabsContent value="login" className="mt-0">
                 <div className="mb-4">
-                  <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1">
+                  <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1">
                     Welcome Back!
                   </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                     Login to access your account
                   </p>
                 </div>
@@ -591,7 +616,7 @@ export default function LoginPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Poppins',sans-serif] text-[13px]"
+                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Roboto',sans-serif] text-[13px]"
                     onClick={() => handleSocialLogin("google")}
                   >
                     <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
@@ -605,7 +630,7 @@ export default function LoginPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Poppins',sans-serif] text-[13px]"
+                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Roboto',sans-serif] text-[13px]"
                     onClick={() => handleSocialLogin("facebook")}
                   >
                     <svg className="w-4 h-4 mr-2" fill="#1877F2" viewBox="0 0 24 24">
@@ -617,7 +642,7 @@ export default function LoginPage() {
 
                 <div className="relative mb-4">
                   <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
                     or login with email
                   </span>
                 </div>
@@ -625,7 +650,7 @@ export default function LoginPage() {
                 {/* Login Form */}
                 <form onSubmit={handleLogin} className="space-y-3">
                   <div>
-                    <Label htmlFor="login-email" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                    <Label htmlFor="login-email" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                       Email Address
                     </Label>
                     <div className="relative">
@@ -636,14 +661,14 @@ export default function LoginPage() {
                         placeholder="your.email@gmail.com"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                        className="pl-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[13px]"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="login-password" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                    <Label htmlFor="login-password" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                       Password
                     </Label>
                     <div className="relative">
@@ -654,7 +679,7 @@ export default function LoginPage() {
                         placeholder="Enter your password"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        className="pl-10 pr-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                        className="pl-10 pr-10 h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[13px]"
                         required
                       />
                       <button
@@ -676,7 +701,7 @@ export default function LoginPage() {
                       />
                       <Label 
                         htmlFor="remember" 
-                        className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer"
+                        className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer"
                       >
                         Remember me
                       </Label>
@@ -684,7 +709,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowForgotPassword(true)}
-                      className="font-['Poppins',sans-serif] text-[12px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+                      className="font-['Roboto',sans-serif] text-[12px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
                     >
                       Forgot Password?
                     </button>
@@ -693,12 +718,12 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={isLoggingIn}
-                    className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isLoggingIn ? "Signing in..." : "Login to Account"}
                   </Button>
                   {loginError && (
-                    <p className="text-[12px] text-red-600 text-center font-['Poppins',sans-serif]">
+                    <p className="text-[12px] text-red-600 text-center font-['Roboto',sans-serif]">
                       {loginError}
                     </p>
                   )}
@@ -709,7 +734,7 @@ export default function LoginPage() {
               <TabsContent value="register" className="mt-0">
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-1">
-                    <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
+                    <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f]">
                     Create Account
                   </h2>
                     {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
@@ -758,7 +783,7 @@ export default function LoginPage() {
                       </Button>
                     )}
                   </div>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                     Join our community today
                   </p>
                 </div>
@@ -768,7 +793,7 @@ export default function LoginPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Poppins',sans-serif] text-[13px]"
+                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Roboto',sans-serif] text-[13px]"
                     onClick={() => handleSocialLogin("google")}
                   >
                     <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
@@ -782,7 +807,7 @@ export default function LoginPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Poppins',sans-serif] text-[13px]"
+                    className="w-full h-10 border-2 border-gray-200 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all font-['Roboto',sans-serif] text-[13px]"
                     onClick={() => handleSocialLogin("facebook")}
                   >
                     <svg className="w-4 h-4 mr-2" fill="#1877F2" viewBox="0 0 24 24">
@@ -794,14 +819,14 @@ export default function LoginPage() {
 
                 {/* User Type Selection */}
                 <div className="mb-4">
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                     Account Type
                   </Label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setUserType("client")}
-                      className={`p-3 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
+                      className={`p-3 rounded-xl border-2 transition-all font-['Roboto',sans-serif] text-[13px] ${
                         userType === "client"
                           ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
                           : "border-gray-200 bg-white text-[#6b6b6b] hover:border-[#FE8A0F]/50"
@@ -813,7 +838,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setUserType("professional")}
-                      className={`p-3 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
+                      className={`p-3 rounded-xl border-2 transition-all font-['Roboto',sans-serif] text-[13px] ${
                         userType === "professional"
                           ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
                           : "border-gray-200 bg-white text-[#6b6b6b] hover:border-[#FE8A0F]/50"
@@ -830,7 +855,7 @@ export default function LoginPage() {
                   {/* First Name & Last Name - 2 columns on desktop */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="register-first-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                      <Label htmlFor="register-first-name" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         First Name *
                       </Label>
                       <div className="relative">
@@ -850,21 +875,21 @@ export default function LoginPage() {
                               });
                             }
                           }}
-                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                             fieldErrors.firstName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                           }`}
                           required
                         />
                       </div>
                       {fieldErrors.firstName && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                           {fieldErrors.firstName}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <Label htmlFor="register-last-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                      <Label htmlFor="register-last-name" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         Last Name *
                       </Label>
                       <div className="relative">
@@ -884,14 +909,14 @@ export default function LoginPage() {
                               });
                             }
                           }}
-                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                             fieldErrors.lastName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                           }`}
                           required
                         />
                       </div>
                       {fieldErrors.lastName && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                           {fieldErrors.lastName}
                         </p>
                       )}
@@ -901,7 +926,7 @@ export default function LoginPage() {
                   {/* Trading Name (Professional only) */}
                   {userType === "professional" && (
                     <div>
-                      <Label htmlFor="register-trading-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                      <Label htmlFor="register-trading-name" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         Trading Name *
                       </Label>
                       <div className="relative">
@@ -921,14 +946,14 @@ export default function LoginPage() {
                               });
                             }
                           }}
-                          className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                          className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                             fieldErrors.tradingName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                           }`}
                           required
                         />
                       </div>
                       {fieldErrors.tradingName && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                           {fieldErrors.tradingName}
                         </p>
                       )}
@@ -996,20 +1021,20 @@ export default function LoginPage() {
                       showTownCityField={true}
                       showCountyField={true}
                       addressLabel="Address"
-                      className="font-['Poppins',sans-serif]"
+                      className="font-['Roboto',sans-serif]"
                     />
                     {fieldErrors.postcode && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.postcode}
                       </p>
                     )}
                     {fieldErrors.address && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.address}
                       </p>
                     )}
                     {fieldErrors.townCity && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.townCity}
                       </p>
                   )}
@@ -1018,7 +1043,7 @@ export default function LoginPage() {
                   {/* Travel Distance (Professional only) */}
                   {userType === "professional" && (
                     <div>
-                      <Label htmlFor="register-travel-distance" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                      <Label htmlFor="register-travel-distance" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         How long are you willing to travel for work? *
                       </Label>
                       <Select 
@@ -1034,7 +1059,7 @@ export default function LoginPage() {
                           }
                         }}
                       >
-                        <SelectTrigger className={`h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                        <SelectTrigger className={`h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                           fieldErrors.travelDistance ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                         }`}>
                           <SelectValue placeholder="Select distance" />
@@ -1051,7 +1076,7 @@ export default function LoginPage() {
                         </SelectContent>
                       </Select>
                       {fieldErrors.travelDistance && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                        <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                           {fieldErrors.travelDistance}
                         </p>
                       )}
@@ -1080,7 +1105,7 @@ export default function LoginPage() {
 
                   {/* Email */}
                   <div>
-                    <Label htmlFor="register-email" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                    <Label htmlFor="register-email" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                       Email *
                     </Label>
                     <div className="relative">
@@ -1100,14 +1125,14 @@ export default function LoginPage() {
                             });
                           }
                         }}
-                        className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                        className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                           fieldErrors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                         }`}
                         required
                       />
                     </div>
                     {fieldErrors.email && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.email}
                       </p>
                     )}
@@ -1115,7 +1140,7 @@ export default function LoginPage() {
 
                   {/* Password */}
                   <div>
-                    <Label htmlFor="register-password" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                    <Label htmlFor="register-password" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                       Password *
                     </Label>
                     <div className="relative">
@@ -1161,7 +1186,7 @@ export default function LoginPage() {
                             });
                           }
                         }}
-                        className={`pl-10 pr-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                        className={`pl-10 pr-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                           fieldErrors.password ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                         }`}
                         required
@@ -1175,17 +1200,17 @@ export default function LoginPage() {
                       </button>
                     </div>
                     {fieldErrors.password && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.password}
                       </p>
                     )}
                     {registerPassword && !fieldErrors.password && (
-                      <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-gray-500 font-['Roboto',sans-serif]">
                         {getPasswordHint(registerPassword)}
                       </p>
                     )}
                     {!registerPassword && (
-                      <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-gray-500 font-['Roboto',sans-serif]">
                         Password must include uppercase, lowercase, and numbers
                       </p>
                     )}
@@ -1193,7 +1218,7 @@ export default function LoginPage() {
 
                   {/* Confirm Password */}
                   <div>
-                    <Label htmlFor="register-confirm-password" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                    <Label htmlFor="register-confirm-password" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                       Confirm Password *
                     </Label>
                     <div className="relative">
@@ -1213,7 +1238,7 @@ export default function LoginPage() {
                             });
                           }
                         }}
-                        className={`pl-10 pr-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
+                        className={`pl-10 pr-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
                           fieldErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                         }`}
                         required
@@ -1227,7 +1252,7 @@ export default function LoginPage() {
                       </button>
                     </div>
                     {fieldErrors.confirmPassword && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.confirmPassword}
                       </p>
                     )}
@@ -1235,7 +1260,7 @@ export default function LoginPage() {
 
                   {/* Referral Code (Optional) */}
                   <div>
-                    <Label htmlFor="register-referral-code" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                    <Label htmlFor="register-referral-code" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                       Referral Code
                     </Label>
                     <Input
@@ -1244,7 +1269,7 @@ export default function LoginPage() {
                       placeholder="Enter referral code (optional)"
                       value={registerReferralCode}
                       onChange={(e) => setRegisterReferralCode(e.target.value)}
-                      className="h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
+                      className="h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[13px]"
                     />
                   </div>
 
@@ -1268,7 +1293,7 @@ export default function LoginPage() {
                     />
                     <Label 
                       htmlFor="terms" 
-                      className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
+                      className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
                     >
                       I agree to the{" "}
                       <Link to="/terms" className="text-[#3B82F6] hover:text-[#2563EB]">
@@ -1281,7 +1306,7 @@ export default function LoginPage() {
                     </Label>
                     </div>
                     {fieldErrors.agreeTerms && (
-                      <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                      <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Roboto',sans-serif]">
                         {fieldErrors.agreeTerms}
                       </p>
                     )}
@@ -1290,12 +1315,12 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={isSendingRegistration}
-                    className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isSendingRegistration ? "Sending verification..." : "Create Account"}
                   </Button>
                   {registerError && !showEmailVerification && (
-                    <p className="text-[12px] text-red-600 text-center font-['Poppins',sans-serif]">
+                    <p className="text-[12px] text-red-600 text-center font-['Roboto',sans-serif]">
                       {registerError}
                     </p>
                   )}
@@ -1305,7 +1330,7 @@ export default function LoginPage() {
 
             {/* Footer Note */}
             <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-              <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+              <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
                 By continuing, you agree to our Terms of Service and Privacy Policy
               </p>
             </div>
@@ -1317,7 +1342,7 @@ export default function LoginPage() {
               <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-6 md:p-8 max-w-[480px] w-full relative">
                 <button
                   onClick={handleBackFromVerification}
-                  className="flex items-center gap-2 mb-4 font-['Poppins',sans-serif] text-[13px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+                  className="flex items-center gap-2 mb-4 font-['Roboto',sans-serif] text-[13px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back
@@ -1337,20 +1362,20 @@ export default function LoginPage() {
                         <Mail className="w-7 h-7 text-[#FE8A0F]" />
                       </div>
                       
-                      <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                      <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                         Verify Your Email
                       </h2>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
                         Code sent to
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
+                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#FE8A0F]">
                         {verificationEmail}
                       </p>
                     </div>
                     
                     <form onSubmit={handleVerifyEmailCode} className="space-y-4">
                       <div>
-                        <Label htmlFor="email-code" className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
+                        <Label htmlFor="email-code" className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
                           Enter 4-Digit Code
                         </Label>
                         <Input
@@ -1362,7 +1387,7 @@ export default function LoginPage() {
                             const value = e.target.value.replace(/\D/g, '').slice(0, 4);
                             setEmailVerificationCode(value);
                           }}
-                          className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
+                          className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
                           maxLength={4}
                           required
                         />
@@ -1371,18 +1396,18 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={isVerifyingEmail}
-                        className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isVerifyingEmail ? "Verifying..." : "Verify & Continue"}
                       </Button>
                       {registerError && (
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                           {registerError}
                         </p>
                       )}
                       
                       <div className="text-center">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                           Didn't receive the code?{" "}
                           <button
                             type="button"
@@ -1405,20 +1430,20 @@ export default function LoginPage() {
                         <Phone className="w-7 h-7 text-[#FE8A0F]" />
                       </div>
                       
-                      <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                      <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                         Verify Your Phone
                       </h2>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
                         Code sent to
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
+                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#FE8A0F]">
                         {verificationPhone}
                       </p>
                     </div>
                     
                     <form onSubmit={handleVerifyPhoneCode} className="space-y-4">
                       <div>
-                        <Label htmlFor="phone-code" className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
+                        <Label htmlFor="phone-code" className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
                           Enter 4-Digit Code
                         </Label>
                         <Input
@@ -1430,7 +1455,7 @@ export default function LoginPage() {
                             const value = e.target.value.replace(/\D/g, '').slice(0, 4);
                             setPhoneVerificationCode(value);
                           }}
-                          className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
+                          className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
                           maxLength={4}
                           required
                         />
@@ -1439,19 +1464,19 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={isRegistering}
-                        className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isRegistering ? "Creating account..." : "Complete Verification"}
                       </Button>
                       
                       {registerError && (
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                           {registerError}
                         </p>
                       )}
                       
                       <div className="text-center">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
                           Didn't receive the code?{" "}
                           <button
                             type="button"
@@ -1476,16 +1501,16 @@ export default function LoginPage() {
                           <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                             <Briefcase className="w-7 h-7 text-[#FE8A0F]" />
               </div>
-                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                          <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                             Select Your Sector
                           </h2>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Choose the main sector you work in
                           </p>
                         </div>
 
                         <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                             Sector <span className="text-red-500">*</span>
                           </Label>
                           <Select value={professionalSector} onValueChange={setProfessionalSector}>
@@ -1510,7 +1535,7 @@ export default function LoginPage() {
                         </div>
 
                         {registerError && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                             {registerError}
                           </p>
                         )}
@@ -1518,7 +1543,7 @@ export default function LoginPage() {
                         <Button
                           type="submit"
                           disabled={isUpdatingProfile || !professionalSector}
-                          className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                          className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] text-[14px] disabled:opacity-60"
                         >
                           {isUpdatingProfile ? "Saving..." : "Next"}
                         </Button>
@@ -1532,16 +1557,16 @@ export default function LoginPage() {
                           <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                             <FolderTree className="w-7 h-7 text-[#FE8A0F]" />
                           </div>
-                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                          <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                             Select Category
                           </h2>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Choose your main service category
                           </p>
                         </div>
 
                         <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                             Category <span className="text-red-500">*</span>
                           </Label>
                           <Select value={professionalCategory} onValueChange={setProfessionalCategory}>
@@ -1561,7 +1586,7 @@ export default function LoginPage() {
                         </div>
 
                         {registerError && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                             {registerError}
                           </p>
                         )}
@@ -1571,14 +1596,14 @@ export default function LoginPage() {
                             type="button"
                             variant="outline"
                             onClick={handleBackFromVerification}
-                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                           >
                             Back
                           </Button>
                           <Button
                             type="submit"
                             disabled={isUpdatingProfile || !professionalCategory}
-                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] text-[14px] disabled:opacity-60"
                           >
                             {isUpdatingProfile ? "Saving..." : "Next"}
                           </Button>
@@ -1593,16 +1618,16 @@ export default function LoginPage() {
                           <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                             <FolderTree className="w-7 h-7 text-[#FE8A0F]" />
                           </div>
-                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                          <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                             Select Subcategories
                           </h2>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Choose all services you offer (select multiple)
                           </p>
                         </div>
 
                         <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                             Subcategories <span className="text-red-500">*</span>
                           </Label>
                           <div className="space-y-2 max-h-60 overflow-y-auto border-2 border-gray-200 rounded-xl p-4">
@@ -1629,7 +1654,7 @@ export default function LoginPage() {
                                     }
                                   }}
                                 />
-                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
                                   {subcat}
                                 </span>
                               </label>
@@ -1638,7 +1663,7 @@ export default function LoginPage() {
                         </div>
 
                         {registerError && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                             {registerError}
                           </p>
                         )}
@@ -1648,14 +1673,14 @@ export default function LoginPage() {
                             type="button"
                             variant="outline"
                             onClick={handleBackFromVerification}
-                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                           >
                             Back
                           </Button>
                           <Button
                             type="submit"
                             disabled={isUpdatingProfile || professionalSubcategories.length === 0}
-                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] text-[14px] disabled:opacity-60"
                           >
                             {isUpdatingProfile ? "Saving..." : "Next"}
                           </Button>
@@ -1670,10 +1695,10 @@ export default function LoginPage() {
                           <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                             <Shield className="w-7 h-7 text-[#FE8A0F]" />
                           </div>
-                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                          <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                             Public Liability Insurance
                           </h2>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Do you have public liability insurance?
                           </p>
                         </div>
@@ -1688,7 +1713,7 @@ export default function LoginPage() {
                               onChange={(e) => setProfessionalInsurance(e.target.value as "yes" | "no")}
                               className="w-4 h-4 text-[#FE8A0F]"
                             />
-                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                               Yes, I have public liability insurance
                             </span>
                           </label>
@@ -1701,14 +1726,14 @@ export default function LoginPage() {
                               onChange={(e) => setProfessionalInsurance(e.target.value as "yes" | "no")}
                               className="w-4 h-4 text-[#FE8A0F]"
                             />
-                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
                               No, I don't have insurance yet
                             </span>
                           </label>
                         </div>
 
                         {registerError && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                             {registerError}
                           </p>
                         )}
@@ -1718,14 +1743,14 @@ export default function LoginPage() {
                             type="button"
                             variant="outline"
                             onClick={handleBackFromVerification}
-                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                           >
                             Back
                           </Button>
                           <Button
                             type="submit"
                             disabled={isUpdatingProfile}
-                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] text-[14px] disabled:opacity-60"
                           >
                             {isUpdatingProfile ? "Saving..." : "Next"}
                           </Button>
@@ -1740,16 +1765,16 @@ export default function LoginPage() {
                           <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                             <FileText className="w-7 h-7 text-[#FE8A0F]" />
                           </div>
-                          <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
+                          <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f] mb-1.5">
                             Tell Us About Yourself
                           </h2>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
                             Describe your experience and what makes you unique
                           </p>
                         </div>
 
                         <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                             About Me <span className="text-red-500">*</span>
                           </Label>
                           <Textarea
@@ -1761,11 +1786,11 @@ export default function LoginPage() {
                               }
                             }}
                             placeholder="Tell clients about your experience, qualifications, and what you can offer..."
-                            className="min-h-[120px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                            className="min-h-[120px] border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px] resize-none"
                             maxLength={500}
                             required
                           />
-                          <p className={`mt-1 text-[11px] font-['Poppins',sans-serif] ${
+                          <p className={`mt-1 text-[11px] font-['Roboto',sans-serif] ${
                             professionalAboutMe.length >= 450 
                               ? "text-orange-600" 
                               : professionalAboutMe.length >= 500 
@@ -1777,7 +1802,7 @@ export default function LoginPage() {
                         </div>
 
                         {registerError && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                          <p className="font-['Roboto',sans-serif] text-[12px] text-red-600 text-center">
                             {registerError}
                           </p>
                         )}
@@ -1787,14 +1812,14 @@ export default function LoginPage() {
                             type="button"
                             variant="outline"
                             onClick={handleBackFromVerification}
-                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                            className="flex-1 h-11 border-2 border-gray-200 text-[#2c353f] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                           >
                             Back
                           </Button>
                           <Button
                             type="submit"
                             disabled={isUpdatingProfile || !professionalAboutMe.trim() || professionalAboutMe.length > 500}
-                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60"
+                            className="flex-1 h-11 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Roboto',sans-serif] text-[14px] disabled:opacity-60"
                           >
                             {isUpdatingProfile ? "Completing..." : "Complete Setup"}
                           </Button>
@@ -1813,7 +1838,7 @@ export default function LoginPage() {
               <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-[480px] w-full relative">
                 <button
                   onClick={handleCloseResetModal}
-                  className="flex items-center gap-2 mb-4 font-['Poppins',sans-serif] text-[13px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+                  className="flex items-center gap-2 mb-4 font-['Roboto',sans-serif] text-[13px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to Login
@@ -1822,16 +1847,16 @@ export default function LoginPage() {
                 {!resetRequestSent ? (
                   <form onSubmit={handleSendResetLink} className="space-y-4">
                     <div className="text-center mb-4">
-                      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
+                      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-2">
                         Forgot Password?
                       </h2>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
                         Enter your email and we’ll send you a secure reset link.
                       </p>
                     </div>
 
                     <div>
-                      <Label htmlFor="reset-email" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                      <Label htmlFor="reset-email" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         Email Address
                       </Label>
                       <div className="relative">
@@ -1842,14 +1867,14 @@ export default function LoginPage() {
                           placeholder="your.email@gmail.com"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
                           required
                         />
                       </div>
                     </div>
 
                     {resetError && (
-                      <p className="text-[12px] text-red-600 text-center font-['Poppins',sans-serif]">
+                      <p className="text-[12px] text-red-600 text-center font-['Roboto',sans-serif]">
                         {resetError}
                       </p>
                     )}
@@ -1857,7 +1882,7 @@ export default function LoginPage() {
                     <Button
                       type="submit"
                       disabled={isRequestingReset}
-                      className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-70"
+                      className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-70"
                     >
                       {isRequestingReset ? "Sending..." : "Send Reset Link"}
                     </Button>
@@ -1867,24 +1892,24 @@ export default function LoginPage() {
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                       <Check className="w-10 h-10 text-green-600" />
                     </div>
-                    <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
+                    <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-2">
                       Check your email
                     </h2>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
                       We've sent a password reset link to{" "}
                       <span className="text-[#3B82F6]">{resetEmail}</span>. Follow the instructions to
                       set a new password.
                     </p>
                     {resetLinkHint && (
                       <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
-                        <p className="font-['Poppins',sans-serif] text-[12px] font-semibold text-red-600 mb-2">
+                        <p className="font-['Roboto',sans-serif] text-[12px] font-semibold text-red-600 mb-2">
                           Reset Link (until SMTP is configured):
                         </p>
                         <a
                           href={resetLinkHint}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-['Poppins',sans-serif] text-[11px] text-red-700 break-all font-mono bg-white p-2 rounded border border-red-200 block hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer underline"
+                          className="font-['Roboto',sans-serif] text-[11px] text-red-700 break-all font-mono bg-white p-2 rounded border border-red-200 block hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer underline"
                         >
                           {resetLinkHint}
                         </a>
@@ -1892,7 +1917,7 @@ export default function LoginPage() {
                     )}
                     <Button
                       onClick={handleCloseResetModal}
-                      className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                      className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
                     >
                       Back to Login
                     </Button>

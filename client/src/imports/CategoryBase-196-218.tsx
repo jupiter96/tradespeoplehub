@@ -29,7 +29,7 @@ function Group2() {
   return (
     <div className="absolute contents left-0 top-0">
       <div className="absolute bg-[rgba(182,212,255,0.2)] h-[60px] left-0 rounded-[30px] top-0 w-[216px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[127.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[30px] translate-x-[-50%] whitespace-pre">{`Wedding & Events`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[127.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[30px] translate-x-[-50%] whitespace-pre">{`Wedding & Events`}</p>
       <div className="absolute left-[8px] size-[45px] top-[7px]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 45 45">
           <circle cx="22.5" cy="22.5" fill="var(--fill-0, white)" id="Ellipse 3" r="22.5" />
@@ -82,7 +82,7 @@ function Group3() {
   return (
     <div className="absolute contents left-[228px] top-0">
       <div className="absolute bg-[rgba(182,212,255,0.2)] h-[60px] left-[228px] rounded-[30px] top-0 w-[239px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[291px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Assembling & Repairs`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[291px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Assembling & Repairs`}</p>
       <div className="absolute left-[236px] size-[45px] top-[7px]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 45 45">
           <circle cx="22.5" cy="22.5" fill="var(--fill-0, white)" id="Ellipse 3" r="22.5" />
@@ -105,7 +105,7 @@ function Group4() {
   return (
     <div className="absolute contents left-[479px] top-0">
       <div className="absolute bg-[rgba(182,212,255,0.2)] h-[60px] left-[479px] rounded-[30px] top-0 w-[219px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[542px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Health & Wellbeing `}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[542px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Health & Wellbeing `}</p>
       <div className="absolute left-[487px] size-[45px] top-[7px]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 45 45">
           <circle cx="22.5" cy="22.5" fill="var(--fill-0, white)" id="Ellipse 3" r="22.5" />
@@ -127,7 +127,7 @@ function Group5() {
   return (
     <div className="absolute contents left-[710px] top-0">
       <div className="absolute bg-[rgba(182,212,255,0.2)] h-[60px] left-[710px] rounded-[30px] top-0 w-[192px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[773px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Legal & Advice`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[773px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Legal & Advice`}</p>
       <div className="absolute left-[718px] size-[45px] top-[7px]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 45 45">
           <circle cx="22.5" cy="22.5" fill="var(--fill-0, white)" id="Ellipse 3" r="22.5" />
@@ -188,7 +188,7 @@ function Group6() {
   return (
     <div className="absolute contents left-[914px] top-0">
       <div className="absolute bg-[rgba(182,212,255,0.2)] h-[60px] left-[914px] rounded-[30px] top-0 w-[205px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[977px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Fashion & Beauty`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[977px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[30px] whitespace-pre">{`Fashion & Beauty`}</p>
       <div className="absolute left-[922px] size-[45px] top-[7px]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 45 45">
           <circle cx="22.5" cy="22.5" fill="var(--fill-0, white)" id="Ellipse 3" r="22.5" />

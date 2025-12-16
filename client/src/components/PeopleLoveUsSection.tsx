@@ -52,19 +52,19 @@ function ReviewCard({ name, title, review, rating, image }: ReviewCardProps) {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <Stars rating={rating} />
-              <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[20px] ml-2">{rating.toFixed(1)}</p>
+              <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[20px] ml-2">{rating.toFixed(1)}</p>
             </div>
           </div>
         </div>
 
         {/* Name and Title */}
         <div className="mb-4">
-          <h3 className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[16px] mb-1">{name}</h3>
-          <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px]">{title}</p>
+          <h3 className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[16px] mb-1">{name}</h3>
+          <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px]">{title}</p>
         </div>
 
         {/* Review Text */}
-        <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] flex-1">
+        <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] flex-1">
           {review}
         </p>
       </div>
@@ -124,7 +124,7 @@ export default function PeopleLoveUsSection() {
     <section className="w-full bg-[#f0f0f0] py-16 md:py-20">
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
         {/* Title */}
-        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
+        <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
           People Love Us
         </h2>
 

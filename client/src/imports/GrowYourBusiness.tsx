@@ -15,7 +15,7 @@ function Stars() {
           <path d={svgPaths.p19b0200} fill="var(--fill-0, #ED8A19)" id="Vector" />
         </svg>
       </div>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[12.074px] leading-[1.24] left-[857.43px] not-italic text-[#5b5b5b] text-[10px] top-[380.09px] w-[29.83px]">4.3</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[12.074px] leading-[1.24] left-[857.43px] not-italic text-[#5b5b5b] text-[10px] top-[380.09px] w-[29.83px]">4.3</p>
     </div>
   );
 }
@@ -27,7 +27,7 @@ function Group() {
       <div className="absolute left-[791.19px] size-[38.242px] top-[351.13px]">
         <img alt="" className="block max-w-none size-full" height="38.242" src={imgEllipse16} width="38.242" />
       </div>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[19px] leading-[normal] left-[843px] not-italic text-[#5b5b5b] text-[14px] top-[355px] w-[113px]">Josef Flores</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[19px] leading-[normal] left-[843px] not-italic text-[#5b5b5b] text-[14px] top-[355px] w-[113px]">Josef Flores</p>
       <Stars />
     </div>
   );
@@ -41,7 +41,7 @@ function Stars1() {
           <path d={svgPaths.p1d950380} fill="var(--fill-0, #ED8A19)" id="Vector" />
         </svg>
       </div>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[12.352px] leading-[1.24] left-[630.21px] not-italic text-[#5b5b5b] text-[10px] top-[153.04px] w-[30.516px]">4.3</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[12.352px] leading-[1.24] left-[630.21px] not-italic text-[#5b5b5b] text-[10px] top-[153.04px] w-[30.516px]">4.3</p>
     </div>
   );
 }
@@ -53,7 +53,7 @@ function Group1() {
       <div className="absolute left-[562.45px] size-[39.121px] top-[123.4px]">
         <img alt="" className="block max-w-none size-full" height="39.121" src={imgEllipse17} width="39.121" />
       </div>
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[20px] leading-[normal] left-[616px] not-italic text-[#5b5b5b] text-[14px] top-[127px] w-[147px]">Alexander Lesli</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[20px] leading-[normal] left-[616px] not-italic text-[#5b5b5b] text-[14px] top-[127px] w-[147px]">Alexander Lesli</p>
       <Stars1 />
     </div>
   );
@@ -74,7 +74,7 @@ function Cta() {
   return (
     <div className="absolute contents left-[calc(50%-464px)] top-[383px] translate-x-[-50%]" data-name="CTA">
       <div className="absolute bg-[#fe8a0f] inset-[69.26%_82.84%_23.51%_-0.09%] rounded-[20px]" />
-      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[normal] left-[95.5px] not-italic text-[15px] text-center text-white top-[392px] translate-x-[-50%] w-[157px]">Start Selling Now!</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[normal] left-[95.5px] not-italic text-[15px] text-center text-white top-[392px] translate-x-[-50%] w-[157px]">Start Selling Now!</p>
     </div>
   );
 }
@@ -106,9 +106,9 @@ export default function GrowYourBusiness() {
       <Group />
       <Group1 />
       <Group2 />
-      <p className="absolute font-['Poppins:Regular',sans-serif] h-[124px] leading-[1.24] left-[-1px] not-italic text-[#5b5b5b] text-[14px] top-[258px] w-[312px]">{`Whether you're a genius spreadsheet guru, a skilled carpenter, or anything in between, find your next job with ease on our platform. Sell your services directly to a wide audience and watch your business grow!`}</p>
+      <p className="absolute font-['Roboto:Regular',sans-serif] h-[124px] leading-[1.24] left-[-1px] not-italic text-[#5b5b5b] text-[14px] top-[258px] w-[312px]">{`Whether you're a genius spreadsheet guru, a skilled carpenter, or anything in between, find your next job with ease on our platform. Sell your services directly to a wide audience and watch your business grow!`}</p>
       <Cta />
-      <div className="absolute font-['Poppins:Bold',sans-serif] font-['Poppins:Regular',sans-serif] leading-[44px] left-[-1px] not-italic text-[#2c353f] text-[0px] text-[36px] text-nowrap top-[45px] whitespace-pre">
+      <div className="absolute font-['Roboto:Bold',sans-serif] font-['Roboto:Regular',sans-serif] leading-[44px] left-[-1px] not-italic text-[#2c353f] text-[0px] text-[36px] text-nowrap top-[45px] whitespace-pre">
         <p className="mb-0">{`The Easiest Way to `}</p>
         <p className="mb-0">{`Sell Your Services `}</p>
         <p className="mb-0">

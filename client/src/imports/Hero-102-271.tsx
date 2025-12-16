@@ -672,9 +672,9 @@ export default function Hero() {
   return (
     <div className="relative size-full" data-name="Hero">
       <Banner />
-      <p className="absolute font-['Poppins:Bold',sans-serif] h-[108px] leading-[32px] left-1/2 not-italic text-[24px] text-center text-white top-[133px] translate-x-[-50%] w-[533px]">
+      <p className="absolute font-['Roboto:Bold',sans-serif] h-[108px] leading-[32px] left-1/2 not-italic text-[24px] text-center text-white top-[133px] translate-x-[-50%] w-[533px]">
         <span>{`Order `}</span>
-        <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">{`Home & Garden Services`}</span>
+        <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f]">{`Home & Garden Services`}</span>
         <span>{` as Easily as Shopping on Amazon`}</span>
       </p>
     </div>

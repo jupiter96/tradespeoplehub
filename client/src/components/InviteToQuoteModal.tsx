@@ -116,10 +116,10 @@ export default function InviteToQuoteModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
+          <DialogTitle className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f]">
             Request Quote from {professionalName}
           </DialogTitle>
-          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+          <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
             Describe your job and {professionalName} will provide you with a custom quote
           </DialogDescription>
         </DialogHeader>
@@ -127,16 +127,16 @@ export default function InviteToQuoteModal({
         <div className="space-y-5 py-4">
           {/* Category Selection */}
           <div className="space-y-2">
-            <Label htmlFor="category" className="font-['Poppins',sans-serif] text-[14px] font-medium">
+            <Label htmlFor="category" className="font-['Roboto',sans-serif] text-[14px] font-medium">
               Category <span className="text-red-500">*</span>
             </Label>
             <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-              <SelectTrigger className="font-['Poppins',sans-serif]">
+              <SelectTrigger className="font-['Roboto',sans-serif]">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value} className="font-['Poppins',sans-serif]">
+                  <SelectItem key={cat.value} value={cat.value} className="font-['Roboto',sans-serif]">
                     {cat.label}
                   </SelectItem>
                 ))}
@@ -146,7 +146,7 @@ export default function InviteToQuoteModal({
 
           {/* Job Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="font-['Poppins',sans-serif] text-[14px] font-medium">
+            <Label htmlFor="title" className="font-['Roboto',sans-serif] text-[14px] font-medium">
               Job Title <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -154,13 +154,13 @@ export default function InviteToQuoteModal({
               placeholder="e.g., Fix leaking tap in kitchen"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="font-['Poppins',sans-serif]"
+              className="font-['Roboto',sans-serif]"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="font-['Poppins',sans-serif] text-[14px] font-medium">
+            <Label htmlFor="description" className="font-['Roboto',sans-serif] text-[14px] font-medium">
               Job Description <span className="text-red-500">*</span>
             </Label>
             <Textarea
@@ -168,16 +168,16 @@ export default function InviteToQuoteModal({
               placeholder="Provide detailed information about the job..."
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="font-['Poppins',sans-serif] min-h-[120px]"
+              className="font-['Roboto',sans-serif] min-h-[120px]"
             />
-            <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
+            <p className="text-[12px] text-gray-500 font-['Roboto',sans-serif]">
               {formData.description.length}/500 characters
             </p>
           </div>
 
           {/* Postcode */}
           <div className="space-y-2">
-            <Label htmlFor="postcode" className="font-['Poppins',sans-serif] text-[14px] font-medium">
+            <Label htmlFor="postcode" className="font-['Roboto',sans-serif] text-[14px] font-medium">
               Postcode <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
@@ -187,7 +187,7 @@ export default function InviteToQuoteModal({
                 placeholder="e.g., SW1A 1AA"
                 value={formData.postcode}
                 onChange={(e) => setFormData(prev => ({ ...prev, postcode: e.target.value.toUpperCase() }))}
-                className="font-['Poppins',sans-serif] pl-10"
+                className="font-['Roboto',sans-serif] pl-10"
               />
             </div>
           </div>
@@ -196,16 +196,16 @@ export default function InviteToQuoteModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Budget */}
             <div className="space-y-2">
-              <Label htmlFor="budget" className="font-['Poppins',sans-serif] text-[14px] font-medium">
+              <Label htmlFor="budget" className="font-['Roboto',sans-serif] text-[14px] font-medium">
                 Budget Range
               </Label>
               <Select value={formData.budget} onValueChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}>
-                <SelectTrigger className="font-['Poppins',sans-serif]">
+                <SelectTrigger className="font-['Roboto',sans-serif]">
                   <SelectValue placeholder="Select budget" />
                 </SelectTrigger>
                 <SelectContent>
                   {budgetOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="font-['Poppins',sans-serif]">
+                    <SelectItem key={option.value} value={option.value} className="font-['Roboto',sans-serif]">
                       {option.label}
                     </SelectItem>
                   ))}
@@ -215,16 +215,16 @@ export default function InviteToQuoteModal({
 
             {/* Urgency */}
             <div className="space-y-2">
-              <Label htmlFor="urgency" className="font-['Poppins',sans-serif] text-[14px] font-medium">
+              <Label htmlFor="urgency" className="font-['Roboto',sans-serif] text-[14px] font-medium">
                 When do you need it?
               </Label>
               <Select value={formData.urgency} onValueChange={(value) => setFormData(prev => ({ ...prev, urgency: value }))}>
-                <SelectTrigger className="font-['Poppins',sans-serif]">
+                <SelectTrigger className="font-['Roboto',sans-serif]">
                   <SelectValue placeholder="Select timing" />
                 </SelectTrigger>
                 <SelectContent>
                   {urgencyOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="font-['Poppins',sans-serif]">
+                    <SelectItem key={option.value} value={option.value} className="font-['Roboto',sans-serif]">
                       {option.label}
                     </SelectItem>
                   ))}
@@ -235,7 +235,7 @@ export default function InviteToQuoteModal({
 
           {/* Image Upload */}
           <div className="space-y-2">
-            <Label className="font-['Poppins',sans-serif] text-[14px] font-medium">
+            <Label className="font-['Roboto',sans-serif] text-[14px] font-medium">
               Add Photos (Optional)
             </Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
@@ -252,10 +252,10 @@ export default function InviteToQuoteModal({
                 className="flex flex-col items-center justify-center cursor-pointer"
               >
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                <span className="text-[14px] text-gray-600 font-['Poppins',sans-serif]">
+                <span className="text-[14px] text-gray-600 font-['Roboto',sans-serif]">
                   Click to upload images
                 </span>
-                <span className="text-[12px] text-gray-400 font-['Poppins',sans-serif] mt-1">
+                <span className="text-[12px] text-gray-400 font-['Roboto',sans-serif] mt-1">
                   Max 5 images
                 </span>
               </label>
@@ -289,13 +289,13 @@ export default function InviteToQuoteModal({
           <Button
             variant="outline"
             onClick={onClose}
-            className="flex-1 font-['Poppins',sans-serif]"
+            className="flex-1 font-['Roboto',sans-serif]"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            className="flex-1 bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
+            className="flex-1 bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Roboto',sans-serif]"
           >
             Send Quote Request
           </Button>

@@ -202,7 +202,7 @@ export default function CategorySectionNew() {
                       <div className="flex items-center justify-center w-12 h-12 rounded-lg">
                         <span className="text-[32px]">{category.emoji}</span>
                       </div>
-                      <span className="text-gray-800 font-['Poppins',sans-serif] font-medium text-[14px] whitespace-nowrap">
+                      <span className="text-gray-800 font-['Roboto',sans-serif] font-medium text-[14px] whitespace-nowrap">
                         {category.name}
                       </span>
                     </button>
