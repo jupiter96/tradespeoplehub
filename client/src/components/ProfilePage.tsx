@@ -6,7 +6,7 @@ import Footer from "./Footer";
 import API_BASE_URL from "../config/api";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useMessenger } from "./MessengerContext";
-import { useServiceCategories } from "../hooks/useSectorsAndCategories";
+import { useCategories, useSectors, useServiceCategories } from "../hooks/useSectorsAndCategories";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useCart } from "./CartContext";
 import { allServices, type Service as ServiceDataType } from "./servicesData";
@@ -32,6 +32,7 @@ type ProfileData = {
   lastName?: string;
   tradingName?: string;
   avatar?: string;
+  sector?: string;
   townCity?: string;
   county?: string;
   address?: string;
@@ -66,14 +67,22 @@ export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { startConversation } = useMessenger();
-  const { serviceCategories } = useServiceCategories(undefined, undefined, true);
-  const { addToCart } = useCart();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"about" | "services" | "portfolio" | "reviews">("about");
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+
+  const { serviceCategories } = useServiceCategories(undefined, undefined, true);
+  const { sectors } = useSectors();
+  const sectorId = useMemo(() => {
+    const name = (profile?.sector || "").trim();
+    if (!name) return undefined;
+    return sectors.find((s) => s.name === name)?._id;
+  }, [sectors, profile?.sector]);
+  const { categories } = useCategories(sectorId, undefined, true);
+  const { addToCart } = useCart();
 
   const defaultCoverImageUrl = useMemo(() => {
     return new URL(
@@ -149,16 +158,50 @@ export default function ProfilePage() {
     return map;
   }, [serviceCategories]);
 
+  const categoryNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of categories || []) {
+      if (c?._id && c?.name) map[c._id] = c.name;
+    }
+    return map;
+  }, [categories]);
+
+  const subCategoryNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of categories || []) {
+      for (const sc of c?.subCategories || []) {
+        if (sc?._id && sc?.name) map[sc._id] = sc.name;
+      }
+    }
+    return map;
+  }, [categories]);
+
   const serviceLabels = useMemo(() => {
     const raw = (profile?.services || []).filter(Boolean).map((s) => String(s).trim()).filter(Boolean);
-    // Prefer subcategory names, then category names, then raw strings (non-ObjectId only)
-    const mapped = raw.map((s) => serviceSubCategoryNameById[s] || serviceCategoryNameById[s] || s);
-    const cleaned = mapped.filter((s) => !looksLikeObjectId(s)); // hide raw IDs if not mapped
+    // Support BOTH storages:
+    // - registration stores Category/SubCategory IDs (categories/subcategories endpoints)
+    // - some flows store ServiceCategory/ServiceSubCategory IDs (service-categories endpoint)
+    // - legacy may store plain names
+    const mapped = raw.map(
+      (s) =>
+        subCategoryNameById[s] ||
+        categoryNameById[s] ||
+        serviceSubCategoryNameById[s] ||
+        serviceCategoryNameById[s] ||
+        s
+    );
+    const cleaned = mapped.filter((s) => !looksLikeObjectId(s)); // hide raw IDs if not mapped to a name
     return Array.from(new Set(cleaned));
-  }, [profile?.services, serviceCategoryNameById, serviceSubCategoryNameById]);
+  }, [
+    profile?.services,
+    subCategoryNameById,
+    categoryNameById,
+    serviceCategoryNameById,
+    serviceSubCategoryNameById,
+  ]);
 
   const topCategory = useMemo(() => {
-    return serviceLabels[0] || "Service Provider";
+    return serviceLabels[0] || "";
   }, [serviceLabels]);
 
   const displayLocation = useMemo(() => {
@@ -257,14 +300,14 @@ export default function ProfilePage() {
     const milesMatch = milesRaw.match(/(\d+(\.\d+)?)/);
     const miles = milesMatch?.[1] || "";
 
-    const city = (profile?.townCity || profile?.county || "").trim();
+    const city = (profile?.townCity || "").trim();
     const postcode = (profile?.postcode || "").trim().toUpperCase();
     const outward = postcode ? postcode.split(/\s+/)[0] : "";
 
     if (!miles || !city || !outward) return "";
 
-    // Requested format: "x miles within city, only first part of postal code xxx(last part)"
-    return `${miles} miles within ${city}, only first part of postal code ${outward}(last part)`;
+    // Requested: show outward code only, mask inward code as "xxx"
+    return `${miles} miles within ${city}, ${outward} xxx`;
   }, [profile?.travelDistance, profile?.townCity, profile?.county, profile?.postcode]);
 
   const portfolioImages = useMemo(() => {
@@ -371,14 +414,12 @@ export default function ProfilePage() {
                 </span>
               </div>
 
-              {/* Categories (show names, not IDs) */}
-              <div className="badges" aria-label="categories">
-                {(serviceLabels.length > 0 ? serviceLabels : [topCategory]).map((label) => (
-                  <span key={label} className="badge-pill">
-                    {label}
-                  </span>
-                ))}
-              </div>
+              {/* One primary category under trading name (not a badge) */}
+              {topCategory && (
+                <div className="seller-title" aria-label="Primary category">
+                  {topCategory}
+                </div>
+              )}
 
               <div className="seller-subtitle">Member since {memberSince}</div>
 

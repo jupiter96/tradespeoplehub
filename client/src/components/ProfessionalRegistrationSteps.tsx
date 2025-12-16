@@ -181,18 +181,10 @@ export default function ProfessionalRegistrationSteps() {
     if (currentStep < STEPS.length) {
       setIsSaving(true);
       try {
-        const updateData: any = {
-          firstName: userInfo?.firstName || "",
-          lastName: userInfo?.lastName || "",
-          email: userInfo?.email || "",
-          phone: userInfo?.phone || "",
-          postcode: userInfo?.postcode || "",
-          address: userInfo?.address || "",
-          townCity: userInfo?.townCity || "",
-          county: userInfo?.county || "",
-          tradingName: userInfo?.tradingName || "",
-          travelDistance: userInfo?.travelDistance || "",
-        };
+        // Only send fields this wizard actually edits.
+        // Important: do NOT send blank values for required registration fields (like travelDistance),
+        // otherwise they can get cleared during multi-step saves.
+        const updateData: any = {};
 
         // Update about service and qualifications
         if (currentStep >= 1) {
@@ -264,17 +256,8 @@ export default function ProfessionalRegistrationSteps() {
       // Store category and subcategory IDs in services array
       const allServices = [...categories, ...subcategories];
       
+      // Only send fields this wizard edits; avoid wiping required registration fields.
       const updateData: any = {
-        firstName: userInfo?.firstName || "",
-        lastName: userInfo?.lastName || "",
-        email: userInfo?.email || "",
-        phone: userInfo?.phone || "",
-        postcode: userInfo?.postcode || "",
-        address: userInfo?.address || "",
-        townCity: userInfo?.townCity || "",
-        county: userInfo?.county || "",
-        tradingName: userInfo?.tradingName || "",
-        travelDistance: userInfo?.travelDistance || "",
         services: allServices, // Array of category and subcategory IDs
         hasPublicLiability: insurance,
       };

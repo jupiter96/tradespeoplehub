@@ -2444,7 +2444,18 @@ router.put('/profile', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Trading name is required for professionals' });
       }
       
-      user.travelDistance = travelDistance || undefined;
+      // Travel distance: only update when a non-empty value is provided.
+      // This prevents accidentally clearing the field when the frontend sends "" during multi-step profile setup.
+      if (travelDistance !== undefined && travelDistance !== null) {
+        const trimmedTravelDistance = String(travelDistance).trim();
+        if (trimmedTravelDistance) {
+          user.travelDistance = trimmedTravelDistance;
+        } else if (!user.travelDistance) {
+          return res.status(400).json({ error: 'Travel distance is required for professionals' });
+        }
+      } else if (!user.travelDistance) {
+        return res.status(400).json({ error: 'Travel distance is required for professionals' });
+      }
       
       // Sector can only be set once during registration, cannot be changed afterwards
       if (sector !== undefined && sector !== null) {
