@@ -376,11 +376,14 @@ export default function ProfilePage() {
     return insuranceInfo.hasPublicLiability || hasIndemnity || Boolean(insuranceInfo.expiry);
   }, [insuranceInfo.hasPublicLiability, insuranceInfo.indemnity, insuranceInfo.expiry]);
 
+  const hasSkillsInfo = serviceLabels.length > 0;
+
   const hasAnyAboutInfo = useMemo(() => {
     const hasBio = Boolean(bioText);
-    return hasBio || hasQualificationsInfo || hasInsuranceInfo;
+    return hasBio || hasSkillsInfo || hasQualificationsInfo || hasInsuranceInfo;
   }, [
     bioText,
+    hasSkillsInfo,
     hasQualificationsInfo,
     hasInsuranceInfo,
   ]);
@@ -603,6 +606,19 @@ export default function ProfilePage() {
                       <div>
                         <h3 className="section-title">Bio</h3>
                         <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{bioText}</p>
+                      </div>
+                    )}
+
+                    {hasSkillsInfo && (
+                      <div>
+                        <h3 className="section-title">Skills &amp; Expertise</h3>
+                        <div className="badges" aria-label="skills and expertise">
+                          {serviceLabels.map((label) => (
+                            <span key={label} className="badge-pill">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -865,21 +881,6 @@ export default function ProfilePage() {
                     </div>
                   ))}
                 </div>
-              </div>
-
-              <div className="widget" aria-label="Available services">
-                <div className="widget-title">Available services</div>
-                {serviceLabels.length === 0 ? (
-                  <p className="text-slate-500 text-sm">No services selected.</p>
-                ) : (
-                  <div className="badges" aria-label="available services badges">
-                    {serviceLabels.map((label) => (
-                      <span key={label} className="badge-pill">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="widget" aria-label="Service area">

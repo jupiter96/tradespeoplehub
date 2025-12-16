@@ -204,8 +204,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--pl-blue-10);
-  color: var(--pl-blue);
+  background: rgba(254, 138, 15, 0.12);
+  color: #fe8a0f;
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 12px;
