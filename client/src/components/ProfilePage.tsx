@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CreditCard, FileText, IdCard, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { CreditCard, FileText, IdCard, Mail, MapPin, MessageCircle, Phone, ShoppingCart, Star, Zap } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import API_BASE_URL from "../config/api";
@@ -8,6 +8,8 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useMessenger } from "./MessengerContext";
 import { useServiceCategories } from "../hooks/useSectorsAndCategories";
 import InviteToQuoteModal from "./InviteToQuoteModal";
+import { useCart } from "./CartContext";
+import { allServices, type Service as ServiceDataType } from "./servicesData";
 import "./ProfilePage.css";
 
 type PublicProfile = {
@@ -65,6 +67,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { startConversation } = useMessenger();
   const { serviceCategories } = useServiceCategories(undefined, undefined, true);
+  const { addToCart } = useCart();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -264,38 +267,6 @@ export default function ProfilePage() {
     return `${miles} miles within ${city}, only first part of postal code ${outward}(last part)`;
   }, [profile?.travelDistance, profile?.townCity, profile?.county, profile?.postcode]);
 
-  const mockServices = useMemo(() => {
-    const img1 = new URL("../assets/46588005695464b7def72a24e7bb7c324232fb8e.png", import.meta.url).href;
-    const img2 = new URL("../assets/9e1fa7019bb76742ab74f35d79e90baab00a59e9.png", import.meta.url).href;
-    const img3 = new URL("../assets/3c4f6d7cd8e52d1fbd106cc8702ba2e53af44c6f.png", import.meta.url).href;
-    return [
-      {
-        id: "svc-1",
-        title: "Standard Service Package",
-        price: 80,
-        delivery: "1-3 Days",
-        image: img1,
-        category: "Management",
-      },
-      {
-        id: "svc-2",
-        title: "Logo Design + Revisions",
-        price: 50,
-        delivery: "2-5 Days",
-        image: img2,
-        category: "Design",
-      },
-      {
-        id: "svc-3",
-        title: "SEO Audit + Action Plan",
-        price: 120,
-        delivery: "3-7 Days",
-        image: img3,
-        category: "SEO",
-      },
-    ];
-  }, []);
-
   const portfolioImages = useMemo(() => {
     // Unsplash (no API key) - fixed images for a consistent gallery.
     return [
@@ -320,6 +291,15 @@ export default function ProfilePage() {
       return { ...r, time, stars };
     });
   }, [profile?.reviews]);
+
+  const homeServiceCards = useMemo(() => {
+    // Use HomePage/FeaturedServices data source, but show ONLY 3 cards.
+    const ids = [1, 4, 7];
+    const selected = ids
+      .map((sid) => allServices.find((s) => s.id === sid))
+      .filter((s): s is ServiceDataType => Boolean(s));
+    return selected.slice(0, 3);
+  }, []);
 
   if (loading) {
     return (
@@ -499,20 +479,141 @@ export default function ProfilePage() {
             )}
 
             {activeTab === "services" && (
-              <div className="gigs-grid">
-                {mockServices.map((g) => (
-                  <div key={g.id} className="gig-card">
-                    <div className="gig-image">
-                      <img src={g.image} alt={g.title} />
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                {homeServiceCards.map((service) => (
+                  <div
+                    key={service.id}
+                    onClick={() => navigate(`/service/${service.id}`)}
+                    className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
+                  >
+                    {/* Image Section */}
+                    <div className="relative h-[110px] md:h-[170px]">
+                      <img src={service.image} alt={service.description} className="w-full h-full object-cover" />
+                      {/* Badges */}
+                      {service.badges && service.badges.length > 0 && (
+                        <div className="absolute top-2 md:top-3 right-2 md:right-3 flex flex-col gap-1">
+                          {service.badges.slice(0, 2).map((badge, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Poppins',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
+                            >
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="gig-body">
-                      <div className="gig-title">{g.title}</div>
-                      <div className="gig-meta">
-                        <span>{g.category}</span>
-                        <span className="font-semibold text-slate-900">£{g.price.toFixed(2)}</span>
+
+                    {/* Content Section */}
+                    <div className="p-2 md:p-4 flex flex-col flex-1">
+                      {/* Provider Info */}
+                      <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2 min-h-[24px] md:min-h-[32px]">
+                        <img
+                          src={service.providerImage}
+                          alt={service.tradingName}
+                          className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
+                        />
+                        <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
+                          {service.tradingName}
+                        </span>
                       </div>
-                      <div className="mt-2 text-xs text-slate-500">
-                        Delivery: <b className="text-slate-700">{g.delivery}</b>
+
+                      {/* Description */}
+                      <p className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b] mb-2 md:mb-3 h-[28px] md:h-[36px] line-clamp-2">
+                        {service.description}
+                      </p>
+
+                      {/* Star Rating */}
+                      <div className="flex items-center justify-between mb-2 md:mb-3 min-h-[16px] md:min-h-[20px]">
+                        {service.reviewCount > 0 ? (
+                          <>
+                            <div className="flex items-center gap-0.5 md:gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-2.5 h-2.5 md:w-3.5 md:h-3.5 ${
+                                    star <= Math.floor(service.rating)
+                                      ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-0.5 md:gap-1">
+                              <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
+                                {service.rating}
+                              </span>
+                              <span className="font-['Poppins',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
+                                ({service.completedTasks})
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-full" />
+                        )}
+                      </div>
+
+                      {/* Price and Delivery Section */}
+                      <div className="mb-2 md:mb-4">
+                        <div className="h-[18px] md:h-[24px] mb-0.5 md:mb-1 flex items-center">
+                          {service.originalPrice ? (
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
+                                £{service.originalPrice}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center justify-between gap-1 md:gap-2">
+                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
+                            <span className="text-[14px] md:text-[18px] text-[#2c353f]">£{service.price}</span>/{service.priceUnit}
+                          </span>
+                          <div className="flex-shrink-0">
+                            {service.deliveryType === "same-day" ? (
+                              <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                                <span className="font-medium heartbeat-text">⚡ Same Day</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                                <span className="font-medium">Standard</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col gap-1.5 md:gap-2 items-center mt-auto">
+                        <button
+                          className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/service/${service.id}`);
+                          }}
+                        >
+                          <Zap className="w-3 h-3 md:w-4 md:h-4" />
+                          Buy Now!
+                        </button>
+                        <button
+                          className="w-[80%] h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(
+                              {
+                                id: String(service.id),
+                                title: service.description,
+                                seller: service.tradingName,
+                                price: parseFloat(service.price),
+                                image: service.image,
+                                rating: service.rating,
+                              },
+                              1
+                            );
+                          }}
+                        >
+                          <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
+                          Add to cart
+                        </button>
                       </div>
                     </div>
                   </div>
