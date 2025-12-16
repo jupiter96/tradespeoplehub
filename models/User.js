@@ -114,6 +114,12 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Completed jobs/tasks count for public profile stats (incremented by business logic elsewhere)
+    completedJobs: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     insuranceExpiryDate: {
       type: Date,
       default: null,

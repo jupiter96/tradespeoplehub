@@ -3276,6 +3276,7 @@ router.get('/profile/:identifier', async (req, res) => {
       hasPublicLiability: user.hasPublicLiability,
       professionalIndemnityAmount: user.professionalIndemnityAmount,
       insuranceExpiryDate: user.insuranceExpiryDate,
+      completedJobs: typeof user.completedJobs === 'number' ? user.completedJobs : 0,
       townCity: user.townCity,
       county: user.county,
       postcode: user.postcode,

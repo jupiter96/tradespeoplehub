@@ -49,6 +49,46 @@
   row-gap: 8px;
 }
 
+/* Inline stats row (rating + reviews + completed jobs) */
+.prolancer-profile .profile-stats-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  flex-wrap: wrap;
+}
+
+.prolancer-profile .profile-stats-inline .stat-star {
+  width: 16px;
+  height: 16px;
+  color: #cbd5e1;
+}
+
+.prolancer-profile .profile-stats-inline .stat-star.is-active {
+  color: #fe8a0f;
+  fill: #fe8a0f;
+}
+
+.prolancer-profile .profile-stats-inline .stat-rating {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.prolancer-profile .profile-stats-inline .stat-reviews {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.prolancer-profile .profile-stats-inline .stat-dot {
+  color: #94a3b8;
+  padding: 0 2px;
+}
+
+.prolancer-profile .profile-stats-inline .stat-completed {
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .prolancer-profile .seller-avatar-wrap {
   width: 100%;
   max-width: 160px;
@@ -404,6 +444,126 @@
   margin: 0 0 10px;
 }
 
+.prolancer-profile .about-modern-block {
+  margin-top: 4px;
+}
+
+/* Qualifications & Certifications (modern list) */
+.prolancer-profile .qa-list {
+  display: grid;
+  gap: 10px;
+}
+
+.prolancer-profile .qa-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.prolancer-profile .qa-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.prolancer-profile .qa-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(254, 138, 15, 0.12);
+  color: #fe8a0f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.prolancer-profile .qa-text {
+  min-width: 0;
+}
+
+.prolancer-profile .qa-title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.prolancer-profile .qa-meta {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.prolancer-profile .qa-check {
+  width: 20px;
+  height: 20px;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+/* Insurance (modern card) */
+.prolancer-profile .insurance-card {
+  border-radius: 14px;
+  padding: 14px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #f8fafc;
+}
+
+.prolancer-profile .insurance-card.is-verified {
+  border-color: rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.prolancer-profile .insurance-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.prolancer-profile .insurance-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+  flex-shrink: 0;
+}
+
+.prolancer-profile .insurance-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.prolancer-profile .insurance-check {
+  width: 18px;
+  height: 18px;
+  color: #22c55e;
+}
+
+.prolancer-profile .insurance-lines {
+  margin-top: 8px;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.35;
+  display: grid;
+  gap: 4px;
+}
+
 .prolancer-profile .section-list {
   margin: 0;
   padding-left: 18px;
@@ -609,7 +769,7 @@
 .prolancer-profile .verification-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   min-width: 0;
 }
@@ -619,37 +779,24 @@
   color: #0f172a;
 }
 
-.prolancer-profile .verification-badge {
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
-
-.prolancer-profile .verification-badge.status-verified,
 .prolancer-profile .verification-icon.status-verified {
   background: rgba(34, 197, 94, 0.12);
   color: #16a34a;
   border-color: rgba(34, 197, 94, 0.25);
 }
 
-.prolancer-profile .verification-badge.status-pending,
 .prolancer-profile .verification-icon.status-pending {
   background: rgba(245, 158, 11, 0.12);
   color: #b45309;
   border-color: rgba(245, 158, 11, 0.25);
 }
 
-.prolancer-profile .verification-badge.status-rejected,
 .prolancer-profile .verification-icon.status-rejected {
   background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
   border-color: rgba(239, 68, 68, 0.25);
 }
 
-.prolancer-profile .verification-badge.status-not-started,
 .prolancer-profile .verification-icon.status-not-started {
   background: rgba(148, 163, 184, 0.18);
   color: #475569;

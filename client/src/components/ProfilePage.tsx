@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CreditCard, FileText, IdCard, Mail, MapPin, MessageCircle, Phone, ShoppingCart, Star, Zap } from "lucide-react";
+import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import API_BASE_URL from "../config/api";
@@ -39,6 +39,7 @@ type ProfileData = {
   address?: string;
   postcode?: string;
   travelDistance?: string;
+  completedJobs?: number;
   createdAt?: string;
   services?: string[];
   aboutService?: string;
@@ -50,8 +51,10 @@ type ProfileData = {
   verification?: {
     email?: { status?: string };
     phone?: { status?: string };
+    address?: { status?: string };
     idCard?: { status?: string };
     paymentMethod?: { status?: string };
+    publicLiabilityInsurance?: { status?: string };
   };
   ratingAverage?: number;
   ratingCount?: number;
@@ -261,6 +264,7 @@ export default function ProfilePage() {
   const rating = typeof profile?.ratingAverage === "number" ? profile.ratingAverage : 0;
   const ratingCount = typeof profile?.ratingCount === "number" ? profile.ratingCount : 0;
   const ratingPercent = Math.min(100, Math.max(0, (rating / 5) * 100));
+  const completedJobs = typeof profile?.completedJobs === "number" ? profile.completedJobs : 0;
 
   const handleMessage = () => {
     if (!profile) return;
@@ -283,6 +287,66 @@ export default function ProfilePage() {
   const certificationsText = useMemo(() => {
     return (profile?.publicProfile?.certifications || "").trim();
   }, [profile?.publicProfile?.certifications]);
+
+  const qualificationItems = useMemo(() => {
+    // Convert free-form text into list items similar to the design mock.
+    // Supports:
+    // - one item per line
+    // - optional meta line (next line containing ":" like "Obtained: 2012")
+    // - inline meta via " | " or " - "
+    const lines = `${qualificationsText}\n${certificationsText}`
+      .split(/\r?\n/g)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const items: Array<{ title: string; meta?: string; verified: boolean }> = [];
+    const isUnverified = (s: string) => /(pending|unverified|not verified)/i.test(s);
+
+    // Trade qualification flag as a top item (if present)
+    if (profile?.hasTradeQualification === "yes") {
+      items.push({ title: "Trade qualification", meta: "Verified", verified: true });
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      if (!raw) continue;
+
+      // If this is a meta-looking line and we don't have a preceding title, skip.
+      const looksLikeMetaOnly = /^[a-z\s]+:/i.test(raw) && raw.length < 60;
+      if (looksLikeMetaOnly) continue;
+
+      let title = raw;
+      let meta = "";
+
+      if (raw.includes("|")) {
+        const parts = raw.split("|").map((p) => p.trim()).filter(Boolean);
+        title = parts[0] || raw;
+        meta = parts.slice(1).join(" • ");
+      } else if (raw.includes(" - ")) {
+        const parts = raw.split(" - ").map((p) => p.trim()).filter(Boolean);
+        title = parts[0] || raw;
+        meta = parts.slice(1).join(" • ");
+      } else {
+        const next = lines[i + 1] || "";
+        if (next && /^[a-z\s]+:/i.test(next)) {
+          meta = next;
+          i++; // consume meta line
+        }
+      }
+
+      const verified = !isUnverified(title) && !isUnverified(meta);
+      items.push({ title, meta: meta || undefined, verified });
+    }
+
+    // Deduplicate by title+meta (keep order)
+    const seen = new Set<string>();
+    return items.filter((it) => {
+      const key = `${it.title}::${it.meta || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [profile?.hasTradeQualification, qualificationsText, certificationsText]);
 
   const insuranceInfo = useMemo(() => {
     const hasPublicLiability = profile?.hasPublicLiability === "yes";
@@ -323,16 +387,16 @@ export default function ProfilePage() {
 
   const verificationItems = useMemo(() => {
     const statusOf = (v?: { status?: string }) => (v?.status || "not-started") as string;
-    const emailStatus = statusOf(profile?.verification?.email);
     const phoneStatus = statusOf(profile?.verification?.phone);
+    const addressStatus = statusOf(profile?.verification?.address);
     const identityStatus = statusOf(profile?.verification?.idCard);
-    const paymentStatus = statusOf(profile?.verification?.paymentMethod);
+    const insuranceStatus = statusOf(profile?.verification?.publicLiabilityInsurance);
 
     return [
-      { key: "email", label: "Email", status: emailStatus, Icon: Mail },
-      { key: "phone", label: "Phone", status: phoneStatus, Icon: Phone },
-      { key: "identity", label: "Identity", status: identityStatus, Icon: IdCard },
-      { key: "payment", label: "Payment", status: paymentStatus, Icon: CreditCard },
+      { key: "phone", label: "Phone verified", status: phoneStatus, Icon: Phone },
+      { key: "identity", label: "Identity verified", status: identityStatus, Icon: IdCard },
+      { key: "address", label: "Address verified", status: addressStatus, Icon: MapPin },
+      { key: "insurance", label: "Insurance verified", status: insuranceStatus, Icon: ShieldCheck },
     ] as const;
   }, [profile?.verification]);
 
@@ -475,11 +539,19 @@ export default function ProfilePage() {
                   <MapPin className="w-4 h-4 text-[#002f77] flex-shrink-0" />
                   <span className="truncate">{displayLocation}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="star-rating" aria-label={`Rating ${rating.toFixed(2)} out of 5`}>
-                    <span style={{ width: `${ratingPercent}%` }} />
-                  </div>
-                  <span className="text-xs text-slate-500">({ratingCount} Ratings)</span>
+                <div className="profile-stats-inline" aria-label="Rating and completed jobs">
+                  <Star
+                    className={`stat-star ${rating > 0 ? "is-active" : ""}`}
+                    aria-hidden="true"
+                  />
+                  <span className="stat-rating">{rating.toFixed(1)}</span>
+                  <span className="stat-reviews">({ratingCount} reviews)</span>
+                  <span className="stat-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="stat-completed">
+                    {completedJobs} completed jobs
+                  </span>
                 </div>
               </div>
 
@@ -535,30 +607,57 @@ export default function ProfilePage() {
                     )}
 
                     {hasQualificationsInfo && (
-                      <div>
+                      <div className="about-modern-block">
                         <h3 className="section-title">Qualifications</h3>
-                        <div className="space-y-3">
-                          {profile?.hasTradeQualification === "yes" && (
-                            <p className="text-slate-700">Trade qualification: Yes</p>
-                          )}
-                          {qualificationsText && <p className="text-slate-700 whitespace-pre-wrap">{qualificationsText}</p>}
-                          {certificationsText && <p className="text-slate-700 whitespace-pre-wrap">{certificationsText}</p>}
-                        </div>
+                        {qualificationItems.length === 0 ? (
+                          <p className="text-slate-500">No qualification information available.</p>
+                        ) : (
+                          <div className="qa-list" role="list" aria-label="Qualifications and certifications">
+                            {qualificationItems.map((it, idx) => (
+                              <div key={`${it.title}-${idx}`} className="qa-item" role="listitem">
+                                <div className="qa-left">
+                                  <span className="qa-icon" aria-hidden="true">
+                                    <Award className="w-4 h-4" />
+                                  </span>
+                                  <div className="qa-text">
+                                    <div className="qa-title">{it.title}</div>
+                                    {it.meta && <div className="qa-meta">{it.meta}</div>}
+                                  </div>
+                                </div>
+                                <div className="qa-right" aria-label={it.verified ? "Verified" : "Not verified"}>
+                                  {it.verified ? <CheckCircle2 className="qa-check" /> : null}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {hasInsuranceInfo && (
-                      <div>
-                        <h3 className="section-title">Insurance</h3>
-                        <ul className="section-list">
-                          {insuranceInfo.hasPublicLiability && <li>Public liability: Yes</li>}
-                          {typeof insuranceInfo.indemnity === "number" && insuranceInfo.indemnity > 0 && (
-                            <li>
-                              Professional indemnity amount: £{Number(insuranceInfo.indemnity).toLocaleString("en-GB")}
-                            </li>
-                          )}
-                          {insuranceInfo.expiry && <li>Insurance expiry: {insuranceInfo.expiry}</li>}
-                        </ul>
+                      <div className="about-modern-block">
+                        <h3 className="section-title">Public Liability Insurance</h3>
+                        <div className={`insurance-card ${insuranceInfo.hasPublicLiability ? "is-verified" : "is-neutral"}`}>
+                          <div className="insurance-head">
+                            <div className="insurance-badge" aria-hidden="true">
+                              <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <div className="insurance-main">
+                              <div className="insurance-title">
+                                {insuranceInfo.hasPublicLiability ? "Insured" : "Insurance information"}
+                                {insuranceInfo.hasPublicLiability ? <CheckCircle2 className="insurance-check" /> : null}
+                              </div>
+                              <div className="insurance-lines">
+                                {typeof insuranceInfo.indemnity === "number" && insuranceInfo.indemnity > 0 ? (
+                                  <div>Professional indemnity up to £{Number(insuranceInfo.indemnity).toLocaleString("en-GB")}</div>
+                                ) : insuranceInfo.hasPublicLiability ? (
+                                  <div>Public liability insurance: Yes</div>
+                                ) : null}
+                                {insuranceInfo.expiry ? <div>Valid until: {insuranceInfo.expiry}</div> : null}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -762,15 +861,6 @@ export default function ProfilePage() {
                       </div>
                       <div className="verification-content">
                         <div className="verification-label">{label}</div>
-                        <div className={`verification-badge status-${status}`}>
-                          {status === "verified"
-                            ? "Verified"
-                            : status === "pending"
-                              ? "Pending"
-                              : status === "rejected"
-                                ? "Rejected"
-                                : "Not verified"}
-                        </div>
                       </div>
                     </div>
                   ))}
