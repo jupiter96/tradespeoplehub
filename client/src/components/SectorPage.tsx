@@ -788,7 +788,8 @@ export default function SectorPage() {
     // Only redirect if we're not loading and sector is still not found
     // Wait for all API calls to complete before redirecting
     // No fallback to static data - redirect if API data is not available
-    if (!sectorLoading && !serviceCategoryLoading && !categoryLoading && !serviceCategoriesLoading && !nestedSubCategoriesLoading && !subCategoryLoading) {
+    // nestedSubCategoriesLoading is not required to decide if the page slug is valid; don't let it block redirects.
+    if (!sectorLoading && !serviceCategoryLoading && !categoryLoading && !serviceCategoriesLoading && !subCategoryLoading) {
       if (sectorSlug && !sector && !apiSector) {
         // If API didn't find it, redirect
           navigate("/all-categories");
@@ -800,7 +801,7 @@ export default function SectorPage() {
         navigate("/all-categories");
       }
     }
-  }, [sector, sectorLoading, serviceCategoryLoading, categoryLoading, serviceCategoriesLoading, nestedSubCategoriesLoading, subCategoryLoading, sectorSlug, serviceCategorySlug, categorySlug, apiCategory, apiServiceCategory, apiSector, currentServiceCategory, navigate]);
+  }, [sector, sectorLoading, serviceCategoryLoading, categoryLoading, serviceCategoriesLoading, subCategoryLoading, sectorSlug, serviceCategorySlug, categorySlug, apiCategory, apiServiceCategory, apiSector, currentServiceCategory, navigate]);
 
   // Helpers to build navigation URLs for categories/subcategories
   const getSlug = (obj: any) => obj?.slug || nameToSlug(obj?.name || "");
@@ -1064,7 +1065,9 @@ export default function SectorPage() {
     (!sectorSlug && !serviceCategorySlug && !categorySlug);
   
   // Show full screen loading overlay with blur background while loading
-  if (isDataLoading || !hasRequiredData) {
+  // Important: do NOT block render forever when data is "not found".
+  // The redirect effect below will handle invalid slugs once all requests settle.
+  if (isDataLoading) {
     return (
       <div className="min-h-screen bg-[#FAFBFC] relative">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
@@ -1088,7 +1091,7 @@ export default function SectorPage() {
     );
   }
 
-  // If we don't have required data and not loading, redirect
+  // If we don't have required data and not loading, redirect (handled via useEffect)
   if (!hasRequiredData && !isDataLoading) {
     return null; // Will redirect via useEffect
   }
