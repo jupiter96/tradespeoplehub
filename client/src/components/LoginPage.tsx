@@ -32,6 +32,7 @@ import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { Textarea } from "./ui/textarea";
+import { toast } from "sonner";
 
 import API_BASE_URL from "../config/api";
 import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
@@ -187,6 +188,13 @@ export default function LoginPage() {
             const requiredTypes = ["address", "idCard", "paymentMethod", "publicLiabilityInsurance"] as const;
             const hasUnpassed = requiredTypes.some((t) => (v?.[t]?.status || "not-started") !== "verified");
             if (hasUnpassed) {
+              toast.warning("Please complete your account verification to start receiving jobs.", {
+                duration: 7000,
+                action: {
+                  label: "Go to Verification",
+                  onClick: () => navigate("/account?tab=verification"),
+                },
+              });
               navigate("/account?tab=verification");
               return;
             }

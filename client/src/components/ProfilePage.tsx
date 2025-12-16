@@ -138,6 +138,15 @@ export default function ProfilePage() {
 
   const coverImageUrl = profile?.publicProfile?.coverImage || defaultCoverImageUrl;
 
+  const avatarInitials = useMemo(() => {
+    const raw = (tradingName || displayName || "User").trim();
+    if (!raw) return "U";
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] || "U";
+    const last = (parts.length > 1 ? parts[parts.length - 1]?.[0] : "") || "";
+    return (first + last).toUpperCase();
+  }, [tradingName, displayName]);
+
   const looksLikeObjectId = (value: string) => /^[a-fA-F0-9]{24}$/.test(value);
 
   const serviceCategoryNameById = useMemo(() => {
@@ -400,7 +409,13 @@ export default function ProfilePage() {
             {/* col 1: avatar */}
             <div className="profile-card-avatar pt-1">
               <div className="seller-avatar-wrap">
-                <ImageWithFallback src={avatarUrl} alt={displayName} className="seller-avatar" />
+                {avatarUrl ? (
+                  <ImageWithFallback src={avatarUrl} alt={displayName} className="seller-avatar" />
+                ) : (
+                  <div className="seller-avatar seller-avatar-initials" aria-label={displayName}>
+                    {avatarInitials}
+                  </div>
+                )}
                 {isOnline && <span className="online-badge" aria-label="Online" title="Online" />}
               </div>
             </div>

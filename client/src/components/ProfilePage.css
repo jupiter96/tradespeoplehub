@@ -68,6 +68,20 @@
   background: #e9edf7;
 }
 
+.prolancer-profile .seller-avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Poppins", "Rubik", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 44px;
+  color: var(--pl-blue);
+  background: var(--pl-blue-10);
+  border: 2px solid rgba(0, 47, 119, 0.12);
+  line-height: 1;
+  user-select: none;
+}
+
 .prolancer-profile .seller-avatar-wrap {
   position: relative;
   display: inline-block;
