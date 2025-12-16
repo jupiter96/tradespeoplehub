@@ -204,8 +204,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(254, 138, 15, 0.12);
-  color: #fe8a0f;
+  background: var(--pl-blue-10);
+  color: var(--pl-blue);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 12px;
@@ -467,7 +467,7 @@
 
 .prolancer-profile .qa-left {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   min-width: 0;
 }
@@ -476,8 +476,8 @@
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: rgba(254, 138, 15, 0.12);
-  color: #fe8a0f;
+  background: var(--pl-blue-10);
+  color: var(--pl-blue);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -486,6 +486,9 @@
 
 .prolancer-profile .qa-text {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .prolancer-profile .qa-title {
