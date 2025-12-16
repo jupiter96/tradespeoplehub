@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
+import Review from '../models/Review.js';
 import PendingRegistration from '../models/PendingRegistration.js';
 import SEOContent from '../models/SEOContent.js';
 import SocialAuthError from '../models/SocialAuthError.js';
@@ -2488,7 +2489,8 @@ router.put('/profile', requireAuth, async (req, res) => {
       // Professional indemnity insurance details
       if (req.body.professionalIndemnityAmount !== undefined) {
         const amount = parseFloat(req.body.professionalIndemnityAmount);
-        user.professionalIndemnityAmount = isNaN(amount) ? null : amount;
+        // Default to 0 when empty/invalid, and never allow negative values.
+        user.professionalIndemnityAmount = isNaN(amount) ? 0 : Math.max(0, amount);
       }
       if (req.body.insuranceExpiryDate !== undefined) {
         if (req.body.insuranceExpiryDate) {
@@ -3231,6 +3233,21 @@ router.get('/profile/:identifier', async (req, res) => {
     console.log('[Profile API] Returning profile for user:', userId);
 
     // Return sanitized public profile data
+    const reviews = await Review.find({
+      professional: user._id,
+      isHidden: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .select('reviewerName rating comment createdAt')
+      .lean();
+
+    const ratingCount = reviews.length;
+    const ratingAverage =
+      ratingCount === 0
+        ? 0
+        : reviews.reduce((sum, r) => sum + (typeof r.rating === 'number' ? r.rating : 0), 0) / ratingCount;
+
     const profileData = {
       id: userId,
       firstName: user.firstName,
@@ -3252,6 +3269,15 @@ router.get('/profile/:identifier', async (req, res) => {
       travelDistance: user.travelDistance,
       publicProfile: user.publicProfile || {},
       verification: user.verification || {},
+      ratingAverage,
+      ratingCount,
+      reviews: reviews.map((r) => ({
+        id: r._id?.toString?.() || String(r._id),
+        name: (r.reviewerName || '').trim() || 'Anonymous',
+        stars: typeof r.rating === 'number' ? r.rating : 0,
+        text: (r.comment || '').trim(),
+        createdAt: r.createdAt,
+      })),
       createdAt: user.createdAt,
     };
 

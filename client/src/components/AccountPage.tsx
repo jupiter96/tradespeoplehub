@@ -1939,9 +1939,10 @@ function DetailsSection() {
       
       // Insurance details
       if (formData.hasPublicLiability === "yes") {
-        if (formData.professionalIndemnityAmount) {
-          payload.professionalIndemnityAmount = parseFloat(formData.professionalIndemnityAmount) || undefined;
-        }
+        // If blank, store as 0 (requested default)
+        payload.professionalIndemnityAmount = formData.professionalIndemnityAmount
+          ? parseFloat(formData.professionalIndemnityAmount) || 0
+          : 0;
         if (formData.insuranceExpiryDate) {
           payload.insuranceExpiryDate = new Date(formData.insuranceExpiryDate).toISOString();
         }

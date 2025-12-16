@@ -222,9 +222,10 @@ export default function ProfessionalRegistrationSteps() {
         if (currentStep >= 5) {
           updateData.hasPublicLiability = insurance;
           if (insurance === "yes") {
-            if (professionalIndemnityAmount) {
-              updateData.professionalIndemnityAmount = parseFloat(professionalIndemnityAmount) || null;
-            }
+            // If blank, store as 0 (requested default)
+            updateData.professionalIndemnityAmount = professionalIndemnityAmount
+              ? parseFloat(professionalIndemnityAmount) || 0
+              : 0;
             if (insuranceExpiryDate) {
               updateData.insuranceExpiryDate = new Date(insuranceExpiryDate);
             }
@@ -284,9 +285,10 @@ export default function ProfessionalRegistrationSteps() {
       }
 
       if (insurance === "yes") {
-        if (professionalIndemnityAmount) {
-          updateData.professionalIndemnityAmount = parseFloat(professionalIndemnityAmount) || null;
-        }
+        // If blank, store as 0 (requested default)
+        updateData.professionalIndemnityAmount = professionalIndemnityAmount
+          ? parseFloat(professionalIndemnityAmount) || 0
+          : 0;
         if (insuranceExpiryDate) {
           updateData.insuranceExpiryDate = new Date(insuranceExpiryDate);
         }

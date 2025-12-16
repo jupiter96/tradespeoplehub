@@ -112,7 +112,7 @@ const userSchema = new mongoose.Schema(
     },
     professionalIndemnityAmount: {
       type: Number,
-      default: null,
+      default: 0,
     },
     insuranceExpiryDate: {
       type: Date,

@@ -377,7 +377,7 @@ export default function ProfileSection() {
         phone: userInfo?.phone || "",
         postcode: userInfo?.postcode || "",
         services: serviceIds, // Save as IDs
-        professionalIndemnityAmount: professionalIndemnityAmount || undefined,
+        professionalIndemnityAmount: professionalIndemnityAmount == null ? 0 : professionalIndemnityAmount,
         insuranceExpiryDate: insuranceExpiryDate ? new Date(insuranceExpiryDate).toISOString() : undefined,
         publicProfile: {
           bio,
