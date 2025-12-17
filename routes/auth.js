@@ -2276,6 +2276,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
+    const body = req.body || {};
     const {
       firstName,
       lastName,
@@ -2287,28 +2288,47 @@ router.put('/profile', requireAuth, async (req, res) => {
       county,
       tradingName,
       travelDistance,
-    } = req.body || {};
+    } = body;
     const {
       sector,
       services,
       aboutService,
       hasTradeQualification,
       hasPublicLiability,
-    } = req.body || {};
+    } = body;
 
-    if (!firstName || !lastName || !email || !phone || !postcode) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    // PATCH semantics:
+    // - Allow partial updates (registration step saves may only send a subset).
+    // - Validate required fields ONLY if the client is trying to set them.
+    const hasField = (key) => Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined && body[key] !== null;
+
+    if (hasField('firstName') && !String(firstName).trim()) {
+      return res.status(400).json({ error: 'First name is required' });
+    }
+    if (hasField('lastName') && !String(lastName).trim()) {
+      return res.status(400).json({ error: 'Last name is required' });
+    }
+    if (hasField('postcode') && !String(postcode).trim()) {
+      return res.status(400).json({ error: 'Postcode is required' });
+    }
+    if (hasField('email')) {
+      const normalizedEmailAttempt = normalizeEmail(email);
+      if (!normalizedEmailAttempt) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+    }
+    if (hasField('phone')) {
+      const normalizedPhoneAttempt = normalizePhone(phone);
+      if (!normalizedPhoneAttempt) {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
     }
 
-    const normalizedEmail = normalizeEmail(email);
-    const normalizedPhone = normalizePhone(phone);
-    
-    if (!normalizedPhone) {
-      return res.status(400).json({ error: 'Phone number is required' });
-    }
+    const normalizedEmail = hasField('email') ? normalizeEmail(email) : user.email;
+    const normalizedPhone = hasField('phone') ? normalizePhone(phone) : user.phone;
 
     // Check if email is being changed
-    if (normalizedEmail !== user.email) {
+    if (hasField('email') && normalizedEmail !== user.email) {
       const emailOTP = req.session[emailChangeOTPKey];
       if (!emailOTP || !emailOTP.verified || emailOTP.email !== normalizedEmail) {
         return res.status(403).json({ error: 'Email change requires OTP verification' });
@@ -2322,7 +2342,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     // Check if phone is being changed
-    if (normalizedPhone !== user.phone) {
+    if (hasField('phone') && normalizedPhone !== user.phone) {
       // Check if phone number is already in use by another active user
       const existingPhoneUser = await User.findOne({ 
         phone: normalizedPhone, 
@@ -2345,9 +2365,9 @@ router.put('/profile', requireAuth, async (req, res) => {
       delete req.session[phoneChangeOTPKey];
     }
 
-    user.firstName = firstName.trim();
-    user.lastName = lastName.trim();
-    user.postcode = postcode.trim();
+    if (hasField('firstName')) user.firstName = String(firstName).trim();
+    if (hasField('lastName')) user.lastName = String(lastName).trim();
+    if (hasField('postcode')) user.postcode = String(postcode).trim();
     
     // Address is required for client and professional, preserve existing value if not provided
     if (address !== undefined && address !== null) {

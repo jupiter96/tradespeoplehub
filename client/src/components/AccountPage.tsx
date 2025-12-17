@@ -76,6 +76,7 @@ import CreatePackageModal from "./CreatePackageModal";
 import PromoCodeSection from "./PromoCodeSection";
 import FavouriteSection from "./FavouriteSection";
 import ProfileSection from "./ProfileSection";
+import VerificationProgressModal from "./VerificationProgressModal";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -134,6 +135,10 @@ export default function AccountPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [verificationPendingCount, setVerificationPendingCount] = useState(0);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationModalData, setVerificationModalData] = useState<any>(null);
+  const verificationModalRetryRef = useRef(0);
+  const verificationModalTimeoutRef = useRef<number | null>(null);
 
   // Check for URL parameters to navigate to specific section/order
   useEffect(() => {
@@ -159,6 +164,81 @@ export default function AccountPage() {
       navigate("/professional-registration-steps", { replace: true });
     }
   }, [isLoggedIn, navigate, userInfo, location.search]);
+
+  // If redirected here after PRO login with incomplete verification, show a centered modal.
+  useEffect(() => {
+    const isPro = userInfo?.role === "professional";
+    if (!isLoggedIn || !isPro) return;
+
+    let shouldShow = false;
+    try {
+      shouldShow = sessionStorage.getItem("showVerificationModalAfterLogin") === "1";
+    } catch {
+      shouldShow = false;
+    }
+    if (!shouldShow) return;
+
+    const isPassed = (s: string) => s === "verified" || s === "completed";
+    const requiredTypes = ["address", "idCard", "paymentMethod", "publicLiabilityInsurance"] as const;
+
+    const clearFlag = () => {
+      try {
+        sessionStorage.removeItem("showVerificationModalAfterLogin");
+      } catch {
+        // ignore
+      }
+    };
+
+    const clearTimeoutIfAny = () => {
+      if (verificationModalTimeoutRef.current) {
+        window.clearTimeout(verificationModalTimeoutRef.current);
+        verificationModalTimeoutRef.current = null;
+      }
+    };
+
+    const attemptFetchAndShow = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/verification`, { credentials: "include" });
+        if (!res.ok) {
+          // Session/cookie might not be ready right after login redirect; retry a few times.
+          if (verificationModalRetryRef.current < 5) {
+            verificationModalRetryRef.current += 1;
+            clearTimeoutIfAny();
+            verificationModalTimeoutRef.current = window.setTimeout(attemptFetchAndShow, 400);
+            return;
+          }
+          clearFlag();
+          return;
+        }
+
+        const data = await res.json();
+        const v = data?.verification || {};
+        setVerificationData(v);
+        setVerificationModalData(v);
+
+        const hasUnpassed = requiredTypes.some((t) => !isPassed(String(v?.[t]?.status || "not-started")));
+        setShowVerificationModal(hasUnpassed);
+        clearFlag();
+      } catch {
+        if (verificationModalRetryRef.current < 5) {
+          verificationModalRetryRef.current += 1;
+          clearTimeoutIfAny();
+          verificationModalTimeoutRef.current = window.setTimeout(attemptFetchAndShow, 400);
+          return;
+        }
+        clearFlag();
+      }
+    };
+
+    // reset retries per navigation into this page
+    verificationModalRetryRef.current = 0;
+    clearTimeoutIfAny();
+    attemptFetchAndShow();
+
+    return () => {
+      clearTimeoutIfAny();
+    };
+  }, [isLoggedIn, userInfo?.role, location.key]);
 
   const handleLogout = () => {
     logout();
@@ -205,6 +285,17 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
+      <VerificationProgressModal
+        open={showVerificationModal}
+        onOpenChange={(open) => setShowVerificationModal(open)}
+        verification={verificationModalData || verificationData}
+        onGoToVerification={() => {
+          setShowVerificationModal(false);
+          setActiveSection("verification");
+          navigate("/account?tab=verification");
+        }}
+        onCancel={() => setShowVerificationModal(false)}
+      />
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>

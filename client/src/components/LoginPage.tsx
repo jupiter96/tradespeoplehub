@@ -57,7 +57,6 @@ export default function LoginPage() {
   // Email & Phone Verification states (after registration)
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationStep, setVerificationStep] = useState(1); // 1: email, 2: phone
-
   // Redirect to account page if already logged in (but not during registration)
   useEffect(() => {
     // Don't redirect if user is in the middle of registration process
@@ -77,18 +76,7 @@ export default function LoginPage() {
   const [emailCodeHint, setEmailCodeHint] = useState<string | null>(null);
   const [phoneCodeHint, setPhoneCodeHint] = useState<string | null>(null);
 
-  // Redirect to account page if already logged in (but not during registration)
-  useEffect(() => {
-    // Don't redirect if user is in the middle of registration process
-    if (isLoggedIn && !showEmailVerification && !isCompletingRegistration) {
-      if (userInfo?.role === "professional" && !userInfo?.sector) {
-        // Professional user without sector should go to registration steps
-        navigate("/professional-registration-steps", { replace: true });
-      } else if (userInfo?.role !== "professional" || userInfo?.sector) {
-        navigate("/account", { replace: true });
-      }
-    }
-  }, [isLoggedIn, navigate, showEmailVerification, userInfo, isCompletingRegistration]);
+  // (duplicate redirect effect removed - handled above)
   
   
   // Forgot Password states
@@ -186,16 +174,17 @@ export default function LoginPage() {
             const data = await res.json();
             const v = data?.verification || {};
             const requiredTypes = ["address", "idCard", "paymentMethod", "publicLiabilityInsurance"] as const;
-            const hasUnpassed = requiredTypes.some((t) => (v?.[t]?.status || "not-started") !== "verified");
+            const isPassed = (s: string) => s === "verified" || s === "completed";
+            const hasUnpassed = requiredTypes.some((t) => !isPassed(String(v?.[t]?.status || "not-started")));
             if (hasUnpassed) {
-              toast.warning("Please complete your account verification to start receiving jobs.", {
-                duration: 7000,
-                action: {
-                  label: "Go to Verification",
-                  onClick: () => navigate("/account?tab=verification"),
-                },
-              });
-              navigate("/account?tab=verification");
+              // Show modal on AccountPage after redirect
+              try {
+                sessionStorage.setItem("showVerificationModalAfterLogin", "1");
+              } catch {
+                // ignore
+              }
+              // Land on Account overview (default), while showing modal.
+              navigate("/account");
               return;
             }
           }

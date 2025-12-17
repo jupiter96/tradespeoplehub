@@ -403,6 +403,25 @@ export default function ProfilePage() {
     ] as const;
   }, [profile?.verification]);
 
+  const isFullyVerified = useMemo(() => {
+    const isPassed = (s?: string) => {
+      const v = String(s || "not-started");
+      return v === "verified" || v === "completed";
+    };
+
+    const v = profile?.verification || {};
+    const required = [
+      (v as any)?.email?.status,
+      (v as any)?.phone?.status,
+      (v as any)?.address?.status,
+      (v as any)?.paymentMethod?.status,
+      (v as any)?.idCard?.status,
+      (v as any)?.publicLiabilityInsurance?.status,
+    ];
+
+    return required.every((s) => isPassed(String(s || "not-started")));
+  }, [profile?.verification]);
+
   const serviceAreaText = useMemo(() => {
     const milesRaw = (profile?.travelDistance || "").toString().trim();
     const milesMatch = milesRaw.match(/(\d+(\.\d+)?)/);
@@ -523,9 +542,11 @@ export default function ProfilePage() {
             <div className="profile-card-details min-w-0">
               <div className="seller-name">
                 {tradingName || displayName}
-                <span className="verified-dot" title="Verified">
-                  ✓
-                </span>
+                {isFullyVerified && (
+                  <span className="verified-dot" title="Verified" aria-label="Verified">
+                    <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                  </span>
+                )}
               </div>
 
               {/* One primary category under trading name (not a badge) */}
@@ -624,11 +645,11 @@ export default function ProfilePage() {
 
                     {hasQualificationsInfo && (
                       <div className="about-modern-block">
-                        <h3 className="section-title">Qualifications</h3>
+                        <h3 className="section-title">Qualifications &amp; Certificates</h3>
                         {qualificationItems.length === 0 ? (
                           <p className="text-slate-500">No qualification information available.</p>
                         ) : (
-                          <div className="qa-list" role="list" aria-label="Qualifications and certifications">
+                          <div className="qa-list" role="list" aria-label="Qualifications and certificates">
                             {qualificationItems.map((it, idx) => (
                               <div key={`${it.title}-${idx}`} className="qa-item" role="listitem">
                                 <div className="qa-left">
