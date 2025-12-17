@@ -9,6 +9,13 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Limit service subcategory explosion:
+// - Each ServiceCategory should end up with ~2-3 ServiceSubCategories total
+// - Total ServiceSubCategory documents created by this seed should not exceed 1000
+const MAX_TOTAL_SERVICE_SUBCATEGORIES = 1000;
+const MIN_SERVICE_SUBCATS_PER_CATEGORY = 2;
+const MAX_SERVICE_SUBCATS_PER_CATEGORY = 3;
+
 // Attribute types for categoryLevelMapping
 const ATTRIBUTE_TYPES = ['serviceType', 'size', 'frequency', 'make', 'model', 'brand'];
 const ATTRIBUTE_LABELS = {
@@ -36,7 +43,8 @@ const getRandomItems = (array, count) => {
 
 // Helper function to generate random level (3-7)
 const getRandomLevel = () => {
-  return Math.floor(Math.random() * 5) + 3; // 3-7
+  // Keep the category "level" metadata minimal; we will only seed the Level 2 subcategory tab.
+  return 3; // minimal allowed by schema (3-7)
 };
 
 // Helper function to generate categoryLevelMapping based on level
@@ -328,7 +336,10 @@ const createLevel2SubCategories = async (serviceCategory) => {
   
   // Get names for Level 2
   const allNames = generateLevel2SubCategoryNames(serviceCategoryName);
-  const count = Math.floor(Math.random() * 4) + 4; // 4-7 subcategories
+  const count =
+    allNames.length >= MAX_SERVICE_SUBCATS_PER_CATEGORY
+      ? Math.floor(Math.random() * (MAX_SERVICE_SUBCATS_PER_CATEGORY - MIN_SERVICE_SUBCATS_PER_CATEGORY + 1)) + MIN_SERVICE_SUBCATS_PER_CATEGORY // 2-3
+      : allNames.length;
   const selectedNames = getRandomItems(allNames, Math.min(count, allNames.length));
   
   // Get max order for Level 2 subcategories
@@ -385,13 +396,6 @@ const createLevel2SubCategories = async (serviceCategory) => {
 const createServiceSubCategories = async (serviceCategory) => {
   console.log(`  📁 Creating subcategories for: ${serviceCategory.name}`);
   
-  const categoryLevelMapping = serviceCategory.categoryLevelMapping || [];
-  
-  if (categoryLevelMapping.length === 0) {
-    console.log(`    ⚠️  No category level mapping found, skipping subcategories...`);
-    return;
-  }
-
   let totalCreated = 0;
 
   // Step 1: Create Level 2 Sub Categories (first tab - Sub Category tab)
@@ -400,50 +404,6 @@ const createServiceSubCategories = async (serviceCategory) => {
   const level2SubCategories = await createLevel2SubCategories(serviceCategory);
   totalCreated += level2SubCategories.length;
   console.log(`    ✅ Created ${level2SubCategories.length} Level 2 subcategories`);
-
-  // Step 2: Create subcategories for each level in categoryLevelMapping (Level 3-6)
-  // Each level uses the previous level's subcategories as parents
-  const sortedMappings = categoryLevelMapping
-    .filter(m => m.level >= 3 && m.level <= 6)
-    .sort((a, b) => a.level - b.level);
-
-  if (sortedMappings.length === 0) {
-    console.log(`    ⚠️  No valid level mappings (3-6) found, skipping additional tabs...`);
-    console.log(`    ✅ Created ${totalCreated} total subcategories`);
-    return totalCreated;
-  }
-
-  // Track parent subcategories for each level
-  let currentParentSubCategories = level2SubCategories;
-
-  // Create subcategories for each level sequentially
-  for (const mapping of sortedMappings) {
-    const attributeType = mapping.attributeType;
-    const targetLevel = mapping.level;
-    const categoryLevel = mapping.level;
-    
-    console.log(`    📑 Step ${targetLevel - 1}: Creating Level ${targetLevel} subcategories for tab: ${mapping.title || attributeType} (CategoryLevel ${categoryLevel})`);
-    
-    if (currentParentSubCategories.length === 0) {
-      console.log(`    ⚠️  No parent subcategories available for Level ${targetLevel}, skipping...`);
-      continue;
-    }
-
-    // Create subcategories for this level using previous level's subcategories as parents
-    const levelSubCategories = await createSubCategoriesForLevel(
-      serviceCategory,
-      currentParentSubCategories,
-      targetLevel,
-      attributeType,
-      categoryLevel
-    );
-    
-    totalCreated += levelSubCategories.length;
-    console.log(`    ✅ Created ${levelSubCategories.length} Level ${targetLevel} subcategories`);
-    
-    // Update parent subcategories for next level
-    currentParentSubCategories = levelSubCategories;
-  }
 
   console.log(`    ✅ Created ${totalCreated} total subcategories`);
   return totalCreated;
@@ -466,6 +426,7 @@ const seedServiceCategories = async () => {
 
     let totalCreated = 0;
     let totalSkipped = 0;
+    let totalServiceSubCatsCreated = 0;
 
     // For each sector, create 5-6 service categories
     for (const sector of sectors) {
@@ -523,7 +484,12 @@ const seedServiceCategories = async () => {
         totalCreated++;
 
         // Create subcategories for this service category
-        await createServiceSubCategories(serviceCategory);
+        if (totalServiceSubCatsCreated >= MAX_TOTAL_SERVICE_SUBCATEGORIES) {
+          console.log(`🛑 Reached max total service subcategories (${MAX_TOTAL_SERVICE_SUBCATEGORIES}). Stopping further service subcategory seeding.`);
+          break;
+        }
+        const createdForThis = await createServiceSubCategories(serviceCategory);
+        totalServiceSubCatsCreated += createdForThis;
       }
     }
 

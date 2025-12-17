@@ -9,6 +9,13 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Limit subcategory explosion:
+// - Each Category should end up with ~2-3 SubCategories
+// - Total SubCategory documents created by this seed should not exceed 1000
+const MAX_TOTAL_SUBCATEGORIES = 1000;
+const MIN_SUBCATEGORIES_PER_CATEGORY = 2;
+const MAX_SUBCATEGORIES_PER_CATEGORY = 3;
+
 // Complete sectors data based on all sources in the web app
 const sectorsData = [
   {
@@ -1367,6 +1374,7 @@ const seedSectorsAndCategories = async () => {
 
     // Create categories and subcategories
     const createdCategories = {};
+    let totalSubCategoriesCreated = 0;
     for (const [sectorSlug, categories] of Object.entries(categoriesData)) {
       const sector = createdSectors[sectorSlug];
       if (!sector) {
@@ -1402,9 +1410,25 @@ const seedSectorsAndCategories = async () => {
         if (subCategories && Array.isArray(subCategories) && subCategories.length > 0) {
           // Remove duplicates from subCategories array
           const uniqueSubCategories = [...new Set(subCategories)];
+
+          // Keep only 2-3 subcategories per category (reduce to ~1/10th of prior volume)
+          const desiredCount =
+            uniqueSubCategories.length >= MAX_SUBCATEGORIES_PER_CATEGORY
+              ? MAX_SUBCATEGORIES_PER_CATEGORY
+              : uniqueSubCategories.length >= MIN_SUBCATEGORIES_PER_CATEGORY
+                ? uniqueSubCategories.length
+                : uniqueSubCategories.length;
+
+          const selectedSubCategories = uniqueSubCategories.slice(0, desiredCount);
           
-          for (let i = 0; i < uniqueSubCategories.length; i++) {
-            const subCategoryName = uniqueSubCategories[i];
+          for (let i = 0; i < selectedSubCategories.length; i++) {
+            if (totalSubCategoriesCreated >= MAX_TOTAL_SUBCATEGORIES) {
+              console.log(`🛑 Reached max total subcategories (${MAX_TOTAL_SUBCATEGORIES}). Stopping further subcategory seeding.`);
+              console.log('✅ Seeding completed!');
+              process.exit(0);
+            }
+
+            const subCategoryName = selectedSubCategories[i];
             const existingSubCategory = await SubCategory.findOne({
               category: category._id,
               name: subCategoryName,
@@ -1418,6 +1442,7 @@ const seedSectorsAndCategories = async () => {
                 name: subCategoryName,
                 order: i + 1,
               });
+              totalSubCategoriesCreated++;
               console.log(`  ✅ Created subcategory: ${subCategoryName} in ${categoryData.name}`);
             }
           }
