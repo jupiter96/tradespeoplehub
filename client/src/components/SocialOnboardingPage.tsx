@@ -239,14 +239,8 @@ export default function SocialOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] relative">
-        {/* Loading overlay with transparent blur */}
-        <div className="fixed inset-0 bg-transparent backdrop-blur-md z-[100] flex items-center justify-center">
-          <div className="text-center bg-white/90 rounded-2xl px-8 py-6 shadow-lg">
-            <div className="w-16 h-16 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">Loading your profile...</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] relative" aria-busy="true">
+        <span className="sr-only">Loading</span>
       </div>
     );
   }

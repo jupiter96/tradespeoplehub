@@ -1064,28 +1064,16 @@ export default function SectorPage() {
     (categorySlug && apiCategory) ||
     (!sectorSlug && !serviceCategorySlug && !categorySlug);
   
-  // Show full screen loading overlay with blur background while loading
-  // Important: do NOT block render forever when data is "not found".
-  // The redirect effect below will handle invalid slugs once all requests settle.
-  if (isDataLoading) {
+  // Never show a visible loading overlay. If we don't have enough data to render yet,
+  // return a minimal shell while requests complete in the background.
+  if (isDataLoading && !hasRequiredData) {
     return (
-      <div className="min-h-screen bg-[#FAFBFC] relative">
+      <div className="min-h-screen bg-[#FAFBFC] relative" aria-busy="true">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
           <Nav />
         </header>
-        {/* Full screen loading overlay with transparent blur */}
-        <div className="fixed inset-0 bg-transparent backdrop-blur-md z-[100] flex items-center justify-center">
-          <div className="text-center bg-white/90 rounded-2xl px-8 py-6 shadow-lg">
-            <div className="w-12 h-12 border-4 border-[#FE8A0F] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
-              Loading page data...
-            </p>
-            {retryCount > 0 && (
-              <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
-                Retrying... (Attempt {retryCount}/{maxRetries})
-              </p>
-            )}
-          </div>
+        <div className="pt-[50px] md:pt-0">
+          <span className="sr-only">Loading</span>
         </div>
       </div>
     );
