@@ -124,9 +124,15 @@ export default function ProfileSection() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [skillsPopoverOpen, setSkillsPopoverOpen] = useState(false);
   
-  // Build skills options: ONLY the subcategories the user selected during registration (userInfo.services)
+  // Build skills options:
+  // - show ALL subcategories that belong to the user's registered MAIN categories
+  // - robustly infer selected MAIN categories from:
+  //   - main category IDs
+  //   - main category names (legacy)
+  //   - selected subcategory IDs/names (infer parent main category)
+  // - if we still can't infer anything, fall back to only previously selected subcategories
   useEffect(() => {
-    const buildRegisteredSubCategories = () => {
+    const buildSkillsOptionsFromRegisteredMainCategories = () => {
       try {
         setIsLoadingCategories(true);
         const selectedServices = (userInfo?.services || []).filter(Boolean);
@@ -136,43 +142,86 @@ export default function ProfileSection() {
         }
 
         const categoryIdSet = new Set<string>();
+        const categoryNameToId = new Map<string, string>();
+        const subIdToParentCategoryId = new Map<string, string>();
+        const subNameToParentCategoryId = new Map<string, string>();
         const subIdToName = new Map<string, string>();
         const subNameToId = new Map<string, string>();
 
         availableCategories.forEach((cat: Category & { subCategories?: SubCategory[] }) => {
-          if (cat?._id) categoryIdSet.add(cat._id);
+          if (cat?._id) {
+            categoryIdSet.add(cat._id);
+            if (cat?.name) categoryNameToId.set(String(cat.name).toLowerCase(), cat._id);
+          }
           if (cat.subCategories && cat.subCategories.length > 0) {
             cat.subCategories.forEach((subcat: SubCategory) => {
               if (!subcat?._id || !subcat?.name) return;
               subIdToName.set(subcat._id, subcat.name);
               subNameToId.set(subcat.name, subcat._id);
+              // For reverse lookup: subcategory -> parent main category
+              subIdToParentCategoryId.set(subcat._id, cat._id);
+              subNameToParentCategoryId.set(String(subcat.name).toLowerCase(), cat._id);
             });
           }
         });
 
-        const allowed: Array<{ id: string; name: string; sector?: string }> = [];
-
-        // Only show user's previously selected SUBCATEGORIES (ignore main category IDs)
+        // Determine which MAIN categories the user registered with (IDs/names OR via subcategory->parent inference).
+        const selectedMainCategoryIds = new Set<string>();
         for (const raw of selectedServices) {
-          const id = String(raw).trim();
-          if (!id) continue;
-          if (categoryIdSet.has(id)) continue;
-
-          const nameById = subIdToName.get(id);
-          if (nameById) {
-            allowed.push({ id, name: nameById, sector: selectedSectorObj?.name });
+          const val = String(raw).trim();
+          if (!val) continue;
+          if (categoryIdSet.has(val)) {
+            selectedMainCategoryIds.add(val);
             continue;
           }
+          const mapped = categoryNameToId.get(val.toLowerCase());
+          if (mapped) selectedMainCategoryIds.add(mapped);
 
-          // Legacy support: if services contain names instead of IDs
-          const mappedId = subNameToId.get(id);
-          if (mappedId) {
-            allowed.push({ id: mappedId, name: id, sector: selectedSectorObj?.name });
+          // If value looks like a subcategory id, infer its parent category.
+          const parentBySubId = subIdToParentCategoryId.get(val);
+          if (parentBySubId) selectedMainCategoryIds.add(parentBySubId);
+
+          // Legacy: if value is a subcategory name, infer its parent category.
+          const parentBySubName = subNameToParentCategoryId.get(val.toLowerCase());
+          if (parentBySubName) selectedMainCategoryIds.add(parentBySubName);
+        }
+
+        const allowed: Array<{ id: string; name: string; sector?: string }> = [];
+
+        if (selectedMainCategoryIds.size > 0) {
+          // Main categories found: suggest ALL subcategories under those main categories.
+          for (const cat of availableCategories as Array<Category & { subCategories?: SubCategory[] }>) {
+            if (!selectedMainCategoryIds.has(cat._id)) continue;
+            (cat.subCategories || []).forEach((subcat: SubCategory) => {
+              if (!subcat?._id || !subcat?.name) return;
+              allowed.push({ id: subcat._id, name: subcat.name, sector: selectedSectorObj?.name });
+            });
+          }
+        } else {
+          // Fallback: only show user's previously selected SUBCATEGORIES (ignore main category IDs)
+          for (const raw of selectedServices) {
+            const id = String(raw).trim();
+            if (!id) continue;
+            if (categoryIdSet.has(id)) continue;
+
+            const nameById = subIdToName.get(id);
+            if (nameById) {
+              allowed.push({ id, name: nameById, sector: selectedSectorObj?.name });
+              continue;
+            }
+
+            // Legacy support: if services contain names instead of IDs
+            const mappedId = subNameToId.get(id);
+            if (mappedId) {
+              allowed.push({ id: mappedId, name: id, sector: selectedSectorObj?.name });
+            }
           }
         }
 
-        // Remove duplicates by name (keep first occurrence)
-        const uniqueAllowed = Array.from(new Map(allowed.map((i) => [i.name.toLowerCase(), i])).values());
+        // Remove duplicates (prefer stable by id, fall back to name)
+        const uniqueAllowed = Array.from(
+          new Map(allowed.map((i) => [i.id ? `id:${i.id}` : `name:${i.name.toLowerCase()}`, i])).values()
+        );
 
         setAllJobCategories(uniqueAllowed.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (error) {
@@ -183,7 +232,7 @@ export default function ProfileSection() {
       }
     };
 
-    buildRegisteredSubCategories();
+    buildSkillsOptionsFromRegisteredMainCategories();
   }, [availableCategories, selectedSectorId, selectedSectorObj, userInfo?.services]);
   
   // Convert service IDs to category/subcategory names
