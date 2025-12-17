@@ -166,14 +166,14 @@ export default function BrowseByCategory() {
 
   if (sectorsLoading || loading) {
     return (
-      <div className="w-full">
+      <div className="w-full" aria-busy="true">
         <div className="flex items-center justify-between mb-8 md:mb-10">
           <h2 className="font-['Roboto',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
             Browse Service by Category
           </h2>
         </div>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[#3D78CB]" />
+        <div className="py-10">
+          <span className="sr-only">Loading categories</span>
         </div>
       </div>
     );

@@ -658,8 +658,8 @@ export default function ProfessionalRegistrationSteps() {
                     </span>
                   </Label>
                   {sectorsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
+                    <div className="py-8" aria-busy="true">
+                      <span className="sr-only">Loading sectors</span>
                     </div>
                   ) : userInfo?.sector ? (
                     // If sector already exists, show it as read-only
@@ -758,11 +758,8 @@ export default function ProfessionalRegistrationSteps() {
                       </p>
                     </div>
                   ) : categoriesLoading ? (
-                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                      <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#FE8A0F] mb-2" />
-                      <p className="text-gray-500 font-['Roboto',sans-serif]">
-                        Loading categories...
-                      </p>
+                    <div className="border-2 border-gray-200 rounded-xl p-8 text-center" aria-busy="true">
+                      <span className="sr-only">Loading categories</span>
                     </div>
                   ) : sortedCategories.length === 0 ? (
                     <div className="border-2 border-gray-200 rounded-xl p-8 text-center">

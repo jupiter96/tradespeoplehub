@@ -147,8 +147,8 @@ export default function AllCategoriesPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 md:-mt-16 pb-16 md:pb-24 relative z-20">
         {(sectorsLoading || loading) ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-[#3D78CB]" />
+          <div className="py-20" aria-busy="true">
+            <span className="sr-only">Loading categories</span>
           </div>
         ) : (sectorsError || error) ? (
           <div className="text-center py-20">

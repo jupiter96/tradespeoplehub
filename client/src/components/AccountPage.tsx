@@ -2584,11 +2584,8 @@ function DetailsSection() {
                     </p>
                   </div>
                 ) : categoriesLoading ? (
-                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FE8A0F] mx-auto mb-2"></div>
-                    <p className="text-gray-500 font-['Roboto',sans-serif]">
-                      Loading categories...
-                    </p>
+                  <div className="border-2 border-gray-200 rounded-xl p-8 text-center" aria-busy="true">
+                    <span className="sr-only">Loading categories</span>
                   </div>
                 ) : availableCategories.length === 0 ? (
                   <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
