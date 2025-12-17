@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import twilio from 'twilio';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import EmailTemplate from '../models/EmailTemplate.js';
 import SmtpConfig from '../models/SmtpConfig.js';
 import EmailCategorySmtp from '../models/EmailCategorySmtp.js';
@@ -14,7 +15,54 @@ let SMTP_HOST, SMTP_PORT, SMTP_PASS;
 // Category-specific SMTP users (loaded from database)
 const categorySmtpUsers = new Map();
 
+let deferredDbLoadAttached = false;
+
+function loadFromEnvFallback() {
+  // Fallback to environment variables for global config
+  SMTP_HOST = process.env.SMTP_HOST;
+  SMTP_PORT = process.env.SMTP_PORT;
+  SMTP_PASS = process.env.SMTP_PASS;
+
+  // Initialize category SMTP users from environment variables
+  const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+  for (const category of categories) {
+    let envValue = null;
+
+    if (category === 'support') {
+      envValue = process.env.SMTP_USER;
+    } else if (category === 'no-reply') {
+      envValue = process.env.SMTP_USER_NO_REPLY || process.env.SMTP_USER;
+    } else {
+      const envVarName = `SMTP_USER_${category.toUpperCase()}`;
+      envValue = process.env[envVarName] || process.env.SMTP_USER;
+    }
+
+    if (envValue) categorySmtpUsers.set(category, envValue);
+  }
+}
+
+function ensureDbLoadAfterConnect() {
+  if (deferredDbLoadAttached) return;
+  deferredDbLoadAttached = true;
+
+  mongoose.connection.once('connected', () => {
+    // Retry loading from DB once MongoDB is ready (non-blocking)
+    loadSmtpConfig().catch((err) => {
+      console.error('[Notifier] Deferred SMTP config load failed:', err);
+    });
+  });
+}
+
 async function loadSmtpConfig() {
+  // IMPORTANT: avoid Mongoose buffering timeouts at startup.
+  // If MongoDB isn't connected yet, don't hit the DB—use env and retry after connect.
+  if (mongoose.connection.readyState !== 1) {
+    loadFromEnvFallback();
+    console.log('[Notifier] MongoDB not connected yet - using environment variables (will retry after connect)');
+    ensureDbLoadAfterConnect();
+    return;
+  }
+
   try {
     // Load global SMTP config (host, port, pass)
     let smtpConfig = await SmtpConfig.findOne();
@@ -127,34 +175,8 @@ async function loadSmtpConfig() {
     console.log('[Notifier] Category SMTP users loaded:', Object.fromEntries(categorySmtpUsers));
   } catch (error) {
     console.error('[Notifier] Error loading SMTP config from database, using environment variables:', error);
-    // Fallback to environment variables for global config
-    SMTP_HOST = process.env.SMTP_HOST;
-    SMTP_PORT = process.env.SMTP_PORT;
-    SMTP_PASS = process.env.SMTP_PASS;
-    
-    // Still try to initialize category SMTP users from environment variables even if DB fails
-    try {
-      const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
-      for (const category of categories) {
-        let envValue = null;
-        
-        if (category === 'support') {
-          envValue = process.env.SMTP_USER;
-        } else if (category === 'no-reply') {
-          envValue = process.env.SMTP_USER_NO_REPLY || process.env.SMTP_USER;
-        } else {
-          const envVarName = `SMTP_USER_${category.toUpperCase()}`;
-          envValue = process.env[envVarName] || process.env.SMTP_USER;
-        }
-        
-        if (envValue) {
-          categorySmtpUsers.set(category, envValue);
-        }
-      }
-      console.log('[Notifier] Category SMTP users loaded from environment variables (fallback):', Object.fromEntries(categorySmtpUsers));
-    } catch (fallbackError) {
-      console.error('[Notifier] Error loading category SMTP users from environment variables:', fallbackError);
-    }
+    loadFromEnvFallback();
+    console.log('[Notifier] Category SMTP users loaded from environment variables (fallback):', Object.fromEntries(categorySmtpUsers));
   }
 }
 
@@ -163,8 +185,10 @@ function getSmtpUserForCategory(category) {
   return categorySmtpUsers.get(category) || process.env.SMTP_USER || '';
 }
 
-// Load SMTP config on module initialization
-await loadSmtpConfig();
+// Load SMTP config on module initialization (non-blocking)
+loadSmtpConfig().catch((err) => {
+  console.error('[Notifier] Initial SMTP config load failed:', err);
+});
 
 // Function to reload SMTP config (useful when admin updates settings)
 export async function reloadSmtpConfig() {

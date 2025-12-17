@@ -136,11 +136,12 @@ const initializeDatabase = async () => {
   startVerificationReminderScheduler();
 };
 
-
-if (MONGODB_URI) {
-  initializeDatabase().catch((error) => {
-    console.error('Failed to initialize database:', error);
-  });
+// Ensure DB is ready before accepting requests (avoids long buffering/hangs on first request)
+try {
+  await initializeDatabase();
+} catch (error) {
+  console.error('❌ Failed to initialize database:', error);
+  process.exit(1);
 }
 
 // API Routes

@@ -876,7 +876,10 @@ export default function ProfilePage() {
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="verification-content">
-                        <div className="verification-label">{label}</div>
+                        <div className="verification-text">
+                          <div className="verification-label">{label}</div>
+                          {status !== "verified" && <div className="verification-sub">Not verified</div>}
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -777,9 +777,19 @@
   min-width: 0;
 }
 
+.prolancer-profile .verification-text {
+  min-width: 0;
+}
+
 .prolancer-profile .verification-label {
   font-weight: 700;
   color: #0f172a;
+}
+
+.prolancer-profile .verification-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 .prolancer-profile .verification-icon.status-verified {

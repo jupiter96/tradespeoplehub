@@ -41,7 +41,6 @@ const userSchema = new mongoose.Schema(
         return this.role !== 'admin' && this.role !== 'subadmin';
       },
       trim: true,
-      sparse: true, // Allow multiple null/undefined values
     },
     postcode: {
       type: String,
