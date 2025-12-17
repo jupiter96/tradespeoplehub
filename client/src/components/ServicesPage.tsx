@@ -1575,12 +1575,13 @@ export default function ServicesPage() {
   return (
     <div className="w-full min-h-screen bg-[#f0f0f0]">
       {/* Header */}
-      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+      {/* Services page has NO category bar, so keep header height compact to avoid extra blank space */}
+      <header className="sticky top-0 h-[73px] md:h-[78px] z-50 bg-white">
         <Nav />
       </header>
 
       {/* Search Section */}
-      <div className="bg-[#f0f0f0] py-6 mt-[50px] md:mt-0">
+      <div className="bg-[#f0f0f0] py-6">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16">
           <div className="max-w-[1200px] mx-auto">
             {/* Search and Filter Bar */}

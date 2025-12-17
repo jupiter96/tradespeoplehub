@@ -748,7 +748,11 @@ export default function Nav() {
     });
   }
 
-  const isServicesPage = location.pathname === '/services';
+  // Hide category bar on Services listing pages. Handle trailing slash and nested routes.
+  const isServicesPage =
+    location.pathname === "/services" ||
+    location.pathname.startsWith("/services/") ||
+    location.pathname.replace(/\/+$/, "") === "/services";
 
   return (
     <div
@@ -1136,25 +1140,7 @@ export default function Nav() {
           <LoginButton />
         </div>
       </div>
-      <div className="hidden md:block absolute h-0 left-0 top-[78px] right-0">
-        <div className="absolute bottom-0 left-0 right-0 top-[-1px]">
-          <svg
-            className="block w-full h-full"
-            fill="none"
-            preserveAspectRatio="none"
-            viewBox="0 0 1440 1"
-          >
-            <line
-              id="Line 6"
-              stroke="var(--stroke-0, #CACACA)"
-              x1="0"
-              x2="1440"
-              y1="0.5"
-              y2="0.5"
-            />
-          </svg>
-        </div>
-      </div>
+      {/* Removed the grey divider line between header and category bar */}
 
       {/* Category navigation items with scroll - Hidden on Services page */}
       {!isServicesPage && (

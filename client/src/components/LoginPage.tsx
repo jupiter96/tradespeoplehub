@@ -61,12 +61,8 @@ export default function LoginPage() {
   useEffect(() => {
     // Don't redirect if user is in the middle of registration process
     if (isLoggedIn && !showEmailVerification && !isCompletingRegistration) {
-      if (userInfo?.role === "professional" && !userInfo?.sector) {
-        // Professional user without sector should go to registration steps
-        navigate("/professional-registration-steps", { replace: true });
-      } else if (userInfo?.role !== "professional" || userInfo?.sector) {
-        navigate("/account", { replace: true });
-      }
+      // Professionals should land on Account after login (even if profile setup is incomplete).
+      navigate("/account", { replace: true });
     }
   }, [isLoggedIn, navigate, showEmailVerification, userInfo, isCompletingRegistration]);
   const [emailVerificationCode, setEmailVerificationCode] = useState("");
@@ -192,7 +188,8 @@ export default function LoginPage() {
           // ignore and fall back to default navigation
         }
 
-        navigate("/professional-setup");
+        // Professional users should always land on Account after login.
+        navigate("/account", { replace: true });
         return;
       }
 

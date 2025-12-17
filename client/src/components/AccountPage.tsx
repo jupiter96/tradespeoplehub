@@ -155,14 +155,6 @@ export default function AccountPage() {
       navigate("/login");
       return;
     }
-    
-    // Redirect professional users without sector to registration steps
-    // Note: if the URL explicitly asks for the verification section, do not override it.
-    const params = new URLSearchParams(location.search);
-    const requestedTab = params.get("tab");
-    if (userInfo?.role === "professional" && !userInfo?.sector && requestedTab !== "verification") {
-      navigate("/professional-registration-steps", { replace: true });
-    }
   }, [isLoggedIn, navigate, userInfo, location.search]);
 
   // If redirected here after PRO login with incomplete verification, show a centered modal.

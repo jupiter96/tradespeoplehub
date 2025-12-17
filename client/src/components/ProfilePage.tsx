@@ -395,11 +395,14 @@ export default function ProfilePage() {
     const identityStatus = statusOf(profile?.verification?.idCard);
     const insuranceStatus = statusOf(profile?.verification?.publicLiabilityInsurance);
 
+    const isVerified = (s: string) => s === "verified" || s === "completed";
+    const labelFor = (base: string, status: string) => `${base} ${isVerified(status) ? "verified" : "not verified"}`;
+
     return [
-      { key: "phone", label: "Phone verified", status: phoneStatus, Icon: Phone },
-      { key: "identity", label: "Identity verified", status: identityStatus, Icon: IdCard },
-      { key: "address", label: "Address verified", status: addressStatus, Icon: MapPin },
-      { key: "insurance", label: "Insurance verified", status: insuranceStatus, Icon: ShieldCheck },
+      { key: "phone", label: labelFor("Phone", phoneStatus), status: phoneStatus, Icon: Phone },
+      { key: "identity", label: labelFor("Identity", identityStatus), status: identityStatus, Icon: IdCard },
+      { key: "address", label: labelFor("Address", addressStatus), status: addressStatus, Icon: MapPin },
+      { key: "insurance", label: labelFor("Insurance", insuranceStatus), status: insuranceStatus, Icon: ShieldCheck },
     ] as const;
   }, [profile?.verification]);
 
@@ -899,7 +902,6 @@ export default function ProfilePage() {
                       <div className="verification-content">
                         <div className="verification-text">
                           <div className="verification-label">{label}</div>
-                          {status !== "verified" && <div className="verification-sub">Not verified</div>}
                         </div>
                       </div>
                     </div>
