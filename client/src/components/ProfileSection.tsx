@@ -124,46 +124,67 @@ export default function ProfileSection() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [skillsPopoverOpen, setSkillsPopoverOpen] = useState(false);
   
-  // Build skills options: only subcategories for the user's selected sector
+  // Build skills options: ONLY the subcategories the user selected during registration (userInfo.services)
   useEffect(() => {
-    const buildSectorSubCategories = () => {
+    const buildRegisteredSubCategories = () => {
       try {
         setIsLoadingCategories(true);
-        if (!selectedSectorId || availableCategories.length === 0) {
+        const selectedServices = (userInfo?.services || []).filter(Boolean);
+        if (!selectedSectorId || availableCategories.length === 0 || selectedServices.length === 0) {
           setAllJobCategories([]);
           return;
         }
 
-        const subCategoryList: Array<{ id: string; name: string; sector?: string }> = [];
+        const categoryIdSet = new Set<string>();
+        const subIdToName = new Map<string, string>();
+        const subNameToId = new Map<string, string>();
 
         availableCategories.forEach((cat: Category & { subCategories?: SubCategory[] }) => {
+          if (cat?._id) categoryIdSet.add(cat._id);
           if (cat.subCategories && cat.subCategories.length > 0) {
             cat.subCategories.forEach((subcat: SubCategory) => {
-              subCategoryList.push({
-                id: subcat._id,
-                name: subcat.name,
-                sector: typeof cat.sector === 'object' ? (cat.sector as Sector).name : selectedSectorObj?.name,
-              });
+              if (!subcat?._id || !subcat?.name) return;
+              subIdToName.set(subcat._id, subcat.name);
+              subNameToId.set(subcat.name, subcat._id);
             });
           }
         });
 
-        // Remove duplicates by name (keep first occurrence)
-        const uniqueSubCategories = Array.from(
-          new Map(subCategoryList.map(item => [item.name.toLowerCase(), item])).values()
-        );
+        const allowed: Array<{ id: string; name: string; sector?: string }> = [];
 
-        setAllJobCategories(uniqueSubCategories.sort((a, b) => a.name.localeCompare(b.name)));
+        // Only show user's previously selected SUBCATEGORIES (ignore main category IDs)
+        for (const raw of selectedServices) {
+          const id = String(raw).trim();
+          if (!id) continue;
+          if (categoryIdSet.has(id)) continue;
+
+          const nameById = subIdToName.get(id);
+          if (nameById) {
+            allowed.push({ id, name: nameById, sector: selectedSectorObj?.name });
+            continue;
+          }
+
+          // Legacy support: if services contain names instead of IDs
+          const mappedId = subNameToId.get(id);
+          if (mappedId) {
+            allowed.push({ id: mappedId, name: id, sector: selectedSectorObj?.name });
+          }
+        }
+
+        // Remove duplicates by name (keep first occurrence)
+        const uniqueAllowed = Array.from(new Map(allowed.map((i) => [i.name.toLowerCase(), i])).values());
+
+        setAllJobCategories(uniqueAllowed.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (error) {
-        console.error('Error building sector subcategories:', error);
+        console.error('Error building registered subcategories:', error);
         setAllJobCategories([]);
       } finally {
         setIsLoadingCategories(false);
       }
     };
 
-    buildSectorSubCategories();
-  }, [availableCategories, selectedSectorId, selectedSectorObj]);
+    buildRegisteredSubCategories();
+  }, [availableCategories, selectedSectorId, selectedSectorObj, userInfo?.services]);
   
   // Convert service IDs to category/subcategory names
   const convertServiceIdsToNames = (serviceIds: string[]): string[] => {
@@ -191,6 +212,43 @@ export default function ProfileSection() {
     }).filter(Boolean);
   };
 
+  // Extract only the user's REGISTERED subcategory names (skills list should be constrained to these)
+  const getRegisteredSubcategoryNames = (serviceIdsOrNames: string[]): string[] => {
+    if (!serviceIdsOrNames || serviceIdsOrNames.length === 0 || availableCategories.length === 0) return [];
+
+    const categoryIdSet = new Set<string>();
+    const subIdToName = new Map<string, string>();
+    const subNameSet = new Set<string>();
+
+    availableCategories.forEach((cat: Category & { subCategories?: SubCategory[] }) => {
+      if (cat?._id) categoryIdSet.add(cat._id);
+      if (cat.subCategories) {
+        cat.subCategories.forEach((sc: SubCategory) => {
+          if (!sc?._id || !sc?.name) return;
+          subIdToName.set(sc._id, sc.name);
+          subNameSet.add(sc.name);
+        });
+      }
+    });
+
+    const names: string[] = [];
+    for (const raw of serviceIdsOrNames) {
+      const val = String(raw).trim();
+      if (!val) continue;
+      if (categoryIdSet.has(val)) continue; // skip main categories
+      const name = subIdToName.get(val) || (subNameSet.has(val) ? val : "");
+      if (name) names.push(name);
+    }
+
+    // unique, keep order
+    const seen = new Set<string>();
+    return names.filter((n) => {
+      const k = n.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  };
   // Convert service names back to IDs (for saving)
   const convertServiceNamesToIds = (serviceNames: string[]): string[] => {
     if (!serviceNames || serviceNames.length === 0 || availableCategories.length === 0) {
@@ -296,12 +354,11 @@ export default function ProfileSection() {
       setPortfolio(userInfo.publicProfile?.portfolio || []);
       setIsPublic(userInfo.publicProfile?.isPublic !== false);
       setCoverImage((userInfo.publicProfile as any)?.coverImage || null);
-      // Convert service IDs to names for display
-      // Re-convert whenever availableCategories changes
-      const serviceNames = userInfo.services && availableCategories.length > 0
-        ? convertServiceIdsToNames(userInfo.services)
-        : (userInfo.services || []);
-      setSkills(serviceNames);
+      // Skills: only show registered SUBCATEGORIES, and only allow re-selecting from them.
+      const registeredSkillNames = availableCategories.length > 0
+        ? getRegisteredSubcategoryNames(userInfo.services || [])
+        : [];
+      setSkills(registeredSkillNames);
       // Convert qualifications string to array
       const quals = (userInfo.publicProfile as any)?.qualifications;
       if (quals) {
@@ -366,8 +423,13 @@ export default function ProfileSection() {
 
   const handleSave = async () => {
     try {
-      // Convert skill names back to IDs for saving
-      const serviceIds = convertServiceNamesToIds(skills);
+      // Preserve existing MAIN category IDs, but only allow SUBCATEGORY selection via the Skills picker.
+      const categoryIdSet = new Set<string>(availableCategories.map((c: Category) => c._id));
+      const existingCategoryIds = (userInfo?.services || []).filter((s: string) => categoryIdSet.has(s));
+
+      // Convert selected skill names back to IDs for saving (subcategory ids)
+      const selectedSubCategoryIds = convertServiceNamesToIds(skills);
+      const serviceIds = Array.from(new Set([...existingCategoryIds, ...selectedSubCategoryIds]));
       
       // Include required fields from userInfo
       const profileData: any = {
@@ -879,12 +941,12 @@ export default function ProfileSection() {
                   className="w-full justify-start text-left font-normal border-[#FE8A0F] text-black dark:text-white bg-white dark:bg-black"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add job category...
+                  Add skill...
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[400px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search job categories..." className="h-9" />
+                  <CommandInput placeholder="Search your registered skills..." className="h-9" />
                   <CommandList>
                     <CommandEmpty>
                       {isLoadingCategories ? "Loading categories..." : "No categories found."}
@@ -915,7 +977,7 @@ export default function ProfileSection() {
                 </Command>
               </PopoverContent>
             </Popover>
-            <p className="text-xs text-gray-500">Click "Add job category" to select from available categories</p>
+            <p className="text-xs text-gray-500">You can only choose from the subcategories you selected during registration.</p>
           </div>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">

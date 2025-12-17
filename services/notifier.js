@@ -16,6 +16,8 @@ let SMTP_HOST, SMTP_PORT, SMTP_PASS;
 const categorySmtpUsers = new Map();
 
 let deferredDbLoadAttached = false;
+let notifierInitialized = false;
+let notifierInitPromise = null;
 
 function loadFromEnvFallback() {
   // Fallback to environment variables for global config
@@ -50,6 +52,13 @@ function ensureDbLoadAfterConnect() {
     loadSmtpConfig().catch((err) => {
       console.error('[Notifier] Deferred SMTP config load failed:', err);
     });
+  });
+}
+
+function waitForMongoConnected() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
+  return new Promise((resolve) => {
+    mongoose.connection.once('connected', resolve);
   });
 }
 
@@ -185,13 +194,9 @@ function getSmtpUserForCategory(category) {
   return categorySmtpUsers.get(category) || process.env.SMTP_USER || '';
 }
 
-// Load SMTP config on module initialization (non-blocking)
-loadSmtpConfig().catch((err) => {
-  console.error('[Notifier] Initial SMTP config load failed:', err);
-});
-
 // Function to reload SMTP config (useful when admin updates settings)
 export async function reloadSmtpConfig() {
+  await initNotifier();
   await loadSmtpConfig();
   // Recreate transporters with new config
   await initializeTransporters();
@@ -203,26 +208,6 @@ const {
   TWILIO_FROM = process.env.TWILIO_FROM_NUMBER || 'TRADEPPLHUB',
   TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER, // Actual Twilio phone number for countries that don't support alphanumeric sender IDs
 } = process.env;
-
-// Debug logging for SMTP credentials
-console.log('[Notifier] SMTP configuration check:', {
-  hasHost: !!SMTP_HOST,
-  hasPort: !!SMTP_PORT,
-  hasPass: !!SMTP_PASS,
-  host: SMTP_HOST || 'missing',
-  port: SMTP_PORT || 'missing',
-  categoryUsers: Object.fromEntries(categorySmtpUsers)
-});
-
-// Debug logging for Twilio credentials
-console.log('[Notifier] Twilio configuration check:', {
-  hasAccountSid: !!TWILIO_ACCOUNT_SID,
-  hasAuthToken: !!TWILIO_AUTH_TOKEN,
-  accountSidLength: TWILIO_ACCOUNT_SID?.length || 0,
-  authTokenLength: TWILIO_AUTH_TOKEN?.length || 0,
-  fromNumber: TWILIO_FROM,
-  phoneNumber: TWILIO_PHONE_NUMBER || 'not configured (required for US/Canada)'
-});
 
 let mailTransporter;
 let verificationMailTransporter;
@@ -254,25 +239,63 @@ async function initializeTransporters() {
   // This function is kept for backward compatibility but transporters are now created dynamically
   console.log('[Notifier] Transporter initialization skipped - using dynamic transporters per category');
 }
-
-// Initialize transporters on module load
-await initializeTransporters();
-
 let twilioClient;
-if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-  try {
-  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-    console.log('[Notifier] Twilio client initialized successfully');
-  } catch (error) {
-    console.error('[Notifier] Failed to initialize Twilio client:', error);
-  }
-} else {
-  console.warn('[Notifier] Twilio credentials missing:', {
-    hasAccountSid: !!TWILIO_ACCOUNT_SID,
-    hasAuthToken: !!TWILIO_AUTH_TOKEN,
-    accountSid: TWILIO_ACCOUNT_SID ? `${TWILIO_ACCOUNT_SID.substring(0, 4)}...` : 'missing',
-    authToken: TWILIO_AUTH_TOKEN ? `${TWILIO_AUTH_TOKEN.substring(0, 4)}...` : 'missing'
+
+/**
+ * Explicit initializer: connect MongoDB first, then load configs, then init other clients.
+ * This prevents slow startup caused by Mongoose buffering/timeouts before DB is connected.
+ */
+export async function initNotifier() {
+  if (notifierInitialized) return;
+  if (notifierInitPromise) return notifierInitPromise;
+
+  notifierInitPromise = (async () => {
+    await waitForMongoConnected();
+
+    await loadSmtpConfig();
+
+    console.log('[Notifier] SMTP configuration check:', {
+      hasHost: !!SMTP_HOST,
+      hasPort: !!SMTP_PORT,
+      hasPass: !!SMTP_PASS,
+      host: SMTP_HOST || 'missing',
+      port: SMTP_PORT || 'missing',
+      categoryUsers: Object.fromEntries(categorySmtpUsers)
+    });
+
+    console.log('[Notifier] Twilio configuration check:', {
+      hasAccountSid: !!TWILIO_ACCOUNT_SID,
+      hasAuthToken: !!TWILIO_AUTH_TOKEN,
+      accountSidLength: TWILIO_ACCOUNT_SID?.length || 0,
+      authTokenLength: TWILIO_AUTH_TOKEN?.length || 0,
+      fromNumber: TWILIO_FROM,
+      phoneNumber: TWILIO_PHONE_NUMBER || 'not configured (required for US/Canada)'
+    });
+
+    await initializeTransporters();
+
+    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+      try {
+        twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+        console.log('[Notifier] Twilio client initialized successfully');
+      } catch (error) {
+        console.error('[Notifier] Failed to initialize Twilio client:', error);
+      }
+    } else {
+      console.warn('[Notifier] Twilio credentials missing:', {
+        hasAccountSid: !!TWILIO_ACCOUNT_SID,
+        hasAuthToken: !!TWILIO_AUTH_TOKEN,
+        accountSid: TWILIO_ACCOUNT_SID ? `${TWILIO_ACCOUNT_SID.substring(0, 4)}...` : 'missing',
+        authToken: TWILIO_AUTH_TOKEN ? `${TWILIO_AUTH_TOKEN.substring(0, 4)}...` : 'missing'
+      });
+    }
+
+    notifierInitialized = true;
+  })().finally(() => {
+    if (!notifierInitialized) notifierInitPromise = null;
   });
+
+  return notifierInitPromise;
 }
 
 const logCode = (channel, to, code) => {
@@ -305,6 +328,7 @@ export function renderEmailTemplate(templateBody, variables) {
  * @returns {Promise<object|null>} - Email sending result or null if failed
  */
 export async function sendTemplatedEmail(to, templateType, variables = {}, category = null) {
+  await initNotifier();
   console.log('[EMAIL] sendTemplatedEmail called:', {
     to: to || 'missing',
     templateType: templateType || 'missing',

@@ -19,6 +19,7 @@ import serviceSubCategoryRoutes from './routes/service-subcategories.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
+import { initNotifier } from './services/notifier.js';
 
 dotenv.config();
 
@@ -139,6 +140,8 @@ const initializeDatabase = async () => {
 // Ensure DB is ready before accepting requests (avoids long buffering/hangs on first request)
 try {
   await initializeDatabase();
+  // After Mongo is connected, load other config/services that depend on DB
+  await initNotifier();
 } catch (error) {
   console.error('❌ Failed to initialize database:', error);
   process.exit(1);
