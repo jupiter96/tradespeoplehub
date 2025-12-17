@@ -565,7 +565,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="profile-stats-inline" aria-label="Rating and completed jobs">
                   <Star
-                    className={`stat-star ${rating > 0 ? "is-active" : ""}`}
+                    className="stat-star is-active"
                     aria-hidden="true"
                   />
                   <span className="stat-rating">{rating.toFixed(1)}</span>

@@ -61,7 +61,8 @@
 .prolancer-profile .profile-stats-inline .stat-star {
   width: 16px;
   height: 16px;
-  color: #cbd5e1;
+  color: #fe8a0f;
+  fill: #fe8a0f;
 }
 
 .prolancer-profile .profile-stats-inline .stat-star.is-active {
