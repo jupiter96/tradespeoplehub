@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Star, MapPin, Info, Check } from "lucide-react";
+import serviceVector from "../assets/service_vector.jpg";
 
 interface Professional {
   id: string;
@@ -49,9 +50,9 @@ export default function InviteProfessionalsList({
     }
     // Default images based on category
     return [
-      `https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=400&h=300&fit=crop`,
-      `https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop`,
-      `https://images.unsplash.com/photo-1581094271901-8022df4466f9?w=400&h=300&fit=crop`,
+      serviceVector,
+      serviceVector,
+      serviceVector,
     ];
   };
 
@@ -98,10 +99,10 @@ export default function InviteProfessionalsList({
     <div className="mt-8">
       {/* Section Header */}
       <div className="mb-6">
-        <h2 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+        <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
           Recommended Professionals
         </h2>
-        <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-5">
+        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-5">
           These professionals match your job requirements and are ready to help
         </p>
       </div>
@@ -111,10 +112,10 @@ export default function InviteProfessionalsList({
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
               Invite the professionals that match your needs to send you offers
             </p>
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
               View new offers in the 'Quotes' tab.
             </p>
           </div>
@@ -123,7 +124,7 @@ export default function InviteProfessionalsList({
 
       {/* Header with count and toggle */}
       <div className="flex items-center justify-between mb-5">
-        <p className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
+        <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
           <span className="font-semibold">Found {filteredProfessionals.length} professionals</span> who match your brief
         </p>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -133,7 +134,7 @@ export default function InviteProfessionalsList({
             onChange={(e) => setShowInvitedOnly(e.target.checked)}
             className="w-4 h-4 rounded border-gray-300 text-[#FE8A0F] focus:ring-[#FE8A0F]"
           />
-          <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
             Show invited professionals only
           </span>
         </label>
@@ -166,7 +167,7 @@ export default function InviteProfessionalsList({
                   <div className="flex-1 min-w-0">
                     {/* Name - BOLD */}
                     <h3 
-                      className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] font-bold truncate mb-1.5 cursor-pointer hover:text-[#FE8A0F] transition-colors"
+                      className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-bold truncate mb-1.5 cursor-pointer hover:text-[#FE8A0F] transition-colors"
                       onClick={() => handleNavigateToProfile(pro.id)}
                     >
                       {pro.name}
@@ -184,10 +185,10 @@ export default function InviteProfessionalsList({
                           }`}
                         />
                       ))}
-                      <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] font-semibold ml-0.5">
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-semibold ml-0.5">
                         {pro.rating}
                       </span>
-                      <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
+                      <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                         ({pro.reviewCount})
                       </span>
                     </div>
@@ -195,7 +196,7 @@ export default function InviteProfessionalsList({
                     {/* Location - BOLD */}
                     <div className="flex items-center gap-1 mb-2">
                       <MapPin className="w-3.5 h-3.5 text-[#FE8A0F] flex-shrink-0" />
-                      <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] font-bold truncate">
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-bold truncate">
                         {Math.floor(Math.random() * 50 + 1)} miles away
                       </span>
                     </div>
@@ -204,7 +205,7 @@ export default function InviteProfessionalsList({
                     {invitedProfessionalIds.has(pro.id) ? (
                       <Button
                         disabled
-                        className="w-full bg-green-50 text-green-700 border-2 border-green-300 font-['Roboto',sans-serif] text-[12px] font-semibold h-8 px-3 cursor-not-allowed shadow-sm"
+                        className="w-full bg-green-50 text-green-700 border-2 border-green-300 font-['Poppins',sans-serif] text-[12px] font-semibold h-8 px-3 cursor-not-allowed shadow-sm"
                       >
                         <Check className="w-3.5 h-3.5 mr-1.5" />
                         Invited
@@ -212,7 +213,7 @@ export default function InviteProfessionalsList({
                     ) : (
                       <Button
                         onClick={() => onInvite(pro)}
-                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Roboto',sans-serif] text-[12px] font-semibold h-8 px-3 transition-all duration-300"
+                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Poppins',sans-serif] text-[12px] font-semibold h-8 px-3 transition-all duration-300"
                       >
                         Send invitation
                       </Button>
@@ -243,7 +244,7 @@ export default function InviteProfessionalsList({
                     <div className="flex-1 min-w-0">
                       {/* Name - BOLD */}
                       <h3 
-                        className="font-['Roboto',sans-serif] text-[17px] text-[#2c353f] font-bold truncate mb-2 cursor-pointer hover:text-[#FE8A0F] transition-colors"
+                        className="font-['Poppins',sans-serif] text-[17px] text-[#2c353f] font-bold truncate mb-2 cursor-pointer hover:text-[#FE8A0F] transition-colors"
                         onClick={() => handleNavigateToProfile(pro.id)}
                       >
                         {pro.name}
@@ -252,10 +253,10 @@ export default function InviteProfessionalsList({
                       {/* Location with Distance - BOLD */}
                       <div className="flex items-center gap-1.5 mb-3">
                         <MapPin className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
-                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-bold truncate">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold truncate">
                           {Math.floor(Math.random() * 50 + 1)} miles away
                         </span>
-                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                           • {pro.location}
                         </span>
                       </div>
@@ -267,7 +268,7 @@ export default function InviteProfessionalsList({
                             <Badge
                               key={index}
                               variant="outline"
-                              className="bg-gradient-to-r from-blue-50 to-sky-50 border-2 border-blue-200 text-[#2c353f] font-['Roboto',sans-serif] text-[11px] font-semibold px-3 py-1 rounded-full hover:border-blue-300 hover:bg-blue-100 transition-all duration-200"
+                              className="bg-gradient-to-r from-blue-50 to-sky-50 border-2 border-blue-200 text-[#2c353f] font-['Poppins',sans-serif] text-[11px] font-semibold px-3 py-1 rounded-full hover:border-blue-300 hover:bg-blue-100 transition-all duration-200"
                             >
                               {skill}
                             </Badge>
@@ -290,10 +291,10 @@ export default function InviteProfessionalsList({
                             }`}
                           />
                         ))}
-                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-bold ml-1">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold ml-1">
                           {pro.rating}
                         </span>
-                        <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
+                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                           ({pro.reviewCount})
                         </span>
                       </div>
@@ -302,7 +303,7 @@ export default function InviteProfessionalsList({
                       {invitedProfessionalIds.has(pro.id) ? (
                         <Button
                           disabled
-                          className="bg-green-50 text-green-700 border-2 border-green-300 font-['Roboto',sans-serif] text-[13px] font-semibold h-9 px-5 cursor-not-allowed shadow-sm"
+                          className="bg-green-50 text-green-700 border-2 border-green-300 font-['Poppins',sans-serif] text-[13px] font-semibold h-9 px-5 cursor-not-allowed shadow-sm"
                         >
                           <Check className="w-4 h-4 mr-1.5" />
                           Invited
@@ -310,7 +311,7 @@ export default function InviteProfessionalsList({
                       ) : (
                         <Button
                           onClick={() => onInvite(pro)}
-                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Roboto',sans-serif] text-[13px] font-semibold h-9 px-5 transition-all duration-300"
+                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Poppins',sans-serif] text-[13px] font-semibold h-9 px-5 transition-all duration-300"
                         >
                           Send invitation
                         </Button>
@@ -319,7 +320,7 @@ export default function InviteProfessionalsList({
                   </div>
 
                   {/* Description */}
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed line-clamp-4 mt-auto">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed line-clamp-4 mt-auto">
                     {generateProfessionalSummary(pro)}
                   </p>
                 </div>

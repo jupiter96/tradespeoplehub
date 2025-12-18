@@ -16,7 +16,7 @@ export default function GrowBusinessSection() {
             <div className="w-full lg:w-1/2 text-center lg:text-left px-4 lg:px-0">
               {/* Title with confetti decoration */}
               <div className="relative inline-block">
-                <h2 className="font-['Roboto:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] lg:text-[32px] xl:text-[36px] leading-[1.3] mb-6">
+                <h2 className="font-['Poppins:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] lg:text-[32px] xl:text-[36px] leading-[1.3] mb-6">
                   The Easiest Way to<br />
                   Sell Your Services<br />
                   & Grow<br />
@@ -31,12 +31,12 @@ export default function GrowBusinessSection() {
               </div>
 
               {/* Description */}
-              <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] md:text-[15px] leading-[1.7] mb-8 max-w-[500px] mx-auto lg:mx-0">
+              <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] md:text-[15px] leading-[1.7] mb-8 max-w-[500px] mx-auto lg:mx-0">
                 Whether you're a genius spreadsheet guru, a skilled carpenter, or anything in between, find your next job with ease on our platform. Sell your services directly to a wide audience and watch your business grow!
               </p>
 
               {/* CTA Button */}
-              <button className="bg-[#fe8a0f] text-white px-8 py-3 rounded-[20px] font-['Roboto:Regular',sans-serif] text-[15px] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300">
+              <button className="bg-[#fe8a0f] text-white px-8 py-3 rounded-[20px] font-['Poppins:Regular',sans-serif] text-[15px] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300">
                 Start Selling Now!
               </button>
 
@@ -81,14 +81,14 @@ export default function GrowBusinessSection() {
                     className="w-[38px] h-[38px] rounded-full"
                   />
                   <div className="flex flex-col">
-                    <span className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] whitespace-nowrap">
+                    <span className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] whitespace-nowrap">
                       Josef Flores
                     </span>
                     <div className="flex items-center gap-1">
                       <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
                         <path d="M4.74403 0.282232L5.71993 2.43067C5.78779 2.58009 5.91901 2.68363 6.0708 2.70755L8.25309 3.0521C8.63536 3.11249 8.78787 3.62274 8.51137 3.91551L6.93227 5.58782C6.82254 5.70411 6.77236 5.87177 6.79835 6.0359L7.17106 8.3973C7.23639 8.81086 6.83679 9.12619 6.49495 8.93107L4.54315 7.81626C4.40742 7.7388 4.24516 7.7388 4.10943 7.81626L2.15763 8.93107C1.81578 9.12638 1.41618 8.81086 1.48152 8.3973L1.85423 6.0359C1.88022 5.87177 1.83004 5.70411 1.72031 5.58782L0.141213 3.91551C-0.135296 3.62254 0.0172169 3.1123 0.399492 3.0521L2.58178 2.70755C2.73357 2.68363 2.86478 2.58009 2.93265 2.43067L3.90855 0.282232C4.07929 -0.0940773 4.57311 -0.0940773 4.74403 0.282232Z" fill="#ED8A19"/>
                       </svg>
-                      <span className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[10px]">4.3</span>
+                      <span className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[10px]">4.3</span>
                     </div>
                   </div>
                 </div>
@@ -101,14 +101,14 @@ export default function GrowBusinessSection() {
                     className="w-[39px] h-[39px] rounded-full"
                   />
                   <div className="flex flex-col">
-                    <span className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] whitespace-nowrap">
+                    <span className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] whitespace-nowrap">
                       Alexander Lesli
                     </span>
                     <div className="flex items-center gap-1">
                       <svg width="9" height="10" viewBox="0 0 9 10" fill="none">
                         <path d="M4.85311 0.288721L5.85144 2.48655C5.92087 2.63941 6.0551 2.74533 6.21038 2.76981L8.44284 3.12227C8.83391 3.18406 8.98993 3.70603 8.70706 4.00553L7.09166 5.7163C6.9794 5.83526 6.92807 6.00677 6.95466 6.17468L7.33594 8.59037C7.40277 9.01344 6.99399 9.33602 6.64428 9.13641L4.6476 7.99597C4.50875 7.91673 4.34276 7.91673 4.20392 7.99597L2.20724 9.13641C1.85753 9.33622 1.44874 9.01344 1.51558 8.59037L1.89686 6.17468C1.92345 6.00677 1.87212 5.83526 1.75986 5.7163L0.144459 4.00553C-0.138407 3.70583 0.0176128 3.18386 0.408677 3.12227L2.64114 2.76981C2.79642 2.74533 2.93065 2.63941 3.00008 2.48655L3.99841 0.288721C4.17308 -0.0962404 4.67825 -0.0962404 4.85311 0.288721Z" fill="#ED8A19"/>
                       </svg>
-                      <span className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[10px]">4.3</span>
+                      <span className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[10px]">4.3</span>
                     </div>
                   </div>
                 </div>

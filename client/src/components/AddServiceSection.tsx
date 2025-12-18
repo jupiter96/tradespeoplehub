@@ -1560,15 +1560,15 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
         <Button
           variant="ghost"
           onClick={onClose}
-          className="mb-4 font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#3B82F6] hover:text-[#FE8A0F] hover:bg-transparent transition-colors"
+          className="mb-4 font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#3B82F6] hover:text-[#FE8A0F] hover:bg-transparent transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to My Services
         </Button>
-        <h2 className="font-['Roboto',sans-serif] text-[22px] sm:text-[24px] md:text-[28px] text-[#2c353f] mb-2">
+        <h2 className="font-['Poppins',sans-serif] text-[22px] sm:text-[24px] md:text-[28px] text-[#2c353f] mb-2">
           Add Service
         </h2>
-        <p className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
           Create a new service offering with all the details
         </p>
       </div>
@@ -1579,10 +1579,10 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {/* Progress Indicator */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                   Step {getCurrentTabIndex() + 1} of {TAB_ORDER.length}
                 </p>
-                <p className="font-['Roboto',sans-serif] text-[13px] text-[#FE8A0F]">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
                   {Math.round(((getCurrentTabIndex() + 1) / TAB_ORDER.length) * 100)}% Complete
                 </p>
               </div>
@@ -1595,22 +1595,22 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             </div>
             
             <TabsList className="grid w-full grid-cols-6 bg-gray-100 h-auto">
-              <TabsTrigger value="service-details" className="font-['Roboto',sans-serif] text-[12px] px-3 py-2.5 whitespace-nowrap">
+              <TabsTrigger value="service-details" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5 whitespace-nowrap">
                 Service Details
               </TabsTrigger>
-              <TabsTrigger value="extra-service" className="font-['Roboto',sans-serif] text-[12px] px-3 py-2.5 whitespace-nowrap">
+              <TabsTrigger value="extra-service" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5 whitespace-nowrap">
                 Extra Service
               </TabsTrigger>
-              <TabsTrigger value="gallery" className="font-['Roboto',sans-serif] text-[12px] px-3 py-2.5">
+              <TabsTrigger value="gallery" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
                 Gallery
               </TabsTrigger>
-              <TabsTrigger value="faqs" className="font-['Roboto',sans-serif] text-[12px] px-3 py-2.5">
+              <TabsTrigger value="faqs" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
                 FAQs
               </TabsTrigger>
-              <TabsTrigger value="availability" className="font-['Roboto',sans-serif] text-[12px] px-3 py-2.5">
+              <TabsTrigger value="availability" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
                 Availability
               </TabsTrigger>
-              <TabsTrigger value="profile" className="font-['Roboto',sans-serif] text-[12px] px-3 py-2.5">
+              <TabsTrigger value="profile" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
                 Profile
               </TabsTrigger>
             </TabsList>
@@ -1622,7 +1622,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
               <div className="space-y-6">
                 {/* Main Category */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Main Category
                   </Label>
                   <Select 
@@ -1634,20 +1634,20 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                       setAttributeValue(""); // Reset attribute
                     }}
                   >
-                    <SelectTrigger className="font-['Roboto',sans-serif] text-[14px] border-gray-300">
+                    <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
                       <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
                       {CATEGORY_TREE.map((sector) => (
                         <div key={sector.sectorValue}>
-                          <div className="px-2 py-1.5 font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] uppercase tracking-wider">
+                          <div className="px-2 py-1.5 font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] uppercase tracking-wider">
                             {sector.sector}
                           </div>
                           {sector.mainCategories.map((cat) => (
                             <SelectItem 
                               key={cat.value} 
                               value={cat.name} 
-                              className="font-['Roboto',sans-serif] text-[14px] pl-4"
+                              className="font-['Poppins',sans-serif] text-[14px] pl-4"
                             >
                               {cat.name}
                             </SelectItem>
@@ -1673,7 +1673,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   if (selectedCategoryData && selectedCategoryData.subCategories.length > 0) {
                     return (
                       <div>
-                        <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                           Sub Category
                         </Label>
                         <Select 
@@ -1684,7 +1684,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                             setAttributeValue(""); // Reset attribute when sub category changes
                           }}
                         >
-                          <SelectTrigger className="font-['Roboto',sans-serif] text-[14px] border-gray-300">
+                          <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
                             <SelectValue placeholder="Select Sub Category" />
                           </SelectTrigger>
                           <SelectContent className="max-h-[300px]">
@@ -1692,7 +1692,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                               <SelectItem 
                                 key={subCat.name} 
                                 value={subCat.name} 
-                                className="font-['Roboto',sans-serif] text-[14px]"
+                                className="font-['Poppins',sans-serif] text-[14px]"
                               >
                                 {subCat.name}
                               </SelectItem>
@@ -1722,7 +1722,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   if (selectedSubCategoryData && selectedSubCategoryData.serviceTypes.length > 0) {
                     return (
                       <div>
-                        <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                        <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                           Service Type
                         </Label>
                         <RadioGroup 
@@ -1752,7 +1752,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                                 />
                                 <span 
                                   className={`
-                                    font-['Roboto',sans-serif] text-[13px] text-center
+                                    font-['Poppins',sans-serif] text-[13px] text-center
                                     ${serviceType === type ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
                                   `}
                                 >
@@ -1792,7 +1792,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   if (selectedSubCategoryData && selectedSubCategoryData.attributes.options.length > 0) {
                     return (
                       <div>
-                        <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                        <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                           {selectedSubCategoryData.attributes.label}
                         </Label>
                         <RadioGroup 
@@ -1819,7 +1819,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                                 />
                                 <span 
                                   className={`
-                                    font-['Roboto',sans-serif] text-[13px] text-center
+                                    font-['Poppins',sans-serif] text-[13px] text-center
                                     ${attributeValue === option ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
                                   `}
                                 >
@@ -1844,17 +1844,17 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                 {/* Service Title */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Service Title
                   </Label>
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mb-2">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mb-2">
                     Choose from suggested titles, edit it or write your own title.
                   </p>
                   <Input
                     value={serviceTitle}
                     onChange={(e) => setServiceTitle(e.target.value)}
                     placeholder="Select or write a title"
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
                   {category && TITLE_SUGGESTIONS[category] && (
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -1862,7 +1862,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                         <Badge
                           key={suggestion}
                           variant="outline"
-                          className="cursor-pointer hover:bg-[#FFF5EB] hover:border-[#FE8A0F] font-['Roboto',sans-serif] text-[12px] transition-colors"
+                          className="cursor-pointer hover:bg-[#FFF5EB] hover:border-[#FE8A0F] font-['Poppins',sans-serif] text-[12px] transition-colors"
                           onClick={() => setServiceTitle(suggestion)}
                         >
                           {suggestion}
@@ -1875,16 +1875,16 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                 {/* Location */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Location
                     </Label>
                     <Select value={location} onValueChange={setLocation}>
-                      <SelectTrigger className="font-['Roboto',sans-serif] text-[14px] border-gray-300">
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
                         <SelectValue placeholder="Select Location" />
                       </SelectTrigger>
                       <SelectContent>
                         {UK_LOCATIONS.map((loc) => (
-                          <SelectItem key={loc} value={loc} className="font-['Roboto',sans-serif] text-[14px]">
+                          <SelectItem key={loc} value={loc} className="font-['Poppins',sans-serif] text-[14px]">
                             {loc}
                           </SelectItem>
                         ))}
@@ -1892,36 +1892,36 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                     </Select>
                   </div>
                   <div>
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Postcode (Optional)
                     </Label>
                     <Input
                       value={postcode}
                       onChange={(e) => setPostcode(e.target.value.toUpperCase())}
                       placeholder="e.g., SW1A 1AA"
-                      className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                     />
                   </div>
                 </div>
 
                 {/* Positive Keywords */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Positive Keywords
                   </Label>
                   <Input
                     value={keywords}
                     onChange={handleKeywordsChange}
                     placeholder="Positive Keywords"
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
                     5 tags maximum. Use letters and numbers only.
                   </p>
                   {keywords && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {keywords.split(",").map((kw, i) => kw.trim() && (
-                        <Badge key={i} className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Roboto',sans-serif] text-[12px]">
+                        <Badge key={i} className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[12px]">
                           {kw.trim()}
                         </Badge>
                       ))}
@@ -1931,7 +1931,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                 {/* What is the service ideal for? */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     What is the service ideal for?
                   </Label>
                   <div className="border border-gray-300 rounded-md p-4 max-h-[300px] overflow-y-auto">
@@ -1954,7 +1954,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                           />
                           <label
                             htmlFor={option.id}
-                            className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
+                            className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
                           >
                             {option.label}
                           </label>
@@ -1967,7 +1967,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                       {idealFor.map((id) => {
                         const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
                         return option ? (
-                          <Badge key={id} className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Roboto',sans-serif] text-[12px]">
+                          <Badge key={id} className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[12px]">
                             {option.label}
                           </Badge>
                         ) : null;
@@ -1978,7 +1978,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                 {/* Service Highlights */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                     What's Included
                   </Label>
                   <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
@@ -2009,7 +2009,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                             />
                             <label
                               htmlFor={option.id}
-                              className={`font-['Roboto',sans-serif] text-[13px] leading-snug cursor-pointer ${
+                              className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
                                 isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
                               }`}
                             >
@@ -2022,7 +2022,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   </div>
                   {serviceHighlights.length > 0 && (
                     <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-3">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
                         Selected Highlights:
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -2031,7 +2031,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                           return option ? (
                             <div key={id} className="flex items-start gap-2">
                               <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
-                              <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f]">
+                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
                                 {option.label}
                               </span>
                             </div>
@@ -2044,7 +2044,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                 {/* Delivery Type */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Delivery Type
                   </Label>
                   <div className="flex gap-3">
@@ -2058,7 +2058,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                       }`}
                     >
                       <Clock className="w-4 h-4" />
-                      <span className="font-['Roboto',sans-serif] text-[13px]">
+                      <span className="font-['Poppins',sans-serif] text-[13px]">
                         Standard Delivery
                       </span>
                       {deliveryType === "standard" && (
@@ -2076,7 +2076,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                       }`}
                     >
                       <TrendingUp className="w-4 h-4" />
-                      <span className="font-['Roboto',sans-serif] text-[13px]">
+                      <span className="font-['Poppins',sans-serif] text-[13px]">
                         Same-Day Service
                       </span>
                       {deliveryType === "same-day" && (
@@ -2089,7 +2089,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                 {/* Base Price */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Base Price (£)
                     </Label>
                     <Input
@@ -2097,15 +2097,15 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                       value={basePrice}
                       onChange={(e) => setBasePrice(e.target.value)}
                       placeholder="0.00"
-                      className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                     />
                   </div>
                   <div>
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Price Unit
                     </Label>
                     <Select value={priceUnit} onValueChange={setPriceUnit}>
-                      <SelectTrigger className="font-['Roboto',sans-serif] text-[14px] border-gray-300">
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2120,16 +2120,16 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                 {/* About Your Service */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     About Your Service
                   </Label>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Description"
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
                   />
-                  <p className={`font-['Roboto',sans-serif] text-[12px] mt-2 text-right ${description.length < 100 ? 'text-red-500' : 'text-green-600'}`}>
+                  <p className={`font-['Poppins',sans-serif] text-[12px] mt-2 text-right ${description.length < 100 ? 'text-red-500' : 'text-green-600'}`}>
                     {description.length} / 100 minimum characters
                   </p>
                 </div>
@@ -2141,7 +2141,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
               <div className="space-y-6">
                 {/* Predefined Extra Services */}
                 <div className="space-y-4">
-                  <h3 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                     Choose an additional service
                   </h3>
                   
@@ -2160,14 +2160,14 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                           />
                           <label
                             htmlFor={extra.id}
-                            className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                            className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
                           >
                             {extra.label}
                           </label>
                         </div>
                         
                         <div className="flex flex-col items-end gap-1">
-                          <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                             Extra Service Price
                           </Label>
                           <Input
@@ -2176,7 +2176,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                             onChange={(e) => updatePredefinedExtraPrice(extra.id, e.target.value)}
                             placeholder={extra.placeholder || "Enter price"}
                             disabled={!extra.selected}
-                            className="w-[160px] font-['Roboto',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
+                            className="w-[160px] font-['Poppins',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
                           />
                         </div>
                       </div>
@@ -2190,19 +2190,19 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                     <div className="w-full border-t border-gray-200"></div>
                   </div>
                   <div className="relative flex justify-center">
-                    <span className="bg-white px-3 font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                    <span className="bg-white px-3 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       Or add custom extra services
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                     Create custom additional services that clients can add to their order.
                   </p>
                   <Button
                     onClick={addExtraService}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Extra Service
@@ -2211,7 +2211,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                 {extraServices.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d]">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
                       No extra services added yet. Click the button above to add one.
                     </p>
                   </div>
@@ -2220,7 +2220,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                     {extraServices.map((extra) => (
                       <div key={extra.id} className="border-2 border-gray-200 rounded-xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
+                          <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
                             Extra Service
                           </h4>
                           <Button
@@ -2235,18 +2235,18 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                               Title
                             </Label>
                             <Input
                               value={extra.title}
                               onChange={(e) => updateExtraService(extra.id, "title", e.target.value)}
                               placeholder="e.g., Express Delivery"
-                              className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                              className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                             />
                           </div>
                           <div>
-                            <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                               Price (£)
                             </Label>
                             <Input
@@ -2254,20 +2254,20 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                               value={extra.price}
                               onChange={(e) => updateExtraService(extra.id, "price", e.target.value)}
                               placeholder="0.00"
-                              className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                              className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                             Description
                           </Label>
                           <Textarea
                             value={extra.description}
                             onChange={(e) => updateExtraService(extra.id, "description", e.target.value)}
                             placeholder="Describe this extra service..."
-                            className="font-['Roboto',sans-serif] text-[14px] border-gray-300 min-h-[80px]"
+                            className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[80px]"
                           />
                         </div>
                       </div>
@@ -2280,7 +2280,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {/* Gallery Tab */}
             <TabsContent value="gallery" className="mt-0 py-6">
               <div className="space-y-6">
-                <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   Upload images of your previous work to showcase your skills. Recommended size: 1200x800px.
                 </p>
 
@@ -2300,14 +2300,14 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   {galleryImages.length < 6 && (
                     <div className="aspect-video bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#FE8A0F] hover:bg-[#FFF5EB] transition-all">
                       <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
-                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                         Upload Image
                       </p>
                     </div>
                   )}
                 </div>
 
-                <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                   Maximum 6 images. Supported formats: JPG, PNG (Max 5MB each)
                 </p>
               </div>
@@ -2317,12 +2317,12 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             <TabsContent value="faqs" className="mt-0 py-6">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                     Answer common questions clients might have about your service.
                   </p>
                   <Button
                     onClick={addFAQ}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add FAQ
@@ -2332,7 +2332,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                 {faqs.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
                     <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d]">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
                       No FAQs added yet. Click the button above to add one.
                     </p>
                   </div>
@@ -2341,7 +2341,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                     {faqs.map((faq, index) => (
                       <div key={faq.id} className="border-2 border-gray-200 rounded-xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
+                          <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
                             FAQ #{index + 1}
                           </h4>
                           <Button
@@ -2355,26 +2355,26 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                         </div>
 
                         <div>
-                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                             Question
                           </Label>
                           <Input
                             value={faq.question}
                             onChange={(e) => updateFAQ(faq.id, "question", e.target.value)}
                             placeholder="What is your question?"
-                            className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                            className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                           />
                         </div>
 
                         <div>
-                          <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                             Answer
                           </Label>
                           <Textarea
                             value={faq.answer}
                             onChange={(e) => updateFAQ(faq.id, "answer", e.target.value)}
                             placeholder="Your detailed answer..."
-                            className="font-['Roboto',sans-serif] text-[14px] border-gray-300 min-h-[80px]"
+                            className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[80px]"
                           />
                         </div>
                       </div>
@@ -2387,7 +2387,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {/* Availability Tab */}
             <TabsContent value="availability" className="mt-0 py-6">
               <div className="space-y-6">
-                <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   Set your available time blocks for each day. Create multiple time slots per day as needed.
                 </p>
 
@@ -2402,7 +2402,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                             onCheckedChange={(checked) => toggleDayAvailability(day, checked)}
                             className="data-[state=checked]:bg-[#FE8A0F]"
                           />
-                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] capitalize min-w-[100px]">
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] capitalize min-w-[100px]">
                             {day}
                           </span>
                         </div>
@@ -2413,7 +2413,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                             variant="outline"
                             size="sm"
                             onClick={() => addTimeBlock(day)}
-                            className="font-['Roboto',sans-serif] text-[13px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F] hover:text-white"
+                            className="font-['Poppins',sans-serif] text-[13px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F] hover:text-white"
                           >
                             <Plus className="w-4 h-4 mr-1" />
                             Add Time Block
@@ -2425,7 +2425,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                       {dayData.enabled ? (
                         <div className="space-y-2 ml-11">
                           {dayData.blocks.length === 0 ? (
-                            <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] italic">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] italic">
                               No time blocks added. Click "Add Time Block" to create one.
                             </p>
                           ) : (
@@ -2436,14 +2436,14 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                                   type="time"
                                   value={block.from}
                                   onChange={(e) => updateTimeBlock(day, block.id, 'from', e.target.value)}
-                                  className="w-32 font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                                  className="w-32 font-['Poppins',sans-serif] text-[14px] border-gray-300"
                                 />
-                                <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">to</span>
+                                <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">to</span>
                                 <Input
                                   type="time"
                                   value={block.to}
                                   onChange={(e) => updateTimeBlock(day, block.id, 'to', e.target.value)}
-                                  className="w-32 font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                                  className="w-32 font-['Poppins',sans-serif] text-[14px] border-gray-300"
                                 />
                                 <Button
                                   type="button"
@@ -2460,7 +2460,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                           )}
                         </div>
                       ) : (
-                        <span className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] ml-11">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] ml-11">
                           Not available
                         </span>
                       )}
@@ -2472,10 +2472,10 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
                   <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-blue-900">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-blue-900">
                       <strong>Important:</strong> Time slots are exclusive to this service listing.
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-blue-800">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
                       Once you assign a time slot (e.g., 7:00-9:00) to this service, it cannot be used in any other service listing.
                     </p>
                   </div>
@@ -2486,16 +2486,16 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {/* Profile Tab */}
             <TabsContent value="profile" className="mt-0 py-6">
               <div className="space-y-6">
-                <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   Additional professional information about you and your service.
                 </p>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Typical Response Time
                   </Label>
                   <Select value={responseTime} onValueChange={setResponseTime}>
-                    <SelectTrigger className="font-['Roboto',sans-serif] text-[14px] border-gray-300">
+                    <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2508,7 +2508,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                 </div>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Years of Experience
                   </Label>
                   <Input
@@ -2516,21 +2516,21 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                     value={experienceYears}
                     onChange={(e) => setExperienceYears(e.target.value)}
                     placeholder="e.g., 5"
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
                 </div>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Qualifications & Certifications
                   </Label>
                   <Textarea
                     value={qualifications}
                     onChange={(e) => setQualifications(e.target.value)}
                     placeholder="List your qualifications, certifications, trade memberships..."
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
                   />
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
                     Include any relevant trade qualifications, certifications, insurance details, or professional memberships.
                   </p>
                 </div>
@@ -2544,7 +2544,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
               <Button
                 variant="outline"
                 onClick={handlePrevious}
-                className="font-['Roboto',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
+                className="font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Previous
@@ -2553,7 +2553,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             <Button
               variant="outline"
               onClick={onClose}
-              className="font-['Roboto',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
+              className="font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel
@@ -2561,7 +2561,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {isLastTab() ? (
               <Button
                 onClick={handlePublish}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Publish Service
@@ -2569,7 +2569,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             ) : (
               <Button
                 onClick={handleSaveAndContinue}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
               >
                 Save and Continue
                 <ArrowRight className="w-4 h-4 ml-2" />

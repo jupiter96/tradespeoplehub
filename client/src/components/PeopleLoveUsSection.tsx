@@ -3,6 +3,7 @@ import svgPaths from "../imports/svg-kbvia5rgdw";
 import imgEllipse17 from "figma:asset/abf7759026040812d1be0192ad93cae51d649fa4.png";
 import imgEllipse18 from "figma:asset/3c4f6d7cd8e52d1fbd106cc8702ba2e53af44c6f.png";
 import imgEllipse16 from "figma:asset/2055816d9237a29b336d813b80b43778bb1a2fb9.png";
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import {
   Carousel,
@@ -52,19 +53,19 @@ function ReviewCard({ name, title, review, rating, image }: ReviewCardProps) {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <Stars rating={rating} />
-              <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[20px] ml-2">{rating.toFixed(1)}</p>
+              <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[20px] ml-2">{rating.toFixed(1)}</p>
             </div>
           </div>
         </div>
 
         {/* Name and Title */}
         <div className="mb-4">
-          <h3 className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[16px] mb-1">{name}</h3>
-          <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px]">{title}</p>
+          <h3 className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[16px] mb-1">{name}</h3>
+          <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px]">{title}</p>
         </div>
 
         {/* Review Text */}
-        <p className="font-['Roboto',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] flex-1">
+        <p className="font-['Poppins',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6] flex-1">
           {review}
         </p>
       </div>
@@ -102,21 +103,21 @@ export default function PeopleLoveUsSection() {
       title: "Painting Services",
       review: "Outstanding service from start to finish. The professional was punctual, efficient, and delivered exceptional results. Highly recommend for anyone looking for quality work.",
       rating: 5.0,
-      image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHdvbWFuJTIwaGVhZHNob3R8ZW58MXx8fHwxNzYyNjIxNDM4fDA&ixlib=rb-4.1.0&q=80&w=1080"
+      image: defaultAvatar
     },
     {
       name: "Michael Brown",
       title: "Carpentry Services",
       review: "Amazing craftsmanship and attention to detail. The professional was excellent and completed the job ahead of schedule. Will definitely use this service again.",
       rating: 4.9,
-      image: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2OTgzNjR8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      image: defaultAvatar
     },
     {
       name: "Emma Wilson",
       title: "Landscaping",
       review: "Fantastic experience! The team transformed my garden beyond expectations. Professional, reliable, and affordable. I couldn't be happier with the results.",
       rating: 4.9,
-      image: "https://images.unsplash.com/photo-1531299983330-093763e1d963?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwZXJzb24lMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2NzM4NDZ8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      image: defaultAvatar
     }
   ];
 
@@ -124,7 +125,7 @@ export default function PeopleLoveUsSection() {
     <section className="w-full bg-[#f0f0f0] py-16 md:py-20">
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
         {/* Title */}
-        <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
+        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
           People Love Us
         </h2>
 

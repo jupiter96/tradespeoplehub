@@ -5,6 +5,23 @@ import SubCategory from '../models/SubCategory.js';
 
 const router = express.Router();
 
+// Small in-memory cache to reduce repeat DB work for hot public endpoints.
+// Keyed by req.originalUrl. Safe only for GET + activeOnly=true + no search.
+const _cache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+const getCached = (key) => {
+  const hit = _cache.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    _cache.delete(key);
+    return null;
+  }
+  return hit.value;
+};
+const setCached = (key, value) => {
+  _cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+};
+
 // Get all sectors (with optional filtering)
 router.get('/', async (req, res) => {
   try {
@@ -18,6 +35,19 @@ router.get('/', async (req, res) => {
       page = '1',
       limit = '20'
     } = req.query;
+
+    const shouldCache =
+      req.method === 'GET' &&
+      activeOnly === 'true' &&
+      !search;
+    const cacheKey = shouldCache ? req.originalUrl : null;
+    if (cacheKey) {
+      const cached = getCached(cacheKey);
+      if (cached) {
+        res.set('Cache-Control', 'public, max-age=300');
+        return res.json(cached);
+      }
+    }
     
     const query = activeOnly === 'true' ? { isActive: true } : {};
     
@@ -56,37 +86,63 @@ router.get('/', async (req, res) => {
     
     // Include categories if requested
     if (includeCategories === 'true') {
-      sectors = await Promise.all(
-        sectors.map(async (sector) => {
-          const categories = await Category.find({
-            sector: sector._id,
+      // Avoid N+1: fetch categories for all sectors in ONE query and group in memory.
+      const sectorIds = sectors.map((s) => s._id);
+      const categories = sectorIds.length === 0
+        ? []
+        : await Category.find({
+            sector: { $in: sectorIds },
             isActive: activeOnly === 'true' ? true : { $exists: true }
           })
             .sort({ createdAt: 1, name: 1 })
             .lean();
-          
-          // Include subcategories if requested
-          if (includeSubCategories === 'true') {
-            const categoriesWithSubCategories = await Promise.all(
-              categories.map(async (category) => {
-                const subCategories = await SubCategory.find({
-                  category: category._id,
-                  isActive: activeOnly === 'true' ? true : { $exists: true }
-                })
-                  .sort({ createdAt: 1, name: 1 })
-                  .lean();
-                return { ...category, subCategories };
-              })
-            );
-            return { ...sector, categories: categoriesWithSubCategories };
-          }
-          
-          return { ...sector, categories };
-        })
-      );
+
+      const categoriesBySectorId = new Map();
+      for (const cat of categories) {
+        const key = String(cat.sector);
+        const arr = categoriesBySectorId.get(key);
+        if (arr) arr.push(cat);
+        else categoriesBySectorId.set(key, [cat]);
+      }
+
+      // Optionally fetch all subcategories for these categories in ONE query.
+      let subCategoriesByCategoryId = null;
+      if (includeSubCategories === 'true') {
+        const categoryIds = categories.map((c) => c._id);
+        const subCategories = categoryIds.length === 0
+          ? []
+          : await SubCategory.find({
+              category: { $in: categoryIds },
+              isActive: activeOnly === 'true' ? true : { $exists: true }
+            })
+              .sort({ createdAt: 1, name: 1 })
+              .lean();
+
+        subCategoriesByCategoryId = new Map();
+        for (const sc of subCategories) {
+          const key = String(sc.category);
+          const arr = subCategoriesByCategoryId.get(key);
+          if (arr) arr.push(sc);
+          else subCategoriesByCategoryId.set(key, [sc]);
+        }
+      }
+
+      sectors = sectors.map((sector) => {
+        const cats = categoriesBySectorId.get(String(sector._id)) || [];
+        if (includeSubCategories !== 'true') {
+          return { ...sector, categories: cats };
+        }
+        return {
+          ...sector,
+          categories: cats.map((c) => ({
+            ...c,
+            subCategories: subCategoriesByCategoryId?.get(String(c._id)) || [],
+          })),
+        };
+      });
     }
-    
-    return res.json({ 
+
+    const payload = { 
       sectors,
       pagination: {
         page: pageNum,
@@ -94,7 +150,13 @@ router.get('/', async (req, res) => {
         total,
         totalPages: Math.ceil(total / limitNum)
       }
-    });
+    };
+
+    if (cacheKey) {
+      setCached(cacheKey, payload);
+      res.set('Cache-Control', 'public, max-age=300');
+    }
+    return res.json(payload);
   } catch (error) {
     console.error('Get sectors error', error);
     return res.status(500).json({ error: 'Failed to fetch sectors' });

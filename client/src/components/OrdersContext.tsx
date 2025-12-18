@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { CartItem } from "./CartContext";
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface OrderItem {
   id: string;
@@ -126,7 +127,11 @@ interface OrdersContextType {
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>([
+  const normalizeAvatar = (value?: string) =>
+    value && !/images\.unsplash\.com/i.test(value) ? value : defaultAvatar;
+
+  const [orders, setOrders] = useState<Order[]>(
+    [
     // Mock data for demonstration
     {
       id: "ORD-001",
@@ -137,7 +142,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£150",
       amountValue: 150,
       professional: "John Smith",
-      professionalAvatar: "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzc21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI3OTI1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7123 456789",
       professionalEmail: "john.smith@gmail.com",
       address: {
@@ -165,7 +170,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£320",
       amountValue: 320,
       professional: "Sarah Johnson",
-      professionalAvatar: "https://images.unsplash.com/photo-1649589244330-09ca58e4fa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI5MjAyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7987 654321",
       professionalEmail: "sarah.j@gmail.com",
       address: {
@@ -195,7 +200,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£200",
       amountValue: 200,
       professional: "Mike Brown",
-      professionalAvatar: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBoZWFkc2hvdHxlbnwxfHx8fDE3NjMyOTQxMjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7555 123456",
       professionalEmail: "mike.brown@gmail.com",
       address: {
@@ -226,7 +231,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£275",
       amountValue: 275,
       professional: "David Wilson",
-      professionalAvatar: "https://images.unsplash.com/photo-1629507208649-70919ca33793?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzMzMzU4OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7444 999888",
       professionalEmail: "david.w@gmail.com",
       address: {
@@ -256,7 +261,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£95",
       amountValue: 95,
       professional: "Emma Taylor",
-      professionalAvatar: "https://images.unsplash.com/photo-1689600944138-da3b150d9cb8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc2MzMzNTgyM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7222 555777",
       professionalEmail: "emma.t@gmail.com",
       address: {
@@ -287,7 +292,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£85",
       amountValue: 85,
       professional: "Rachel Green",
-      professionalAvatar: "https://images.unsplash.com/photo-1762505464553-1f4eb1578f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMHdvbWFufGVufDF8fHx8MTc2MzMzODQ3MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7111 222333",
       professionalEmail: "rachel.green@gmail.com",
       address: {
@@ -317,7 +322,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£120",
       amountValue: 120,
       professional: "Tom Baker",
-      professionalAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7333 444555",
       professionalEmail: "tom.baker@gmail.com",
       address: {
@@ -348,7 +353,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£65",
       amountValue: 65,
       professional: "Mark Stevens",
-      professionalAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7555 666777",
       professionalEmail: "mark.stevens@gmail.com",
       address: {
@@ -379,7 +384,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£110",
       amountValue: 110,
       professional: "Chris Evans",
-      professionalAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7777 888999",
       professionalEmail: "chris.evans@gmail.com",
       address: {
@@ -411,7 +416,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£75",
       amountValue: 75,
       professional: "Paul Mitchell",
-      professionalAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7888 999000",
       professionalEmail: "paul.mitchell@gmail.com",
       address: {
@@ -441,7 +446,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£165",
       amountValue: 165,
       professional: "Simon Wright",
-      professionalAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7999 000111",
       professionalEmail: "simon.wright@gmail.com",
       address: {
@@ -473,7 +478,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Emma Watson",
-      clientAvatar: "https://images.unsplash.com/photo-1762505464553-1f4eb1578f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMHdvbWFufGVufDF8fHx8MTc2MzMzODQ3MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7234 567890",
       clientEmail: "emma.watson@gmail.com",
       address: {
@@ -505,7 +510,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "James Anderson",
-      clientAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7345 678901",
       clientEmail: "james.anderson@gmail.com",
       address: {
@@ -537,7 +542,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Sophie Taylor",
-      clientAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7456 789012",
       clientEmail: "sophie.taylor@gmail.com",
       address: {
@@ -569,7 +574,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Oliver Brown",
-      clientAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7567 890123",
       clientEmail: "oliver.brown@gmail.com",
       address: {
@@ -602,7 +607,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Amelia Wilson",
-      clientAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7678 901234",
       clientEmail: "amelia.wilson@gmail.com",
       address: {
@@ -635,7 +640,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Harry Johnson",
-      clientAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7789 012345",
       clientEmail: "harry.johnson@gmail.com",
       address: {
@@ -664,9 +669,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£290",
       amountValue: 290,
       professional: "David James",
-      professionalAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      professionalAvatar: defaultAvatar,
       client: "MatJohn LTD",
-      clientAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7890 123456",
       clientEmail: "matjohn@gmail.com",
       disputeId: "DISP-1757607480",
@@ -699,7 +704,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "William Davis",
-      clientAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7901 234567",
       clientEmail: "william.davis@gmail.com",
       address: {
@@ -731,7 +736,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Charlotte Thompson",
-      clientAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7012 345678",
       clientEmail: "charlotte.thompson@gmail.com",
       address: {
@@ -764,7 +769,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "George Harris",
-      clientAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7123 456780",
       clientEmail: "george.harris@gmail.com",
       address: {
@@ -796,7 +801,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Lily Robinson",
-      clientAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7234 567891",
       clientEmail: "lily.robinson@gmail.com",
       address: {
@@ -828,7 +833,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Thomas White",
-      clientAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7345 678902",
       clientEmail: "thomas.white@gmail.com",
       address: {
@@ -861,7 +866,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Jack Walker",
-      clientAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7345 678902",
       clientEmail: "jack.walker@gmail.com",
       address: {
@@ -894,7 +899,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Grace Lewis",
-      clientAvatar: "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7456 789013",
       clientEmail: "grace.lewis@gmail.com",
       address: {
@@ -927,7 +932,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Noah Clark",
-      clientAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7567 890124",
       clientEmail: "noah.clark@gmail.com",
       address: {
@@ -961,7 +966,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Mia Turner",
-      clientAvatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7678 901235",
       clientEmail: "mia.turner@gmail.com",
       address: {
@@ -992,7 +997,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Lucas White",
-      clientAvatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7789 012346",
       clientEmail: "lucas.white@gmail.com",
       address: {
@@ -1024,7 +1029,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       professional: "Current User",
       professionalAvatar: "",
       client: "Ava Moore",
-      clientAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7890 123457",
       clientEmail: "ava.moore@gmail.com",
       address: {
@@ -1054,7 +1059,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: "£185",
       amountValue: 185,
       professional: "Andrew Collins",
-      professionalAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      professionalAvatar: defaultAvatar,
       professionalPhone: "+44 7666 777888",
       professionalEmail: "andrew.collins@gmail.com",
       address: {
@@ -1076,7 +1081,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         timeSlot: "Afternoon"
       }
     }
-  ]);
+    ].map((o) => ({
+      ...o,
+      professionalAvatar: normalizeAvatar(o.professionalAvatar),
+      clientAvatar: normalizeAvatar(o.clientAvatar),
+    }))
+  );
 
   const addOrder = (orderData: {
     items: CartItem[];
@@ -1123,7 +1133,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: `£${total.toFixed(2)}`,
       amountValue: total,
       professional: professional,
-      professionalAvatar: orderData.items[0]?.image || "https://images.unsplash.com/photo-1635221798248-8a3452ad07cd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxicml0aXNoJTIwcGx1bWJlciUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NjI3ODE3MjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      professionalAvatar: orderData.items[0]?.image || defaultAvatar,
       professionalPhone: "+44 7XXX XXXXXX",
       professionalEmail: `${professional.toLowerCase().replace(' ', '.')}@gmail.com`,
       address: orderData.address,
@@ -1228,16 +1238,17 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   // Dispute Management
-  const [disputes, setDisputes] = useState<OrderDispute[]>([
+  const [disputes, setDisputes] = useState<OrderDispute[]>(
+    [
     {
       id: "DISP-1757607480",
       orderId: "ORD-P007",
       claimantId: "client-user",
       claimantName: "MatJohn LTD",
-      claimantAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      claimantAvatar: defaultAvatar,
       respondentId: "professional-user",
       respondentName: "David James",
-      respondentAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      respondentAvatar: defaultAvatar,
       amount: 290,
       reason: "Define the terms of your offer and what it includes.",
       status: "closed",
@@ -1246,7 +1257,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           id: "MSG-1",
           userId: "client-user",
           userName: "MatJohn LTD",
-          userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+          userAvatar: defaultAvatar,
           message: "Define the terms of your offer and what it includes.",
           timestamp: "2025-09-11T16:18:00.000Z",
         },
@@ -1254,7 +1265,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           id: "MSG-2",
           userId: "professional-user",
           userName: "David James",
-          userAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+          userAvatar: defaultAvatar,
           message: "Define the terms of your offer and what it includes.",
           timestamp: "2025-09-11T16:19:11.000Z",
         },
@@ -1262,7 +1273,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           id: "MSG-3",
           userId: "client-user",
           userName: "MatJohn LTD",
-          userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+          userAvatar: defaultAvatar,
           message: "xcxxc",
           timestamp: "2025-09-11T16:20:29.000Z",
         },
@@ -1281,7 +1292,16 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       resolvedAt: "2025-09-11T16:21:00.000Z",
       teamInterventionTime: "2025-09-12T16:18:00.000Z",
     }
-  ]);
+    ].map((d) => ({
+      ...d,
+      claimantAvatar: normalizeAvatar(d.claimantAvatar),
+      respondentAvatar: normalizeAvatar(d.respondentAvatar),
+      messages: (d.messages || []).map((m) => ({
+        ...m,
+        userAvatar: normalizeAvatar(m.userAvatar),
+      })),
+    }))
+  );
 
   const createOrderDispute = (orderId: string, reason: string, evidence?: string): string => {
     const order = orders.find(o => o.id === orderId);

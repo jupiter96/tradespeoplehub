@@ -2320,7 +2320,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (hasField('phone')) {
       const normalizedPhoneAttempt = normalizePhone(phone);
       if (!normalizedPhoneAttempt) {
-        return res.status(400).json({ error: 'Phone number is required' });
+      return res.status(400).json({ error: 'Phone number is required' });
       }
     }
 

@@ -72,10 +72,10 @@ export default function VerificationProgressModal(props: {
                     <Shield className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-1">
+                    <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
                       Verification Progress
                     </h3>
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       {verifiedCount} of {items.length} items verified
                     </p>
                   </div>
@@ -83,8 +83,8 @@ export default function VerificationProgressModal(props: {
 
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">Overall Progress</span>
-                    <span className="font-['Roboto',sans-serif] text-[18px] text-[#FE8A0F]">{progress}%</span>
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">Overall Progress</span>
+                    <span className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F]">{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-3 bg-gray-200">
                     <div
@@ -98,7 +98,7 @@ export default function VerificationProgressModal(props: {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <p className="font-['Roboto',sans-serif] text-[13px] text-blue-800">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
                         Complete all verification steps to increase your chances of winning jobs and earning client trust
                       </p>
                     </div>
@@ -111,8 +111,8 @@ export default function VerificationProgressModal(props: {
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
                     <CheckCircle2 className="w-5 h-5 text-green-600" />
                   </div>
-                  <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">{verifiedCount}</p>
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">Verified</p>
+                  <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">{verifiedCount}</p>
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Verified</p>
                 </div>
 
                 {pendingCount > 0 && (
@@ -120,8 +120,8 @@ export default function VerificationProgressModal(props: {
                     <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Clock className="w-5 h-5 text-yellow-600" />
                     </div>
-                    <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">{pendingCount}</p>
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">Pending</p>
+                    <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">{pendingCount}</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Pending</p>
                   </div>
                 )}
               </div>
@@ -133,10 +133,10 @@ export default function VerificationProgressModal(props: {
           <div className="flex-1 overflow-y-auto mt-4 pr-2">
             {unverifiedItems.length === 0 ? (
               <div className="bg-white border border-green-200 rounded-2xl p-6">
-                <div className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-semibold">
+                <div className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold">
                   All verification steps are completed
                 </div>
-                <div className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
+                <div className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
                   You’re fully verified. Great job!
                 </div>
               </div>
@@ -170,13 +170,13 @@ export default function VerificationProgressModal(props: {
                           <Icon className="w-5 h-5 text-[#2c353f]" />
                         </div>
                         <div className="min-w-0">
-                          <div className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium truncate">
+                          <div className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium truncate">
                             {item.title}
                           </div>
                         </div>
                       </div>
                       <span
-                        className={`text-[12px] font-['Roboto',sans-serif] font-semibold border rounded-full px-3 py-1 ${chip}`}
+                        className={`text-[12px] font-['Poppins',sans-serif] font-semibold border rounded-full px-3 py-1 ${chip}`}
                       >
                         {statusText}
                       </span>

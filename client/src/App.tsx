@@ -38,6 +38,8 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/services" element={<ServicesPage />} />
+        {/* SEO-friendly services filter routes (path params instead of query params) */}
+        <Route path="/services/:sectorSlug/:serviceCategorySlug/*" element={<ServicesPage />} />
         <Route path="/service/:id" element={<ServiceDetailPage />} />
         <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/all-categories" element={<AllCategoriesPage />} />

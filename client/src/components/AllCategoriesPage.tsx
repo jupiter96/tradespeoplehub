@@ -11,6 +11,7 @@ import Footer from "./Footer";
 import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import type { Sector } from "../hooks/useSectorsAndCategories";
 import { getSectorIcon, getCategoryIcon, getSubCategoryIcon } from "./categoryIconMappings";
+import serviceVector from "../assets/service_vector.jpg";
 
 type ViewMode = "sectors" | "categories" | "subcategories";
 
@@ -121,7 +122,7 @@ export default function AllCategoriesPage() {
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBpbnRlcmlvciUyMGRlc2lnbnxlbnwxfHx8fDE3NjI3NzQ4MjN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`,
+            backgroundImage: `url('${serviceVector}')`,
           }}
         />
         {/* Modern Gradient Overlay */}
@@ -134,10 +135,10 @@ export default function AllCategoriesPage() {
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="font-['Roboto',sans-serif] text-[#FE8A0F] mb-4 text-[42px] md:text-[56px] lg:text-[64px] drop-shadow-[0_4px_12px_rgba(254,138,15,0.3)]">
+            <h1 className="font-['Poppins',sans-serif] text-[#FE8A0F] mb-4 text-[42px] md:text-[56px] lg:text-[64px] drop-shadow-[0_4px_12px_rgba(254,138,15,0.3)]">
               All Service Categories
             </h1>
-            <p className="font-['Roboto',sans-serif] text-white/90 text-[16px] md:text-[18px] max-w-2xl mx-auto">
+            <p className="font-['Poppins',sans-serif] text-white/90 text-[16px] md:text-[18px] max-w-2xl mx-auto">
               Explore our comprehensive range of professional services across all categories
             </p>
           </div>
@@ -152,7 +153,7 @@ export default function AllCategoriesPage() {
           </div>
         ) : (sectorsError || error) ? (
           <div className="text-center py-20">
-            <p className="text-red-500 font-['Roboto',sans-serif]">{sectorsError || error}</p>
+            <p className="text-red-500 font-['Poppins',sans-serif]">{sectorsError || error}</p>
           </div>
         ) : (
           <div className="bg-white rounded-[16px] shadow-[0px_4px_16px_rgba(0,0,0,0.06)] p-6 md:p-8">
@@ -184,7 +185,7 @@ export default function AllCategoriesPage() {
             {/* Sectors View */}
             {viewMode === "sectors" && (
               <div>
-                <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-6">
+                <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-6">
                   Select a Sector
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -215,10 +216,10 @@ export default function AllCategoriesPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-['Roboto',sans-serif] text-[#2c353f] text-[16px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
+                          <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[16px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
                             {sector.name}
                           </h3>
-                          <p className="text-[12px] text-gray-500 font-['Roboto',sans-serif]">
+                          <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
                             {categories.length} {categories.length === 1 ? 'category' : 'categories'} available
                           </p>
                         </div>
@@ -235,10 +236,10 @@ export default function AllCategoriesPage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
+                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
                       {selectedSector.name}
                     </h2>
-                    <p className="text-gray-500 text-[14px] font-['Roboto',sans-serif]">
+                    <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
                       Select a category to view services
                     </p>
                   </div>
@@ -276,11 +277,11 @@ export default function AllCategoriesPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-['Roboto',sans-serif] text-[#2c353f] text-[15px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
+                              <h3 className="font-['Poppins',sans-serif] text-[#2c353f] text-[15px] font-semibold group-hover:text-[#3D78CB] transition-colors mb-1">
                                 {serviceCategory.name}
                               </h3>
                               {subCategories.length > 0 && (
-                                <p className="text-[12px] text-gray-500 font-['Roboto',sans-serif]">
+                                <p className="text-[12px] text-gray-500 font-['Poppins',sans-serif]">
                                   {subCategories.length} {subCategories.length === 1 ? 'service' : 'services'} available
                                 </p>
                               )}
@@ -292,7 +293,7 @@ export default function AllCategoriesPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500 font-['Roboto',sans-serif] text-[14px]">
+                      <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
                         No categories available in this sector
                       </p>
                     </div>
@@ -306,10 +307,10 @@ export default function AllCategoriesPage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
+                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] mb-2">
                       {selectedServiceCategory.name}
                     </h2>
-                    <p className="text-gray-500 text-[14px] font-['Roboto',sans-serif]">
+                    <p className="text-gray-500 text-[14px] font-['Poppins',sans-serif]">
                       Available services in this category
                     </p>
                   </div>
@@ -348,7 +349,7 @@ export default function AllCategoriesPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <span className="font-['Roboto',sans-serif] text-[#2c353f] text-[14px] font-medium group-hover:text-[#3D78CB] transition-colors">
+                              <span className="font-['Poppins',sans-serif] text-[#2c353f] text-[14px] font-medium group-hover:text-[#3D78CB] transition-colors">
                                 {subCategory.name}
                               </span>
                             </div>
@@ -359,7 +360,7 @@ export default function AllCategoriesPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500 font-['Roboto',sans-serif] text-[14px]">
+                      <p className="text-gray-500 font-['Poppins',sans-serif] text-[14px]">
                         No services available in this category
                       </p>
                     </div>

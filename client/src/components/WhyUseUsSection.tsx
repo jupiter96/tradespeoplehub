@@ -24,10 +24,10 @@ function FeatureCard({ icon, title, description }: FeatureCardProps) {
       
       {/* Content */}
       <div className="flex-1">
-        <h3 className="font-['Roboto:SemiBold',sans-serif] text-[#5b5b5b] text-[14px] leading-[20px] mb-2">
+        <h3 className="font-['Poppins:SemiBold',sans-serif] text-[#5b5b5b] text-[14px] leading-[20px] mb-2">
           {title}
         </h3>
-        <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[20px]">
+        <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[20px]">
           {description}
         </p>
       </div>
@@ -92,7 +92,7 @@ export default function WhyUseUsSection() {
   return (
     <div className="w-full">
       {/* Title */}
-      <h2 className="font-['Roboto:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
+      <h2 className="font-['Poppins:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] text-center mb-12">
         Why you should use us
       </h2>
 

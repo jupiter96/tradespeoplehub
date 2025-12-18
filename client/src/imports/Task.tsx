@@ -4,7 +4,7 @@ function Cta() {
   return (
     <div className="absolute contents left-[calc(50%-399.5px)] top-[374px] translate-x-[-50%]" data-name="CTA">
       <div className="absolute bg-[#fe8a0f] inset-[110.98%_77.05%_-22.85%_5.71%] rounded-[20px]" />
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[normal] left-[160.5px] not-italic text-[15px] text-center text-white top-[383px] translate-x-[-50%] w-[157px]">Start Posting Task</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[normal] left-[160.5px] not-italic text-[15px] text-center text-white top-[383px] translate-x-[-50%] w-[157px]">Start Posting Task</p>
     </div>
   );
 }
@@ -13,15 +13,15 @@ function PostingTask() {
   return (
     <div className="absolute contents left-0 top-[75px]" data-name="posting task">
       <div className="absolute bg-[#dbeaff] h-[407px] left-0 rounded-[20px] top-[75px] w-[1120px]" />
-      <div className="absolute font-['Roboto:Regular',sans-serif] h-[117px] leading-[1.24] left-[61px] not-italic text-[#5b5b5b] text-[14px] top-[247px] w-[675px]">
+      <div className="absolute font-['Poppins:Regular',sans-serif] h-[117px] leading-[1.24] left-[61px] not-italic text-[#5b5b5b] text-[14px] top-[247px] w-[675px]">
         <p className="mb-0">{`Whether you're seeking a home improvement expert, legal advisor, or business consultant, posting your task is the next step toward finding the right professional for the job. Receive competitive quotes, browse detailed profiles,choose the best candidate,set up milestone payments and release them when the task is completed to your satisfaction.`}</p>
         <p className="mb-0">&nbsp;</p>
-        <p className="font-['Roboto:Bold',sans-serif] mb-0">Post Your Task Now!</p>
+        <p className="font-['Poppins:Bold',sans-serif] mb-0">Post Your Task Now!</p>
         <p className="mb-0">&nbsp;</p>
         <p>&nbsp;</p>
       </div>
       <Cta />
-      <div className="absolute font-['Roboto:Bold',sans-serif] h-[129px] leading-[44px] left-[64px] not-italic text-[#2c353f] text-[36px] top-[142px] w-[646px]">
+      <div className="absolute font-['Poppins:Bold',sans-serif] h-[129px] leading-[44px] left-[64px] not-italic text-[#2c353f] text-[36px] top-[142px] w-[646px]">
         <p className="mb-0">{`Post a Task Today & Receive Quotes from Skilled Professionals!`}</p>
         <p>&nbsp;</p>
       </div>
@@ -2270,7 +2270,7 @@ export default function Task() {
   return (
     <div className="relative size-full" data-name="Task">
       <PostingTask />
-      <div className="absolute font-['Roboto:ExtraBold',sans-serif] font-extrabold leading-[0.36] left-[761.5px] text-[24px] text-[rgba(254,138,15,0.2)] text-center text-nowrap top-[97px] tracking-[4.08px] translate-x-[-50%] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
+      <div className="absolute font-['Poppins:ExtraBold',sans-serif] font-extrabold leading-[0.36] left-[761.5px] text-[24px] text-[rgba(254,138,15,0.2)] text-center text-nowrap top-[97px] tracking-[4.08px] translate-x-[-50%] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
         <p className="mb-0">....</p>
         <p className="mb-0">....</p>
         <p className="mb-0">....</p>

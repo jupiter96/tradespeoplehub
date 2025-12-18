@@ -20,10 +20,10 @@ function StepItem({ number, icon, title, description }: StepItemProps) {
       
       {/* Content */}
       <div className="flex-1">
-        <h3 className="font-['Roboto:SemiBold',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24] mb-2">
+        <h3 className="font-['Poppins:SemiBold',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24] mb-2">
           {title}
         </h3>
-        <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24]">
+        <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24]">
           {description}
         </p>
       </div>
@@ -48,12 +48,12 @@ export default function NeedMoreJobsSection() {
             {/* Right Side - Content */}
             <div className="order-1 lg:order-2">
               {/* Title */}
-              <h2 className="font-['Roboto:SemiBold',sans-serif] text-[#2c353f] text-[28px] md:text-[36px] leading-[1.2] mb-4">
+              <h2 className="font-['Poppins:SemiBold',sans-serif] text-[#2c353f] text-[28px] md:text-[36px] leading-[1.2] mb-4">
                 Looking for competitive quotes with staged payment options?
               </h2>
 
               {/* Subtitle */}
-              <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.4] mb-8">
+              <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.4] mb-8">
                 Get competitive quotes from top professionals while enjoying flexible staged payment options. Here's how it works:
               </p>
 
@@ -88,7 +88,7 @@ export default function NeedMoreJobsSection() {
               {/* CTA Button */}
               <div className="flex justify-start">
                 <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-8 py-3 cursor-pointer">
-                  <span className="font-['Roboto:Regular',sans-serif] text-[15px] text-white">
+                  <span className="font-['Poppins:Regular',sans-serif] text-[15px] text-white">
                     Post Task Now
                   </span>
                 </button>

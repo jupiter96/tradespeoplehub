@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, Link, useNavigate, useParams } from "react-router-dom";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 // Import icons from lucide-react
@@ -78,204 +78,35 @@ const geocodePostcode = (postcode: string): { latitude: number; longitude: numbe
   return null;
 };
 
-const _allServices: Service[] = [
-  {
-    id: 1,
-    image: "https://images.unsplash.com/photo-1745327883508-b6cd32e5dde5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcGElMjBtYXNzYWdlJTIwdGhlcmFweXxlbnwxfHx8fDE3NjI2MjcyNDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Amelia M.",
-    providerImage: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDF8fHx8MTc2MjYwNjczNXww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Relaxing spa and therapeutic massage services",
-    category: "Personal Services",
-    rating: 4.8,
-    reviewCount: 128,
-    completedTasks: 128,
-    price: "60",
-    originalPrice: "75",
-    priceUnit: "session",
-    badges: ["Same Day"],
-    deliveryType: "same-day",
-  },
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1688372199140-cade7ae820fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob3VzZSUyMHBhaW50aW5nJTIwc2VydmljZXxlbnwxfHx8fDE3NjI1ODUzMjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Damian H.",
-    providerImage: "https://images.unsplash.com/photo-1618591552964-837a5a315fb2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWxlJTIwcHJvZmVzc2lvbmFsJTIwd29ya2VyfGVufDF8fHx8MTc2MjY1NjUzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Professional interior and exterior house painting",
-    category: "Home & Garden",
-    rating: 4.7,
-    reviewCount: 93,
-    completedTasks: 93,
-    price: "15",
-    priceUnit: "m²",
-    deliveryType: "standard",
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1599776765307-c7fb21bf7a91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnYXJkZW5pbmclMjBwbGFudGluZ3xlbnwxfHx8fDE3NjI2NTY1MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Jacob B.",
-    providerImage: "https://images.unsplash.com/photo-1496180470114-6ef490f3ff22?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHdvbWFuJTIwcHJvZmVzc2lvbmFsfGVufDF8fHx8MTc2MjYzNTk2MXww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Garden design, planting and maintenance services",
-    category: "Home & Garden",
-    rating: 4.6,
-    reviewCount: 245,
-    completedTasks: 245,
-    price: "500",
-    originalPrice: "650",
-    priceUnit: "month",
-    badges: ["Verified Pro"],
-    deliveryType: "standard",
-  },
-  {
-    id: 4,
-    image: "https://images.unsplash.com/photo-1760827797819-4361cd5cd353?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjbGVhbmluZyUyMHNlcnZpY2UlMjBwcm9mZXNzaW9uYWx8ZW58MXx8fHwxNzYyNTU3ODgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Margaret T.",
-    providerImage: "https://images.unsplash.com/photo-1607286908165-b8b6a2874fc4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmZW1hbGUlMjBwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2NTY1Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Deep cleaning and sanitization for homes & offices",
-    category: "Home & Garden",
-    rating: 4.9,
-    reviewCount: 167,
-    completedTasks: 167,
-    price: "20",
-    originalPrice: "25",
-    priceUnit: "m²",
-    badges: ["Same Day"],
-    deliveryType: "same-day",
-  },
-  {
-    id: 5,
-    image: "https://images.unsplash.com/photo-1578611709914-0dda0b55f9b0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwbHVtYmluZyUyMHJlcGFpciUyMHdvcmt8ZW58MXx8fHwxNzYyNjIwNzkzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Robert K.",
-    providerImage: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDF8fHx8MTc2MjYwNjczNXww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Emergency plumbing repairs and pipe installations",
-    category: "Home & Garden",
-    rating: 4.6,
-    reviewCount: 189,
-    completedTasks: 189,
-    price: "120",
-    priceUnit: "visit",
-    badges: ["Emergency"],
-    deliveryType: "same-day",
-  },
-  {
-    id: 6,
-    image: "https://images.unsplash.com/photo-1759542877886-39d81e8f2eee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJpY2lhbiUyMHNlcnZpY2V8ZW58MXx8fHwxNzYyNjU2NTMzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Sarah L.",
-    providerImage: "https://images.unsplash.com/photo-1607286908165-b8b6a2874fc4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmZW1hbGUlMjBwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2NTY1Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Electrical repairs, wiring and home automation",
-    category: "Home & Garden",
-    rating: 4.8,
-    reviewCount: 76,
-    completedTasks: 76,
-    price: "75",
-    originalPrice: "95",
-    priceUnit: "hr",
-    deliveryType: "standard",
-  },
-  {
-    id: 7,
-    image: "https://images.unsplash.com/photo-1618832515490-e181c4794a45?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob21lJTIwcmVub3ZhdGlvbnxlbnwxfHx8fDE3NjI1Njg4OTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Michael P.",
-    providerImage: "https://images.unsplash.com/photo-1618591552964-837a5a315fb2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWxlJTIwcHJvZmVzc2lvbmFsJTIwd29ya2VyfGVufDF8fHx8MTc2MjY1NjUzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Complete home renovation and remodeling",
-    category: "Home & Garden",
-    rating: 4.8,
-    reviewCount: 312,
-    completedTasks: 312,
-    price: "2500",
-    priceUnit: "project",
-    badges: ["Top Rated"],
-    deliveryType: "standard",
-  },
-  {
-    id: 8,
-    image: "https://images.unsplash.com/photo-1626081063434-79a2169791b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXJwZW50cnklMjB3b29kd29ya3xlbnwxfHx8fDE3NjI2MjE1Nzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "David W.",
-    providerImage: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDF8fHx8MTc2MjYwNjczNXww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Custom carpentry and woodworking projects",
-    category: "Home & Garden",
-    rating: 4.9,
-    reviewCount: 201,
-    completedTasks: 201,
-    price: "180",
-    originalPrice: "220",
-    priceUnit: "day",
-    badges: ["Same Day"],
-    deliveryType: "same-day",
-  },
-  {
-    id: 9,
-    image: "https://images.unsplash.com/photo-1675034741696-fa9551c31bb4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYWlyc3R5bGlzdCUyMHNhbG9uJTIwYmVhdXR5fGVufDF8fHx8MTc2MjcyMDI2N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Isabella R.",
-    providerImage: "https://images.unsplash.com/photo-1607286908165-b8b6a2874fc4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmZW1hbGUlMjBwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2NTY1Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Professional hair styling and beauty treatments",
-    category: "Personal Services",
-    rating: 4.8,
-    reviewCount: 215,
-    completedTasks: 215,
-    price: "45",
-    originalPrice: "60",
-    priceUnit: "session",
-    badges: ["Top Rated"],
-    deliveryType: "same-day",
-  },
-  {
-    id: 10,
-    image: "https://images.unsplash.com/photo-1578912084730-23a3182cdf27?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsb2Nrc21pdGglMjBzZWN1cml0eSUyMHNlcnZpY2V8ZW58MXx8fHwxNzYyNzIwMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Patrick C.",
-    providerImage: "https://images.unsplash.com/photo-1618591552964-837a5a315fb2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWxlJTIwcHJvZmVzc2lvbmFsJTIwd29ya2VyfGVufDF8fHx8MTc2MjY1NjUzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Emergency locksmith and security installations",
-    category: "Business Services",
-    rating: 4.7,
-    reviewCount: 178,
-    completedTasks: 178,
-    price: "80",
-    priceUnit: "visit",
-    badges: ["Emergency"],
-    deliveryType: "same-day",
-  },
-  {
-    id: 11,
-    image: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWIlMjBkZXNpZ24lMjBkZXZlbG9wbWVudHxlbnwxfHx8fDE3NjI3MjAyNjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    providerName: "Alex T.",
-    providerImage: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDF8fHx8MTc2MjYwNjczNXww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Modern web design and development services",
-    category: "Business Services",
-    rating: 4.9,
-    reviewCount: 142,
-    completedTasks: 142,
-    price: "1200",
-    priceUnit: "project",
-    badges: ["Top Rated"],
-    deliveryType: "standard",
-  },
-  {
-    id: 12,
-    image: "https://images.unsplash.com/photo-1533750349088-cd871a92f312?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwbWFya2V0aW5nJTIwc3RyYXRlZ3l8ZW58MXx8fHwxNzYyNzE2MzY0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    providerName: "Emily K.",
-    providerImage: "https://images.unsplash.com/photo-1607286908165-b8b6a2874fc4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmZW1hbGUlMjBwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2NTY1Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Digital marketing and advertising campaigns",
-    category: "Business Services",
-    rating: 4.7,
-    reviewCount: 98,
-    completedTasks: 98,
-    price: "850",
-    originalPrice: "1000",
-    priceUnit: "month",
-    deliveryType: "standard",
-  },
-];
+// Note: removed unused local `_allServices` mock data (it bloated the bundle and slowed initial load).
 
 export default function ServicesPage() {
   const { addToCart } = useCart();
   const navigate = useNavigate();
+  const { sectorSlug: sectorSlugFromPath, serviceCategorySlug: serviceCategorySlugFromPath, '*': serviceSubCategorySplat } =
+    useParams<{
+      sectorSlug?: string;
+      serviceCategorySlug?: string;
+      '*': string;
+    }>();
   const [searchParams] = useSearchParams();
-  const sectorSlugParam = searchParams.get("sector");
-  const serviceCategorySlugParam = searchParams.get("serviceCategory");
-  // Handle multiple serviceSubCategory parameters (for nested subcategories)
-  const serviceSubCategorySlugParams = searchParams.getAll("serviceSubCategory");
-  const serviceSubCategorySlugParam = serviceSubCategorySlugParams.length > 0 
-    ? serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1] // Use the last one for backward compatibility
-    : null;
+  // SEO-friendly path params take precedence over query params
+  const sectorSlugParam = sectorSlugFromPath || searchParams.get("sector");
+  const serviceCategorySlugParam = serviceCategorySlugFromPath || searchParams.get("serviceCategory");
+
+  // Handle nested subcategories from either:
+  // - path splat: /services/:sectorSlug/:serviceCategorySlug/a/b/c
+  // - legacy query: ?serviceSubCategory=a&serviceSubCategory=b&serviceSubCategory=c
+  const serviceSubCategorySlugParamsFromPath =
+    serviceSubCategorySplat?.split("/").filter((s) => s.length > 0) ?? [];
+  const serviceSubCategorySlugParams =
+    serviceSubCategorySlugParamsFromPath.length > 0
+      ? serviceSubCategorySlugParamsFromPath
+      : searchParams.getAll("serviceSubCategory");
+  const serviceSubCategorySlugParam =
+    serviceSubCategorySlugParams.length > 0
+      ? serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1]
+      : null;
   // Legacy URL params for backward compatibility
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
@@ -1205,7 +1036,7 @@ export default function ServicesPage() {
     <div className="space-y-6">
       {/* Category Tree Filter */}
       <div>
-        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
           Categories
         </h3>
         
@@ -1222,7 +1053,7 @@ export default function ServicesPage() {
                   <Tooltip key={index}>
                     <TooltipTrigger asChild>
                       <Badge
-                        className="bg-[#FFF5EB] text-[#FE8A0F] border border-[#FE8A0F]/30 font-['Roboto',sans-serif] text-[12px] px-2.5 py-1 cursor-pointer hover:bg-[#FE8A0F] hover:text-white transition-colors max-w-[180px]"
+                        className="bg-[#FFF5EB] text-[#FE8A0F] border border-[#FE8A0F]/30 font-['Poppins',sans-serif] text-[12px] px-2.5 py-1 cursor-pointer hover:bg-[#FE8A0F] hover:text-white transition-colors max-w-[180px]"
                         onClick={() => removeFilter(index)}
                       >
                         <span className="truncate">{shortName}</span>
@@ -1230,7 +1061,7 @@ export default function ServicesPage() {
                       </Badge>
                     </TooltipTrigger>
                     {hasMultipleLevels && (
-                      <TooltipContent side="top" className="font-['Roboto',sans-serif] text-[11px] bg-gray-900 text-white">
+                      <TooltipContent side="top" className="font-['Poppins',sans-serif] text-[11px] bg-gray-900 text-white">
                         <p>{filter.displayName}</p>
                       </TooltipContent>
                     )}
@@ -1269,7 +1100,7 @@ export default function ServicesPage() {
                             subCategory: subCat,
                             displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
                           })}
-                          className={`block w-full text-left py-2 px-3 font-['Roboto',sans-serif] text-[13px] rounded transition-colors ${
+                          className={`block w-full text-left py-2 px-3 font-['Poppins',sans-serif] text-[13px] rounded transition-colors ${
                             isSelected
                               ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
                               : 'text-[#2c353f] hover:text-[#3D78CB] hover:bg-gray-50'
@@ -1308,7 +1139,7 @@ export default function ServicesPage() {
                       sector: sector.sector,
                       displayName: sector.sector
                     })}
-                    className="flex-1 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors"
+                    className="flex-1 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors"
                   >
                     {sector.sector}
                   </button>
@@ -1339,7 +1170,7 @@ export default function ServicesPage() {
                                 mainCategory: mainCat.name,
                                 displayName: `${sector.sector} > ${mainCat.name}`
                               })}
-                              className="flex-1 text-left font-['Roboto',sans-serif] text-[13px] text-[#5b5b5b] hover:text-[#10B981] transition-colors"
+                              className="flex-1 text-left font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] hover:text-[#10B981] transition-colors"
                             >
                               {mainCat.name}
                             </button>
@@ -1358,7 +1189,7 @@ export default function ServicesPage() {
                                     subCategory: subCat,
                                     displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
                                   })}
-                                  className="block w-full text-left py-1 px-2 font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50 rounded transition-colors"
+                                  className="block w-full text-left py-1 px-2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50 rounded transition-colors"
                                 >
                                   • {subCat}
                                 </button>
@@ -1380,7 +1211,7 @@ export default function ServicesPage() {
 
       {/* Delivery Type */}
       <div>
-        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
           Delivery Type
         </h3>
         <div className="space-y-2">
@@ -1394,7 +1225,7 @@ export default function ServicesPage() {
               />
               <Label
                 htmlFor={`delivery-${delivery}`}
-                className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
               >
                 {delivery}
               </Label>
@@ -1407,7 +1238,7 @@ export default function ServicesPage() {
 
       {/* Rating */}
       <div>
-        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
           Minimum Rating
         </h3>
         
@@ -1428,7 +1259,7 @@ export default function ServicesPage() {
 
         {/* Rating Value Display */}
         <div className="text-center mb-3">
-          <span className={`font-['Roboto',sans-serif] text-[18px] ${selectedRating > 0 ? "text-[#FE8A0F]" : "text-[#8d8d8d]"}`}>
+          <span className={`font-['Poppins',sans-serif] text-[18px] ${selectedRating > 0 ? "text-[#FE8A0F]" : "text-[#8d8d8d]"}`}>
             {selectedRating > 0 ? `${selectedRating.toFixed(1)}★ & up` : "No minimum"}
           </span>
         </div>
@@ -1444,10 +1275,10 @@ export default function ServicesPage() {
             className="mb-2"
           />
           <div className="flex items-center justify-between">
-            <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+            <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
               0★
             </span>
-            <span className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+            <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
               5★
             </span>
           </div>
@@ -1458,14 +1289,14 @@ export default function ServicesPage() {
 
       {/* Price Range */}
       <div>
-        <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
           Price Range
         </h3>
         
         {/* Custom Input Fields */}
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
+            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
               Min Price (£)
             </Label>
             <Input
@@ -1475,11 +1306,11 @@ export default function ServicesPage() {
               placeholder="0"
               min="0"
               max={priceRange[1]}
-              className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-lg font-['Roboto',sans-serif] text-[13px]"
+              className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-lg font-['Poppins',sans-serif] text-[13px]"
             />
           </div>
           <div>
-            <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
+            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
               Max Price (£)
             </Label>
             <Input
@@ -1489,7 +1320,7 @@ export default function ServicesPage() {
               placeholder="100000"
               min={priceRange[0]}
               max="100000"
-              className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-lg font-['Roboto',sans-serif] text-[13px]"
+              className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-lg font-['Poppins',sans-serif] text-[13px]"
             />
           </div>
         </div>
@@ -1504,10 +1335,10 @@ export default function ServicesPage() {
             className="mb-4"
           />
           <div className="flex items-center justify-between">
-            <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+            <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
               £{priceRange[0].toLocaleString()}
             </span>
-            <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+            <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
               £{priceRange[1].toLocaleString()}
             </span>
           </div>
@@ -1521,7 +1352,7 @@ export default function ServicesPage() {
         <Button
           onClick={clearAllFilters}
           variant="outline"
-          className="w-full border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Roboto',sans-serif]"
+          className="w-full border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
         >
           <X className="w-4 h-4 mr-2" />
           Clear All Filters
@@ -1595,7 +1426,7 @@ export default function ServicesPage() {
                         placeholder="Search services or providers..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-12 border-0 rounded-lg font-['Roboto',sans-serif] text-[14px] bg-white shadow-md focus-visible:ring-0 focus-visible:ring-offset-0"
+                        className="pl-10 h-12 border-0 rounded-lg font-['Poppins',sans-serif] text-[14px] bg-white shadow-md focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
                     </div>
 
@@ -1609,13 +1440,13 @@ export default function ServicesPage() {
                             value={locationSearch}
                             onChange={(e) => setLocationSearch(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleLocationSearch()}
-                            className="pl-10 h-12 border-0 rounded-lg font-['Roboto',sans-serif] text-[14px] bg-white shadow-md focus-visible:ring-0 focus-visible:ring-offset-0"
+                            className="pl-10 h-12 border-0 rounded-lg font-['Poppins',sans-serif] text-[14px] bg-white shadow-md focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
                         </div>
                         {locationSearch && (
                           <Button
                             onClick={handleLocationSearch}
-                            className="h-12 px-6 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[14px] whitespace-nowrap shadow-md"
+                            className="h-12 px-6 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px] whitespace-nowrap shadow-md"
                           >
                             Search
                           </Button>
@@ -1626,7 +1457,7 @@ export default function ServicesPage() {
                       {showRadiusSlider && (
                         <div className="bg-[#FFF5EB] rounded-lg p-2 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <Label className="font-['Roboto',sans-serif] text-[11px] text-[#2c353f]">
+                            <Label className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f]">
                               Within {radiusMiles} miles
                             </Label>
                             <Button
@@ -1652,8 +1483,8 @@ export default function ServicesPage() {
                             step={1}
                           />
                           <div className="flex items-center justify-between">
-                            <span className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">1 mi</span>
-                            <span className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">50 mi</span>
+                            <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">1 mi</span>
+                            <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">50 mi</span>
                           </div>
                         </div>
                       )}
@@ -1664,7 +1495,7 @@ export default function ServicesPage() {
                   <div className="md:hidden">
                     <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                       <SheetTrigger asChild>
-                        <Button className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[13px] relative shadow-md">
+                        <Button className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[13px] relative shadow-md">
                           <Filter className="w-3.5 h-3.5 mr-1.5" />
                           Filters
                           {activeFiltersCount > 0 && (
@@ -1676,10 +1507,10 @@ export default function ServicesPage() {
                       </SheetTrigger>
                       <SheetContent side="left" className="w-[300px] overflow-y-auto px-6 pb-6">
                         <SheetHeader>
-                          <SheetTitle className="font-['Roboto',sans-serif] text-[20px]">
+                          <SheetTitle className="font-['Poppins',sans-serif] text-[20px]">
                             Filters
                           </SheetTitle>
-                          <SheetDescription className="font-['Roboto',sans-serif] text-[14px]">
+                          <SheetDescription className="font-['Poppins',sans-serif] text-[14px]">
                             Refine your search results
                           </SheetDescription>
                         </SheetHeader>
@@ -1693,13 +1524,13 @@ export default function ServicesPage() {
                   {/* Active Filters Display */}
                   {activeFiltersCount > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                         Active filters:
                       </span>
                       {locationSearch && !showRadiusSlider && (
                         <Badge
                           variant="secondary"
-                          className="bg-[#EFF6FF] text-[#3B82F6] border border-[#3B82F6]/30 font-['Roboto',sans-serif] cursor-pointer hover:bg-[#3B82F6] hover:text-white transition-colors"
+                          className="bg-[#EFF6FF] text-[#3B82F6] border border-[#3B82F6]/30 font-['Poppins',sans-serif] cursor-pointer hover:bg-[#3B82F6] hover:text-white transition-colors"
                           onClick={() => setLocationSearch("")}
                         >
                           <MapPin className="w-3 h-3 mr-1" />
@@ -1713,7 +1544,7 @@ export default function ServicesPage() {
                           <Badge
                             key={index}
                             variant="secondary"
-                            className="bg-[#E3F2FD] text-[#1976D2] border border-[#1976D2]/30 font-['Roboto',sans-serif] cursor-pointer hover:bg-[#1976D2] hover:text-white transition-colors max-w-[200px]"
+                            className="bg-[#E3F2FD] text-[#1976D2] border border-[#1976D2]/30 font-['Poppins',sans-serif] cursor-pointer hover:bg-[#1976D2] hover:text-white transition-colors max-w-[200px]"
                             onClick={() => removeFilter(index)}
                             title={filter.displayName}
                           >
@@ -1726,7 +1557,7 @@ export default function ServicesPage() {
                         <Badge
                           key={del}
                           variant="secondary"
-                          className="bg-[#EFF6FF] text-[#3B82F6] border border-[#3B82F6]/30 font-['Roboto',sans-serif] cursor-pointer hover:bg-[#3B82F6] hover:text-white transition-colors"
+                          className="bg-[#EFF6FF] text-[#3B82F6] border border-[#3B82F6]/30 font-['Poppins',sans-serif] cursor-pointer hover:bg-[#3B82F6] hover:text-white transition-colors"
                           onClick={() => toggleDelivery(del)}
                         >
                           {del}
@@ -1736,7 +1567,7 @@ export default function ServicesPage() {
                       {selectedRating > 0 && (
                         <Badge
                           variant="secondary"
-                          className="bg-[#E3F2FD] text-[#1976D2] border border-[#1976D2]/30 font-['Roboto',sans-serif] cursor-pointer hover:bg-[#1976D2] hover:text-white transition-colors"
+                          className="bg-[#E3F2FD] text-[#1976D2] border border-[#1976D2]/30 font-['Poppins',sans-serif] cursor-pointer hover:bg-[#1976D2] hover:text-white transition-colors"
                           onClick={() => setSelectedRating(0)}
                         >
                           {selectedRating}★ & up
@@ -1755,14 +1586,14 @@ export default function ServicesPage() {
 
         {/* Results Count with Sort and View Mode */}
         <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
-          <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
             Showing <span className="text-[#FE8A0F]">{filteredAndSortedServices.length}</span> services
           </p>
           
           <div className="flex items-center gap-3">
             {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px] h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-lg font-['Roboto',sans-serif] text-[13px]">
+              <SelectTrigger className="w-[180px] h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-lg font-['Poppins',sans-serif] text-[13px]">
                 <SlidersHorizontal className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -1809,11 +1640,11 @@ export default function ServicesPage() {
           <aside className="hidden md:block w-[280px] flex-shrink-0">
             <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-[140px]">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
+                <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                   Filters
                 </h2>
                 {activeFiltersCount > 0 && (
-                  <Badge className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif]">
+                  <Badge className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                     {activeFiltersCount}
                   </Badge>
                 )}
@@ -1826,16 +1657,16 @@ export default function ServicesPage() {
           <div className="flex-1">
             {filteredAndSortedServices.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                <h3 className="font-['Roboto',sans-serif] text-[24px] text-[#5a5a5a] mb-4">
+                <h3 className="font-['Poppins',sans-serif] text-[24px] text-[#5a5a5a] mb-4">
                   Sorry, no services found
                 </h3>
-                <p className="font-['Roboto',sans-serif] text-[14px] text-[#7a7a7a] mb-6 max-w-[500px] mx-auto">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#7a7a7a] mb-6 max-w-[500px] mx-auto">
                   Try searching with different criteria. Can't find what you are looking for?<br />
                   Post a project and get instant quotes from our professionals.
                 </p>
                 <Button
                   onClick={() => navigate('/post-job')}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] h-12 px-8 text-[15px] uppercase"
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 px-8 text-[15px] uppercase"
                 >
                   POST A PROJECT
                 </Button>
@@ -1870,14 +1701,14 @@ export default function ServicesPage() {
                       {viewMode === "list" ? (
                         service.badges && service.badges.length > 0 && (
                           <div className="absolute top-1.5 left-1.5">
-                            <span className="bg-[#FE8A0F] text-white text-[8px] font-['Roboto',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
+                            <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                               {service.badges[0]}
                             </span>
                           </div>
                         )
                       ) : (
                         <div className="absolute top-3 left-3">
-                          <div className="bg-white/95 backdrop-blur-sm text-[#3B82F6] font-['Roboto',sans-serif] font-medium px-2 py-1 rounded-full shadow-lg border border-[#3B82F6]/30 flex items-center gap-1 text-[10px]">
+                          <div className="bg-white/95 backdrop-blur-sm text-[#3B82F6] font-['Poppins',sans-serif] font-medium px-2 py-1 rounded-full shadow-lg border border-[#3B82F6]/30 flex items-center gap-1 text-[10px]">
                             {getCategoryIcon(service.category)}
                             <span>{service.category}</span>
                           </div>
@@ -1906,13 +1737,13 @@ export default function ServicesPage() {
                                   alt={service.tradingName}
                                   className="w-5 h-5 rounded-full object-cover"
                                 />
-                                <span className="font-['Roboto',sans-serif] text-[11px] text-[#2c353f] truncate">
+                                <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] truncate">
                                   {service.tradingName}
                                 </span>
                               </div>
 
                               {/* Description */}
-                              <p className="font-['Roboto',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
+                              <p className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
                                 {service.description}
                               </p>
 
@@ -1934,10 +1765,10 @@ export default function ServicesPage() {
                                         />
                                       ))}
                                     </div>
-                                    <span className="font-['Roboto',sans-serif] text-[9px] text-[#2c353f]">
+                                    <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
                                       {service.rating}
                                     </span>
-                                    <span className="font-['Roboto',sans-serif] text-[8px] text-[#8d8d8d]">
+                                    <span className="font-['Poppins',sans-serif] text-[8px] text-[#8d8d8d]">
                                       ({service.completedTasks})
                                     </span>
                                   </div>
@@ -1948,11 +1779,11 @@ export default function ServicesPage() {
                                 {/* Delivery Badge */}
                                 <div className="flex-shrink-0">
                                   {service.deliveryType === "same-day" ? (
-                                    <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                    <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
                                       <span className="font-medium">⚡ Same Day</span>
                                     </div>
                                   ) : (
-                                    <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                    <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
                                       <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M3 9h4l3 9 3-16 3 9h4"/>
                                       </svg>
@@ -1969,11 +1800,11 @@ export default function ServicesPage() {
                             {/* Price - Left Bottom */}
                             <div className="flex flex-col">
                               {service.originalPrice && (
-                                <span className="font-['Roboto',sans-serif] text-[9px] text-[#c0c0c0] line-through">
+                                <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
                                   £{service.originalPrice}
                                 </span>
                               )}
-                              <span className="font-['Roboto',sans-serif] text-[9px] text-[#5b5b5b]">
+                              <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
                                 {service.originalPrice && "From "}
                                 <span className="text-[14px] text-[#2c353f] font-medium">
                                   £{service.price}
@@ -1989,7 +1820,7 @@ export default function ServicesPage() {
                                   e.stopPropagation();
                                   navigate(`/service/${service.id}`, { state: { userCoords } });
                                 }}
-                                className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
+                                className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                               >
                                 <Zap className="w-3.5 h-3.5" />
                               </button>
@@ -1999,7 +1830,7 @@ export default function ServicesPage() {
                                   setSelectedServiceForCart(service);
                                   setShowAddToCartModal(true);
                                 }}
-                                className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
+                                className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                               >
                                 <ShoppingCart className="w-3.5 h-3.5" />
                               </button>
@@ -2018,7 +1849,7 @@ export default function ServicesPage() {
                                 className="w-5 h-5 md:w-8 md:h-8 rounded-full object-cover flex-shrink-0"
                               />
                               <div className="flex-1 min-w-0">
-                                <span className="font-['Roboto',sans-serif] text-[10px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors block truncate">
+                                <span className="font-['Poppins',sans-serif] text-[10px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors block truncate">
                                   {service.tradingName}
                                 </span>
                               </div>
@@ -2026,7 +1857,7 @@ export default function ServicesPage() {
                           </div>
 
                           {/* Description */}
-                          <p className="font-['Roboto',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b] mb-1.5 md:mb-3 line-clamp-2">
+                          <p className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b] mb-1.5 md:mb-3 line-clamp-2">
                             {service.description}
                           </p>
 
@@ -2046,14 +1877,14 @@ export default function ServicesPage() {
                                     }`}
                                   />
                                 ))}
-                                <span className="font-['Roboto',sans-serif] text-[8px] md:text-[13px] text-[#2c353f] ml-0.5 md:ml-1">
+                                <span className="font-['Poppins',sans-serif] text-[8px] md:text-[13px] text-[#2c353f] ml-0.5 md:ml-1">
                                   {service.rating} <span className="text-[#8d8d8d]">({service.completedTasks})</span>
                                 </span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 md:gap-2 text-[#8d8d8d] text-[8px] md:text-[12px]">
                                 <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#E5E5E5] text-[#E5E5E5]" />
-                                <span className="font-['Roboto',sans-serif]">New</span>
+                                <span className="font-['Poppins',sans-serif]">New</span>
                               </div>
                             )}
                           </div>
@@ -2061,11 +1892,11 @@ export default function ServicesPage() {
                           {/* Price and Discount */}
                           {service.originalPrice && (
                             <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                              <span className="font-['Roboto',sans-serif] text-[9px] md:text-[13px] text-[#c0c0c0] line-through">
+                              <span className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#c0c0c0] line-through">
                                 £{service.originalPrice}
                               </span>
                               <div className="px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] rounded">
-                                <span className="font-['Roboto',sans-serif] text-[7px] md:text-[10px] text-[#3D78CB]">
+                                <span className="font-['Poppins',sans-serif] text-[7px] md:text-[10px] text-[#3D78CB]">
                                   {Math.round(((parseFloat(service.originalPrice) - parseFloat(service.price)) / parseFloat(service.originalPrice)) * 100)}% OFF
                                 </span>
                               </div>
@@ -2074,7 +1905,7 @@ export default function ServicesPage() {
 
                           {/* Price Display and Delivery Badge */}
                           <div className="flex items-center justify-between gap-1 md:gap-2 mb-2 md:mb-4">
-                            <span className="font-['Roboto',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b]">
+                            <span className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b]">
                               {service.originalPrice && "From "}
                               <span className="text-[13px] md:text-[18px] text-[#2c353f] font-medium">
                                 £{service.price}
@@ -2085,11 +1916,11 @@ export default function ServicesPage() {
                             {/* Delivery Badge */}
                             <div className="flex-shrink-0">
                               {service.deliveryType === "same-day" ? (
-                                <div className="inline-flex items-center px-1 md:px-2 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Roboto',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                                <div className="inline-flex items-center px-1 md:px-2 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
                                   <span className="font-semibold">⚡ Same Day</span>
                                 </div>
                               ) : (
-                                <div className="inline-flex items-center gap-0.5 px-1 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Roboto',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                                <div className="inline-flex items-center gap-0.5 px-1 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
                                   <span className="font-semibold">Standard</span>
                                 </div>
                               )}
@@ -2098,7 +1929,7 @@ export default function ServicesPage() {
 
                           {/* Action Buttons - Stacked on mobile, side by side on desktop */}
                           <div className="flex flex-col md:flex-row gap-1.5 md:gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
-                            <button className="w-full h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[10px] md:text-[13px]">
+                            <button className="w-full h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[10px] md:text-[13px]">
                               <Zap className="w-3 h-3 md:w-3.5 md:h-3.5 flex-shrink-0" />
                               <span className="truncate">Buy Now!</span>
                             </button>
@@ -2108,7 +1939,7 @@ export default function ServicesPage() {
                                 setSelectedServiceForCart(service);
                                 setShowAddToCartModal(true);
                               }}
-                              className="w-full h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Roboto',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[10px] md:text-[13px]"
+                              className="w-full h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-1.5 text-[10px] md:text-[13px]"
                             >
                               <ShoppingCart className="w-3 h-3 md:w-3.5 md:h-3.5 flex-shrink-0" />
                               <span className="truncate">Add to cart</span>

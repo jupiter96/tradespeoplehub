@@ -180,11 +180,11 @@ export default function AvailableJobsSection() {
             placeholder="Search jobs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 font-['Roboto',sans-serif] text-[14px]"
+            className="pl-10 font-['Poppins',sans-serif] text-[14px]"
           />
         </div>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-full md:w-[200px] font-['Roboto',sans-serif] text-[14px]">
+          <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
@@ -210,10 +210,10 @@ export default function AvailableJobsSection() {
         {filteredJobs.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
               No jobs found
             </h3>
-            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               {searchQuery || filterCategory !== "all"
                 ? "Try adjusting your filters"
                 : "No jobs are currently available"}
@@ -230,18 +230,18 @@ export default function AvailableJobsSection() {
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
+                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                           {job.title}
                         </h3>
                         {getTimingIcon(job.timing)}
-                        <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Roboto',sans-serif] text-[11px]">
+                        <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]">
                           {job.sector}
                         </Badge>
                       </div>
-                      <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
                         {job.description}
                       </p>
-                      <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Roboto',sans-serif]">
+                      <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-4 h-4" />
                           {job.location} • {getDistance(job.id)} miles
@@ -260,7 +260,7 @@ export default function AvailableJobsSection() {
                           <Badge
                             key={idx}
                             variant="outline"
-                            className="bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]/30 font-['Roboto',sans-serif] text-[11px]"
+                            className="bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]/30 font-['Poppins',sans-serif] text-[11px]"
                           >
                             {category}
                           </Badge>
@@ -275,7 +275,7 @@ export default function AvailableJobsSection() {
                     variant="outline"
                     size="sm"
                     onClick={() => navigate(`/job/${job.id}`)}
-                    className="font-['Roboto',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
+                    className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
                     View Details
@@ -286,7 +286,7 @@ export default function AvailableJobsSection() {
                       setSelectedJob(job.id);
                       setIsQuoteDialogOpen(true);
                     }}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
                   >
                     <Send className="w-4 h-4 mr-1.5" />
                     Send Quote
@@ -302,10 +302,10 @@ export default function AvailableJobsSection() {
       <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b border-gray-200 pb-4 mb-6">
-            <DialogTitle className="font-['Roboto',sans-serif] text-[26px] text-[#2c353f]">
+            <DialogTitle className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
               Send Quote
             </DialogTitle>
-            <DialogDescription className="font-['Roboto',sans-serif] text-[15px] text-[#6b6b6b] mt-2">
+            <DialogDescription className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mt-2">
               Submit your quote for: <span className="text-[#FE8A0F]">{currentJob?.title}</span>
             </DialogDescription>
           </DialogHeader>
@@ -314,19 +314,19 @@ export default function AvailableJobsSection() {
             <div className="space-y-6">
               {/* Job Summary */}
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
-                <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#1976D2] mb-3 flex items-center gap-2">
+                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#1976D2] mb-3 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   Job Summary
                 </h3>
                 <div className="bg-white rounded-lg p-4 border border-blue-100">
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
                     {currentJob.description}
                   </p>
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="font-['Roboto',sans-serif] text-[28px] text-[#059669]">
+                    <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                       £{currentJob.budgetAmount}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Roboto',sans-serif]">
+                    <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
                       {currentJob.location} ({getDistance(currentJob.id)} miles)
                     </div>
@@ -336,13 +336,13 @@ export default function AvailableJobsSection() {
 
               {/* Quote Details Section */}
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-5 shadow-sm">
-                <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#FE8A0F] mb-4 flex items-center gap-2">
+                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] mb-4 flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   Quote Details
                 </h3>
                 <div className="space-y-5">
                   <div className="bg-white rounded-lg p-4 border border-orange-100">
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Your Price (£) <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -350,19 +350,19 @@ export default function AvailableJobsSection() {
                       placeholder="Enter your price"
                       value={quotePrice}
                       onChange={(e) => setQuotePrice(e.target.value)}
-                      className="font-['Roboto',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
+                      className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                     />
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
                       💡 Client's budget: £{currentJob.budgetAmount}
                     </p>
                   </div>
 
                   <div className="bg-white rounded-lg p-4 border border-orange-100">
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Delivery Time <span className="text-red-500">*</span>
                     </Label>
                     <Select value={quoteDeliveryTime} onValueChange={setQuoteDeliveryTime}>
-                      <SelectTrigger className="font-['Roboto',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12">
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12">
                         <SelectValue placeholder="Select delivery time" />
                       </SelectTrigger>
                       <SelectContent>
@@ -378,16 +378,16 @@ export default function AvailableJobsSection() {
                   </div>
 
                   <div className="bg-white rounded-lg p-4 border border-orange-100">
-                    <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Message to Client <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
                       placeholder="Explain your approach, experience, and why you're the best fit for this job..."
                       value={quoteMessage}
                       onChange={(e) => setQuoteMessage(e.target.value)}
-                      className="font-['Roboto',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
+                      className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                     />
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
                       💡 Tip: Mention your relevant experience and availability
                     </p>
                   </div>
@@ -403,9 +403,9 @@ export default function AvailableJobsSection() {
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-between p-0 hover:bg-transparent font-['Roboto',sans-serif] mb-2"
+                    className="w-full justify-between p-0 hover:bg-transparent font-['Poppins',sans-serif] mb-2"
                   >
-                    <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#059669] flex items-center gap-2">
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#059669] flex items-center gap-2">
                       <Clock className="w-5 h-5" />
                       Suggest Milestone Payment
                     </h3>
@@ -419,7 +419,7 @@ export default function AvailableJobsSection() {
 
                 <CollapsibleContent className="space-y-4">
                   <div className="mb-4 pl-7">
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                       Suggest Milestone Payment Break Down!{" "}
                       <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">Optional</span>
                     </p>
@@ -431,22 +431,22 @@ export default function AvailableJobsSection() {
                         <div key={index} className="bg-green-50/50 p-3 rounded-lg border border-green-200">
                           <div className="flex gap-2 items-start">
                             <div className="flex-1">
-                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
                                 Milestone {index + 1} Description
                               </Label>
                               <Input
                                 placeholder="Define the tasks that you will complete for this milestone"
                                 value={milestone.description}
                                 onChange={(e) => updateMilestone(index, "description", e.target.value)}
-                                className="font-['Roboto',sans-serif] text-[14px] border-2 border-gray-200"
+                                className="font-['Poppins',sans-serif] text-[14px] border-2 border-gray-200"
                               />
                             </div>
                             <div className="w-32">
-                              <Label className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
                                 Amount
                               </Label>
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Roboto',sans-serif] text-[14px]">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
                                   £
                                 </span>
                                 <Input
@@ -454,7 +454,7 @@ export default function AvailableJobsSection() {
                                   placeholder="0"
                                   value={milestone.amount}
                                   onChange={(e) => updateMilestone(index, "amount", e.target.value)}
-                                  className="pl-7 font-['Roboto',sans-serif] text-[14px] border-2 border-gray-200"
+                                  className="pl-7 font-['Poppins',sans-serif] text-[14px] border-2 border-gray-200"
                                 />
                               </div>
                             </div>
@@ -465,7 +465,7 @@ export default function AvailableJobsSection() {
                                   variant="destructive"
                                   size="sm"
                                   onClick={() => removeMilestone(index)}
-                                  className="px-3 font-['Roboto',sans-serif] h-10"
+                                  className="px-3 font-['Poppins',sans-serif] h-10"
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -481,7 +481,7 @@ export default function AvailableJobsSection() {
                       variant="outline"
                       size="sm"
                       onClick={addMilestone}
-                      className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Roboto',sans-serif] h-10"
+                      className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Poppins',sans-serif] h-10"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add another milestone
@@ -500,14 +500,14 @@ export default function AvailableJobsSection() {
                     setQuoteDeliveryTime("");
                     setQuoteMessage("");
                   }}
-                  className="flex-1 font-['Roboto',sans-serif] h-12 text-[15px] border-2"
+                  className="flex-1 font-['Poppins',sans-serif] h-12 text-[15px] border-2"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSubmitQuote}
                   disabled={userInfo?.isBlocked}
-                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] h-12 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Send Quote

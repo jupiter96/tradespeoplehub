@@ -234,11 +234,11 @@ function BottomBand() {
   return (
     <div className="absolute contents left-0 top-[388px]" data-name="Bottom band">
       <div className="absolute bg-[#343945] h-[79px] left-1/2 top-[388px] translate-x-[-50%] w-[1440px]" />
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[1.24] left-[calc(50%-157px)] not-italic text-[14px] text-[silver] text-nowrap top-[411px] whitespace-pre">
-        <span className="font-['Roboto:Bold',sans-serif]">©</span>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[1.24] left-[calc(50%-157px)] not-italic text-[14px] text-[silver] text-nowrap top-[411px] whitespace-pre">
+        <span className="font-['Poppins:Bold',sans-serif]">©</span>
         <span>{` 2025  Trades Peoplehub.  All Right Reserved.`}</span>
       </p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[1.24] left-1/2 not-italic text-[#fdfdfd] text-[14px] text-center text-nowrap top-[432px] translate-x-[-50%] whitespace-pre">{`Cookie Policy   Privacy policy`}</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[1.24] left-1/2 not-italic text-[#fdfdfd] text-[14px] text-center text-nowrap top-[432px] translate-x-[-50%] whitespace-pre">{`Cookie Policy   Privacy policy`}</p>
       <div className="absolute flex h-[calc(1px*((var(--transform-inner-width)*1)+(var(--transform-inner-height)*0)))] items-center justify-center left-[718px] top-[432px] w-[calc(1px*((var(--transform-inner-height)*1)+(var(--transform-inner-width)*0)))]" style={{ "--transform-inner-width": "17", "--transform-inner-height": "0" } as React.CSSProperties}>
         <div className="flex-none rotate-[90deg]">
           <div className="h-0 relative w-[17px]">
@@ -259,16 +259,16 @@ export default function Footer() {
     <div className="relative size-full" data-name="Footer">
       <div className="absolute bg-[rgba(242,248,255,0.44)] h-[391px] left-1/2 top-[-3px] translate-x-[-50%] w-[1440px]" />
       <LogoSvg />
-      <div className="absolute font-['Roboto:Regular',sans-serif] h-[76px] leading-[1.24] left-[160px] not-italic text-[#5b5b5b] text-[14px] top-[166px] w-[326px]">
+      <div className="absolute font-['Poppins:Regular',sans-serif] h-[76px] leading-[1.24] left-[160px] not-italic text-[#5b5b5b] text-[14px] top-[166px] w-[326px]">
         <p className="mb-0">{`Our platform connects `}</p>
         <p className="mb-0">{`clients to trusted `}</p>
         <p>professionals across all service sectors.</p>
       </div>
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[544px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[105px] whitespace-pre">Clients</p>
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[737px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[105px] whitespace-pre">Professionals</p>
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[927px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[107px] whitespace-pre">Company</p>
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[1.24] left-[1120px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[107px] whitespace-pre">Social links</p>
-      <div className="absolute font-['Roboto:Regular',sans-serif] leading-[1.24] left-[546px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[148px] whitespace-pre">
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[544px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[105px] whitespace-pre">Clients</p>
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[737px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[105px] whitespace-pre">Professionals</p>
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[927px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[107px] whitespace-pre">Company</p>
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[1.24] left-[1120px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[107px] whitespace-pre">Social links</p>
+      <div className="absolute font-['Poppins:Regular',sans-serif] leading-[1.24] left-[546px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[148px] whitespace-pre">
         <p className="mb-0">Post a task</p>
         <p className="mb-0">&nbsp;</p>
         <p className="mb-0">How it works</p>
@@ -279,7 +279,7 @@ export default function Footer() {
         <p className="mb-0">&nbsp;</p>
         <p>Cost guide</p>
       </div>
-      <div className="absolute font-['Roboto:Regular',sans-serif] leading-[1.24] left-[739px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[148px] whitespace-pre">
+      <div className="absolute font-['Poppins:Regular',sans-serif] leading-[1.24] left-[739px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[148px] whitespace-pre">
         <p className="mb-0">Sign up</p>
         <p className="mb-0">&nbsp;</p>
         <p className="mb-0">How it works</p>
@@ -288,7 +288,7 @@ export default function Footer() {
         <p className="mb-0">&nbsp;</p>
         <p>Help centre</p>
       </div>
-      <div className="absolute font-['Roboto:Regular',sans-serif] leading-[1.24] left-[929px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[150px] whitespace-pre">
+      <div className="absolute font-['Poppins:Regular',sans-serif] leading-[1.24] left-[929px] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[150px] whitespace-pre">
         <p className="mb-0">About us</p>
         <p className="mb-0">&nbsp;</p>
         <p className="mb-0">Contact us</p>

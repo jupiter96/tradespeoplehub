@@ -11,7 +11,7 @@ function Category() {
       onClick={() => navigate("/sector/wedding-events")}
     >
       <div className="absolute bg-[rgba(182,212,255,0.2)] group-hover:bg-[rgba(182,212,255,0.35)] h-[60px] left-0 rounded-[30px] top-0 w-[216px] transition-colors" />
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[127.5px] not-italic text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-center text-nowrap top-[30px] translate-x-[-50%] whitespace-pre transition-colors">{`Wedding & Events`}</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[127.5px] not-italic text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-center text-nowrap top-[30px] translate-x-[-50%] whitespace-pre transition-colors">{`Wedding & Events`}</p>
       <WhiteCircle className="absolute left-[8px] top-[7px]" />
       <WeddingIcon className="absolute left-[16px] size-[30px] top-[13px]" />
     </button>
@@ -29,7 +29,7 @@ function Category1() {
     >
       <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
         <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] group-hover:bg-[rgba(182,212,255,0.35)] h-[60px] ml-0 mt-0 rounded-[30px] w-[239px] transition-colors" />
-        <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Assembling & Repairs`}</p>
+        <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Assembling & Repairs`}</p>
         <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
         <AssemblingIcon className="[grid-area:1_/_1] h-[21px] ml-[13px] mt-[19px] overflow-clip relative w-[36px]" />
       </div>
@@ -48,7 +48,7 @@ function Category2() {
     >
       <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
         <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] group-hover:bg-[rgba(182,212,255,0.35)] h-[60px] ml-0 mt-0 rounded-[30px] w-[219px] transition-colors" />
-        <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Health & Wellbeing `}</p>
+        <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Health & Wellbeing `}</p>
         <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
         <HealthIcon className="[grid-area:1_/_1] ml-[16px] mt-[16px] relative size-[28px]" />
       </div>
@@ -67,7 +67,7 @@ function Category3() {
     >
       <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
         <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] group-hover:bg-[rgba(182,212,255,0.35)] h-[60px] ml-0 mt-0 rounded-[30px] w-[192px] transition-colors" />
-        <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Legal & Advice`}</p>
+        <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Legal & Advice`}</p>
         <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
         <LegalIcon className="[grid-area:1_/_1] ml-[17px] mt-[16px] overflow-clip relative size-[24px]" />
       </div>
@@ -86,7 +86,7 @@ function Category4() {
     >
       <div className="[grid-area:1_/_1] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] ml-0 mt-0 place-items-start relative">
         <div className="[grid-area:1_/_1] bg-[rgba(182,212,255,0.2)] group-hover:bg-[rgba(182,212,255,0.35)] h-[60px] ml-0 mt-0 rounded-[30px] w-[205px] transition-colors" />
-        <p className="[grid-area:1_/_1] font-['Roboto:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Fashion & Beauty`}</p>
+        <p className="[grid-area:1_/_1] font-['Poppins:Regular',sans-serif] ml-[63px] mt-[30px] not-italic relative text-[#5b5b5b] group-hover:text-[#3D78CB] text-[14px] text-nowrap whitespace-pre transition-colors">{`Fashion & Beauty`}</p>
         <WhiteCircle className="[grid-area:1_/_1] ml-[8px] mt-[7px] relative" />
         <FashionIcon className="[grid-area:1_/_1] h-[28px] ml-[21px] mt-[15px] overflow-clip relative w-[23px]" />
       </div>

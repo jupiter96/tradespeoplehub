@@ -304,14 +304,14 @@ export default function CartPage() {
                   <ShoppingBag className="w-12 h-12 md:w-16 md:h-16 text-[#FE8A0F]" strokeWidth={1.5} />
                 </div>
               </div>
-              <h2 className="font-['Roboto',sans-serif] text-[24px] md:text-[32px] lg:text-[40px] text-[#2c353f] mb-4">
+              <h2 className="font-['Poppins',sans-serif] text-[24px] md:text-[32px] lg:text-[40px] text-[#2c353f] mb-4">
                 Your cart is empty
               </h2>
-              <p className="font-['Roboto',sans-serif] text-[14px] md:text-[16px] lg:text-[18px] text-[#6b6b6b] mb-6 md:mb-8 max-w-[500px] mx-auto">
+              <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] lg:text-[18px] text-[#6b6b6b] mb-6 md:mb-8 max-w-[500px] mx-auto">
                 Looks like you haven't added any services yet. Explore our marketplace and find the perfect professional for your needs.
               </p>
               <Link to="/services">
-                <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white px-8 py-6 rounded-full transition-all duration-300 font-['Roboto',sans-serif] text-[16px]">
+                <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white px-8 py-6 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]">
                   <ShoppingBag className="w-5 h-5 mr-2" />
                   Browse Services
                 </Button>
@@ -359,10 +359,10 @@ export default function CartPage() {
           <div className="hidden md:block">
             {/* Header - Minimalist */}
             <div className="mb-6 md:mb-10">
-              <h1 className="font-['Roboto',sans-serif] text-[24px] md:text-[32px] text-[#2c353f]">
+              <h1 className="font-['Poppins',sans-serif] text-[24px] md:text-[32px] text-[#2c353f]">
                 Checkout
               </h1>
-              <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mt-1">
+              <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mt-1">
                 {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} • Complete your order
               </p>
             </div>
@@ -381,9 +381,9 @@ export default function CartPage() {
                   <div className="flex items-center justify-between gap-2 md:gap-3">
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className="w-6 h-6 md:w-7 md:h-7 bg-[#FE8A0F] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-white font-medium">1</span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">1</span>
                       </div>
-                      <h2 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
+                      <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
                         Delivery Address
                       </h2>
                     </div>
@@ -411,10 +411,10 @@ export default function CartPage() {
                           className="mt-0.5 w-4 h-4 text-[#3B82F6] rounded accent-[#3B82F6]"
                         />
                         <div>
-                          <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
+                          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
                             Skip for now
                           </p>
-                          <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
+                          <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
                             Discuss location with professional after booking
                           </p>
                         </div>
@@ -443,7 +443,7 @@ export default function CartPage() {
                                         ) : (
                                           <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#FE8A0F] shrink-0" />
                                         )}
-                                        <span className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium capitalize">
+                                        <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium capitalize">
                                           {address.type}
                                         </span>
                                         {address.isDefault && (
@@ -452,29 +452,29 @@ export default function CartPage() {
                                       </div>
                                       {/* Mobile: Show minimal info */}
                                       <div className="md:hidden">
-                                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-medium truncate">
+                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium truncate">
                                           {address.name}
                                         </p>
-                                        <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b] truncate">
+                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] truncate">
                                           {address.addressLine1}
                                         </p>
-                                        <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
+                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
                                           {address.postcode}
                                         </p>
                                       </div>
                                       {/* Desktop: Show full info */}
                                       <div className="hidden md:block">
-                                        <p className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-1">
+                                        <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
                                           {address.name}
                                         </p>
-                                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                                           {address.addressLine1}
                                           {address.addressLine2 && `, ${address.addressLine2}`}
                                         </p>
-                                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                                           {address.city}, {address.postcode}
                                         </p>
-                                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
+                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
                                           Phone: {address.phone}
                                         </p>
                                       </div>
@@ -499,7 +499,7 @@ export default function CartPage() {
                           <DialogTrigger asChild>
                             <Button 
                               variant="outline" 
-                              className="w-full border-2 border-dashed border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Roboto',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6"
+                              className="w-full border-2 border-dashed border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6"
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Add New Address
@@ -507,16 +507,16 @@ export default function CartPage() {
                           </DialogTrigger>
                           <DialogContent className="w-[70vw]">
                             <DialogHeader>
-                              <DialogTitle className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
+                              <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
                                 Add New Address
                               </DialogTitle>
-                              <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                                 Enter your delivery address details
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
                               <div>
-                                <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2">
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
                                   Address Type
                                 </Label>
                                 <RadioGroup 
@@ -526,42 +526,42 @@ export default function CartPage() {
                                 >
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="home" id="home" />
-                                    <Label htmlFor="home" className="font-['Roboto',sans-serif] text-[13px]">Home</Label>
+                                    <Label htmlFor="home" className="font-['Poppins',sans-serif] text-[13px]">Home</Label>
                                   </div>
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="work" id="work" />
-                                    <Label htmlFor="work" className="font-['Roboto',sans-serif] text-[13px]">Work</Label>
+                                    <Label htmlFor="work" className="font-['Poppins',sans-serif] text-[13px]">Work</Label>
                                   </div>
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="other" id="other" />
-                                    <Label htmlFor="other" className="font-['Roboto',sans-serif] text-[13px]">Other</Label>
+                                    <Label htmlFor="other" className="font-['Poppins',sans-serif] text-[13px]">Other</Label>
                                   </div>
                                 </RadioGroup>
                               </div>
                               <div>
-                                <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">Full Name *</Label>
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Full Name *</Label>
                                 <Input
                                   value={newAddress.name}
                                   onChange={(e) => setNewAddress({...newAddress, name: e.target.value})}
-                                  className="mt-1 font-['Roboto',sans-serif]"
+                                  className="mt-1 font-['Poppins',sans-serif]"
                                   placeholder="John Smith"
                                 />
                               </div>
                               <div>
-                                <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">Address Line 1 *</Label>
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Address Line 1 *</Label>
                                 <Input
                                   value={newAddress.addressLine1}
                                   onChange={(e) => setNewAddress({...newAddress, addressLine1: e.target.value})}
-                                  className="mt-1 font-['Roboto',sans-serif]"
+                                  className="mt-1 font-['Poppins',sans-serif]"
                                   placeholder="123 High Street"
                                 />
                               </div>
                               <div>
-                                <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">Address Line 2</Label>
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Address Line 2</Label>
                                 <Input
                                   value={newAddress.addressLine2}
                                   onChange={(e) => setNewAddress({...newAddress, addressLine2: e.target.value})}
-                                  className="mt-1 font-['Roboto',sans-serif]"
+                                  className="mt-1 font-['Poppins',sans-serif]"
                                   placeholder="Flat 4B (optional)"
                                 />
                               </div>
@@ -594,29 +594,29 @@ export default function CartPage() {
                                   showTownCityField={true}
                                   showCountyField={true}
                                   addressLabel="Address"
-                                  className="font-['Roboto',sans-serif]"
+                                  className="font-['Poppins',sans-serif]"
                                 />
                               </div>
                               <div>
-                                <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">Phone Number *</Label>
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Phone Number *</Label>
                                 <Input
                                   value={newAddress.phone}
                                   onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})}
-                                  className="mt-1 font-['Roboto',sans-serif]"
+                                  className="mt-1 font-['Poppins',sans-serif]"
                                   placeholder="07123 456789"
                                 />
                               </div>
                               <div className="flex gap-3 pt-4">
                                 <Button
                                   onClick={handleAddAddress}
-                                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Roboto',sans-serif]"
+                                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
                                 >
                                   Save Address
                                 </Button>
                                 <Button
                                   variant="outline"
                                   onClick={() => setShowAddressDialog(false)}
-                                  className="flex-1 font-['Roboto',sans-serif]"
+                                  className="flex-1 font-['Poppins',sans-serif]"
                                 >
                                   Cancel
                                 </Button>
@@ -640,9 +640,9 @@ export default function CartPage() {
                   <div className="flex items-center justify-between gap-2 md:gap-3">
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className="w-6 h-6 md:w-7 md:h-7 bg-[#3B82F6] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-white font-medium">2</span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">2</span>
                       </div>
-                      <h2 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
+                      <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
                         Payment Method
                       </h2>
                     </div>
@@ -689,7 +689,7 @@ export default function CartPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
+                                            <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
                                               {method.cardNumber}
                                             </span>
                                             {method.isDefault && (
@@ -697,7 +697,7 @@ export default function CartPage() {
                                             )}
                                           </div>
                                           {/* Mobile: Hide card holder, show only expiry */}
-                                          <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
+                                          <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
                                             <span className="hidden md:inline">{method.cardHolder} • </span>Exp. {method.expiryDate}
                                           </p>
                                         </div>
@@ -714,7 +714,7 @@ export default function CartPage() {
 
                     <Button 
                       variant="outline" 
-                      className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Roboto',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 mt-1 md:mt-2"
+                      className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 mt-1 md:mt-2"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add New Payment Method
@@ -723,7 +723,7 @@ export default function CartPage() {
                     {/* Security Note */}
                     <div className="mt-3 md:mt-4 flex items-start gap-2 bg-gray-50 rounded-lg md:rounded-xl p-2.5 md:p-3">
                       <Shield className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#10B981] mt-0.5 shrink-0" />
-                      <p className="font-['Roboto',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] leading-relaxed">
+                      <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] leading-relaxed">
                         Your payment information is encrypted and secure
                       </p>
                     </div>
@@ -741,9 +741,9 @@ export default function CartPage() {
                   <div className="flex items-center justify-between gap-2 md:gap-3">
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className="w-6 h-6 md:w-7 md:h-7 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-white font-medium">3</span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">3</span>
                       </div>
-                      <h2 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+                      <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
                         Review Items
                       </h2>
                       <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px] ml-auto">{cartItems.length}</Badge>
@@ -779,10 +779,10 @@ export default function CartPage() {
 
                           {/* Service Details */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium mb-0.5 line-clamp-2">
+                            <h3 className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium mb-0.5 line-clamp-2">
                               {item.title}
                             </h3>
-                            <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">
+                            <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">
                               by {item.seller}
                             </p>
                             
@@ -790,7 +790,7 @@ export default function CartPage() {
                             {item.addons && item.addons.length > 0 && (
                               <div className="mb-2 space-y-0.5">
                                 {item.addons.map((addon) => (
-                                  <p key={addon.id} className="font-['Roboto',sans-serif] text-[10px] md:text-[11px] text-[#FE8A0F]">
+                                  <p key={addon.id} className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#FE8A0F]">
                                     + {addon.title} (£{addon.price})
                                   </p>
                                 ))}
@@ -802,11 +802,11 @@ export default function CartPage() {
                               <div className="bg-blue-50/70 border border-blue-200 rounded-md md:rounded-lg p-2 mb-2">
                                 <div className="flex items-center gap-1.5 mb-0.5">
                                   <Calendar className="w-3 h-3 text-[#3B82F6]" />
-                                  <p className="font-['Roboto',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
+                                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
                                     Appointment Scheduled
                                   </p>
                                 </div>
-                                <p className="font-['Roboto',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
+                                <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
                                   {new Date(item.booking.date).toLocaleDateString('en-GB', { 
                                     weekday: 'short',
                                     month: 'short', 
@@ -826,7 +826,7 @@ export default function CartPage() {
                                 >
                                   <Minus className="w-3 h-3" />
                                 </button>
-                                <span className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
+                                <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
                                   {item.quantity}
                                 </span>
                                 <button
@@ -838,7 +838,7 @@ export default function CartPage() {
                               </div>
                               
                               <div className="flex items-center gap-2 md:gap-3">
-                                <p className="font-['Roboto',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
+                                <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
                                   £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
                                 </p>
                                 <button
@@ -861,13 +861,13 @@ export default function CartPage() {
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1 order-1 lg:order-2">
               <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6 sticky top-32">
-                <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
                   Order Summary
                 </h2>
 
                 {/* Promo Code */}
                 <div className="mb-6">
-                  <label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-2 flex items-center gap-2">
+                  <label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 flex items-center gap-2">
                     <Gift className="w-4 h-4" />
                     Have a promo code?
                   </label>
@@ -878,11 +878,11 @@ export default function CartPage() {
                         placeholder="Enter code"
                         value={promoCode}
                         onChange={(e) => setPromoCode(e.target.value)}
-                        className="flex-1 font-['Roboto',sans-serif] text-[14px] rounded-xl border-gray-200"
+                        className="flex-1 font-['Poppins',sans-serif] text-[14px] rounded-xl border-gray-200"
                       />
                       <Button
                         onClick={handleApplyPromo}
-                        className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl px-4 font-['Roboto',sans-serif] text-[14px]"
+                        className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl px-4 font-['Poppins',sans-serif] text-[14px]"
                       >
                         Apply
                       </Button>
@@ -891,7 +891,7 @@ export default function CartPage() {
                     <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl p-3 mt-2">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="font-['Roboto',sans-serif] text-[13px] text-green-700">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-green-700">
                           {appliedPromo} Applied
                         </span>
                       </div>
@@ -903,7 +903,7 @@ export default function CartPage() {
                       </button>
                     </div>
                   )}
-                  <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] mt-2">
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-2">
                     Try: SAVE10 or WELCOME20
                   </p>
                 </div>
@@ -913,30 +913,30 @@ export default function CartPage() {
                 {/* Price Breakdown */}
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between items-center">
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       Subtotal ({cartItems.length} {cartItems.length === 1 ? 'item' : 'items'})
                     </span>
-                    <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
+                    <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                       £{subtotal.toFixed(2)}
                     </span>
                   </div>
 
                   {discount > 0 && (
                     <div className="flex justify-between items-center text-green-600">
-                      <span className="font-['Roboto',sans-serif] text-[14px]">
+                      <span className="font-['Poppins',sans-serif] text-[14px]">
                         Discount ({appliedPromo})
                       </span>
-                      <span className="font-['Roboto',sans-serif] text-[16px]">
+                      <span className="font-['Poppins',sans-serif] text-[16px]">
                         -£{discount.toFixed(2)}
                       </span>
                     </div>
                   )}
 
                   <div className="flex justify-between items-center">
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       Service Fee
                     </span>
-                    <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
+                    <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                       {deliveryFee === 0 ? (
                         <span className="text-green-600">FREE</span>
                       ) : (
@@ -947,7 +947,7 @@ export default function CartPage() {
 
                   {cartTotal < 100 && (
                     <div className="bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl p-3">
-                      <p className="font-['Roboto',sans-serif] text-[12px] text-[#FE8A0F]">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F]">
                         Add £{(100 - cartTotal).toFixed(2)} more for FREE service fee!
                       </p>
                     </div>
@@ -958,10 +958,10 @@ export default function CartPage() {
 
                 {/* Total */}
                 <div className="flex justify-between items-center mb-6">
-                  <span className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
+                  <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                     Total
                   </span>
-                  <span className="font-['Roboto',sans-serif] text-[28px] text-[#FE8A0F]">
+                  <span className="font-['Poppins',sans-serif] text-[28px] text-[#FE8A0F]">
                     £{total.toFixed(2)}
                   </span>
                 </div>
@@ -969,14 +969,14 @@ export default function CartPage() {
                 {/* Place Order Button */}
                 <Button 
                   onClick={handlePlaceOrder}
-                  className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-full transition-all duration-300 font-['Roboto',sans-serif] text-[16px] mb-3"
+                  className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px] mb-3"
                 >
                   <CheckCircle2 className="w-5 h-5 mr-2" />
                   Place Order
                 </Button>
 
                 <Link to="/services">
-                  <Button variant="outline" className="w-full border-2 border-gray-300 text-[#6b6b6b] hover:bg-gray-50 py-6 rounded-full transition-all duration-300 font-['Roboto',sans-serif] text-[16px]">
+                  <Button variant="outline" className="w-full border-2 border-gray-300 text-[#6b6b6b] hover:bg-gray-50 py-6 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]">
                     <ShoppingBag className="w-5 h-5 mr-2" />
                     Continue Shopping
                   </Button>
@@ -986,19 +986,19 @@ export default function CartPage() {
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-[#10B981]" />
-                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
                       100% Secure Payments
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
                       Money Back Guarantee
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Truck className="w-4 h-4 text-[#10B981]" />
-                    <p className="font-['Roboto',sans-serif] text-[11px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
                       Professional Service Delivery
                     </p>
                   </div>

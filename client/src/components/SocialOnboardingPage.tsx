@@ -264,25 +264,25 @@ export default function SocialOnboardingPage() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                 </div>
-                <h2 className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f]">
+                <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
                   Complete Your Profile
                 </h2>
               </div>
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                 We've filled in some information from your {pendingProfile?.provider === 'google' ? 'Google' : 'Facebook'} account. Please complete the rest to finish signing up.
               </p>
             </div>
 
             {/* User Type Selection */}
             <div className="mb-4">
-              <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+              <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                 Account Type
               </Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setUserType("client")}
-                  className={`p-3 rounded-xl border-2 transition-all font-['Roboto',sans-serif] text-[13px] ${
+                  className={`p-3 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
                     userType === "client"
                       ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
                       : "border-gray-200 bg-white text-[#6b6b6b] hover:border-[#FE8A0F]/50"
@@ -294,7 +294,7 @@ export default function SocialOnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setUserType("professional")}
-                  className={`p-3 rounded-xl border-2 transition-all font-['Roboto',sans-serif] text-[13px] ${
+                  className={`p-3 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
                     userType === "professional"
                       ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
                       : "border-gray-200 bg-white text-[#6b6b6b] hover:border-[#FE8A0F]/50"
@@ -311,7 +311,7 @@ export default function SocialOnboardingPage() {
               {/* First Name & Last Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="first-name" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                  <Label htmlFor="first-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                     First Name *
                   </Label>
                   <div className="relative">
@@ -331,21 +331,21 @@ export default function SocialOnboardingPage() {
                           });
                         }
                       }}
-                      className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
+                      className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
                         fieldErrors.firstName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                       }`}
                       required
                     />
                   </div>
                   {fieldErrors.firstName && (
-                    <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                    <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                       {fieldErrors.firstName}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="last-name" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                  <Label htmlFor="last-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                     Last Name *
                   </Label>
                   <div className="relative">
@@ -365,14 +365,14 @@ export default function SocialOnboardingPage() {
                           });
                         }
                       }}
-                      className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
+                      className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
                         fieldErrors.lastName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                       }`}
                       required
                     />
                   </div>
                   {fieldErrors.lastName && (
-                    <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                    <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                       {fieldErrors.lastName}
                     </p>
                   )}
@@ -382,7 +382,7 @@ export default function SocialOnboardingPage() {
               {/* Trading Name (Professional only) */}
               {userType === "professional" && (
                 <div>
-                  <Label htmlFor="trading-name" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                  <Label htmlFor="trading-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                     Trading Name *
                   </Label>
                   <div className="relative">
@@ -402,14 +402,14 @@ export default function SocialOnboardingPage() {
                           });
                         }
                       }}
-                      className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
+                      className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
                         fieldErrors.tradingName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                       }`}
                       required
                     />
                   </div>
                   {fieldErrors.tradingName && (
-                    <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                    <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                       {fieldErrors.tradingName}
                     </p>
                   )}
@@ -476,20 +476,20 @@ export default function SocialOnboardingPage() {
                   showTownCityField={true}
                   showCountyField={true}
                   addressLabel="Address"
-                  className="font-['Roboto',sans-serif]"
+                  className="font-['Poppins',sans-serif]"
                 />
                 {fieldErrors.postcode && (
-                  <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                  <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                     {fieldErrors.postcode}
                   </p>
                 )}
                 {fieldErrors.address && (
-                  <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                  <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                     {fieldErrors.address}
                   </p>
                 )}
                 {fieldErrors.townCity && (
-                  <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                  <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                     {fieldErrors.townCity}
                   </p>
                 )}
@@ -498,7 +498,7 @@ export default function SocialOnboardingPage() {
               {/* Travel Distance (Professional only) */}
               {userType === "professional" && (
                 <div>
-                  <Label htmlFor="travel-distance" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                  <Label htmlFor="travel-distance" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                     How long are you willing to travel for work? *
                   </Label>
                   <Select 
@@ -514,7 +514,7 @@ export default function SocialOnboardingPage() {
                       }
                     }}
                   >
-                    <SelectTrigger className={`h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
+                    <SelectTrigger className={`h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
                       fieldErrors.travelDistance ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                     }`}>
                       <SelectValue placeholder="Select distance" />
@@ -531,7 +531,7 @@ export default function SocialOnboardingPage() {
                     </SelectContent>
                   </Select>
                   {fieldErrors.travelDistance && (
-                    <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                    <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                       {fieldErrors.travelDistance}
                     </p>
                   )}
@@ -560,7 +560,7 @@ export default function SocialOnboardingPage() {
 
               {/* Email */}
               <div>
-                <Label htmlFor="email" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                <Label htmlFor="email" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                   Email *
                 </Label>
                 <div className="relative">
@@ -580,14 +580,14 @@ export default function SocialOnboardingPage() {
                         });
                       }
                     }}
-                    className={`pl-10 h-10 border-2 rounded-xl font-['Roboto',sans-serif] text-[13px] ${
+                    className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
                       fieldErrors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
                     }`}
                     required
                   />
                 </div>
                 {fieldErrors.email && (
-                  <p className="mt-1 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                  <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                     {fieldErrors.email}
                   </p>
                 )}
@@ -595,7 +595,7 @@ export default function SocialOnboardingPage() {
 
               {/* Referral Code (Optional) */}
               <div>
-                <Label htmlFor="referral-code" className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
+                <Label htmlFor="referral-code" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                   Referral Code
                 </Label>
                 <Input
@@ -604,7 +604,7 @@ export default function SocialOnboardingPage() {
                   placeholder="Enter referral code (optional)"
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value)}
-                  className="h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[13px]"
+                  className="h-10 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px]"
                 />
               </div>
 
@@ -628,7 +628,7 @@ export default function SocialOnboardingPage() {
                   />
                   <Label 
                     htmlFor="terms" 
-                    className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
+                    className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-snug cursor-pointer"
                   >
                     I agree to the{" "}
                     <a href="/terms" className="text-[#3B82F6] hover:text-[#2563EB]">
@@ -641,14 +641,14 @@ export default function SocialOnboardingPage() {
                   </Label>
                 </div>
                 {fieldErrors.agreeTerms && (
-                  <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Roboto',sans-serif]">
+                  <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                     {fieldErrors.agreeTerms}
                   </p>
                 )}
               </div>
 
               {error && (
-                <p className="text-[12px] text-red-600 text-center font-['Roboto',sans-serif]">
+                <p className="text-[12px] text-red-600 text-center font-['Poppins',sans-serif]">
                   {error}
                 </p>
               )}
@@ -656,7 +656,7 @@ export default function SocialOnboardingPage() {
               <Button
                 type="submit"
                 disabled={isSendingPhoneCode}
-                className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSendingPhoneCode ? "Sending code..." : "Send Verification Code"}
               </Button>
@@ -670,17 +670,17 @@ export default function SocialOnboardingPage() {
                     <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
                       <Phone className="w-7 h-7 text-[#FE8A0F]" />
                     </div>
-                    <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-2">
+                    <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-2">
                       Verify Your Phone Number
                     </h3>
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       We've sent a 4-digit code to {phone}
                     </p>
                   </div>
 
                   <form onSubmit={handleVerifyPhoneCode} className="space-y-4">
                     <div>
-                      <Label htmlFor="phone-code" className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
+                      <Label htmlFor="phone-code" className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">
                         Enter 4-Digit Code
                       </Label>
                       <Input
@@ -694,18 +694,18 @@ export default function SocialOnboardingPage() {
                           setPhoneCode(value);
                           if (error) setError(null);
                         }}
-                        className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
+                        className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
                         maxLength={4}
                         required
                         autoFocus
                       />
                       {phoneCodeHint && (
-                        <p className="text-[12px] text-red-600 font-['Roboto',sans-serif] text-center mt-2">
+                        <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
                           Hint: {phoneCodeHint}
                         </p>
                       )}
                       {error && (
-                        <p className="text-[12px] text-red-600 font-['Roboto',sans-serif] text-center mt-2">
+                        <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] text-center mt-2">
                           {error}
                         </p>
                       )}
@@ -714,7 +714,7 @@ export default function SocialOnboardingPage() {
                     <Button
                       type="submit"
                       disabled={isVerifyingPhone || phoneCode.length !== 4}
-                      className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isVerifyingPhone ? "Verifying..." : "Verify & Complete Registration"}
                     </Button>
@@ -726,7 +726,7 @@ export default function SocialOnboardingPage() {
                         setPhoneCode("");
                         setError(null);
                       }}
-                      className="w-full text-[#6b6b6b] hover:text-[#2c353f] font-['Roboto',sans-serif] text-[13px]"
+                      className="w-full text-[#6b6b6b] hover:text-[#2c353f] font-['Poppins',sans-serif] text-[13px]"
                     >
                       Cancel
                     </button>
@@ -739,7 +739,7 @@ export default function SocialOnboardingPage() {
             <div className="mt-4 pt-4 border-t border-gray-100 text-center">
               <button
                 onClick={() => navigate("/login")}
-                className="flex items-center justify-center gap-2 text-[#3B82F6] hover:text-[#2563EB] transition-colors font-['Roboto',sans-serif] text-[12px] mx-auto"
+                className="flex items-center justify-center gap-2 text-[#3B82F6] hover:text-[#2563EB] transition-colors font-['Poppins',sans-serif] text-[12px] mx-auto"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login

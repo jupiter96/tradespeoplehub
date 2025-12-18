@@ -4,6 +4,23 @@ import ServiceCategory from '../models/ServiceCategory.js';
 
 const router = express.Router();
 
+// Small in-memory cache to reduce repeat DB work for hot public endpoints.
+// Keyed by req.originalUrl. Safe only for GET + activeOnly=true + no search.
+const _cache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+const getCached = (key) => {
+  const hit = _cache.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    _cache.delete(key);
+    return null;
+  }
+  return hit.value;
+};
+const setCached = (key, value) => {
+  _cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+};
+
 // Get all service subcategories (with optional filtering)
 router.get('/', async (req, res) => {
   try {
@@ -21,6 +38,19 @@ router.get('/', async (req, res) => {
       sortOrder = 'asc',
       search
     } = req.query;
+
+    const shouldCache =
+      req.method === 'GET' &&
+      activeOnly === 'true' &&
+      !search;
+    const cacheKey = shouldCache ? req.originalUrl : null;
+    if (cacheKey) {
+      const cached = getCached(cacheKey);
+      if (cached) {
+        res.set('Cache-Control', 'public, max-age=300');
+        return res.json(cached);
+      }
+    }
     
     const query = {};
     
@@ -360,13 +390,19 @@ router.get('/', async (req, res) => {
       .limit(limitNum)
       .lean();
     
-    return res.json({ 
+    const payload = { 
       serviceSubCategories,
       total,
       totalPages,
       page: pageNum,
       limit: limitNum
-    });
+    };
+
+    if (cacheKey) {
+      setCached(cacheKey, payload);
+      res.set('Cache-Control', 'public, max-age=300');
+    }
+    return res.json(payload);
   } catch (error) {
     console.error('Get service subcategories error', error);
     return res.status(500).json({ error: 'Failed to fetch service subcategories' });

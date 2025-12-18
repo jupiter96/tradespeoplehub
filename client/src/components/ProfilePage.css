@@ -1,8 +1,8 @@
 /* Prolancer-like seller profile page clone (scoped) */
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@700&family=Rubik:wght@300;400;500;700;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Rubik:wght@300;400;500;700;900&display=swap");
 
 .prolancer-profile {
-  font-family: "Rubik", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: "Rubik", system-ui, -apple-system, Segoe UI, Poppins, sans-serif;
   background: #f4f6fb;
   --pl-blue: #002f77;
   --pl-blue-10: rgba(0, 47, 119, 0.1);
@@ -172,7 +172,7 @@
 }
 
 .prolancer-profile .seller-name {
-  font-family: "Roboto", "Rubik", system-ui, sans-serif;
+  font-family: "Poppins", "Rubik", system-ui, sans-serif;
   font-weight: 700;
   font-size: 26px;
   color: #0f172a;
@@ -438,7 +438,7 @@
 }
 
 .prolancer-profile .section-title {
-  font-family: "Roboto", "Rubik", system-ui, sans-serif;
+  font-family: "Poppins", "Rubik", system-ui, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: #0f172a;
@@ -636,7 +636,7 @@
 }
 
 .prolancer-profile .gig-title {
-  font-family: "Roboto", "Rubik", system-ui, sans-serif;
+  font-family: "Poppins", "Rubik", system-ui, sans-serif;
   font-weight: 700;
   font-size: 16px;
   color: #0f172a;
@@ -735,7 +735,7 @@
 }
 
 .prolancer-profile .widget-title {
-  font-family: "Roboto", "Rubik", system-ui, sans-serif;
+  font-family: "Poppins", "Rubik", system-ui, sans-serif;
   font-weight: 700;
   font-size: 16px;
   color: #0f172a;

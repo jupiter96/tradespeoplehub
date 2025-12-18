@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner@2.0.3";
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import {
   User,
   Heart,
@@ -295,10 +296,10 @@ export default function AccountPage() {
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-8 mt-[50px] md:mt-0">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="font-['Roboto',sans-serif] text-[32px] md:text-[40px] text-[#2c353f] mb-2">
+          <h1 className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] text-[#2c353f] mb-2">
             My Account
           </h1>
-          <p className="font-['Roboto',sans-serif] text-[16px] text-[#6b6b6b]">
+          <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">
             {userRole === "client" 
               ? "Manage your orders and account settings"
               : "Manage your jobs and professional profile"}
@@ -322,7 +323,7 @@ export default function AccountPage() {
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16 border-4 border-white/20">
                     <AvatarImage src={userInfo?.avatar} />
-                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Roboto',sans-serif] text-[20px]">
+                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[20px]">
                       {(() => {
                         if (userInfo?.firstName && userInfo?.lastName) {
                           return (userInfo.firstName[0] + userInfo.lastName[0]).toUpperCase();
@@ -340,14 +341,14 @@ export default function AccountPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-['Roboto',sans-serif] text-[18px] mb-1">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] mb-1">
                       {userRole === "professional" && userInfo?.tradingName
                         ? userInfo.tradingName
                         : (userInfo?.firstName && userInfo?.lastName
                           ? `${userInfo.firstName} ${userInfo.lastName}`
                           : userInfo?.name || 'User')}
                     </h3>
-                    <Badge className="bg-white/20 text-white border-0 font-['Roboto',sans-serif] text-[11px]">
+                    <Badge className="bg-white/20 text-white border-0 font-['Poppins',sans-serif] text-[11px]">
                       {userRole === "client" ? "Client" : "Professional"}
                     </Badge>
                   </div>
@@ -375,12 +376,12 @@ export default function AccountPage() {
                     >
                       <div className="flex items-center gap-3">
                         <Icon className="w-5 h-5" />
-                        <span className="font-['Roboto',sans-serif] text-[14px]">
+                        <span className="font-['Poppins',sans-serif] text-[14px]">
                           {item.label}
                         </span>
                       </div>
                       {item.badge && (
-                        <Badge className="bg-[#FE8A0F] text-white border-0 h-5 min-w-5 px-1.5 font-['Roboto',sans-serif] text-[11px]">
+                        <Badge className="bg-[#FE8A0F] text-white border-0 h-5 min-w-5 px-1.5 font-['Poppins',sans-serif] text-[11px]">
                           {item.badge}
                         </Badge>
                       )}
@@ -396,7 +397,7 @@ export default function AccountPage() {
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all"
                 >
                   <LogOut className="w-5 h-5" />
-                  <span className="font-['Roboto',sans-serif] text-[14px]">
+                  <span className="font-['Poppins',sans-serif] text-[14px]">
                     Logout
                   </span>
                 </button>
@@ -506,16 +507,16 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
   if (userRole === "client") {
     return (
       <div>
-        <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+        <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
           Account Overview
         </h2>
         
         {/* Welcome Message */}
         <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-xl p-6 mb-8">
-          <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
+          <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
             Welcome Back! 👋
           </h3>
-          <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
             Your account is active and ready to place orders. Browse our professionals and get started!
           </p>
         </div>
@@ -525,32 +526,32 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-4 md:p-6 rounded-xl border border-[#FE8A0F]/20 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#FE8A0F]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <ShoppingBag className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] mb-2 md:mb-3" />
-            <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">19</h3>
-            <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Orders</p>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">19</h3>
+            <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Orders</p>
             <div className="flex items-center gap-1 text-green-600">
               <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">+15% this month</span>
+              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+15% this month</span>
             </div>
           </div>
           
           <div className="bg-gradient-to-br from-[#E8F4FD] to-white p-4 md:p-6 rounded-xl border border-[#3D78CB]/20 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#3D78CB]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-[#3D78CB] mb-2 md:mb-3" />
-            <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£4,530</h3>
-            <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Expense</p>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£4,530</h3>
+            <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Expense</p>
             <div className="flex items-center gap-1 text-[#3D78CB]">
               <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">+8% from last month</span>
+              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+8% from last month</span>
             </div>
           </div>
           
           <div className="bg-gradient-to-br from-[#F0FDF4] to-white p-4 md:p-6 rounded-xl border border-green-200 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <Wallet className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-2 md:mb-3" />
-            <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£2,450</h3>
-            <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">My Balance</p>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£2,450</h3>
+            <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">My Balance</p>
             <div className="flex items-center gap-1 text-green-600">
-              <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">Available to spend</span>
+              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">Available to spend</span>
             </div>
           </div>
         </div>
@@ -561,16 +562,16 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           <div className="bg-white border border-gray-200 rounded-xl p-6 min-w-[85vw] lg:min-w-0 snap-center flex-shrink-0">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
                   Monthly Expenses
                 </h3>
-                <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
                   Last 6 months spending trend
                 </p>
               </div>
               <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
                 <TrendingUp className="w-4 h-4" />
-                <span className="font-['Roboto',sans-serif] text-[12px]">+22%</span>
+                <span className="font-['Poppins',sans-serif] text-[12px]">+22%</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={250}>
@@ -579,15 +580,15 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                 <XAxis 
                   dataKey="month" 
                   stroke="#8d8d8d"
-                  style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                  style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
                 />
                 <YAxis 
                   stroke="#8d8d8d"
-                  style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                  style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    fontFamily: "Roboto, sans-serif",
+                    fontFamily: "Poppins, sans-serif",
                     borderRadius: "12px",
                     border: "1px solid #e5e5e5"
                   }}
@@ -609,16 +610,16 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           <div className="bg-white border border-gray-200 rounded-xl p-6 min-w-[85vw] lg:min-w-0 snap-center flex-shrink-0">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
                   Monthly Orders
                 </h3>
-                <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
                   Number of orders per month
                 </p>
               </div>
               <div className="flex items-center gap-1 text-[#FE8A0F] bg-[#FFF5EB] px-3 py-1.5 rounded-lg">
                 <TrendingUp className="w-4 h-4" />
-                <span className="font-['Roboto',sans-serif] text-[12px]">+67%</span>
+                <span className="font-['Poppins',sans-serif] text-[12px]">+67%</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={250}>
@@ -627,15 +628,15 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                 <XAxis 
                   dataKey="month" 
                   stroke="#8d8d8d"
-                  style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                  style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
                 />
                 <YAxis 
                   stroke="#8d8d8d"
-                  style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                  style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    fontFamily: "Roboto, sans-serif",
+                    fontFamily: "Poppins, sans-serif",
                     borderRadius: "12px",
                     border: "1px solid #e5e5e5"
                   }}
@@ -653,10 +654,10 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           {/* Category Spending Chart */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 min-w-[85vw] lg:min-w-0 lg:col-span-2 snap-center flex-shrink-0">
             <div className="mb-4 lg:mb-6">
-              <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
                 Spending by Category
               </h3>
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
                 Total: £4,530 across all categories
               </p>
             </div>
@@ -680,7 +681,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        fontFamily: "Roboto, sans-serif",
+                        fontFamily: "Poppins, sans-serif",
                         borderRadius: "12px",
                         border: "1px solid #e5e5e5"
                       }}
@@ -709,7 +710,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        fontFamily: "Roboto, sans-serif",
+                        fontFamily: "Poppins, sans-serif",
                         borderRadius: "12px",
                         border: "1px solid #e5e5e5"
                       }}
@@ -727,11 +728,11 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                         className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
                         style={{ backgroundColor: category.color }}
                       ></div>
-                      <span className="font-['Roboto',sans-serif] text-[10px] text-[#2c353f] truncate">
+                      <span className="font-['Poppins',sans-serif] text-[10px] text-[#2c353f] truncate">
                         {category.name}
                       </span>
                     </div>
-                    <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] font-medium">
+                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-medium">
                       £{category.value.toLocaleString()}
                     </span>
                   </div>
@@ -746,11 +747,11 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                         className="w-3 h-3 rounded-full flex-shrink-0" 
                         style={{ backgroundColor: category.color }}
                       ></div>
-                      <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] truncate">
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
                         {category.name}
                       </span>
                     </div>
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
                       £{category.value.toLocaleString()}
                     </span>
                   </div>
@@ -792,16 +793,16 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
 
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Account Overview
       </h2>
       
       {/* Welcome Message */}
       <div className="bg-gradient-to-r from-[#EFF6FF] to-[#FFF5EB] border border-[#3B82F6]/30 rounded-xl p-6 mb-8">
-        <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
+        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
           Welcome Back! 👋
         </h3>
-        <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
           Your profile is active and visible to potential clients. Keep up the great work and maintain your high ratings!
         </p>
       </div>
@@ -811,44 +812,44 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-4 md:p-6 rounded-xl border border-[#FE8A0F]/20 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#FE8A0F]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <Briefcase className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] mb-2 md:mb-3" />
-          <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">12</h3>
-          <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Active Jobs</p>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">12</h3>
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Active Jobs</p>
           <div className="flex items-center gap-1 text-green-600">
             <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">+3 this week</span>
+            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+3 this week</span>
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-4 md:p-6 rounded-xl border border-[#3B82F6]/20 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#3B82F6]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-[#3B82F6] mb-2 md:mb-3" />
-          <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">68</h3>
-          <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Completed Jobs</p>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">68</h3>
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Completed Jobs</p>
           <div className="flex items-center gap-1 text-[#3B82F6]">
             <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">+16 this month</span>
+            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+16 this month</span>
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-[#F0FDF4] to-white p-4 md:p-6 rounded-xl border border-green-200 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-2 md:mb-3" />
-          <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£22,250</h3>
-          <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Earnings</p>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£22,250</h3>
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Earnings</p>
           <div className="flex items-center gap-1 text-green-600">
             <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">+18% from last month</span>
+            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+18% from last month</span>
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-[#FEF3C7] to-white p-4 md:p-6 rounded-xl border border-amber-200 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-amber-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <Wallet className="w-6 h-6 md:w-8 md:h-8 text-amber-600 mb-2 md:mb-3" />
-          <h3 className="font-['Roboto',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£5,250</h3>
-          <p className="font-['Roboto',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Available Balance</p>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£5,250</h3>
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Available Balance</p>
           <div className="flex items-center gap-1 text-amber-600">
             <Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Roboto',sans-serif] text-[11px] md:text-[12px]">Ready to withdraw</span>
+            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">Ready to withdraw</span>
           </div>
         </div>
       </div>
@@ -858,10 +859,10 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         {/* Monthly Earnings Chart */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 min-w-[85vw] lg:min-w-0 snap-center flex-shrink-0">
           <div className="mb-6">
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
               Monthly Earnings
             </h3>
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
               Last 6 months earnings trend
             </p>
           </div>
@@ -871,15 +872,15 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
               <XAxis 
                 dataKey="month" 
                 stroke="#8d8d8d"
-                style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
               />
               <YAxis 
                 stroke="#8d8d8d"
-                style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
               />
               <Tooltip 
                 contentStyle={{ 
-                  fontFamily: "Roboto, sans-serif",
+                  fontFamily: "Poppins, sans-serif",
                   borderRadius: "12px",
                   border: "1px solid #e5e5e5"
                 }}
@@ -900,10 +901,10 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         {/* Monthly Jobs Chart */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 min-w-[85vw] lg:min-w-0 snap-center flex-shrink-0">
           <div className="mb-6">
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
               Monthly Jobs Completed
             </h3>
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
               Jobs completed in the last 6 months
             </p>
           </div>
@@ -913,15 +914,15 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
               <XAxis 
                 dataKey="month" 
                 stroke="#8d8d8d"
-                style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
               />
               <YAxis 
                 stroke="#8d8d8d"
-                style={{ fontFamily: "Roboto, sans-serif", fontSize: "12px" }}
+                style={{ fontFamily: "Poppins, sans-serif", fontSize: "12px" }}
               />
               <Tooltip 
                 contentStyle={{ 
-                  fontFamily: "Roboto, sans-serif",
+                  fontFamily: "Poppins, sans-serif",
                   borderRadius: "12px",
                   border: "1px solid #e5e5e5"
                 }}
@@ -939,10 +940,10 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         {/* Category Earnings Chart */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 min-w-[85vw] lg:min-w-0 lg:col-span-2 snap-center flex-shrink-0">
           <div className="mb-4 lg:mb-6">
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
               Earnings by Service Category
             </h3>
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
               Total: £22,250 across all categories
             </p>
           </div>
@@ -966,7 +967,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
-                      fontFamily: "Roboto, sans-serif",
+                      fontFamily: "Poppins, sans-serif",
                       borderRadius: "12px",
                       border: "1px solid #e5e5e5"
                     }}
@@ -995,7 +996,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
-                      fontFamily: "Roboto, sans-serif",
+                      fontFamily: "Poppins, sans-serif",
                       borderRadius: "12px",
                       border: "1px solid #e5e5e5"
                     }}
@@ -1013,11 +1014,11 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
                       style={{ backgroundColor: category.color }}
                     ></div>
-                    <span className="font-['Roboto',sans-serif] text-[10px] text-[#2c353f] truncate">
+                    <span className="font-['Poppins',sans-serif] text-[10px] text-[#2c353f] truncate">
                       {category.name}
                     </span>
                   </div>
-                  <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] font-medium">
+                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-medium">
                     £{category.value.toLocaleString()}
                   </span>
                 </div>
@@ -1032,11 +1033,11 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                       className="w-3 h-3 rounded-full flex-shrink-0" 
                       style={{ backgroundColor: category.color }}
                     ></div>
-                    <span className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] truncate">
+                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
                       {category.name}
                     </span>
                   </div>
-                  <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
                     £{category.value.toLocaleString()}
                   </span>
                 </div>
@@ -1059,12 +1060,12 @@ function JobsSection() {
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const jobs = [
+  const jobs = ([
     { 
       id: "JOB-101", 
       title: "Kitchen Renovation", 
       client: "Sarah Johnson",
-      clientAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7234 567890",
       clientEmail: "sarah.johnson@gmail.com",
       date: "2024-11-08",
@@ -1080,7 +1081,7 @@ function JobsSection() {
       id: "JOB-102", 
       title: "Bathroom Plumbing", 
       client: "Mike Brown",
-      clientAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7345 678901",
       clientEmail: "mike.brown@gmail.com",
       date: "2024-11-09", 
@@ -1096,7 +1097,7 @@ function JobsSection() {
       id: "JOB-103", 
       title: "Garden Landscaping", 
       client: "Emma Wilson",
-      clientAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7456 789012",
       clientEmail: "emma.wilson@gmail.com",
       date: "2024-11-10", 
@@ -1112,7 +1113,7 @@ function JobsSection() {
       id: "JOB-104", 
       title: "Roof Repair", 
       client: "David Lee",
-      clientAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7567 890123",
       clientEmail: "david.lee@gmail.com",
       date: "2024-11-10", 
@@ -1128,7 +1129,7 @@ function JobsSection() {
       id: "JOB-098", 
       title: "Office Painting", 
       client: "ABC Company",
-      clientAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7678 901234",
       clientEmail: "contact@abccompany.com",
       date: "2024-11-01", 
@@ -1144,7 +1145,7 @@ function JobsSection() {
       id: "JOB-099", 
       title: "Electrical Rewiring", 
       client: "John Smith",
-      clientAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7789 012345",
       clientEmail: "john.smith@gmail.com",
       date: "2024-11-03", 
@@ -1160,7 +1161,7 @@ function JobsSection() {
       id: "JOB-097", 
       title: "Heating System Installation", 
       client: "Mary Thompson",
-      clientAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7890 123456",
       clientEmail: "mary.thompson@gmail.com",
       date: "2024-10-30", 
@@ -1176,7 +1177,7 @@ function JobsSection() {
       id: "JOB-096", 
       title: "Fence Installation", 
       client: "Robert Davis",
-      clientAvatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7901 234567",
       clientEmail: "robert.davis@gmail.com",
       date: "2024-11-07", 
@@ -1192,7 +1193,7 @@ function JobsSection() {
       id: "JOB-095", 
       title: "Emergency Repair", 
       client: "Jane Doe",
-      clientAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7012 345678",
       clientEmail: "jane.doe@gmail.com",
       date: "2024-10-28", 
@@ -1208,7 +1209,7 @@ function JobsSection() {
       id: "JOB-105", 
       title: "Carpet Installation", 
       client: "Lisa Anderson",
-      clientAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+      clientAvatar: defaultAvatar,
       clientPhone: "+44 7123 456780",
       clientEmail: "lisa.anderson@gmail.com",
       date: "2024-11-12", 
@@ -1220,7 +1221,10 @@ function JobsSection() {
       scheduledDate: "November 16-17, 2024",
       category: "Flooring"
     },
-  ];
+  ]).map((job) => ({
+    ...job,
+    clientAvatar: defaultAvatar,
+  }));
 
   // Filter and search logic
   const filteredJobs = jobs.filter(job => {
@@ -1283,7 +1287,7 @@ function JobsSection() {
 
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         My Jobs
       </h2>
 
@@ -1296,11 +1300,11 @@ function JobsSection() {
               placeholder="Search jobs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 font-['Roboto',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"
+              className="pl-10 font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-[200px] font-['Roboto',sans-serif] text-[14px]">
+            <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -1317,24 +1321,24 @@ function JobsSection() {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
           <div className="bg-gradient-to-br from-white to-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-4">
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total Jobs</p>
-            <p className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">{jobs.length}</p>
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total Jobs</p>
+            <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">{jobs.length}</p>
           </div>
           <div className="bg-gradient-to-br from-white to-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">In Progress</p>
-            <p className="font-['Roboto',sans-serif] text-[24px] text-blue-600">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">In Progress</p>
+            <p className="font-['Poppins',sans-serif] text-[24px] text-blue-600">
               {jobs.filter(j => j.status === "In Progress").length}
             </p>
           </div>
           <div className="bg-gradient-to-br from-white to-orange-50 border border-orange-200 rounded-lg p-4">
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">New Jobs</p>
-            <p className="font-['Roboto',sans-serif] text-[24px] text-orange-600">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">New Jobs</p>
+            <p className="font-['Poppins',sans-serif] text-[24px] text-orange-600">
               {jobs.filter(j => j.status === "New").length}
             </p>
           </div>
           <div className="bg-gradient-to-br from-white to-green-50 border border-green-200 rounded-lg p-4">
-            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Completed</p>
-            <p className="font-['Roboto',sans-serif] text-[24px] text-green-600">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Completed</p>
+            <p className="font-['Poppins',sans-serif] text-[24px] text-green-600">
               {jobs.filter(j => j.status === "Completed").length}
             </p>
           </div>
@@ -1347,7 +1351,7 @@ function JobsSection() {
           <TableHeader className="bg-gray-50">
             <TableRow>
               <TableHead 
-                className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort("id")}
               >
                 <div className="flex items-center gap-2">
@@ -1356,7 +1360,7 @@ function JobsSection() {
                 </div>
               </TableHead>
               <TableHead 
-                className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort("title")}
               >
                 <div className="flex items-center gap-2">
@@ -1365,7 +1369,7 @@ function JobsSection() {
                 </div>
               </TableHead>
               <TableHead 
-                className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort("client")}
               >
                 <div className="flex items-center gap-2">
@@ -1374,7 +1378,7 @@ function JobsSection() {
                 </div>
               </TableHead>
               <TableHead 
-                className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort("date")}
               >
                 <div className="flex items-center gap-2">
@@ -1383,7 +1387,7 @@ function JobsSection() {
                 </div>
               </TableHead>
               <TableHead 
-                className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort("status")}
               >
                 <div className="flex items-center gap-2">
@@ -1392,7 +1396,7 @@ function JobsSection() {
                 </div>
               </TableHead>
               <TableHead 
-                className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={() => handleSort("amount")}
               >
                 <div className="flex items-center gap-2">
@@ -1400,7 +1404,7 @@ function JobsSection() {
                   <ArrowUpDown className="w-4 h-4 text-[#6b6b6b]" />
                 </div>
               </TableHead>
-              <TableHead className="font-['Roboto',sans-serif] text-right">Actions</TableHead>
+              <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1409,10 +1413,10 @@ function JobsSection() {
                 <TableCell colSpan={7} className="text-center py-12">
                   <div className="flex flex-col items-center gap-3">
                     <Briefcase className="w-12 h-12 text-gray-300" />
-                    <p className="font-['Roboto',sans-serif] text-[16px] text-[#6b6b6b]">
+                    <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">
                       No jobs found
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d]">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
                       Try adjusting your search or filters
                     </p>
                   </div>
@@ -1424,26 +1428,26 @@ function JobsSection() {
                   key={job.id} 
                   className="hover:bg-[#FFF5EB]/30 transition-colors cursor-pointer"
                 >
-                  <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#3D78CB]">
+                  <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB]">
                     {job.id}
                   </TableCell>
-                  <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                  <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                     {job.title}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="w-8 h-8 border border-gray-200">
                         <AvatarImage src={job.clientAvatar} alt={job.client} />
-                        <AvatarFallback className="bg-[#3B82F6] text-white font-['Roboto',sans-serif] text-[12px]">
+                        <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[12px]">
                           {job.client.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                         {job.client}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                     {new Date(job.date).toLocaleDateString('en-GB', { 
                       day: 'numeric', 
                       month: 'short', 
@@ -1452,7 +1456,7 @@ function JobsSection() {
                   </TableCell>
                   <TableCell>
                     <Badge className={`
-                      font-['Roboto',sans-serif] text-[12px]
+                      font-['Poppins',sans-serif] text-[12px]
                       ${job.status === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}
                       ${job.status === "In Progress" ? "bg-blue-100 text-blue-700 border-blue-200" : ""}
                       ${job.status === "New" ? "bg-orange-100 text-orange-700 border-orange-200" : ""}
@@ -1461,14 +1465,14 @@ function JobsSection() {
                       {job.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-['Roboto',sans-serif] text-[15px] text-[#FE8A0F]">
+                  <TableCell className="font-['Poppins',sans-serif] text-[15px] text-[#FE8A0F]">
                     {job.amount}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-[#3B82F6] hover:bg-[#EFF6FF] font-['Roboto',sans-serif]"
+                      className="text-[#3B82F6] hover:bg-[#EFF6FF] font-['Poppins',sans-serif]"
                       onClick={() => setSelectedJob(job)}
                     >
                       <Eye className="w-4 h-4 mr-2" />
@@ -1490,15 +1494,15 @@ function JobsSection() {
               <DialogHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <DialogTitle className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-2">
+                    <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
                       {selectedJob.title}
                     </DialogTitle>
-                    <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       Job ID: {selectedJob.id}
                     </DialogDescription>
                   </div>
                   <Badge className={`
-                    font-['Roboto',sans-serif] text-[12px]
+                    font-['Poppins',sans-serif] text-[12px]
                     ${selectedJob.status === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}
                     ${selectedJob.status === "In Progress" ? "bg-blue-100 text-blue-700 border-blue-200" : ""}
                     ${selectedJob.status === "New" ? "bg-orange-100 text-orange-700 border-orange-200" : ""}
@@ -1512,18 +1516,18 @@ function JobsSection() {
               <div className="space-y-6 py-4">
                 {/* Amount Card */}
                 <div className="bg-gradient-to-br from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-6">
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Job Value</p>
-                  <h3 className="font-['Roboto',sans-serif] text-[36px] text-[#FE8A0F]">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Job Value</p>
+                  <h3 className="font-['Poppins',sans-serif] text-[36px] text-[#FE8A0F]">
                     {selectedJob.amount}
                   </h3>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] mt-2">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mt-2">
                     Category: {selectedJob.category}
                   </p>
                 </div>
 
                 {/* Client Info */}
                 <div className="bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl p-6">
-                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4 flex items-center gap-2">
+                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4 flex items-center gap-2">
                     <User className="w-5 h-5 text-[#3B82F6]" />
                     Client Details
                   </h4>
@@ -1531,12 +1535,12 @@ function JobsSection() {
                     <div className="flex items-center gap-3">
                       <Avatar className="w-12 h-12 border-2 border-[#3B82F6]/20">
                         <AvatarImage src={selectedJob.clientAvatar} alt={selectedJob.client} />
-                        <AvatarFallback className="bg-[#3B82F6] text-white font-['Roboto',sans-serif]">
+                        <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
                           {selectedJob.client.split(' ').map((n: string) => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
                           {selectedJob.client}
                         </p>
                       </div>
@@ -1544,13 +1548,13 @@ function JobsSection() {
                     <Separator />
                     <div className="flex items-center gap-2 text-[#6b6b6b]">
                       <Phone className="w-4 h-4" />
-                      <span className="font-['Roboto',sans-serif] text-[14px]">
+                      <span className="font-['Poppins',sans-serif] text-[14px]">
                         {selectedJob.clientPhone}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-[#6b6b6b]">
                       <Mail className="w-4 h-4" />
-                      <span className="font-['Roboto',sans-serif] text-[14px]">
+                      <span className="font-['Poppins',sans-serif] text-[14px]">
                         {selectedJob.clientEmail}
                       </span>
                     </div>
@@ -1559,15 +1563,15 @@ function JobsSection() {
 
                 {/* Job Details */}
                 <div>
-                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
                     Job Details
                   </h4>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <FileText className="w-5 h-5 text-[#FE8A0F] mt-0.5" />
                       <div>
-                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">Description</p>
-                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">Description</p>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {selectedJob.description}
                         </p>
                       </div>
@@ -1576,8 +1580,8 @@ function JobsSection() {
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-[#FE8A0F] mt-0.5" />
                       <div>
-                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">Job Address</p>
-                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">Job Address</p>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {selectedJob.address}
                         </p>
                       </div>
@@ -1586,10 +1590,10 @@ function JobsSection() {
                     <div className="flex items-start gap-3">
                       <Calendar className="w-5 h-5 text-[#FE8A0F] mt-0.5" />
                       <div>
-                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
                           {selectedJob.status === "Completed" ? "Completed Date" : "Scheduled Date"}
                         </p>
-                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {selectedJob.completedDate || selectedJob.scheduledDate}
                         </p>
                       </div>
@@ -1600,8 +1604,8 @@ function JobsSection() {
                         <div className="flex items-start gap-3">
                           <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
                           <div>
-                            <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">Rejection Reason</p>
-                            <p className="font-['Roboto',sans-serif] text-[14px] text-red-600">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">Rejection Reason</p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-red-600">
                               {selectedJob.rejectedReason}
                             </p>
                           </div>
@@ -1615,24 +1619,24 @@ function JobsSection() {
                 <div className="flex gap-3 pt-4">
                   {selectedJob.status === "New" && (
                     <>
-                      <Button className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]">
+                      <Button className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]">
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Accept Job
                       </Button>
-                      <Button variant="outline" className="flex-1 border-red-500 text-red-500 hover:bg-red-50 font-['Roboto',sans-serif]">
+                      <Button variant="outline" className="flex-1 border-red-500 text-red-500 hover:bg-red-50 font-['Poppins',sans-serif]">
                         <X className="w-4 h-4 mr-2" />
                         Decline
                       </Button>
                     </>
                   )}
                   {selectedJob.status === "In Progress" && (
-                    <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-['Roboto',sans-serif]">
+                    <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]">
                       <CheckCircle className="w-4 h-4 mr-2" />
                       Mark as Complete
                     </Button>
                   )}
                   {selectedJob.status !== "Rejected" && (
-                    <Button variant="outline" className="flex-1 border-[#3B82F6] text-[#3B82F6] hover:bg-[#EFF6FF] font-['Roboto',sans-serif]">
+                    <Button variant="outline" className="flex-1 border-[#3B82F6] text-[#3B82F6] hover:bg-[#EFF6FF] font-['Poppins',sans-serif]">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Message Client
                     </Button>
@@ -2138,10 +2142,10 @@ function DetailsSection() {
     <div>
       <div className="flex items-start justify-between mb-4 md:mb-6">
         <div>
-          <h2 className="font-['Roboto',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
+          <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[22px] md:text-[24px] text-[#2c353f] mb-2">
             My Details
           </h2>
-          <p className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+          <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
             Update your personal information and profile picture
           </p>
         </div>
@@ -2149,7 +2153,7 @@ function DetailsSection() {
 
       {/* Profile Picture Section */}
       <div className="mb-6 md:mb-8 p-4 sm:p-6 bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl">
-        <h3 className="font-['Roboto',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
+        <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
           Profile Picture
         </h3>
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
@@ -2159,7 +2163,7 @@ function DetailsSection() {
               alt={userInfo?.name || 'User avatar'}
               className="object-cover"
             />
-            <AvatarFallback className="bg-[#3B82F6] text-white font-['Roboto',sans-serif] text-[28px] sm:text-[32px]">
+            <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[28px] sm:text-[32px]">
               {userInfo?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
@@ -2175,7 +2179,7 @@ function DetailsSection() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadingAvatar}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Roboto',sans-serif] w-full sm:w-auto disabled:opacity-70 transition-colors"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-70 transition-colors"
             >
               {isUploadingAvatar ? (
                 <span className="flex items-center gap-2">
@@ -2192,16 +2196,16 @@ function DetailsSection() {
               variant="outline"
                 disabled={isUploadingAvatar}
               onClick={handleRemoveAvatar}
-                className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Roboto',sans-serif] w-full sm:w-auto disabled:opacity-60 transition-colors"
+                className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-60 transition-colors"
             >
               Remove Photo
             </Button>
             )}
-            <p className="font-['Roboto',sans-serif] text-[11px] sm:text-[12px] text-[#8d8d8d] mt-1 text-center sm:text-left">
+            <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#8d8d8d] mt-1 text-center sm:text-left">
               JPG, PNG, GIF, or WEBP. Max size 5MB
             </p>
             {avatarError && (
-              <p className="text-[12px] text-red-600 text-center sm:text-left font-['Roboto',sans-serif] mt-1">
+              <p className="text-[12px] text-red-600 text-center sm:text-left font-['Poppins',sans-serif] mt-1">
                 {avatarError}
               </p>
             )}
@@ -2213,34 +2217,34 @@ function DetailsSection() {
 
       {/* Personal Information */}
       <div className="space-y-4 md:space-y-6">
-        <h3 className="font-['Roboto',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f]">
+        <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f]">
           Personal Information
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
               First Name <span className="text-red-500">*</span>
             </Label>
             <Input
               type="text"
               value={formData.firstName}
               onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
           </div>
           <div>
-            <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
               Last Name <span className="text-red-500">*</span>
             </Label>
             <Input
               type="text"
               value={formData.lastName}
               onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
           </div>
           <div>
-            <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
               Email Address
             </Label>
             <Input
@@ -2258,7 +2262,7 @@ function DetailsSection() {
                   setEmailOTPHint(null);
                 }
               }}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
             {emailChanged && !emailOTPVerified && (
               <div className="mt-2 space-y-2">
@@ -2279,7 +2283,7 @@ function DetailsSection() {
                       }
                     }}
                     disabled={isSendingEmailOTP}
-                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Roboto',sans-serif]"
+                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Poppins',sans-serif]"
                   >
                     {isSendingEmailOTP ? "Sending..." : "Send Verification Code"}
                   </Button>
@@ -2293,11 +2297,11 @@ function DetailsSection() {
                         const value = e.target.value.replace(/\D/g, '').slice(0, 4);
                         setEmailOTPCode(value);
                       }}
-                      className="h-9 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] text-center tracking-widest"
+                      className="h-9 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] text-center tracking-widest"
                       maxLength={4}
                     />
                     {emailOTPHint && (
-                      <p className="text-[11px] text-red-600 font-['Roboto',sans-serif] text-center">
+                      <p className="text-[11px] text-red-600 font-['Poppins',sans-serif] text-center">
                         Hint: {emailOTPHint}
                       </p>
                     )}
@@ -2320,7 +2324,7 @@ function DetailsSection() {
                         }
                       }}
                       disabled={isVerifyingEmailOTP || emailOTPCode.length !== 4}
-                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Roboto',sans-serif]"
+                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Poppins',sans-serif]"
                     >
                       {isVerifyingEmailOTP ? "Verifying..." : "Verify Code"}
                     </Button>
@@ -2330,7 +2334,7 @@ function DetailsSection() {
             )}
           </div>
           <div>
-            <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
               Phone Number
             </Label>
             <Input
@@ -2348,7 +2352,7 @@ function DetailsSection() {
                   setPhoneOTPHint(null);
                 }
               }}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
             />
             {phoneChanged && !phoneOTPVerified && (
               <div className="mt-2 space-y-2">
@@ -2398,7 +2402,7 @@ function DetailsSection() {
                       }
                     }}
                     disabled={isSendingPhoneOTP}
-                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Roboto',sans-serif]"
+                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Poppins',sans-serif]"
                   >
                     {isSendingPhoneOTP ? "Sending..." : "Send Verification Code"}
                   </Button>
@@ -2412,11 +2416,11 @@ function DetailsSection() {
                         const value = e.target.value.replace(/\D/g, '').slice(0, 4);
                         setPhoneOTPCode(value);
                       }}
-                      className="h-9 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] text-center tracking-widest"
+                      className="h-9 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] text-center tracking-widest"
                       maxLength={4}
                     />
                     {phoneOTPHint && (
-                      <p className="text-[11px] text-red-600 font-['Roboto',sans-serif] text-center">
+                      <p className="text-[11px] text-red-600 font-['Poppins',sans-serif] text-center">
                         Hint: {phoneOTPHint}
                       </p>
                     )}
@@ -2445,7 +2449,7 @@ function DetailsSection() {
                         }
                       }}
                       disabled={isVerifyingPhoneOTP || phoneOTPCode.length !== 4}
-                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Roboto',sans-serif]"
+                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Poppins',sans-serif]"
                     >
                       {isVerifyingPhoneOTP ? "Verifying..." : "Verify Code"}
                     </Button>
@@ -2457,14 +2461,14 @@ function DetailsSection() {
           {userRole === "professional" && (
             <>
               <div>
-                <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                   Trading Name
                 </Label>
                 <Input
                   type="text"
                   value={formData.tradingName}
                   onChange={(e) => setFormData({...formData, tradingName: e.target.value})}
-                  className="h-10 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6]"
+                  className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
                 />
               </div>
             </>
@@ -2494,16 +2498,16 @@ function DetailsSection() {
               showTownCityField={true}
               showCountyField={true}
               addressLabel="Address"
-              className="font-['Roboto',sans-serif]"
+              className="font-['Poppins',sans-serif]"
             />
           </div>
           {userRole === "professional" && (
             <div>
-              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                 Travel Distance
               </Label>
               <Select value={formData.travelDistance} onValueChange={(value) => setFormData({...formData, travelDistance: value})}>
-                <SelectTrigger className="h-10 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Roboto',sans-serif] text-[14px]">
+                <SelectTrigger className="h-10 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -2526,13 +2530,13 @@ function DetailsSection() {
           <>
             <Separator className="my-6" />
             <div>
-              <h3 className="font-['Roboto',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
+              <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
                 Professional Services
               </h3>
               
               {/* Sector Display (Read-only) */}
               <div className="mb-5">
-                <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                   Sector
                   <span className="text-xs text-gray-500 font-normal ml-2">
                     (Cannot be changed after registration)
@@ -2544,17 +2548,17 @@ function DetailsSection() {
                       <div className="w-4 h-4 rounded-full bg-[#FE8A0F] flex items-center justify-center">
                         <div className="w-2 h-2 rounded-full bg-white"></div>
                       </div>
-                      <span className="text-sm text-[#2c353f] font-['Roboto',sans-serif] font-medium">
+                      <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif] font-medium">
                         {formData.sector}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-gray-500 font-['Roboto',sans-serif]">
+                    <p className="mt-2 text-xs text-gray-500 font-['Poppins',sans-serif]">
                       Your sector was selected during registration and cannot be changed. However, you can select multiple categories within your chosen sector.
                     </p>
                   </div>
                 ) : (
                   <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
-                    <p className="text-sm text-gray-500 font-['Roboto',sans-serif]">
+                    <p className="text-sm text-gray-500 font-['Poppins',sans-serif]">
                       No sector selected. Please complete your professional registration to select a sector.
                     </p>
                   </div>
@@ -2563,7 +2567,7 @@ function DetailsSection() {
 
               {/* Categories Selection */}
               <div className="mb-5">
-                <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                   Categories <span className="text-red-500">*</span>
                   <span className="text-xs text-gray-500 font-normal ml-2">
                     (Select all that apply)
@@ -2571,7 +2575,7 @@ function DetailsSection() {
                 </Label>
                 {!userInfo?.sector ? (
                   <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                    <p className="text-gray-500 font-['Roboto',sans-serif]">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
                       Please select a sector first
                     </p>
                   </div>
@@ -2581,7 +2585,7 @@ function DetailsSection() {
                   </div>
                 ) : availableCategories.length === 0 ? (
                   <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                    <p className="text-gray-500 font-['Roboto',sans-serif]">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
                       No categories available for this sector
                     </p>
                   </div>
@@ -2621,7 +2625,7 @@ function DetailsSection() {
                             }}
                             className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
                           />
-                          <span className="text-sm text-[#2c353f] font-['Roboto',sans-serif]">
+                          <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
                             {cat.name}
                           </span>
                         </label>
@@ -2630,7 +2634,7 @@ function DetailsSection() {
                   </div>
                 )}
                 {formData.categories.length > 0 && (
-                  <p className="mt-2 text-xs text-[#6b6b6b] font-['Roboto',sans-serif]">
+                  <p className="mt-2 text-xs text-[#6b6b6b] font-['Poppins',sans-serif]">
                     {formData.categories.length} categor{formData.categories.length !== 1 ? 'ies' : 'y'} selected
                   </p>
                 )}
@@ -2638,7 +2642,7 @@ function DetailsSection() {
 
               {/* Subcategories Selection */}
               <div>
-                <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                   Subcategories <span className="text-red-500">*</span>
                   <span className="text-xs text-gray-500 font-normal ml-2">
                     (Select all that apply)
@@ -2646,13 +2650,13 @@ function DetailsSection() {
                 </Label>
                 {formData.categories.length === 0 ? (
                   <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                    <p className="text-gray-500 font-['Roboto',sans-serif]">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
                       Please select at least one category first
                     </p>
                   </div>
                 ) : allSubcategories.length === 0 ? (
                   <div className="border-2 border-gray-200 rounded-xl p-8 text-center">
-                    <p className="text-gray-500 font-['Roboto',sans-serif]">
+                    <p className="text-gray-500 font-['Poppins',sans-serif]">
                       No subcategories available for selected categories
                     </p>
                   </div>
@@ -2677,7 +2681,7 @@ function DetailsSection() {
                       />
                       <Label
                             htmlFor={`subcat-${subcat._id}`}
-                        className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
+                        className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
                       >
                             {subcat.name}
                       </Label>
@@ -2691,7 +2695,7 @@ function DetailsSection() {
                 )}
                 {formData.subcategories.length > 0 && (
                   <div className="mt-3 p-2.5 bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl">
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                       <span className="text-[#FE8A0F]">{formData.subcategories.length}</span> subcategor{formData.subcategories.length !== 1 ? 'ies' : 'y'} selected
                     </p>
                   </div>
@@ -2703,35 +2707,35 @@ function DetailsSection() {
 
             {/* About Your Service */}
             <div>
-              <h3 className="font-['Roboto',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
+              <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
                 About Your Service
               </h3>
               
               <div className="mb-5">
-                <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                   Service Description
                 </Label>
                 <Textarea
                   value={formData.aboutService}
                   onChange={(e) => setFormData({...formData, aboutService: e.target.value})}
                   placeholder="Tell customers about your business, experience and quality of your work..."
-                  className="min-h-[150px] border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Roboto',sans-serif] text-[14px] resize-none"
+                  className="min-h-[150px] border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
                 />
-                <p className="mt-2 font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                <p className="mt-2 font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                   {formData.aboutService.length} characters (minimum 100 recommended)
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                     Trade Qualification or Accreditation
                   </Label>
                   <Select 
                     value={formData.hasTradeQualification} 
                     onValueChange={(value) => setFormData({...formData, hasTradeQualification: value})}
                   >
-                    <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Roboto',sans-serif] text-[14px]">
+                    <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2742,7 +2746,7 @@ function DetailsSection() {
                 </div>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                     Public Liability Insurance <span className="text-red-500">*</span>
                   </Label>
                   <Select 
@@ -2759,7 +2763,7 @@ function DetailsSection() {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Roboto',sans-serif] text-[14px]">
+                    <SelectTrigger className="h-11 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2773,14 +2777,14 @@ function DetailsSection() {
               {/* Insurance Details - Only show if hasPublicLiability is "yes" */}
               {formData.hasPublicLiability === "yes" && (
                 <div className="space-y-4 p-6 bg-gradient-to-br from-[#FFF5EB] to-white border-2 border-[#FE8A0F]/20 rounded-xl">
-                  <h4 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f] mb-4 flex items-center gap-2">
+                  <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-4 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-[#FE8A0F]" />
                     Insurance Details
                   </h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <Label htmlFor="indemnityAmount" className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      <Label htmlFor="indemnityAmount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                         Professional Indemnity Insurance Amount
                       </Label>
                       <div className="relative">
@@ -2793,13 +2797,13 @@ function DetailsSection() {
                           value={formData.professionalIndemnityAmount}
                           onChange={(e) => setFormData({...formData, professionalIndemnityAmount: e.target.value})}
                           placeholder="Enter amount in GBP"
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="expiryDate" className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      <Label htmlFor="expiryDate" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                         Insurance Expiry Date
                       </Label>
                       <div className="relative">
@@ -2810,7 +2814,7 @@ function DetailsSection() {
                           value={formData.insuranceExpiryDate}
                           onChange={(e) => setFormData({...formData, insuranceExpiryDate: e.target.value})}
                           min={new Date().toISOString().split('T')[0]}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                         />
                       </div>
                     </div>
@@ -2826,7 +2830,7 @@ function DetailsSection() {
             <Button
               onClick={handleSaveChanges}
               disabled={isSaving}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] w-full sm:w-auto disabled:opacity-70"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-70"
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </Button>
@@ -2835,7 +2839,7 @@ function DetailsSection() {
             onClick={() => {
               setFormData(buildFormState(initialFormState));
             }}
-              className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Roboto',sans-serif] w-full sm:w-auto"
+              className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto"
             >
               Cancel
             </Button>
@@ -2852,7 +2856,7 @@ function BillingSection() {
 
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Billing & Payments
       </h2>
 
@@ -2877,7 +2881,7 @@ function BillingSection() {
               }`}
             >
               <Icon className="w-4 h-4" />
-              <span className="font-['Roboto',sans-serif] text-[14px]">{tab.label}</span>
+              <span className="font-['Poppins',sans-serif] text-[14px]">{tab.label}</span>
             </button>
           );
         })}
@@ -2888,13 +2892,13 @@ function BillingSection() {
       {billingTab === "wallet" && (
         <div>
           <div className="bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] rounded-2xl p-8 text-white mb-6">
-            <p className="font-['Roboto',sans-serif] text-[14px] mb-2 opacity-90">Total Balance</p>
-            <h3 className="font-['Roboto',sans-serif] text-[42px] mb-6">£2,450.00</h3>
+            <p className="font-['Poppins',sans-serif] text-[14px] mb-2 opacity-90">Total Balance</p>
+            <h3 className="font-['Poppins',sans-serif] text-[42px] mb-6">£2,450.00</h3>
             <div className="flex gap-3">
-              <Button className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Roboto',sans-serif]">
+              <Button className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Poppins',sans-serif]">
                 Add Funds
               </Button>
-              <Button className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Roboto',sans-serif]">
+              <Button className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Poppins',sans-serif]">
                 Withdraw
               </Button>
             </div>
@@ -2905,13 +2909,13 @@ function BillingSection() {
       {/* Payment Cards Content */}
       {billingTab === "card" && (
         <div className="space-y-4">
-          <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Roboto',sans-serif] w-full md:w-auto">
+          <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] w-full md:w-auto">
             <PlusCircle className="w-4 h-4 mr-2" />
             Add New Card
           </Button>
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
             <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               No payment cards added yet
             </p>
           </div>
@@ -3012,7 +3016,7 @@ function WithdrawSection() {
 
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Withdraw Earnings
       </h2>
 
@@ -3037,7 +3041,7 @@ function WithdrawSection() {
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="font-['Roboto',sans-serif] text-[14px]">{tab.label}</span>
+                <span className="font-['Poppins',sans-serif] text-[14px]">{tab.label}</span>
               </button>
             );
           })}
@@ -3053,16 +3057,16 @@ function WithdrawSection() {
             <div className="bg-gradient-to-br from-[#10b981] to-[#059669] rounded-2xl p-4 md:p-6 text-white min-w-[260px] md:min-w-0 flex-shrink-0">
               <div className="flex items-center gap-2 mb-2">
                 <Wallet className="w-4 h-4 md:w-5 md:h-5" />
-                <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] opacity-90">Available Balance</p>
+                <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Available Balance</p>
               </div>
-              <h3 className="font-['Roboto',sans-serif] text-[28px] md:text-[36px] mb-2">
+              <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
                 £{availableBalance.toFixed(2)}
               </h3>
               <Button
                 onClick={() => {
                   setWithdrawTab("withdraw");
                 }}
-                className="bg-white text-[#10b981] hover:bg-gray-100 font-['Roboto',sans-serif] text-[12px] md:text-[13px] h-8 md:h-9"
+                className="bg-white text-[#10b981] hover:bg-gray-100 font-['Poppins',sans-serif] text-[12px] md:text-[13px] h-8 md:h-9"
               >
                 <ArrowDownToLine className="w-3.5 h-3.5 md:w-4 md:h-4 mr-2" />
                 Withdraw Now
@@ -3073,12 +3077,12 @@ function WithdrawSection() {
             <div className="bg-gradient-to-br from-[#f59e0b] to-[#d97706] rounded-2xl p-4 md:p-6 text-white min-w-[260px] md:min-w-0 flex-shrink-0">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 md:w-5 md:h-5" />
-                <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] opacity-90">Pending</p>
+                <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Pending</p>
               </div>
-              <h3 className="font-['Roboto',sans-serif] text-[28px] md:text-[36px] mb-2">
+              <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
                 £{pendingAmount.toFixed(2)}
               </h3>
-              <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] opacity-80">
+              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] opacity-80">
                 From ongoing jobs
               </p>
             </div>
@@ -3087,12 +3091,12 @@ function WithdrawSection() {
             <div className="bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] rounded-2xl p-4 md:p-6 text-white min-w-[260px] md:min-w-0 flex-shrink-0">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 md:w-5 md:h-5" />
-                <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] opacity-90">Total Earnings</p>
+                <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Total Earnings</p>
               </div>
-              <h3 className="font-['Roboto',sans-serif] text-[28px] md:text-[36px] mb-2">
+              <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
                 £{totalEarnings.toFixed(2)}
               </h3>
-              <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] opacity-80">
+              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] opacity-80">
                 All time
               </p>
             </div>
@@ -3103,10 +3107,10 @@ function WithdrawSection() {
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h4 className="font-['Roboto',sans-serif] text-[15px] text-blue-900 mb-2">
+                <h4 className="font-['Poppins',sans-serif] text-[15px] text-blue-900 mb-2">
                   Withdrawal Information
                 </h4>
-                <ul className="space-y-1 font-['Roboto',sans-serif] text-[13px] text-blue-700">
+                <ul className="space-y-1 font-['Poppins',sans-serif] text-[13px] text-blue-700">
                   <li>• Minimum withdrawal amount: £50</li>
                   <li>• Bank transfers take 2-3 business days</li>
                   <li>• PayPal transfers are processed within 1 business day</li>
@@ -3120,20 +3124,20 @@ function WithdrawSection() {
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="border border-gray-200 rounded-xl p-4">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] mb-1">This Month</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">£2,340</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">This Month</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£2,340</p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Last Month</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">£1,980</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Last Month</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£1,980</p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Withdrawals</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">8</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Withdrawals</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">8</p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Avg. Time</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f]">2 days</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Avg. Time</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">2 days</p>
             </div>
           </div>
         </div>
@@ -3143,7 +3147,7 @@ function WithdrawSection() {
       {withdrawTab === "accounts" && (
         <div>
           <div className="mb-6">
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
               Bank Accounts
             </h3>
             <div className="space-y-3 mb-4">
@@ -3159,7 +3163,7 @@ function WithdrawSection() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h4 className="font-['Roboto',sans-serif] text-[14px] sm:text-[15px] text-[#2c353f]">
+                          <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] text-[#2c353f]">
                             {account.bankName}
                           </h4>
                           {account.isDefault && (
@@ -3168,10 +3172,10 @@ function WithdrawSection() {
                             </Badge>
                           )}
                         </div>
-                        <p className="font-['Roboto',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
                           {account.accountName}
                         </p>
-                        <p className="font-['Roboto',sans-serif] text-[11px] sm:text-[13px] text-[#8d8d8d] truncate">
+                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[13px] text-[#8d8d8d] truncate">
                           Account: {account.accountNumber} • Sort: {account.sortCode}
                         </p>
                       </div>
@@ -3181,7 +3185,7 @@ function WithdrawSection() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-[#3B82F6] border-[#3B82F6] hover:bg-[#EFF6FF] font-['Roboto',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3"
+                          className="text-[#3B82F6] border-[#3B82F6] hover:bg-[#EFF6FF] font-['Poppins',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3"
                         >
                           Set Default
                         </Button>
@@ -3189,7 +3193,7 @@ function WithdrawSection() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Roboto',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3"
                       >
                         Remove
                       </Button>
@@ -3200,7 +3204,7 @@ function WithdrawSection() {
             </div>
             <Button
               onClick={() => setShowAddBankAccount(true)}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
               Add Bank Account
@@ -3211,7 +3215,7 @@ function WithdrawSection() {
 
           {/* Other Payment Methods */}
           <div>
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
               Other Payment Methods
             </h3>
             <div className="space-y-3 mb-4">
@@ -3227,7 +3231,7 @@ function WithdrawSection() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h4 className="font-['Roboto',sans-serif] text-[14px] sm:text-[15px] text-[#2c353f]">
+                          <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] text-[#2c353f]">
                             {method.type}
                           </h4>
                           {method.isVerified && (
@@ -3236,7 +3240,7 @@ function WithdrawSection() {
                             </Badge>
                           )}
                         </div>
-                        <p className="font-['Roboto',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] truncate">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] truncate">
                           {method.email}
                         </p>
                       </div>
@@ -3244,7 +3248,7 @@ function WithdrawSection() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Roboto',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3 ml-[52px] sm:ml-0"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3 ml-[52px] sm:ml-0"
                     >
                       Remove
                     </Button>
@@ -3255,7 +3259,7 @@ function WithdrawSection() {
             <Button
               onClick={() => setShowAddPayPal(true)}
               variant="outline"
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Roboto',sans-serif]"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
               Add PayPal Account
@@ -3270,8 +3274,8 @@ function WithdrawSection() {
           <div className="max-w-2xl">
             {/* Available Balance Display */}
             <div className="bg-gradient-to-br from-[#10b981] to-[#059669] rounded-2xl p-6 text-white mb-6">
-              <p className="font-['Roboto',sans-serif] text-[14px] opacity-90 mb-1">Available to Withdraw</p>
-              <h3 className="font-['Roboto',sans-serif] text-[42px]">
+              <p className="font-['Poppins',sans-serif] text-[14px] opacity-90 mb-1">Available to Withdraw</p>
+              <h3 className="font-['Poppins',sans-serif] text-[42px]">
                 £{availableBalance.toFixed(2)}
               </h3>
             </div>
@@ -3279,11 +3283,11 @@ function WithdrawSection() {
             {/* Withdrawal Form */}
             <div className="space-y-5">
               <div>
-                <label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                   Withdrawal Amount
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-['Roboto',sans-serif] text-[18px] text-[#6b6b6b]">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[18px] text-[#6b6b6b]">
                     £
                   </span>
                   <input
@@ -3291,13 +3295,13 @@ function WithdrawSection() {
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full h-14 pl-10 pr-4 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[18px] focus:border-[#FE8A0F] outline-none"
+                    className="w-full h-14 pl-10 pr-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[18px] focus:border-[#FE8A0F] outline-none"
                     min="50"
                     max={availableBalance}
                     step="0.01"
                   />
                 </div>
-                <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
                   Minimum: £50 • Maximum: £{availableBalance.toFixed(2)}
                 </p>
               </div>
@@ -3310,7 +3314,7 @@ function WithdrawSection() {
                     type="button"
                     variant="outline"
                     onClick={() => setWithdrawAmount(amount.toString())}
-                    className="font-['Roboto',sans-serif] text-[13px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                    className="font-['Poppins',sans-serif] text-[13px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
                   >
                     {amount === availableBalance ? "All" : `£${amount}`}
                   </Button>
@@ -3319,7 +3323,7 @@ function WithdrawSection() {
 
               {/* Withdrawal Method */}
               <div>
-                <label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                   Select Withdrawal Method
                 </label>
                 <div className="space-y-2">
@@ -3340,10 +3344,10 @@ function WithdrawSection() {
                             selectedWithdrawMethod === `bank-${account.id}` ? "text-[#FE8A0F]" : "text-[#6b6b6b]"
                           }`} />
                           <div>
-                            <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                               {account.bankName} {account.accountNumber}
                             </p>
-                            <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                               2-3 business days
                             </p>
                           </div>
@@ -3372,10 +3376,10 @@ function WithdrawSection() {
                           selectedWithdrawMethod === `paypal-${method.id}` ? "text-[#FE8A0F]" : "text-[#6b6b6b]"
                         }`} />
                         <div>
-                          <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                             {method.type} - {method.email}
                           </p>
-                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                             1 business day
                           </p>
                         </div>
@@ -3388,7 +3392,7 @@ function WithdrawSection() {
               {/* Fee Information */}
               {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <div className="space-y-2 font-['Roboto',sans-serif] text-[14px]">
+                  <div className="space-y-2 font-['Poppins',sans-serif] text-[14px]">
                     <div className="flex justify-between">
                       <span className="text-[#6b6b6b]">Withdrawal Amount</span>
                       <span className="text-[#2c353f]">£{parseFloat(withdrawAmount).toFixed(2)}</span>
@@ -3413,7 +3417,7 @@ function WithdrawSection() {
               {/* Submit Button */}
               <Button
                 onClick={handleWithdraw}
-                className="w-full h-12 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[15px]"
+                className="w-full h-12 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[15px]"
               >
                 <ArrowDownToLine className="w-5 h-5 mr-2" />
                 Request Withdrawal
@@ -3431,22 +3435,22 @@ function WithdrawSection() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Transaction ID
                     </th>
-                    <th className="px-6 py-4 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Date
                     </th>
-                    <th className="px-6 py-4 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Amount
                     </th>
-                    <th className="px-6 py-4 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Method
                     </th>
-                    <th className="px-6 py-4 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Processing Time
                     </th>
                   </tr>
@@ -3454,25 +3458,25 @@ function WithdrawSection() {
                 <tbody className="divide-y divide-gray-200">
                   {withdrawHistory.map((transaction) => (
                     <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-['Roboto',sans-serif] text-[14px] text-[#3D78CB]">
+                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#3D78CB]">
                         {transaction.id}
                       </td>
-                      <td className="px-6 py-4 font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         {new Date(transaction.date).toLocaleDateString('en-GB', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric'
                         })}
                       </td>
-                      <td className="px-6 py-4 font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
+                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
                         £{transaction.amount.toFixed(2)}
                       </td>
-                      <td className="px-6 py-4 font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         {transaction.method}
                       </td>
                       <td className="px-6 py-4">
                         <Badge className={`
-                          font-['Roboto',sans-serif] text-[12px]
+                          font-['Poppins',sans-serif] text-[12px]
                           ${transaction.status === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}
                           ${transaction.status === "Pending" ? "bg-orange-100 text-orange-700 border-orange-200" : ""}
                           ${transaction.status === "Failed" ? "bg-red-100 text-red-700 border-red-200" : ""}
@@ -3480,7 +3484,7 @@ function WithdrawSection() {
                           {transaction.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
                         {transaction.processingTime}
                       </td>
                     </tr>
@@ -3493,16 +3497,16 @@ function WithdrawSection() {
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl p-5">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total Withdrawn</p>
-              <p className="font-['Roboto',sans-serif] text-[28px] text-[#3B82F6]">£4,350</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total Withdrawn</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-[#3B82F6]">£4,350</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-white border border-green-200 rounded-xl p-5">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Completed</p>
-              <p className="font-['Roboto',sans-serif] text-[28px] text-green-600">8</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Completed</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-green-600">8</p>
             </div>
             <div className="bg-gradient-to-br from-orange-50 to-white border border-orange-200 rounded-xl p-5">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Pending</p>
-              <p className="font-['Roboto',sans-serif] text-[28px] text-orange-600">1</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Pending</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-orange-600">1</p>
             </div>
           </div>
         </div>
@@ -3512,52 +3516,52 @@ function WithdrawSection() {
       <Dialog open={showAddBankAccount} onOpenChange={setShowAddBankAccount}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f]">
+            <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
               Add Bank Account
             </DialogTitle>
-            <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               Enter your bank account details to add a new withdrawal method
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                 Account Holder Name
               </label>
               <input
                 type="text"
                 placeholder="John Doe"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
+                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
               />
             </div>
             <div>
-              <label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                 Bank Name
               </label>
               <input
                 type="text"
                 placeholder="Barclays"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
+                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
               />
             </div>
             <div>
-              <label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                 Account Number
               </label>
               <input
                 type="text"
                 placeholder="12345678"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
+                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
               />
             </div>
             <div>
-              <label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                 Sort Code
               </label>
               <input
                 type="text"
                 placeholder="20-00-00"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
+                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
               />
             </div>
             <div className="flex gap-3 pt-2">
@@ -3566,14 +3570,14 @@ function WithdrawSection() {
                   alert("Bank account added successfully!");
                   setShowAddBankAccount(false);
                 }}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Roboto',sans-serif]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
               >
                 Add Account
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowAddBankAccount(false)}
-                className="flex-1 font-['Roboto',sans-serif]"
+                className="flex-1 font-['Poppins',sans-serif]"
               >
                 Cancel
               </Button>
@@ -3586,26 +3590,26 @@ function WithdrawSection() {
       <Dialog open={showAddPayPal} onOpenChange={setShowAddPayPal}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Roboto',sans-serif] text-[22px] text-[#2c353f]">
+            <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
               Add PayPal Account
             </DialogTitle>
-            <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               Connect your PayPal account for faster withdrawals
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                 PayPal Email Address
               </label>
               <input
                 type="email"
                 placeholder="your.email@gmail.com"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
+                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
               />
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="font-['Roboto',sans-serif] text-[12px] text-blue-700">
+              <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700">
                 You will receive a verification email from PayPal to confirm this account.
               </p>
             </div>
@@ -3615,14 +3619,14 @@ function WithdrawSection() {
                   alert("PayPal account added! Please check your email for verification.");
                   setShowAddPayPal(false);
                 }}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Roboto',sans-serif]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
               >
                 Add PayPal
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowAddPayPal(false)}
-                className="flex-1 font-['Roboto',sans-serif]"
+                className="flex-1 font-['Poppins',sans-serif]"
               >
                 Cancel
               </Button>
@@ -3714,7 +3718,7 @@ function SecuritySection() {
   
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Security Settings
       </h2>
       
@@ -3725,27 +3729,27 @@ function SecuritySection() {
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
               <Lock className="w-6 h-6 text-[#3B82F6]" />
             </div>
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
               Change Password
             </h3>
           </div>
           
           <div className="space-y-4">
             <div>
-              <label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Current Password
               </label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className={`w-full h-10 px-4 border-2 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
+                className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
                   passwordError ? 'border-red-500' : 'border-gray-200'
                 }`}
               />
             </div>
             <div>
-              <label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 New Password
               </label>
               <input
@@ -3757,36 +3761,36 @@ function SecuritySection() {
                   setPasswordError(null);
                 }}
                 placeholder="Must include uppercase, lowercase, and numbers"
-                className={`w-full h-10 px-4 border-2 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
+                className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
                   passwordError ? 'border-red-500' : 'border-gray-200'
                 }`}
               />
               {newPassword && !passwordError && (
-                <p className="mt-1 text-[11px] text-gray-500 font-['Roboto',sans-serif]">
+                <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
                   {getPasswordHint(newPassword)}
                 </p>
               )}
               {!newPassword && (
-                <p className="mt-1 text-[11px] text-gray-500 font-['Roboto',sans-serif]">
+                <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
                   Password must include uppercase, lowercase, and numbers
                 </p>
               )}
             </div>
             <div>
-              <label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Confirm New Password
               </label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full h-10 px-4 border-2 rounded-xl font-['Roboto',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
+                className={`w-full h-10 px-4 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] outline-none bg-white ${
                   passwordError ? 'border-red-500' : 'border-gray-200'
                 }`}
               />
             </div>
             {passwordError && (
-              <p className="text-[12px] text-red-600 font-['Roboto',sans-serif]">
+              <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">
                 {passwordError}
               </p>
             )}
@@ -3794,7 +3798,7 @@ function SecuritySection() {
               <Button 
                 onClick={handleChangePassword}
                 disabled={isChangingPassword}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] disabled:opacity-70"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-70"
               >
                 {isChangingPassword ? "Updating..." : "Update Password"}
               </Button>
@@ -3802,7 +3806,7 @@ function SecuritySection() {
                 variant="outline" 
                 onClick={handleCancelPasswordChange}
                 disabled={isChangingPassword}
-                className="flex-1 text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Roboto',sans-serif] disabled:opacity-70"
+                className="flex-1 text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] disabled:opacity-70"
               >
                 Cancel
               </Button>
@@ -3816,21 +3820,21 @@ function SecuritySection() {
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
               Delete Account
             </h3>
           </div>
           
           <div className="space-y-4">
             <div className="bg-white border border-red-100 rounded-xl p-4">
-              <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
                 Once you delete your account, there is no going back. Please be certain.
               </p>
               <div className="bg-red-50 rounded-lg p-3">
-                <p className="font-['Roboto',sans-serif] text-[13px] text-red-700 mb-2">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-red-700 mb-2">
                   <strong>You will lose:</strong>
                 </p>
-                <ul className="font-['Roboto',sans-serif] text-[12px] text-red-600 space-y-1 ml-4 list-disc">
+                <ul className="font-['Poppins',sans-serif] text-[12px] text-red-600 space-y-1 ml-4 list-disc">
                   <li>All orders and job history</li>
                   <li>All messages and conversations</li>
                   <li>Your profile and settings</li>
@@ -3842,7 +3846,7 @@ function SecuritySection() {
             <Button 
               variant="destructive" 
               onClick={() => setShowDeleteConfirm(true)}
-              className="w-full font-['Roboto',sans-serif] hover:bg-red-700 transition-all duration-300"
+              className="w-full font-['Poppins',sans-serif] hover:bg-red-700 transition-all duration-300"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete My Account
@@ -3855,20 +3859,20 @@ function SecuritySection() {
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="w-[70vw]">
           <DialogHeader>
-            <DialogTitle className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] flex items-center gap-2">
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] flex items-center gap-2">
               <AlertCircle className="w-6 h-6 text-red-500" />
               Confirm Account Deletion
             </DialogTitle>
-            <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-red-700 mb-2">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-red-700 mb-2">
                 <strong>Warning:</strong> You will lose:
               </p>
-              <ul className="font-['Roboto',sans-serif] text-[13px] text-red-600 space-y-1 ml-4 list-disc">
+              <ul className="font-['Poppins',sans-serif] text-[13px] text-red-600 space-y-1 ml-4 list-disc">
                 <li>All your orders and job history</li>
                 <li>All messages and conversations</li>
                 <li>Your profile and account settings</li>
@@ -3876,7 +3880,7 @@ function SecuritySection() {
               </ul>
             </div>
             <div>
-              <label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              <label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Type "DELETE" to confirm
               </label>
               <Input
@@ -3884,12 +3888,12 @@ function SecuritySection() {
                 placeholder="DELETE"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className={`font-['Roboto',sans-serif] text-[14px] ${
+                className={`font-['Poppins',sans-serif] text-[14px] ${
                   deleteError ? 'border-red-500' : ''
                 }`}
               />
               {deleteError && (
-                <p className="text-[12px] text-red-600 font-['Roboto',sans-serif] mt-1">
+                <p className="text-[12px] text-red-600 font-['Poppins',sans-serif] mt-1">
                   {deleteError}
                 </p>
               )}
@@ -3903,7 +3907,7 @@ function SecuritySection() {
                   setDeleteError(null);
                 }}
                 disabled={isDeletingAccount}
-                className="flex-1 font-['Roboto',sans-serif] disabled:opacity-70"
+                className="flex-1 font-['Poppins',sans-serif] disabled:opacity-70"
               >
                 Cancel
               </Button>
@@ -3911,7 +3915,7 @@ function SecuritySection() {
                 variant="destructive"
                 onClick={handleDeleteAccount}
                 disabled={isDeletingAccount || deleteConfirmText !== "DELETE"}
-                className="flex-1 font-['Roboto',sans-serif] hover:bg-red-700 disabled:opacity-70"
+                className="flex-1 font-['Poppins',sans-serif] hover:bg-red-700 disabled:opacity-70"
               >
                 {isDeletingAccount ? "Deleting..." : "Delete Account"}
               </Button>
@@ -4025,7 +4029,7 @@ function MessengerSection() {
 
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Messages
       </h2>
 
@@ -4042,7 +4046,7 @@ function MessengerSection() {
                   placeholder="Search contacts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[13px] bg-white"
+                  className="pl-10 h-10 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[13px] bg-white"
                 />
               </div>
             </div>
@@ -4066,7 +4070,7 @@ function MessengerSection() {
                         <div className="relative flex-shrink-0">
                           <Avatar className="w-11 h-11">
                             <AvatarImage src={contact.avatar} />
-                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Roboto',sans-serif] text-[14px]">
+                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
                               {contact.name
                                 .split(" ")
                                 .map((n: string) => n[0])
@@ -4079,15 +4083,15 @@ function MessengerSection() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 mb-0.5">
-                            <h4 className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] truncate">
+                            <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] truncate">
                               {contact.name}
                             </h4>
-                            <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
+                            <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
                               {contact.timestamp}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-2">
-                            <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] truncate flex-1">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] truncate flex-1">
                               {contact.lastMessage}
                             </p>
                             {contact.unread > 0 && (
@@ -4124,7 +4128,7 @@ function MessengerSection() {
                     <div className="relative">
                       <Avatar className="w-11 h-11">
                         <AvatarImage src={selectedContact.avatar} />
-                        <AvatarFallback className="bg-[#3D78CB] text-white font-['Roboto',sans-serif] text-[15px]">
+                        <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[15px]">
                           {selectedContact.name
                             .split(" ")
                             .map((n: string) => n[0])
@@ -4136,10 +4140,10 @@ function MessengerSection() {
                       )}
                     </div>
                     <div>
-                      <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
+                      <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                         {selectedContact.name}
                       </h4>
-                      <p className="font-['Roboto',sans-serif] text-[13px] text-[#10b981]">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#10b981]">
                         {selectedContact.online ? "Online" : "Offline"}
                       </p>
                     </div>
@@ -4159,7 +4163,7 @@ function MessengerSection() {
                   <div className="px-4 py-3 border-b-2 border-gray-200 bg-gradient-to-r from-[#FFF5EB] to-white">
                     <Button
                       onClick={() => setShowOrderModal(true)}
-                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Roboto',sans-serif] text-[13px] transition-all duration-300"
+                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Poppins',sans-serif] text-[13px] transition-all duration-300"
                     >
                       <ShoppingBag className="w-4 h-4 mr-2" />
                       Create Custom Offer
@@ -4178,47 +4182,47 @@ function MessengerSection() {
                             <div className="bg-white border border-gray-200 rounded-lg p-4 max-w-sm w-full shadow-sm">
                               <div className="flex items-center gap-2 mb-3">
                                 <ShoppingBag className="w-5 h-5 text-[#FE8A0F]" />
-                                <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                   {message.type === "custom_offer" ? "Custom Offer" : "Order Placed"}
                                 </p>
                               </div>
                               <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                  <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Service:</span>
-                                  <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Service:</span>
+                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                     {message.orderDetails.service}
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                  <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Amount:</span>
-                                  <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Amount:</span>
+                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                     {message.orderDetails.amount}
                                   </span>
                                 </div>
                                 {message.type === "custom_offer" && message.orderDetails.deliveryDays && (
                                   <div className="flex justify-between items-center">
-                                    <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Delivery:</span>
-                                    <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Delivery:</span>
+                                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                       {message.orderDetails.deliveryDays} {message.orderDetails.deliveryDays === 1 ? 'day' : 'days'}
                                     </span>
                                   </div>
                                 )}
                                 {message.type === "order" && message.orderDetails.date && (
                                   <div className="flex justify-between items-center">
-                                    <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Date:</span>
-                                    <span className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Date:</span>
+                                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                       {message.orderDetails.date}
                                     </span>
                                   </div>
                                 )}
                                 <div className="flex justify-between items-center">
-                                  <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Payment:</span>
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Payment:</span>
                                   <Badge className="bg-purple-100 text-purple-700 text-[11px]">
                                     {message.orderDetails.paymentType === "milestone" ? "Milestone" : "Single"}
                                   </Badge>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                  <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Status:</span>
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Status:</span>
                                   <Badge
                                     variant={
                                       message.orderDetails.status === "completed"
@@ -4227,15 +4231,15 @@ function MessengerSection() {
                                         ? "secondary"
                                         : "outline"
                                     }
-                                    className="font-['Roboto',sans-serif] text-[11px] capitalize"
+                                    className="font-['Poppins',sans-serif] text-[11px] capitalize"
                                   >
                                     {message.orderDetails.status}
                                   </Badge>
                                 </div>
                                 {message.type === "custom_offer" && message.orderDetails.description && (
                                   <div className="pt-2 border-t border-gray-100">
-                                    <span className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">Description:</span>
-                                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#2c353f] mt-1">
+                                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Description:</span>
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mt-1">
                                       {message.orderDetails.description}
                                     </p>
                                   </div>
@@ -4248,7 +4252,7 @@ function MessengerSection() {
                                       toast.success("Offer accepted! Order created.");
                                     }}
                                     size="sm"
-                                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Roboto',sans-serif] text-[12px]"
+                                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
                                   >
                                     Accept
                                   </Button>
@@ -4258,7 +4262,7 @@ function MessengerSection() {
                                     }}
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Roboto',sans-serif] text-[12px]"
+                                    className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
                                   >
                                     Decline
                                   </Button>
@@ -4271,13 +4275,13 @@ function MessengerSection() {
                                   }}
                                   variant="outline"
                                   size="sm"
-                                  className="w-full mt-3 font-['Roboto',sans-serif] text-[12px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                                  className="w-full mt-3 font-['Poppins',sans-serif] text-[12px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
                                 >
                                   <Eye className="w-3 h-3 mr-1" />
                                   View Order
                                 </Button>
                               )}
-                              <p className="font-['Roboto',sans-serif] text-[10px] text-[#8d8d8d] text-center mt-2">
+                              <p className="font-['Poppins',sans-serif] text-[10px] text-[#8d8d8d] text-center mt-2">
                                 {message.timestamp}
                               </p>
                             </div>
@@ -4305,7 +4309,7 @@ function MessengerSection() {
                                   : "bg-white text-[#2c353f] rounded-bl-sm"
                               }`}
                             >
-                              <p className="font-['Roboto',sans-serif] text-[14px] leading-relaxed">
+                              <p className="font-['Poppins',sans-serif] text-[14px] leading-relaxed">
                                 {message.text}
                               </p>
                             </div>
@@ -4314,7 +4318,7 @@ function MessengerSection() {
                                 message.senderId === userInfo?.id ? "justify-end" : "justify-start"
                               }`}
                             >
-                              <span className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d]">
+                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                                 {message.timestamp}
                               </span>
                               {message.senderId === userInfo?.id && (
@@ -4406,7 +4410,7 @@ function MessengerSection() {
                             handleSendMessage();
                           }
                         }}
-                        className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-full font-['Roboto',sans-serif] text-[13px] px-4"
+                        className="h-9 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-full font-['Poppins',sans-serif] text-[13px] px-4"
                       />
                     </div>
                       <Button
@@ -4426,10 +4430,10 @@ function MessengerSection() {
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#3D78CB]/10 to-[#FE8A0F]/10 flex items-center justify-center mx-auto mb-6">
                     <MessageCircle className="w-12 h-12 text-[#3D78CB]" />
                   </div>
-                  <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-2">
+                  <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-2">
                     Select a Conversation
                   </h3>
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#8d8d8d] max-w-sm mx-auto">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] max-w-sm mx-auto">
                     Choose a contact from the list to view your conversation history and send messages
                   </p>
                 </div>
@@ -4456,25 +4460,25 @@ function MessengerSection() {
 function SupportSection() {
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Support Center
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="border border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:bg-[#FFF5EB] transition-all cursor-pointer">
           <HelpCircle className="w-8 h-8 text-[#FE8A0F] mb-3" />
-          <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-2">
+          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
             FAQs
           </h3>
-          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
             Find answers to common questions
           </p>
         </div>
         <div className="border border-gray-200 rounded-xl p-6 hover:border-[#3B82F6] hover:bg-[#EFF6FF] transition-all cursor-pointer">
           <MessageCircle className="w-8 h-8 text-[#3B82F6] mb-3" />
-          <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-2">
+          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
             Live Chat
           </h3>
-          <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
             Chat with our support team
           </p>
         </div>
@@ -4578,7 +4582,7 @@ function InviteSection() {
 
   return (
     <div>
-      <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-6">
+      <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
         Invite & Earn
       </h2>
 
@@ -4587,7 +4591,7 @@ function InviteSection() {
         <div className="flex gap-4 border-b border-gray-200">
           <button
             onClick={() => setMainTab("referral-links")}
-            className={`font-['Roboto',sans-serif] text-[14px] sm:text-[16px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
+            className={`font-['Poppins',sans-serif] text-[14px] sm:text-[16px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
               mainTab === "referral-links"
                 ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
                 : "text-[#6b6b6b] hover:text-[#FE8A0F]"
@@ -4597,7 +4601,7 @@ function InviteSection() {
           </button>
           <button
             onClick={() => setMainTab("referral-report")}
-            className={`font-['Roboto',sans-serif] text-[14px] sm:text-[16px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
+            className={`font-['Poppins',sans-serif] text-[14px] sm:text-[16px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
               mainTab === "referral-report"
                 ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
                 : "text-[#6b6b6b] hover:text-[#FE8A0F]"
@@ -4630,10 +4634,10 @@ function InviteSection() {
             
             <div className="relative flex items-center justify-between p-8">
               <div className="flex-1">
-                <h3 className="font-['Roboto',sans-serif] text-white mb-2" style={{ fontSize: '32px', fontWeight: 600 }}>
+                <h3 className="font-['Poppins',sans-serif] text-white mb-2" style={{ fontSize: '32px', fontWeight: 600 }}>
                   Invite Friends & You Both are Earn
                 </h3>
-                <p className="font-['Roboto',sans-serif] text-white/90 text-[16px]">
+                <p className="font-['Poppins',sans-serif] text-white/90 text-[16px]">
                   Introduce your friends to tradespeoplehub
                 </p>
               </div>
@@ -4645,16 +4649,16 @@ function InviteSection() {
 
           {/* Shareable Links */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-4">
+            <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
               Shareable Links
             </h3>
-            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
               Simply copy your referral link below and share it with friends, family, or your social network.
             </p>
 
             {/* Client Link */}
             <div className="mb-6">
-              <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+              <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
                 Client
               </h4>
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -4663,18 +4667,18 @@ function InviteSection() {
                     type="text"
                     value="https://sortars.com/signup/?referral=65985632"
                     readOnly
-                    className="flex-1 h-10 px-4 border border-gray-300 rounded-lg font-['Roboto',sans-serif] text-[13px] bg-gray-50"
+                    className="flex-1 h-10 px-4 border border-gray-300 rounded-lg font-['Poppins',sans-serif] text-[13px] bg-gray-50"
                   />
                   <Button
                     onClick={() => handleCopyLink("https://sortars.com/signup/?referral=65985632")}
                     variant="outline"
-                    className="font-['Roboto',sans-serif] text-[14px] whitespace-nowrap"
+                    className="font-['Poppins',sans-serif] text-[14px] whitespace-nowrap"
                   >
                     Copy
                   </Button>
                 </div>
                 <div className="flex gap-2">
-                  <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mr-2">Share on</span>
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mr-2">Share on</span>
                   <button
                     onClick={() => handleShareFacebook("https://sortars.com/signup/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] rounded-lg transition-colors"
@@ -4715,18 +4719,18 @@ function InviteSection() {
                     type="text"
                     value="https://sortars.com/?referral=65985632"
                     readOnly
-                    className="flex-1 h-10 px-4 border border-gray-300 rounded-lg font-['Roboto',sans-serif] text-[13px] bg-gray-50"
+                    className="flex-1 h-10 px-4 border border-gray-300 rounded-lg font-['Poppins',sans-serif] text-[13px] bg-gray-50"
                   />
                   <Button
                     onClick={() => handleCopyLink("https://sortars.com/?referral=65985632")}
                     variant="outline"
-                    className="font-['Roboto',sans-serif] text-[14px] whitespace-nowrap"
+                    className="font-['Poppins',sans-serif] text-[14px] whitespace-nowrap"
                   >
                     Copy
                   </Button>
                 </div>
                 <div className="flex gap-2">
-                  <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mr-2">Share on</span>
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mr-2">Share on</span>
                   <button
                     onClick={() => handleShareFacebook("https://sortars.com/?referral=65985632")}
                     className="w-9 h-9 flex items-center justify-center bg-[#1877F2] hover:bg-[#166FE5] rounded-lg transition-colors"
@@ -4765,7 +4769,7 @@ function InviteSection() {
       {/* Referral Report Tab Content */}
       {mainTab === "referral-report" && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
-          <h3 className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] mb-6">
+          <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-6">
             Referral Report
           </h3>
 
@@ -4774,7 +4778,7 @@ function InviteSection() {
             <div className="flex gap-4 border-b border-gray-200">
               <button
                 onClick={() => setActiveReferralTab("order")}
-                className={`font-['Roboto',sans-serif] text-[14px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
+                className={`font-['Poppins',sans-serif] text-[14px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
                   activeReferralTab === "order"
                     ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
                     : "text-[#6b6b6b] hover:text-[#FE8A0F]"
@@ -4784,7 +4788,7 @@ function InviteSection() {
               </button>
               <button
                 onClick={() => setActiveReferralTab("posted-task")}
-                className={`font-['Roboto',sans-serif] text-[14px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
+                className={`font-['Poppins',sans-serif] text-[14px] pb-3 px-4 transition-all whitespace-nowrap flex-shrink-0 ${
                   activeReferralTab === "posted-task"
                     ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
                     : "text-[#6b6b6b] hover:text-[#FE8A0F]"
@@ -4798,9 +4802,9 @@ function InviteSection() {
           {/* Table Controls */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">Show</span>
+              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Show</span>
               <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
-                <SelectTrigger className="w-[80px] h-9 font-['Roboto',sans-serif] text-[14px]">
+                <SelectTrigger className="w-[80px] h-9 font-['Poppins',sans-serif] text-[14px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -4810,15 +4814,15 @@ function InviteSection() {
                   <SelectItem value="100">100</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">entries</span>
+              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">entries</span>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">Search:</span>
+              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Search:</span>
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-[200px] h-9 font-['Roboto',sans-serif] text-[14px]"
+                className="w-full sm:w-[200px] h-9 font-['Poppins',sans-serif] text-[14px]"
                 placeholder=""
               />
             </div>
@@ -4830,7 +4834,7 @@ function InviteSection() {
               <TableHeader className="bg-gray-50">
                 <TableRow>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("sno")}
                   >
                     <div className="flex items-center gap-2">
@@ -4839,7 +4843,7 @@ function InviteSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center gap-2">
@@ -4848,7 +4852,7 @@ function InviteSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("userType")}
                   >
                     <div className="flex items-center gap-2">
@@ -4857,7 +4861,7 @@ function InviteSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("signedUp")}
                   >
                     <div className="flex items-center gap-2">
@@ -4866,7 +4870,7 @@ function InviteSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("ordered")}
                   >
                     <div className="flex items-center gap-2">
@@ -4875,7 +4879,7 @@ function InviteSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("orderCompleted")}
                   >
                     <div className="flex items-center gap-2">
@@ -4884,7 +4888,7 @@ function InviteSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("earnings")}
                   >
                     <div className="flex items-center gap-2">
@@ -4897,25 +4901,25 @@ function InviteSection() {
               <TableBody>
                 {filteredData.map((item) => (
                   <TableRow key={item.sno} className="hover:bg-gray-50">
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.sno}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.name}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.userType}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.signedUp}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.ordered}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.orderCompleted}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px]">
                       {item.earnings.toFixed(2)}
                     </TableCell>
                   </TableRow>
@@ -5007,12 +5011,12 @@ function ServicesSection() {
   ];
 
   // Mock reviews data
-  const serviceReviews = [
+  const serviceReviews = ([
     {
       id: 1,
       serviceTitle: "Bathroom Installation",
       clientName: "David Miller",
-      clientAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100",
+      clientAvatar: defaultAvatar,
       rating: 5,
       comment: "Excellent work! Very professional and finished on time. The bathroom looks amazing.",
       date: "2024-11-01",
@@ -5021,7 +5025,7 @@ function ServicesSection() {
       id: 2,
       serviceTitle: "Emergency Plumbing",
       clientName: "Lisa Anderson",
-      clientAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100",
+      clientAvatar: defaultAvatar,
       rating: 5,
       comment: "Arrived quickly and fixed the issue efficiently. Highly recommend!",
       date: "2024-10-28",
@@ -5030,12 +5034,15 @@ function ServicesSection() {
       id: 3,
       serviceTitle: "Kitchen Sink Repair",
       clientName: "James Taylor",
-      clientAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
+      clientAvatar: defaultAvatar,
       rating: 4,
       comment: "Good service, arrived on time and completed the work well.",
       date: "2024-10-25",
     },
-  ];
+  ]).map((r) => ({
+    ...r,
+    clientAvatar: defaultAvatar,
+  }));
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -5097,10 +5104,10 @@ function ServicesSection() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-2">
+        <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
           Service Management
         </h2>
-        <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
           Manage your services, reviews, and performance analytics
         </p>
       </div>
@@ -5128,7 +5135,7 @@ function ServicesSection() {
               }`}
             >
               <Icon className="w-4 h-4" />
-              <span className="font-['Roboto',sans-serif] text-[14px]">
+              <span className="font-['Poppins',sans-serif] text-[14px]">
                 {tab.label}
               </span>
             </button>
@@ -5156,11 +5163,11 @@ function ServicesSection() {
                 placeholder="Search services..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 font-['Roboto',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"
+                className="pl-10 font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"
               />
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-[200px] font-['Roboto',sans-serif] text-[14px]">
+              <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -5180,7 +5187,7 @@ function ServicesSection() {
                 setIsAddServiceOpen(true);
               }}
               disabled={userInfo?.isBlocked}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
               Add Service
@@ -5193,7 +5200,7 @@ function ServicesSection() {
               <TableHeader className="bg-gray-50">
                 <TableRow>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("id")}
                   >
                     <div className="flex items-center gap-2">
@@ -5202,7 +5209,7 @@ function ServicesSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("title")}
                   >
                     <div className="flex items-center gap-2">
@@ -5210,9 +5217,9 @@ function ServicesSection() {
                       <ArrowUpDown className="w-4 h-4 text-[#6b6b6b]" />
                     </div>
                   </TableHead>
-                  <TableHead className="font-['Roboto',sans-serif]">Category</TableHead>
+                  <TableHead className="font-['Poppins',sans-serif]">Category</TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("price")}
                   >
                     <div className="flex items-center gap-2">
@@ -5221,7 +5228,7 @@ function ServicesSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Roboto',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort("bookings")}
                   >
                     <div className="flex items-center gap-2">
@@ -5229,9 +5236,9 @@ function ServicesSection() {
                       <ArrowUpDown className="w-4 h-4 text-[#6b6b6b]" />
                     </div>
                   </TableHead>
-                  <TableHead className="font-['Roboto',sans-serif]">Rating</TableHead>
-                  <TableHead className="font-['Roboto',sans-serif]">Status</TableHead>
-                  <TableHead className="font-['Roboto',sans-serif] text-right">Actions</TableHead>
+                  <TableHead className="font-['Poppins',sans-serif]">Rating</TableHead>
+                  <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
+                  <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -5240,38 +5247,38 @@ function ServicesSection() {
                     key={service.id} 
                     className="hover:bg-[#FFF5EB]/30 transition-colors"
                   >
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#3D78CB]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB]">
                       {service.id}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {service.title}
                         </p>
-                        <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                           {service.duration}
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       {service.category}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       {service.price}
                     </TableCell>
-                    <TableCell className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       {service.bookings}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {service.rating}
                         </span>
                         <span className="text-[#FE8A0F]">★</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={`${getStatusBadge(service.status)} border font-['Roboto',sans-serif] text-[11px]`}>
+                      <Badge className={`${getStatusBadge(service.status)} border font-['Poppins',sans-serif] text-[11px]`}>
                         {service.status}
                       </Badge>
                     </TableCell>
@@ -5312,20 +5319,20 @@ function ServicesSection() {
           {/* Service Stats */}
           <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-4 mt-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
             <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-3 md:p-4 rounded-xl border border-[#3B82F6]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Services</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Services</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4</p>
             </div>
             <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Active Services</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">3</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Active Services</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">3</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[200px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Bookings</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">93</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Bookings</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">93</p>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-white p-3 md:p-4 rounded-xl border border-purple-200 min-w-[200px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Rating</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4.8 ★</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Rating</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4.8 ★</p>
             </div>
           </div>
             </>
@@ -5339,16 +5346,16 @@ function ServicesSection() {
           {/* Action Bar */}
           <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
             <div>
-              <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-1">
+              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
                 Service Packages
               </h3>
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                 Create bundled service packages for your clients
               </p>
             </div>
             <Button 
               onClick={() => setIsCreatePackageOpen(true)}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif]"
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
               Create Package
@@ -5361,10 +5368,10 @@ function ServicesSection() {
             <div className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
                     Complete Home Plumbing
                   </h4>
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                     3 services included
                   </p>
                 </div>
@@ -5381,35 +5388,35 @@ function ServicesSection() {
               <div className="space-y-3 mb-4">
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Leak Detection & Repair</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Leak Detection & Repair</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Pipe Installation</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Pipe Installation</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Drain Cleaning</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Drain Cleaning</span>
                 </div>
               </div>
 
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                    <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">£450</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
+                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£450</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-green-600">£50 (10%)</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-600">£50 (10%)</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-['Roboto',sans-serif] text-[#6b6b6b]">Status:</span>
-                  <span className="font-['Roboto',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
+                  <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
+                  <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
                     Active
                   </span>
                 </div>
@@ -5420,10 +5427,10 @@ function ServicesSection() {
             <div className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
                     Electrical Safety Bundle
                   </h4>
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                     4 services included
                   </p>
                 </div>
@@ -5440,39 +5447,39 @@ function ServicesSection() {
               <div className="space-y-3 mb-4">
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Full Home Inspection</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Full Home Inspection</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Wiring Upgrade</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Wiring Upgrade</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Safety Certificate</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Safety Certificate</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Free Follow-up Visit</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Free Follow-up Visit</span>
                 </div>
               </div>
 
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                    <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">£620</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
+                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£620</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-green-600">£80 (12%)</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-600">£80 (12%)</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-['Roboto',sans-serif] text-[#6b6b6b]">Status:</span>
-                  <span className="font-['Roboto',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
+                  <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
+                  <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
                     Active
                   </span>
                 </div>
@@ -5483,10 +5490,10 @@ function ServicesSection() {
             <div className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
                     Garden Maintenance Pro
                   </h4>
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                     5 services included
                   </p>
                 </div>
@@ -5503,43 +5510,43 @@ function ServicesSection() {
               <div className="space-y-3 mb-4">
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Lawn Mowing (4 visits)</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Lawn Mowing (4 visits)</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Hedge Trimming</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Hedge Trimming</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Weed Control</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Weed Control</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Fertilization</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Fertilization</span>
                 </div>
                 <div className="flex items-center gap-2 text-[13px]">
                   <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Roboto',sans-serif] text-[#2c353f]">Seasonal Planting</span>
+                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Seasonal Planting</span>
                 </div>
               </div>
 
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                    <p className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F]">£380</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
+                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£380</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-green-600">£70 (15%)</p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-600">£70 (15%)</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-['Roboto',sans-serif] text-[#6b6b6b]">Status:</span>
-                  <span className="font-['Roboto',sans-serif] px-3 py-1 rounded-full bg-orange-100 text-orange-700">
+                  <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
+                  <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-orange-100 text-orange-700">
                     Draft
                   </span>
                 </div>
@@ -5554,10 +5561,10 @@ function ServicesSection() {
                 <Package className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h4 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-2">
+                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                   Why Create Service Packages?
                 </h4>
-                <ul className="space-y-2 font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                <ul className="space-y-2 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
                     <span>Increase revenue by bundling complementary services together</span>
@@ -5598,17 +5605,17 @@ function ServicesSection() {
                 <div className="flex items-start gap-4">
                   <Avatar className="w-12 h-12 border-2 border-gray-200">
                     <AvatarImage src={review.clientAvatar} alt={review.clientName} />
-                    <AvatarFallback className="bg-[#3B82F6] text-white font-['Roboto',sans-serif]">
+                    <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
                       {review.clientName.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h4 className="font-['Roboto',sans-serif] text-[15px] text-[#2c353f]">
+                        <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
                           {review.clientName}
                         </h4>
-                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#8d8d8d]">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
                           {review.serviceTitle}
                         </p>
                       </div>
@@ -5618,10 +5625,10 @@ function ServicesSection() {
                         ))}
                       </div>
                     </div>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                       {review.comment}
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#8d8d8d]">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                       {review.date}
                     </p>
                   </div>
@@ -5633,16 +5640,16 @@ function ServicesSection() {
           {/* Review Stats */}
           <div className="flex md:grid md:grid-cols-3 gap-3 md:gap-4 mt-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
             <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Average Rating</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4.8 ★</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Average Rating</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4.8 ★</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Reviews</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">23</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Reviews</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">23</p>
             </div>
             <div className="bg-gradient-to-br from-blue-50 to-white p-3 md:p-4 rounded-xl border border-blue-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">5-Star Reviews</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">18</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">5-Star Reviews</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">18</p>
             </div>
           </div>
         </div>
@@ -5653,7 +5660,7 @@ function ServicesSection() {
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-6 rounded-xl border border-[#3B82F6]/20">
-              <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4">
+              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
                 Monthly Revenue
               </h3>
               <ResponsiveContainer width="100%" height={200}>
@@ -5666,8 +5673,8 @@ function ServicesSection() {
                   { month: "Nov", revenue: 2450 },
                 ]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Roboto' }} />
-                  <YAxis stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Roboto' }} />
+                  <XAxis dataKey="month" stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Poppins' }} />
+                  <YAxis stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Poppins' }} />
                   <Tooltip />
                   <Line type="monotone" dataKey="revenue" stroke="#3D78CB" strokeWidth={2} />
                 </LineChart>
@@ -5675,7 +5682,7 @@ function ServicesSection() {
             </div>
 
             <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-6 rounded-xl border border-[#FE8A0F]/20">
-              <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-4">
+              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
                 Service Popularity
               </h3>
               <ResponsiveContainer width="100%" height={200}>
@@ -5686,8 +5693,8 @@ function ServicesSection() {
                   { service: "Boiler", bookings: 8 },
                 ]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="service" stroke="#6b6b6b" style={{ fontSize: '11px', fontFamily: 'Roboto' }} />
-                  <YAxis stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Roboto' }} />
+                  <XAxis dataKey="service" stroke="#6b6b6b" style={{ fontSize: '11px', fontFamily: 'Poppins' }} />
+                  <YAxis stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Poppins' }} />
                   <Tooltip />
                   <Bar dataKey="bookings" fill="#FE8A0F" />
                 </BarChart>
@@ -5699,27 +5706,27 @@ function ServicesSection() {
           <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
             <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[220px] md:min-w-0 flex-shrink-0">
               <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-1 md:mb-2" />
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Revenue</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">£11,200</p>
-              <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-green-600 mt-1">+18% this month</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Revenue</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">£11,200</p>
+              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-green-600 mt-1">+18% this month</p>
             </div>
             <div className="bg-gradient-to-br from-blue-50 to-white p-3 md:p-4 rounded-xl border border-blue-200 min-w-[220px] md:min-w-0 flex-shrink-0">
               <Calendar className="w-6 h-6 md:w-8 md:h-8 text-blue-600 mb-1 md:mb-2" />
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Bookings</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">93</p>
-              <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-blue-600 mt-1">12 this week</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Bookings</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">93</p>
+              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 mt-1">12 this week</p>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-white p-3 md:p-4 rounded-xl border border-purple-200 min-w-[220px] md:min-w-0 flex-shrink-0">
               <Heart className="w-6 h-6 md:w-8 md:h-8 text-purple-600 mb-1 md:mb-2" />
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Customer Satisfaction</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">96%</p>
-              <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-purple-600 mt-1">Excellent</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Customer Satisfaction</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">96%</p>
+              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-purple-600 mt-1">Excellent</p>
             </div>
             <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[220px] md:min-w-0 flex-shrink-0">
               <Clock className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] mb-1 md:mb-2" />
-              <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Response Time</p>
-              <p className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">2.5h</p>
-              <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-[#FE8A0F] mt-1">Very responsive</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Response Time</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">2.5h</p>
+              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#FE8A0F] mt-1">Very responsive</p>
             </div>
           </div>
         </div>

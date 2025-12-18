@@ -160,14 +160,14 @@ export default function AppDownloadSection() {
 
           {/* Right Side - Content */}
           <div className="relative z-10 space-y-6 text-white">
-            <div className="font-['Roboto',sans-serif] font-normal leading-[1.3] not-italic text-[#2c353f] text-[24px] md:text-[28px] lg:text-[32px] xl:text-[36px]">
+            <div className="font-['Poppins',sans-serif] font-normal leading-[1.3] not-italic text-[#2c353f] text-[24px] md:text-[28px] lg:text-[32px] xl:text-[36px]">
               <p className="mb-2">Download Our App Now</p>
               <p>and Get Started!</p>
             </div>
             
-            <div className="mt-4 md:mt-6 lg:mt-[80px] font-['Roboto',sans-serif] leading-[1.6] not-italic text-[#5b5b5b] text-[14px] md:text-[16px]">
+            <div className="mt-4 md:mt-6 lg:mt-[80px] font-['Poppins',sans-serif] leading-[1.6] not-italic text-[#5b5b5b] text-[14px] md:text-[16px]">
               <p className="mb-4">Whether you're a client searching for top-notch services or a professional looking to connect with potential clients, our app has you covered. Easily browse and buy services with clear pricing, schedule appointments, chat, post tasks, make payments, and manage everything on the go—all in one convenient app.</p>
-              <p className="font-['Roboto',sans-serif] mb-0">Don't wait—download now and simplify your life!</p>
+              <p className="font-['Poppins',sans-serif] mb-0">Don't wait—download now and simplify your life!</p>
             </div>
 
             {/* App Store Buttons */}

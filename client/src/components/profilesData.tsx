@@ -1,3 +1,6 @@
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
+import serviceVector from "../assets/service_vector.jpg";
+
 // Category-based skills mapping
 export const categorySkills: Record<string, string[]> = {
   "Plumbing & Heating": ["Plumbing", "Heating Systems", "Bathroom Installation", "Emergency Repairs", "Boiler Service", "Pipe Fitting", "Leak Detection", "Drainage Systems", "Water Heater Installation", "Gas Fitting", "Central Heating", "Radiator Installation", "Tap & Toilet Repair", "Power Flushing", "Underfloor Heating", "Kitchen Installation", "Wet Room Fitting"],
@@ -78,13 +81,13 @@ export interface ProfileData {
 }
 
 // Mock user profiles
-export const userProfiles: ProfileData[] = [
+export const userProfiles: ProfileData[] = ([
   {
     id: "117",
     name: "John Smith",
     title: "Professional Plumber & Heating Engineer",
     category: "Plumbing & Heating",
-    image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdHxlbnwxfHx8fDE3NjM0NDUxMzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    image: defaultAvatar,
     rating: 4.9,
     reviewCount: 127,
     completedJobs: 245,
@@ -116,19 +119,19 @@ export const userProfiles: ProfileData[] = [
     portfolio: [
       {
         id: 1,
-        image: "https://images.unsplash.com/photo-1620626011761-996317b8d101?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXRocm9vbSUyMGluc3RhbGxhdGlvbnxlbnwxfHx8fDE3NjM1NTYwMDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Modern Bathroom Installation",
         description: "Complete bathroom renovation including tiling and fixtures"
       },
       {
         id: 2,
-        image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxraXRjaGVuJTIwcGx1bWJpbmd8ZW58MXx8fHwxNzYzNTU2MDA0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Kitchen Plumbing Installation",
         description: "New kitchen sink and dishwasher installation"
       },
       {
         id: 3,
-        image: "https://images.unsplash.com/photo-1607400201889-565b1ee75f8e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxib2lsZXIlMjBpbnN0YWxsYXRpb258ZW58MXx8fHwxNzYzNTU2MDA0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Boiler Installation & Service",
         description: "Modern combi boiler installation with 10-year guarantee"
       }
@@ -137,7 +140,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 1,
         author: "Sarah Johnson",
-        authorImage: "https://images.unsplash.com/photo-1649589244330-09ca58e4fa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMHdvbWFufGVufDF8fHx8MTc2MzQyMDIwM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "2 weeks ago",
         comment: "Excellent service! John was punctual, professional, and completed the job to a very high standard. Would highly recommend."
@@ -145,7 +148,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 2,
         author: "Michael Brown",
-        authorImage: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMG1hbnxlbnwxfHx8fDE3NjMzOTYwNjZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "1 month ago",
         comment: "Very happy with the bathroom installation. John explained everything clearly and the finish is perfect. Great value for money."
@@ -153,7 +156,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 3,
         author: "Emma Wilson",
-        authorImage: "https://images.unsplash.com/photo-1543132220-7bc04a0e790a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHBlcnNvbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzQwNzEyOHww&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 4,
         date: "2 months ago",
         comment: "Good work overall. A small delay but John kept me informed and the final result was worth the wait."
@@ -165,7 +168,7 @@ export const userProfiles: ProfileData[] = [
     name: "Sarah Williams",
     title: "Certified Electrician & Smart Home Specialist",
     category: "Electrical",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGVsZWN0cmljaWFufGVufDB8fHx8MTczMjAyNjgwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+    image: defaultAvatar,
     rating: 4.8,
     reviewCount: 98,
     completedJobs: 185,
@@ -196,13 +199,13 @@ export const userProfiles: ProfileData[] = [
     portfolio: [
       {
         id: 1,
-        image: "https://images.unsplash.com/photo-1621905251918-48416bd8575a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbWFydCUyMGhvbWUlMjBpbnN0YWxsYXRpb258ZW58MHx8fHwxNzMyMDI2ODAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Smart Home System Installation",
         description: "Complete smart lighting and heating control system"
       },
       {
         id: 2,
-        image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJpY2FsJTIwd2lyaW5nfGVufDB8fHx8MTczMjAyNjgwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Full House Rewiring",
         description: "Complete electrical rewiring for 3-bedroom house"
       }
@@ -211,7 +214,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 1,
         author: "David Thompson",
-        authorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "1 week ago",
         comment: "Sarah did an amazing job installing our smart home system. Very knowledgeable and professional."
@@ -219,7 +222,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 2,
         author: "Lisa Chen",
-        authorImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTczMjAyNjgwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "3 weeks ago",
         comment: "Excellent service and very fair pricing. Would definitely use again."
@@ -231,7 +234,7 @@ export const userProfiles: ProfileData[] = [
     name: "James Anderson",
     title: "Master Builder & Construction Manager",
     category: "Building & Construction",
-    image: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb25zdHJ1Y3Rpb24lMjB3b3JrZXJ8ZW58MHx8fHwxNzMyMDI2ODAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
     rating: 4.9,
     reviewCount: 156,
     completedJobs: 312,
@@ -262,19 +265,19 @@ export const userProfiles: ProfileData[] = [
     portfolio: [
       {
         id: 1,
-        image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob3VzZSUyMGV4dGVuc2lvbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Two-Storey Extension",
         description: "Complete two-storey side extension adding two bedrooms"
       },
       {
         id: 2,
-        image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsb2Z0JTIwY29udmVyc2lvbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Loft Conversion Project",
         description: "Converted attic space into master bedroom with ensuite"
       },
       {
         id: 3,
-        image: "https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxraXRjaGVuJTIwcmVub3ZhdGlvbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Complete Kitchen Renovation",
         description: "Full kitchen extension and refurbishment"
       }
@@ -283,7 +286,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 1,
         author: "Peter Roberts",
-        authorImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMG1hbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "2 weeks ago",
         comment: "James and his team did an outstanding job on our extension. Professional, reliable, and the quality is exceptional."
@@ -291,7 +294,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 2,
         author: "Rachel Green",
-        authorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "1 month ago",
         comment: "Highly skilled and trustworthy builder. Completed our loft conversion on time and within budget."
@@ -303,7 +306,7 @@ export const userProfiles: ProfileData[] = [
     name: "Emily Parker",
     title: "Professional Cleaner & Home Care Specialist",
     category: "Cleaning",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjbGVhbmVyfGVufDB8fHx8MTczMjAyNjgwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
     rating: 4.9,
     reviewCount: 203,
     completedJobs: 456,
@@ -336,7 +339,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 1,
         author: "Karen Wilson",
-        authorImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTczMjAyNjgwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "3 days ago",
         comment: "Emily is absolutely fantastic! My house has never been so clean. Very thorough and professional."
@@ -344,7 +347,7 @@ export const userProfiles: ProfileData[] = [
       {
         id: 2,
         author: "Tom Harris",
-        authorImage: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "1 week ago",
         comment: "End of tenancy clean was perfect. Got my full deposit back thanks to Emily's amazing work!"
@@ -356,7 +359,7 @@ export const userProfiles: ProfileData[] = [
     name: "Michael Green",
     title: "Landscape Designer & Garden Maintenance Expert",
     category: "Gardening & Landscaping",
-    image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnYXJkZW5lciUyMG1hbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
     rating: 4.7,
     reviewCount: 89,
     completedJobs: 167,
@@ -387,13 +390,13 @@ export const userProfiles: ProfileData[] = [
     portfolio: [
       {
         id: 1,
-        image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnYXJkZW4lMjBkZXNpZ258ZW58MHx8fHwxNzMyMDI2ODAwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Contemporary Garden Design",
         description: "Modern garden transformation with patio and planting"
       },
       {
         id: 2,
-        image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYXRpbyUyMGluc3RhbGxhdGlvbnxlbnwwfHx8fDE3MzIwMjY4MDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        image: serviceVector,
         title: "Patio & Decking Installation",
         description: "Large patio area with composite decking"
       }
@@ -402,14 +405,22 @@ export const userProfiles: ProfileData[] = [
       {
         id: 1,
         author: "Jane Mitchell",
-        authorImage: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGJ1c2luZXNzfGVufDB8fHx8MTczMjAyNjgwMHww&ixlib=rb-4.1.0&q=80&w=1080",
+        authorImage: defaultAvatar,
         rating: 5,
         date: "2 weeks ago",
         comment: "Michael transformed our garden completely. His design ideas were brilliant and the execution was perfect."
       }
     ]
   }
-];
+]).map((profile) => ({
+  ...profile,
+  // Replace any remote portrait/avatar images with local default avatar.
+  image: defaultAvatar,
+  reviews: (profile.reviews || []).map((r) => ({
+    ...r,
+    authorImage: defaultAvatar,
+  })),
+}));
 
 // Helper function to get profile by ID or trading name
 export function getProfileById(id: string): ProfileData | undefined {

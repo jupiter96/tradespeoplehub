@@ -18,8 +18,8 @@ function Group1() {
     <div className="absolute contents left-[-128px] top-[76px]">
       <div className="absolute bg-white h-[134px] left-[-128px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[76px] w-[544px]" />
       <div className="absolute bg-[#ecf4ff] h-[78px] left-[-112px] rounded-[10px] top-[104px] w-[66px]" />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[99px] whitespace-pre">No More Paying for Leads</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[125px] w-[423px]">No more paying to access customer contact details or quote on jobs that often don’t result in sales. Simply list your services once and let customers come to you instead.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[99px] whitespace-pre">No More Paying for Leads</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[125px] w-[423px]">No more paying to access customer contact details or quote on jobs that often don’t result in sales. Simply list your services once and let customers come to you instead.</p>
       <Component5 />
     </div>
   );
@@ -63,8 +63,8 @@ function Group2() {
     <div className="absolute contents left-[448px] top-[76px]">
       <div className="absolute bg-white h-[134px] left-[448px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[76px] w-[544px]" />
       <div className="absolute bg-[#ecf4ff] h-[78px] left-[462px] rounded-[10px] top-[104px] w-[66px]" />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[100px] whitespace-pre">One-Off Listing, Thousands of Orders</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[126px] w-[424px]">Once you list your services, your gig stays live and accessible to clients 24/7, potentially attracting thousands of orders over time.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[100px] whitespace-pre">One-Off Listing, Thousands of Orders</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[126px] w-[424px]">Once you list your services, your gig stays live and accessible to clients 24/7, potentially attracting thousands of orders over time.</p>
       <div className="absolute flex items-center justify-center left-[476px] size-[40px] top-[124px]">
         <div className="flex-none scale-y-[-100%]">
           <Component4 />
@@ -94,8 +94,8 @@ function Group3() {
     <div className="absolute contents left-[-128px] top-[241px]">
       <div className="absolute bg-white h-[134px] left-[-128px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[241px] w-[544px]" />
       <div className="absolute bg-[#ecf4ff] h-[78px] left-[-111px] rounded-[10px] top-[266px] w-[66px]" />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[271px] whitespace-pre">Portfolio Building</p>
-      <div className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[297px] w-[423px]">
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[271px] whitespace-pre">Portfolio Building</p>
+      <div className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[297px] w-[423px]">
         <p className="mb-0">Your profile with completed projects and positive reviews acts as a portfolio, helping you attract more clients.</p>
         <p>&nbsp;</p>
       </div>
@@ -132,11 +132,11 @@ function Group5() {
     <div className="absolute contents left-[-128px] top-[406px]">
       <div className="absolute bg-white h-[134px] left-[-128px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[406px] w-[544px]" />
       <div className="absolute bg-[#ecf4ff] h-[78px] left-[-111px] rounded-[10px] top-[431px] w-[66px]" />
-      <div className="absolute font-['Roboto:SemiBold',sans-serif] h-[26px] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[427px] w-[227px]">
+      <div className="absolute font-['Poppins:SemiBold',sans-serif] h-[26px] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[427px] w-[227px]">
         <p className="mb-0">{`Custom Offers & Packages`}</p>
         <p>&nbsp;</p>
       </div>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[453px] w-[417px]">You can negotiate prices and create customized services for clients who need something different from your standard offerings.</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-445px)] not-italic text-[#5b5b5b] text-[14px] top-[453px] w-[417px]">You can negotiate prices and create customized services for clients who need something different from your standard offerings.</p>
       <Component8 />
     </div>
   );
@@ -162,8 +162,8 @@ function Group4() {
     <div className="absolute contents left-[448px] top-[241px]">
       <div className="absolute bg-white h-[134px] left-[448px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[241px] w-[544px]" />
       <div className="absolute bg-[#ecf4ff] h-[78px] left-[462px] rounded-[10px] top-[266px] w-[66px]" />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[273px] whitespace-pre">No Need for Cold Pitching</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[299px] w-[424px]">Unlike traditional platforms, clients come to you instead of you having to send proposals and bids.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[273px] whitespace-pre">No Need for Cold Pitching</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[299px] w-[424px]">Unlike traditional platforms, clients come to you instead of you having to send proposals and bids.</p>
       <Component7 />
     </div>
   );
@@ -187,8 +187,8 @@ function Group6() {
       <div className="absolute bg-white h-[134px] left-[448px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[406px] w-[544px]" />
       <div className="absolute bg-[#fe8a0f] h-[78px] left-[462px] rounded-[10px] top-[431px] w-[66px]" />
       <Component3 />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[438px] whitespace-pre">{`Automation & Convenience`}</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[464px] w-[424px]">Set up FAQs, delivery times, and predefined packages to minimize back-and-forth communication.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[438px] whitespace-pre">{`Automation & Convenience`}</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[464px] w-[424px]">Set up FAQs, delivery times, and predefined packages to minimize back-and-forth communication.</p>
     </div>
   );
 }
@@ -212,8 +212,8 @@ function Group7() {
       <div className="absolute bg-white h-[134px] left-[448px] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[406px] w-[544px]" />
       <div className="absolute bg-[#ecf4ff] h-[78px] left-[462px] rounded-[10px] top-[431px] w-[66px]" />
       <Component2 />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[438px] whitespace-pre">{`Automation & Convenience`}</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[464px] w-[424px]">Set up FAQs, delivery times, and predefined packages to minimize back-and-forth communication.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] text-nowrap top-[438px] whitespace-pre">{`Automation & Convenience`}</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%+131px)] not-italic text-[#5b5b5b] text-[14px] top-[464px] w-[424px]">Set up FAQs, delivery times, and predefined packages to minimize back-and-forth communication.</p>
     </div>
   );
 }
@@ -238,8 +238,8 @@ function Group8() {
     <div className="absolute bottom-[-933.82%] contents left-[-15.38%] right-1/2 top-[836.76%]">
       <div className="absolute bg-white bottom-[-933.82%] left-[-15.38%] right-1/2 rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5] top-[836.76%]" />
       <div className="absolute bg-[#ecf4ff] inset-[873.53%_105.41%_-888.24%_-13.34%] rounded-[10px]" />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] inset-[882.35%_76.2%_-820.59%_-3.49%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">No Need to Chase Payments</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] inset-[920.59%_57.21%_-879.41%_-3.49%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">We ensure clients pay upfront, reducing the risk of non-payment.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] inset-[882.35%_76.2%_-820.59%_-3.49%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">No Need to Chase Payments</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] inset-[920.59%_57.21%_-879.41%_-3.49%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">We ensure clients pay upfront, reducing the risk of non-payment.</p>
       <Component1 />
     </div>
   );
@@ -274,8 +274,8 @@ function Group9() {
     <div className="absolute contents inset-[836.76%_-19.23%_-933.82%_53.85%]">
       <div className="absolute bg-white inset-[836.76%_-19.23%_-933.82%_53.85%] rounded-[10px] shadow-[0px_14px_18px_0px_#ecf0f5]" />
       <div className="absolute bg-[#ecf4ff] inset-[873.53%_36.18%_-888.24%_55.89%] rounded-[10px]" />
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] inset-[882.35%_6.97%_-820.59%_65.75%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">Quick Start for Beginners</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] inset-[920.59%_-14.9%_-879.41%_65.75%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">No need to have an established business or website—just create a profile and start selling your services.</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] inset-[882.35%_6.97%_-820.59%_65.75%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">Quick Start for Beginners</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] inset-[920.59%_-14.9%_-879.41%_65.75%] leading-[20px] not-italic text-[#5b5b5b] text-[14px]">No need to have an established business or website—just create a profile and start selling your services.</p>
       <Component />
     </div>
   );
@@ -284,7 +284,7 @@ function Group9() {
 export default function WhyUs() {
   return (
     <div className="relative size-full" data-name="Why US">
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-none left-[calc(50%+0.5px)] not-italic text-[#2c353f] text-[24px] text-center text-nowrap top-0 translate-x-[-50%] whitespace-pre">Why You Should Join Us</p>
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-none left-[calc(50%+0.5px)] not-italic text-[#2c353f] text-[24px] text-center text-nowrap top-0 translate-x-[-50%] whitespace-pre">Why You Should Join Us</p>
       <Group1 />
       <Group2 />
       <Group3 />

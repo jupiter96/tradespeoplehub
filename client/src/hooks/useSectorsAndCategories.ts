@@ -51,6 +51,10 @@ export const useSectors = (includeCategories = false, includeSubCategories = fal
         let url = '/api/sectors?activeOnly=true&sortBy=order&sortOrder=asc';
         if (includeCategories) {
           url += '&includeCategories=true';
+          if (includeSubCategories) {
+            // Let the backend return categories + subcategories in one response (fewer HTTP calls).
+            url += '&includeSubCategories=true';
+          }
         }
         
         const response = await fetch(resolveApiUrl(url), {
@@ -63,35 +67,6 @@ export const useSectors = (includeCategories = false, includeSubCategories = fal
         
         const data = await response.json();
         let sectorsData = data.sectors || [];
-        
-        // If subcategories are requested, fetch them for each category
-        if (includeSubCategories && includeCategories) {
-          sectorsData = await Promise.all(
-            sectorsData.map(async (sector: Sector) => {
-              if (sector.categories && sector.categories.length > 0) {
-                const categoriesWithSubCategories = await Promise.all(
-                  sector.categories.map(async (category: Category) => {
-                    try {
-                      const subCatResponse = await fetch(
-                        resolveApiUrl(`/api/subcategories?categoryId=${category._id}&activeOnly=true`),
-                        { credentials: 'include' }
-                      );
-                      if (subCatResponse.ok) {
-                        const subCatData = await subCatResponse.json();
-                        return { ...category, subCategories: subCatData.subCategories || [] };
-                      }
-                    } catch (err) {
-                      console.error(`Error fetching subcategories for category ${category._id}:`, err);
-                    }
-                    return category;
-                  })
-                );
-                return { ...sector, categories: categoriesWithSubCategories };
-              }
-              return sector;
-            })
-          );
-        }
         
         setSectors(sectorsData);
         setError(null);

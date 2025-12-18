@@ -5,6 +5,23 @@ import ServiceSubCategory from '../models/ServiceSubCategory.js';
 
 const router = express.Router();
 
+// Small in-memory cache to reduce repeat DB work for hot public endpoints.
+// Keyed by req.originalUrl. Safe only for GET + activeOnly=true + no search.
+const _cache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+const getCached = (key) => {
+  const hit = _cache.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    _cache.delete(key);
+    return null;
+  }
+  return hit.value;
+};
+const setCached = (key, value) => {
+  _cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+};
+
 // Get all service categories (with optional filtering)
 router.get('/', async (req, res) => {
   try {
@@ -20,6 +37,20 @@ router.get('/', async (req, res) => {
       page = '1',
       limit = '20'
     } = req.query;
+
+    const shouldCache =
+      req.method === 'GET' &&
+      activeOnly === 'true' &&
+      includeSubCategories === 'true' &&
+      !search;
+    const cacheKey = shouldCache ? req.originalUrl : null;
+    if (cacheKey) {
+      const cached = getCached(cacheKey);
+      if (cached) {
+        res.set('Cache-Control', 'public, max-age=300');
+        return res.json(cached);
+      }
+    }
     
     const query = {};
     
@@ -81,29 +112,46 @@ router.get('/', async (req, res) => {
     
     // Include subcategories if requested
     if (includeSubCategories === 'true') {
-      const serviceCategoriesWithSubCategories = await Promise.all(
-        serviceCategories.map(async (serviceCategory) => {
-          const subCategories = await ServiceSubCategory.find({
-            serviceCategory: serviceCategory._id,
+      // Avoid N+1 queries: fetch all subcategories in ONE query and group in memory.
+      const ids = serviceCategories.map((c) => c._id);
+      const subCategories = ids.length === 0
+        ? []
+        : await ServiceSubCategory.find({
+            serviceCategory: { $in: ids },
             isActive: activeOnly === 'true' ? true : { $exists: true }
           })
             .sort({ order: 1, name: 1 })
             .lean();
-          return { ...serviceCategory, subCategories };
-        })
-      );
-      return res.json({ 
-        serviceCategories: serviceCategoriesWithSubCategories,
+
+      const grouped = new Map();
+      for (const sc of subCategories) {
+        const key = String(sc.serviceCategory);
+        const arr = grouped.get(key);
+        if (arr) arr.push(sc);
+        else grouped.set(key, [sc]);
+      }
+
+      const payload = { 
+        serviceCategories: serviceCategories.map((c) => ({
+          ...c,
+          subCategories: grouped.get(String(c._id)) || [],
+        })),
         pagination: {
           page: pageNum,
           limit: limitNum,
           total,
           totalPages: Math.ceil(total / limitNum)
         }
-      });
+      };
+
+      if (cacheKey) {
+        setCached(cacheKey, payload);
+        res.set('Cache-Control', 'public, max-age=300');
+      }
+      return res.json(payload);
     }
     
-    return res.json({ 
+    const payload = { 
       serviceCategories,
       pagination: {
         page: pageNum,
@@ -111,7 +159,8 @@ router.get('/', async (req, res) => {
         total,
         totalPages: Math.ceil(total / limitNum)
       }
-    });
+    };
+    return res.json(payload);
   } catch (error) {
     console.error('Get service categories error', error);
     return res.status(500).json({ error: 'Failed to fetch service categories' });

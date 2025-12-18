@@ -652,7 +652,7 @@ function Banner() {
       </div>
       <div className="absolute flex h-[calc(1px*((var(--transform-inner-width)*1)+(var(--transform-inner-height)*0)))] items-center justify-center left-[1185px] top-[93px] translate-x-[-50%] w-[calc(1px*((var(--transform-inner-height)*1)+(var(--transform-inner-width)*0)))]" style={{ "--transform-inner-width": "36.21875", "--transform-inner-height": "69" } as React.CSSProperties}>
         <div className="flex-none rotate-[90deg]">
-          <div className="font-['Roboto:ExtraBold',sans-serif] font-extrabold leading-[0.36] relative text-[#fe8a0f] text-[24px] text-center text-nowrap tracking-[4.08px] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
+          <div className="font-['Poppins:ExtraBold',sans-serif] font-extrabold leading-[0.36] relative text-[#fe8a0f] text-[24px] text-center text-nowrap tracking-[4.08px] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
             <p className="mb-0">...</p>
             <p className="mb-0">...</p>
             <p className="mb-0">...</p>
@@ -672,9 +672,9 @@ export default function Hero() {
   return (
     <div className="relative size-full" data-name="Hero">
       <Banner />
-      <p className="absolute font-['Roboto:Bold',sans-serif] h-[108px] leading-[32px] left-1/2 not-italic text-[24px] text-center text-white top-[133px] translate-x-[-50%] w-[533px]">
+      <p className="absolute font-['Poppins:Bold',sans-serif] h-[108px] leading-[32px] left-1/2 not-italic text-[24px] text-center text-white top-[133px] translate-x-[-50%] w-[533px]">
         <span>{`Order `}</span>
-        <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f]">{`Home & Garden Services`}</span>
+        <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">{`Home & Garden Services`}</span>
         <span>{` as Easily as Shopping on Amazon`}</span>
       </p>
     </div>

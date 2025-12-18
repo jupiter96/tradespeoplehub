@@ -6686,28 +6686,28 @@
     vertical-align: middle;
   }
 
-  .font-\[\'Roboto\'\,sans-serif\] {
-    font-family: Roboto, sans-serif;
+  .font-\[\'Poppins\'\,sans-serif\] {
+    font-family: Poppins, sans-serif;
   }
 
-  .font-\[\'Roboto\:Black\'\,sans-serif\] {
-    font-family: Roboto\:Black, sans-serif;
+  .font-\[\'Poppins\:Black\'\,sans-serif\] {
+    font-family: Poppins\:Black, sans-serif;
   }
 
-  .font-\[\'Roboto\:Bold\'\,sans-serif\] {
-    font-family: Roboto\:Bold, sans-serif;
+  .font-\[\'Poppins\:Bold\'\,sans-serif\] {
+    font-family: Poppins\:Bold, sans-serif;
   }
 
-  .font-\[\'Roboto\:Regular\'\,sans-serif\] {
-    font-family: Roboto\:Regular, sans-serif;
+  .font-\[\'Poppins\:Regular\'\,sans-serif\] {
+    font-family: Poppins\:Regular, sans-serif;
   }
 
-  .font-\[\'Roboto\:SemiBold\'\,sans-serif\] {
-    font-family: Roboto\:SemiBold, sans-serif;
+  .font-\[\'Poppins\:SemiBold\'\,sans-serif\] {
+    font-family: Poppins\:SemiBold, sans-serif;
   }
 
-  .font-\[\'Roboto\:ExtraBold\'\,sans-serif\] {
-    font-family: Roboto\:ExtraBold, sans-serif;
+  .font-\[\'Poppins\:ExtraBold\'\,sans-serif\] {
+    font-family: Poppins\:ExtraBold, sans-serif;
   }
 
   .text-base {
@@ -13076,4 +13076,43 @@ html {
   to {
     height: 0;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Global typography (match reference Figma site)                              */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --app-font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans",
+    "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+html {
+  font-family: var(--app-font-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--app-font-sans);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--app-font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+strong,
+b {
+  font-weight: 600;
 }

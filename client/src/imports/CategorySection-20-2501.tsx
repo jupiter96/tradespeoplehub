@@ -27,7 +27,7 @@ function Group() {
           <img alt="" className="absolute h-[66.67%] left-[8.15%] max-w-none top-[16.67%] w-[83.71%]" src={imgGarden2} />
         </div>
       </div>
-      <div className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[80.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
+      <div className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[80.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
         <p className="mb-0">{`Home &`}</p>
         <p>Garden</p>
       </div>
@@ -42,7 +42,7 @@ function Group1() {
       <div className="absolute h-[35px] left-[252px] top-[52px] w-[42px]" data-name="Business 2">
         <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" src={imgBusiness2} />
       </div>
-      <div className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[273px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
+      <div className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[273px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
         <p className="mb-0">{`Business &`}</p>
         <p>Services</p>
       </div>
@@ -57,7 +57,7 @@ function Group2() {
       <div className="absolute h-[35px] left-[444px] top-[53px] w-[39px]" data-name="Driving 2">
         <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" src={imgDriving2} />
       </div>
-      <div className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[465px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
+      <div className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[465px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
         <p className="mb-0">Driving</p>
         <p>licence</p>
       </div>
@@ -72,7 +72,7 @@ function Group3() {
       <div className="absolute h-[38px] left-[634px] top-[52px] w-[44px]" data-name="Education 2">
         <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" src={imgEducation2} />
       </div>
-      <p className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[657px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[132px] translate-x-[-50%] whitespace-pre">Education</p>
+      <p className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[657px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[132px] translate-x-[-50%] whitespace-pre">Education</p>
     </div>
   );
 }
@@ -84,7 +84,7 @@ function Group4() {
       <div className="absolute h-[29px] left-[826px] top-[59px] w-[48px]" data-name="Vehicles 2">
         <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" src={imgVehicles2} />
       </div>
-      <div className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[850px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
+      <div className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[850px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
         <p className="mb-0">{`vehicle `}</p>
         <p>Services</p>
       </div>
@@ -99,7 +99,7 @@ function Group5() {
       <div className="absolute h-[31px] left-[1020px] top-[56px] w-[46px]" data-name="Logistic 1">
         <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" src={imgLogistic1} />
       </div>
-      <div className="absolute font-['Roboto:SemiBold',sans-serif] leading-[20px] left-[1042.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
+      <div className="absolute font-['Poppins:SemiBold',sans-serif] leading-[20px] left-[1042.5px] not-italic text-[#5b5b5b] text-[14px] text-center text-nowrap top-[122px] translate-x-[-50%] whitespace-pre">
         <p className="mb-0">{`Logistics &`}</p>
         <p>Transportation</p>
       </div>
@@ -110,10 +110,10 @@ function Group5() {
 export default function CategorySection() {
   return (
     <div className="relative size-full" data-name="Category Section">
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-none left-px not-italic text-[#2c353f] text-[0px] text-[24px] text-nowrap top-[-65px] whitespace-pre">
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-none left-px not-italic text-[#2c353f] text-[0px] text-[24px] text-nowrap top-[-65px] whitespace-pre">
         Browse Service by<span>{` Category `}</span>
       </p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[0] left-[1037px] not-italic text-[#3d78cb] text-[14px] text-nowrap top-[-44px] whitespace-pre">Browse all</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[0] left-[1037px] not-italic text-[#3d78cb] text-[14px] text-nowrap top-[-44px] whitespace-pre">Browse all</p>
       <div className="absolute flex h-[calc(1px*((var(--transform-inner-width)*1)+(var(--transform-inner-height)*0)))] items-center justify-center left-[1115px] top-[-49px] w-[calc(1px*((var(--transform-inner-height)*1)+(var(--transform-inner-width)*0)))]" style={{ "--transform-inner-width": "10", "--transform-inner-height": "6" } as React.CSSProperties}>
         <div className="flex-none rotate-[270deg]">
           <Component />

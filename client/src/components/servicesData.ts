@@ -1,3 +1,6 @@
+import serviceVector from "../assets/service_vector.jpg";
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
+
 export interface ServiceAddon {
   id: number;
   title: string;
@@ -54,10 +57,10 @@ export interface Service {
 
 // Provider images pool
 const providerImages = [
-  "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDF8fHx8MTc2MjYwNjczNXww&ixlib=rb-4.1.0&q=80&w=1080",
-  "https://images.unsplash.com/photo-1618591552964-837a5a315fb2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWxlJTIwcHJvZmVzc2lvbmFsJTIwd29ya2VyfGVufDF8fHx8MTc2MjY1NjUzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
-  "https://images.unsplash.com/photo-1607286908165-b8b6a2874fc4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmZW1hbGUlMjBwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2NTY1Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-  "https://images.unsplash.com/photo-1496180470114-6ef490f3ff22?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHdvbWFuJTIwcHJvZmVzc2lvbmFsfGVufDF8fHx8MTc2MjYzNTk2MXww&ixlib=rb-4.1.0&q=80&w=1080"
+  defaultAvatar,
+  defaultAvatar,
+  defaultAvatar,
+  defaultAvatar,
 ];
 
 // Addon templates by category
@@ -4020,6 +4023,13 @@ export const allServices: Service[] = [
     longitude: -0.1687,
   },
 ].map(service => {
+  // Force local images for ALL service cards (SEO/perf: no remote Unsplash images).
+  const baseService = {
+    ...service,
+    image: serviceVector,
+    providerImage: defaultAvatar,
+  };
+
   // Generate trading name if not present
   const generateTradingName = (providerName: string, subcategory?: string): string => {
     // If providerName already looks like a trading name (contains Ltd, Services, etc.), use it
@@ -4073,12 +4083,12 @@ export const allServices: Service[] = [
   
   if (needsAddons || needsIdealFor || needsSpecialization || needsTradingName) {
     return {
-      ...service,
-      ...(needsAddons && { addons: getRandomAddons(service.subcategory, service.id) }),
-      ...(needsIdealFor && { idealFor: getRandomIdealFor(service.subcategory, service.id) }),
-      ...(needsSpecialization && { specialization: getSpecialization(service.subcategory, service.id) }),
-      ...(needsTradingName && { tradingName: generateTradingName(service.providerName, service.subcategory) })
+      ...baseService,
+      ...(needsAddons && { addons: getRandomAddons(baseService.subcategory, baseService.id) }),
+      ...(needsIdealFor && { idealFor: getRandomIdealFor(baseService.subcategory, baseService.id) }),
+      ...(needsSpecialization && { specialization: getSpecialization(baseService.subcategory, baseService.id) }),
+      ...(needsTradingName && { tradingName: generateTradingName(baseService.providerName, baseService.subcategory) })
     };
   }
-  return service;
+  return baseService;
 });

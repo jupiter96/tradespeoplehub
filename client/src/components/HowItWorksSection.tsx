@@ -14,7 +14,7 @@ function StepCard({ number, icon, title, description }: StepCardProps) {
     <div className="flex flex-col items-start relative">
       {/* Large number background */}
       <div className="relative mb-8">
-        <p className="font-['Roboto:Black',sans-serif] text-[#e1eeff] text-[96px] leading-none select-none">
+        <p className="font-['Poppins:Black',sans-serif] text-[#e1eeff] text-[96px] leading-none select-none">
           {number}
         </p>
         {/* Icon overlay */}
@@ -28,12 +28,12 @@ function StepCard({ number, icon, title, description }: StepCardProps) {
       </div>
 
       {/* Title */}
-      <h3 className="font-['Roboto:Bold',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24] mb-4">
+      <h3 className="font-['Poppins:Bold',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24] mb-4">
         {title}
       </h3>
 
       {/* Description */}
-      <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24]">
+      <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.24]">
         {description}
       </p>
     </div>
@@ -45,7 +45,7 @@ export default function HowItWorksSection() {
     <section className="w-full bg-white py-16 px-4">
       <div className="max-w-[1200px] mx-auto">
         {/* Section Title */}
-        <h2 className="font-['Roboto:Bold',sans-serif] text-[#2c353f] text-[24px] text-center mb-16">
+        <h2 className="font-['Poppins:Bold',sans-serif] text-[#2c353f] text-[24px] text-center mb-16">
           How it works
         </h2>
 
@@ -74,7 +74,7 @@ export default function HowItWorksSection() {
         {/* CTA Button */}
         <div className="flex justify-center">
           <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-8 py-3 cursor-pointer">
-            <span className="font-['Roboto:Regular',sans-serif] text-[15px] text-white">
+            <span className="font-['Poppins:Regular',sans-serif] text-[15px] text-white">
               Order Now
             </span>
           </button>

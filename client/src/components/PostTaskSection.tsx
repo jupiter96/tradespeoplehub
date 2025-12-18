@@ -8,20 +8,20 @@ export default function PostTaskSection() {
           <div className="relative grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-8 lg:gap-12 items-center min-h-[400px] md:min-h-[500px]">
             {/* Left Content */}
             <div className="relative z-10 px-6 md:px-12 lg:px-16 py-12 md:py-16 lg:pr-8">
-              <h2 className="font-['Roboto',sans-serif] text-[#2c353f] text-[28px] md:text-[36px] mb-6 leading-[1.22]">
+              <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[28px] md:text-[36px] mb-6 leading-[1.22]">
                 Post a Task Today & Receive Quotes from Skilled Professionals!
               </h2>
               
-              <div className="font-['Roboto',sans-serif] font-normal text-[#5b5b5b] text-[14px] leading-[1.24] mb-8 space-y-4">
+              <div className="font-['Poppins',sans-serif] font-normal text-[#5b5b5b] text-[14px] leading-[1.24] mb-8 space-y-4">
                 <p className="font-normal">
                   Whether you're seeking a home improvement expert, legal advisor, or business consultant, posting your task is the next step toward finding the right professional for the job. Receive competitive quotes, browse detailed profiles, choose the best candidate, set up milestone payments and release them when the task is completed to your satisfaction.
                 </p>
-                <p className="font-['Roboto',sans-serif] font-normal">
+                <p className="font-['Poppins',sans-serif] font-normal">
                   Post Your Task Now!
                 </p>
               </div>
               
-              <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white px-8 py-3 rounded-[20px] font-['Roboto',sans-serif] text-[15px] transition-all duration-300 cursor-pointer">
+              <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white px-8 py-3 rounded-[20px] font-['Poppins',sans-serif] text-[15px] transition-all duration-300 cursor-pointer">
                 Start Posting Task
               </button>
             </div>

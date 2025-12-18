@@ -119,7 +119,7 @@ export default function DisputeDiscussionPage() {
         <Nav />
         <div className="container mx-auto px-4 py-20 text-center">
           <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f] mb-2">
+          <h1 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
             Dispute Not Found
           </h1>
           <Button
@@ -153,14 +153,14 @@ export default function DisputeDiscussionPage() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f]">
+          <h1 className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
             {isOrderDispute ? "Order payment dispute" : "Milestone payment dispute"}
           </h1>
           {isOrderDispute && order && (
             <Button
               onClick={() => navigate(`/account?tab=orders&orderId=${order.id}`)}
               variant="ghost"
-              className="font-['Roboto',sans-serif] text-[14px] text-[#3D78CB] hover:text-[#2C5AA0] hover:bg-transparent"
+              className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:text-[#2C5AA0] hover:bg-transparent"
             >
               Go Back to Order Details
             </Button>
@@ -174,26 +174,26 @@ export default function DisputeDiscussionPage() {
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div>
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
                     Dispute ID:
                   </p>
-                  <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium">
+                  <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
                     {dispute.id.replace("DISP-", "").replace("dispute-", "")}
                   </p>
                 </div>
                 <div>
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
                     Case status:
                   </p>
-                  <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium">
+                  <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
                     {dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1)}
                   </p>
                 </div>
                 <div>
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
                     Decided in:
                   </p>
-                  <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium">
+                  <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
                     {dispute.claimantName} favour
                   </p>
                 </div>
@@ -220,24 +220,24 @@ export default function DisputeDiscussionPage() {
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               {isClaimant && (
-                                <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
                                   Claimant:
                                 </p>
                               )}
-                              <p className="font-['Roboto',sans-serif] text-[15px] text-[#3D78CB] font-medium">
+                              <p className="font-['Poppins',sans-serif] text-[15px] text-[#3D78CB] font-medium">
                                 {senderName}
                               </p>
                               {showDeadline && (
-                                <p className="font-['Roboto',sans-serif] text-[13px] text-[#d97706] mt-1">
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#d97706] mt-1">
                                   Deadline: No reply
                                 </p>
                               )}
                             </div>
                           </div>
-                          <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                             {msg.message}
                           </p>
-                          <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] text-right">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right">
                             {new Date(msg.timestamp).toLocaleString("en-GB", {
                               day: "2-digit",
                               month: "short",
@@ -260,13 +260,13 @@ export default function DisputeDiscussionPage() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type your reply..."
-                    className="font-['Roboto',sans-serif] text-[14px] mb-3 resize-none"
+                    className="font-['Poppins',sans-serif] text-[14px] mb-3 resize-none"
                     rows={3}
                   />
                   <Button
                     onClick={handleSendMessage}
                     disabled={!message.trim()}
-                    className="bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Roboto',sans-serif]"
+                    className="bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif]"
                   >
                     Reply
                   </Button>
@@ -279,16 +279,16 @@ export default function DisputeDiscussionPage() {
           <div className="space-y-4">
             {/* Amount Disputed Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 text-center">
-              <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                 Total disputed {isOrderDispute ? "order" : "milestone"} <br />amount:
               </p>
-              <p className="font-['Roboto',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
+              <p className="font-['Poppins',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
                 £ {dispute.amount.toFixed(0)}
               </p>
               {!isOrderDispute && milestone && (
                 <button
                   onClick={() => setShowMilestones(!showMilestones)}
-                  className="font-['Roboto',sans-serif] text-[13px] text-[#3D78CB] hover:underline"
+                  className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] hover:underline"
                 >
                   {showMilestones ? "Hide" : "Show"} Milestones
                 </button>
@@ -296,13 +296,13 @@ export default function DisputeDiscussionPage() {
 
               {!isOrderDispute && showMilestones && milestone && (
                 <div className="mt-4 p-3 bg-[#f8f9fa] rounded-lg text-left">
-                  <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                     Milestone:
                   </p>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f]">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                     {milestone.description}
                   </p>
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] font-medium mt-2">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mt-2">
                     £{milestone.amount.toFixed(2)}
                   </p>
                 </div>
@@ -312,18 +312,18 @@ export default function DisputeDiscussionPage() {
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="text-center">
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       {isClaimant ? "Professional (you)" : "Client (you)"}<br />want to receive:
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f] font-bold">
+                    <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f] font-bold">
                       £{userWantsToPay !== undefined ? userWantsToPay.toFixed(2) : "0.00"}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       {isClaimant ? "Client" : "Professional"} ({isClaimant ? dispute.respondentName : dispute.claimantName})<br />wants to pay:
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[28px] text-[#2c353f] font-bold">
+                    <p className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f] font-bold">
                       £{otherWantsToReceive !== undefined ? otherWantsToReceive.toFixed(2) : "0.00"}
                     </p>
                   </div>
@@ -331,14 +331,14 @@ export default function DisputeDiscussionPage() {
 
                 {/* Agreed Amount */}
                 <div className="text-center border-t border-gray-200 pt-4">
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                     Agreed:
                   </p>
-                  <p className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] font-bold mb-2">
+                  <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold mb-2">
                     £ 0.00
                   </p>
                   {dispute.status === "closed" && (
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-red-600 font-bold">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-red-600 font-bold">
                       RESOLVED, DISPUTE CLOSED
                     </p>
                   )}
@@ -349,12 +349,12 @@ export default function DisputeDiscussionPage() {
             {/* Offer Input Card - Only show if dispute is open */}
             {dispute.status === "open" && (
               <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                <p className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-3">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
                   Make an offer:
                 </p>
                 {!hasOtherMadeOffer && (
                   <Button
-                    className="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 font-['Roboto',sans-serif] text-[13px]"
+                    className="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 font-['Poppins',sans-serif] text-[13px]"
                     disabled
                   >
                     {isClaimant ? dispute.respondentName : dispute.claimantName} has not made an offer yet
@@ -362,7 +362,7 @@ export default function DisputeDiscussionPage() {
                 )}
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       £
                     </span>
                     <Input
@@ -370,7 +370,7 @@ export default function DisputeDiscussionPage() {
                       value={newOffer}
                       onChange={(e) => setNewOffer(e.target.value)}
                       placeholder="0.00"
-                      className="pl-7 font-['Roboto',sans-serif] text-[14px]"
+                      className="pl-7 font-['Poppins',sans-serif] text-[14px]"
                       step="0.01"
                       min="0"
                       max={dispute.amount}
@@ -379,13 +379,13 @@ export default function DisputeDiscussionPage() {
                   <Button
                     onClick={handleMakeOffer}
                     disabled={!newOffer}
-                    className="bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Roboto',sans-serif] px-6"
+                    className="bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] px-6"
                   >
                     SUBMIT
                   </Button>
                 </div>
                 {hasUserMadeOffer && (
-                  <p className="font-['Roboto',sans-serif] text-[11px] text-green-600 mt-2 text-center">
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-green-600 mt-2 text-center">
                     Your current offer: £{userWantsToPay?.toFixed(2)}
                   </p>
                 )}

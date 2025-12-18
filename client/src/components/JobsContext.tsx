@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface JobQuote {
   id: string;
@@ -111,8 +112,12 @@ interface JobsContextType {
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
 
 export function JobsProvider({ children }: { children: ReactNode }) {
+  const normalizeAvatar = (value?: string) =>
+    value && !/images\.unsplash\.com/i.test(value) ? value : defaultAvatar;
+
   const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([
+  const [jobs, setJobs] = useState<Job[]>(
+    [
     // 1. ACTIVE Job - With pending quotes (client-1)
     {
       id: "job-1",
@@ -132,7 +137,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-1",
           professionalId: "pro-1",
           professionalName: "John Smith Plumbing",
-          professionalAvatar: "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzc21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI3OTI1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.8,
           professionalReviews: 127,
           price: 135,
@@ -145,7 +150,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-2",
           professionalId: "pro-2",
           professionalName: "FastFix Plumbing Ltd",
-          professionalAvatar: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBoZWFkc2hvdHxlbnwxfHx8fDE3NjMyOTQxMjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.9,
           professionalReviews: 234,
           price: 145,
@@ -158,7 +163,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-3-rejected",
           professionalId: "pro-3",
           professionalName: "Budget Plumbers",
-          professionalAvatar: "https://images.unsplash.com/photo-1762522927402-f390672558d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMG1hbnxlbnwxfHx8fDE3NjMzMTEwMzl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.2,
           professionalReviews: 45,
           price: 180,
@@ -209,7 +214,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-3-1",
           professionalId: "pro-4",
           professionalName: "CleanPro Services",
-          professionalAvatar: "https://images.unsplash.com/photo-1629507208649-70919ca33793?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzMzMzU4OXww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.7,
           professionalReviews: 89,
           price: 320,
@@ -252,7 +257,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-4-1",
           professionalId: "pro-1",
           professionalName: "Expert Builders Ltd",
-          professionalAvatar: "https://images.unsplash.com/photo-1667556205536-e5b04ee97ace?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwZXJzb24lMjBzbWlsaW5nfGVufDF8fHx8MTc2MzM1NDY0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.9,
           professionalReviews: 145,
           price: 3200,
@@ -309,7 +314,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-5-1",
           professionalId: "pro-1",
           professionalName: "TechWizards Ltd",
-          professionalAvatar: "https://images.unsplash.com/photo-1762423058726-ddea1ec51b66?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYWxlJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzYzMzM4NTcxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.6,
           professionalReviews: 78,
           price: 4800,
@@ -366,7 +371,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-6-1",
           professionalId: "pro-6",
           professionalName: "Green Thumb Landscaping",
-          professionalAvatar: "https://images.unsplash.com/photo-1762574821456-cdfe882d36c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzMwNzI2OHww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.9,
           professionalReviews: 156,
           price: 2300,
@@ -417,7 +422,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-7-1",
           professionalId: "pro-7",
           professionalName: "TopRoof Services",
-          professionalAvatar: "https://images.unsplash.com/photo-1649589244330-09ca58e4fa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI5MjAyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.7,
           professionalReviews: 92,
           price: 750,
@@ -449,7 +454,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-8-1",
           professionalId: "pro-1",
           professionalName: "John Smith Plumbing",
-          professionalAvatar: "https://images.unsplash.com/photo-1689600944138-da3b150d9cb8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc2MzMzNTgyM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.8,
           professionalReviews: 127,
           price: 450,
@@ -481,7 +486,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-9-1",
           professionalId: "pro-1",
           professionalName: "Auto Expert Services",
-          professionalAvatar: "https://images.unsplash.com/photo-1762505464553-1f4eb1578f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMHdvbWFufGVufDF8fHx8MTc2MzMzODQ3MXww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.8,
           professionalReviews: 127,
           price: 220,
@@ -524,7 +529,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-10-1",
           professionalId: "pro-1",
           professionalName: "PowerWorks Electrical",
-          professionalAvatar: "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzc21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI3OTI1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.9,
           professionalReviews: 203,
           price: 2600,
@@ -581,7 +586,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-11-1",
           professionalId: "pro-1",
           professionalName: "MobileFirst Developers",
-          professionalAvatar: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBoZWFkc2hvdHxlbnwxfHx8fDE3NjMyOTQxMjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.7,
           professionalReviews: 156,
           price: 7500,
@@ -640,7 +645,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-12-1",
           professionalId: "pro-1",
           professionalName: "Kitchen Pro Installers",
-          professionalAvatar: "https://images.unsplash.com/photo-1629507208649-70919ca33793?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzMzMzU4OXww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.8,
           professionalReviews: 189,
           price: 1650,
@@ -690,7 +695,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-13-1",
           professionalId: "pro-1",
           professionalName: "SafeGuard Pest Control",
-          professionalAvatar: "https://images.unsplash.com/photo-1667556205536-e5b04ee97ace?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwZXJzb24lMjBzbWlsaW5nfGVufDF8fHx8MTc2MzM1NDY0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+          professionalAvatar: defaultAvatar,
           professionalRating: 4.9,
           professionalReviews: 276,
           price: 165,
@@ -712,7 +717,14 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         },
       ],
     },
-  ]);
+    ].map((job) => ({
+      ...job,
+      quotes: (job.quotes || []).map((q) => ({
+        ...q,
+        professionalAvatar: normalizeAvatar(q.professionalAvatar),
+      })),
+    }))
+  );
 
   const addJob = (jobData: Omit<Job, "id" | "postedAt" | "quotes">) => {
     const newJob: Job = {

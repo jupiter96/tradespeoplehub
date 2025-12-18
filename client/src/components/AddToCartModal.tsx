@@ -164,10 +164,10 @@ export default function AddToCartModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[70vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-['Roboto',sans-serif] text-[24px] md:text-[28px] text-[#2c353f]">
+          <DialogTitle className="font-['Poppins',sans-serif] text-[24px] md:text-[28px] text-[#2c353f]">
             Customize Your Order
           </DialogTitle>
-          <DialogDescription className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
             Configure service details and select appointment time
           </DialogDescription>
         </DialogHeader>
@@ -181,13 +181,13 @@ export default function AddToCartModal({
               className="w-20 h-20 rounded-lg object-cover"
             />
             <div className="flex-1">
-              <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium mb-1">
+              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium mb-1">
                 {serviceTitle}
               </h3>
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                 by {sellerName}
               </p>
-              <p className="font-['Roboto',sans-serif] text-[18px] text-[#FE8A0F] font-medium mt-1">
+              <p className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F] font-medium mt-1">
                 £{(basePrice || 0).toFixed(2)}
               </p>
             </div>
@@ -195,13 +195,13 @@ export default function AddToCartModal({
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="details" className="font-['Roboto',sans-serif]">
+              <TabsTrigger value="details" className="font-['Poppins',sans-serif]">
                 Service Details
               </TabsTrigger>
-              <TabsTrigger value="booking" className="font-['Roboto',sans-serif]">
+              <TabsTrigger value="booking" className="font-['Poppins',sans-serif]">
                 Date & Time
               </TabsTrigger>
-              <TabsTrigger value="summary" className="font-['Roboto',sans-serif]">
+              <TabsTrigger value="summary" className="font-['Poppins',sans-serif]">
                 Summary
               </TabsTrigger>
             </TabsList>
@@ -213,7 +213,7 @@ export default function AddToCartModal({
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <Package className="w-5 h-5 text-[#FE8A0F]" />
-                    <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f]">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                       Select Package
                     </h3>
                   </div>
@@ -232,17 +232,17 @@ export default function AddToCartModal({
                             <Label htmlFor={pkg.type} className="flex-1 cursor-pointer">
                               <div className="flex items-start justify-between mb-2">
                                 <div>
-                                  <p className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium capitalize">
+                                  <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium capitalize">
                                     {pkg.name}
                                   </p>
                                 </div>
-                                <p className="font-['Roboto',sans-serif] text-[18px] text-[#FE8A0F] font-medium">
+                                <p className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F] font-medium">
                                   £{pkg.price.toFixed(2)}
                                 </p>
                               </div>
                               <ul className="space-y-1">
                                 {pkg.features.map((feature, idx) => (
-                                  <li key={idx} className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-2">
+                                  <li key={idx} className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-2">
                                     <CheckCircle2 className="w-3 h-3 text-[#10B981]" />
                                     {feature}
                                   </li>
@@ -259,7 +259,7 @@ export default function AddToCartModal({
 
               {/* Quantity */}
               <div>
-                <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
                   Quantity
                 </h3>
                 <div className="flex items-center gap-4 bg-gray-50 rounded-xl p-4 w-fit">
@@ -269,7 +269,7 @@ export default function AddToCartModal({
                   >
                     <Minus className="w-5 h-5 text-[#2c353f]" />
                   </button>
-                  <span className="font-['Roboto',sans-serif] text-[20px] text-[#2c353f] font-medium min-w-[40px] text-center">
+                  <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-medium min-w-[40px] text-center">
                     {quantity}
                   </span>
                   <button
@@ -284,7 +284,7 @@ export default function AddToCartModal({
               {/* Service Extras */}
               {addons.length > 0 && (
                 <div>
-                  <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-3">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
                     Service Extras (Optional)
                   </h3>
                   <div className="space-y-2">
@@ -306,11 +306,11 @@ export default function AddToCartModal({
                             onChange={() => handleAddonToggle(addon.id)}
                             className="w-5 h-5 text-[#3B82F6] rounded"
                           />
-                          <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                             {addon.title}
                           </span>
                         </div>
-                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#FE8A0F] font-medium">
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F] font-medium">
                           +£{addon.price.toFixed(2)}
                         </span>
                       </label>
@@ -337,7 +337,7 @@ export default function AddToCartModal({
                     <div className="w-8 h-8 bg-[#FE8A0F] rounded-full flex items-center justify-center flex-shrink-0">
                       <CalendarIcon className="w-4 h-4 text-white" />
                     </div>
-                    <h3 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
                       Select Date
                     </h3>
                   </div>
@@ -347,14 +347,14 @@ export default function AddToCartModal({
                       selected={selectedDate}
                       onSelect={handleDateSelect}
                       disabled={(date) => date < today}
-                      className="font-['Roboto',sans-serif]"
+                      className="font-['Poppins',sans-serif]"
                     />
                   </div>
                   {selectedDate && !showTimePicker && (
                     <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-green-700 font-medium">
+                        <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-green-700 font-medium">
                           {formatDate(selectedDate)}
                         </p>
                       </div>
@@ -391,11 +391,11 @@ export default function AddToCartModal({
                         <Clock className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-['Roboto',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+                        <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
                           Select Time
                         </h3>
                         {selectedDate && (
-                          <p className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b]">
+                          <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b]">
                             {formatDate(selectedDate)}
                           </p>
                         )}
@@ -411,7 +411,7 @@ export default function AddToCartModal({
                           <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6b6b6b] flex-shrink-0" />
                           <Badge 
                             variant="outline" 
-                            className="font-['Roboto',sans-serif] text-[11px] md:text-[12px] border-[#FE8A0F] text-[#FE8A0F]"
+                            className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] border-[#FE8A0F] text-[#FE8A0F]"
                           >
                             {slotGroup.slot}
                           </Badge>
@@ -422,7 +422,7 @@ export default function AddToCartModal({
                               key={time}
                               onClick={() => handleTimeClick(time, slotGroup.slot)}
                               className={`
-                                py-2 md:py-2.5 px-2 md:px-3 rounded-lg border-2 transition-all font-['Roboto',sans-serif] text-[12px] md:text-[13px]
+                                py-2 md:py-2.5 px-2 md:px-3 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[12px] md:text-[13px]
                                 ${selectedTime === time 
                                   ? "border-[#3B82F6] bg-blue-50 text-[#3B82F6] font-medium shadow-sm" 
                                   : "border-gray-200 bg-white hover:border-[#3B82F6] hover:bg-blue-50 text-[#2c353f]"
@@ -442,7 +442,7 @@ export default function AddToCartModal({
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                        <p className="font-['Roboto',sans-serif] text-[12px] md:text-[13px] text-blue-700 font-medium">
+                        <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-blue-700 font-medium">
                           Selected: {selectedTime} ({selectedTimeSlot})
                         </p>
                       </div>
@@ -455,20 +455,20 @@ export default function AddToCartModal({
             {/* Tab 3: Summary */}
             <TabsContent value="summary">
               <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200">
-                <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-4">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
                   Order Summary
                 </h3>
                 
                 <div className="space-y-3 mb-4">
                   {/* Base/Package Price */}
                   <div className="flex justify-between items-center">
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       {hasPackages && selectedPackage 
                         ? `${packages.find(p => p.type === selectedPackage)?.name} Package`
                         : 'Service Base Price'
                       }
                     </span>
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       £{((hasPackages && selectedPackage 
                         ? packages.find(p => p.type === selectedPackage)?.price || basePrice
                         : basePrice
@@ -482,10 +482,10 @@ export default function AddToCartModal({
                     if (!addon) return null;
                     return (
                       <div key={addonId} className="flex justify-between items-center">
-                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                           + {addon.title}
                         </span>
-                        <span className="font-['Roboto',sans-serif] text-[14px] text-[#FE8A0F]">
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
                           £{addon.price.toFixed(2)}
                         </span>
                       </div>
@@ -494,10 +494,10 @@ export default function AddToCartModal({
 
                   {/* Quantity */}
                   <div className="flex justify-between items-center">
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       Quantity
                     </span>
-                    <span className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f]">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       x{quantity}
                     </span>
                   </div>
@@ -506,10 +506,10 @@ export default function AddToCartModal({
 
                   {/* Total */}
                   <div className="flex justify-between items-center">
-                    <span className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] font-medium">
+                    <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
                       Total
                     </span>
-                    <span className="font-['Roboto',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
+                    <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
                       £{calculateTotal().toFixed(2)}
                     </span>
                   </div>
@@ -518,10 +518,10 @@ export default function AddToCartModal({
                 {/* Appointment Info */}
                 {selectedDate && selectedTime ? (
                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 mt-4">
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Appointment Scheduled:
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-green-700">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-700">
                       {selectedDate.toLocaleDateString('en-GB', { 
                         weekday: 'long', 
                         month: 'long', 
@@ -529,13 +529,13 @@ export default function AddToCartModal({
                         year: 'numeric'
                       })}
                     </p>
-                    <p className="font-['Roboto',sans-serif] text-[14px] text-green-700">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-700">
                       {selectedTime} ({selectedTimeSlot})
                     </p>
                   </div>
                 ) : (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-4">
-                    <p className="font-['Roboto',sans-serif] text-[13px] text-yellow-800">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800">
                       ⚠️ Please select date and time in the "Date & Time" tab
                     </p>
                   </div>
@@ -549,10 +549,10 @@ export default function AddToCartModal({
         <div className="pt-4 border-t border-gray-200 mt-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                 Total Amount
               </p>
-              <p className="font-['Roboto',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
+              <p className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
                 £{calculateTotal().toFixed(2)}
               </p>
             </div>
@@ -567,7 +567,7 @@ export default function AddToCartModal({
             <Button
               onClick={handleConfirm}
               disabled={!canProceed}
-              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-xl transition-all duration-300 font-['Roboto',sans-serif] text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="w-5 h-5 mr-2" />
               Add to Cart
@@ -575,7 +575,7 @@ export default function AddToCartModal({
             <Button
               onClick={onClose}
               variant="outline"
-              className="px-6 py-6 rounded-xl font-['Roboto',sans-serif] text-[15px] border-2"
+              className="px-6 py-6 rounded-xl font-['Poppins',sans-serif] text-[15px] border-2"
             >
               Cancel
             </Button>

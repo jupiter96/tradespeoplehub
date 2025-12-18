@@ -486,10 +486,10 @@ export default function PostJobPage() {
                             <DollarSign className="w-8 h-8 text-white" />
                           )}
                         </div>
-                        <p className="font-['Roboto',sans-serif] text-[16px] font-medium text-[#FE8A0F] mb-1">
+                        <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#FE8A0F] mb-1">
                           {group.title}
                         </p>
-                        <p className="font-['Roboto',sans-serif] text-[13px] text-[#6B7280]">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6B7280]">
                           {group.description}
                         </p>
                       </div>
@@ -499,10 +499,10 @@ export default function PostJobPage() {
 
                 {/* Progress Text */}
                 <div className="flex items-center justify-center gap-3 mt-6">
-                  <span className="font-['Roboto',sans-serif] text-[13px] text-[#6B7280]">
+                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#6B7280]">
                     Step {currentStep} of {totalSteps}
                   </span>
-                  <span className="font-['Roboto',sans-serif] text-[13px] font-medium text-[#FE8A0F]">
+                  <span className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#FE8A0F]">
                     {Math.round((currentStep / totalSteps) * 100)}%
                   </span>
                 </div>
@@ -518,10 +518,10 @@ export default function PostJobPage() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     What service are you looking for?
                   </h2>
-                  <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                     First select a sector, then choose minimum 3 specific categories
                   </p>
                 </div>
@@ -530,7 +530,7 @@ export default function PostJobPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Level 1: Sector (single selection) */}
                   <div className="flex flex-col">
-                    <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Sector
                     </Label>
                     <Select 
@@ -540,7 +540,7 @@ export default function PostJobPage() {
                         setSelectedCategories([]);
                       }}
                     >
-                      <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]">
+                      <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
                         <SelectValue placeholder="Select sector..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -555,7 +555,7 @@ export default function PostJobPage() {
 
                   {/* Level 2: Category Multi-Select with Tags */}
                   <div className="flex flex-col">
-                    <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Category
                     </Label>
                     <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
@@ -563,7 +563,7 @@ export default function PostJobPage() {
                         <button
                           disabled={!selectedSector}
                           className={cn(
-                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Roboto',sans-serif] text-[14px] text-left transition-all",
+                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
                             !selectedSector 
                               ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
                               : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
@@ -606,10 +606,10 @@ export default function PostJobPage() {
                           <Command>
                             <CommandInput 
                               placeholder="Search categories..." 
-                              className="font-['Roboto',sans-serif]"
+                              className="font-['Poppins',sans-serif]"
                             />
                             <CommandList>
-                              <CommandEmpty className="font-['Roboto',sans-serif] text-[13px] text-center py-4">
+                              <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
                                 No category found.
                               </CommandEmpty>
                               <CommandGroup>
@@ -625,7 +625,7 @@ export default function PostJobPage() {
                                           setSelectedCategories([...selectedCategories, category.value]);
                                         }
                                       }}
-                                      className="font-['Roboto',sans-serif] cursor-pointer"
+                                      className="font-['Poppins',sans-serif] cursor-pointer"
                                     >
                                       <div className="flex items-center justify-between w-full">
                                         <span>{category.label}</span>
@@ -649,7 +649,7 @@ export default function PostJobPage() {
                 {selectedSector && (
                   <div className="mt-4">
                     <div className={cn(
-                      "flex items-center gap-2 text-[13px] font-['Roboto',sans-serif] px-4 py-3 rounded-lg",
+                      "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
                       selectedCategories.length >= 3 
                         ? "bg-green-50 text-green-700" 
                         : "bg-orange-50 text-orange-700"
@@ -679,10 +679,10 @@ export default function PostJobPage() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     Give your job a headline
                   </h2>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                     Write a short title that summarizes what you need done.
                   </p>
                 </div>
@@ -692,7 +692,7 @@ export default function PostJobPage() {
                     placeholder="e.g., Install new bathroom suite"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                   />
                 </div>
               </div>
@@ -702,10 +702,10 @@ export default function PostJobPage() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     Describe your job
                   </h2>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                     Provide details about what you need done. Be as specific as possible.
                   </p>
                 </div>
@@ -716,13 +716,13 @@ export default function PostJobPage() {
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
                     rows={8}
-                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px] resize-none"
+                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
                   />
                 </div>
 
                 {/* Image Upload */}
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                     Add photos (Optional)
                   </Label>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -740,7 +740,7 @@ export default function PostJobPage() {
                     {images.length < 5 && (
                       <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] flex flex-col items-center justify-center cursor-pointer transition-all bg-gray-50 hover:bg-[#FFF5EB]">
                         <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                        <span className="font-['Roboto',sans-serif] text-[12px] text-gray-500">Upload</span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-gray-500">Upload</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -760,10 +760,10 @@ export default function PostJobPage() {
               <div className="space-y-6">
                 {/* Postcode Section */}
                 <div>
-                  <h2 className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     Where do you need this done?
                   </h2>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
                     Enter the postcode and address where the work needs to be done.
                   </p>
                   <AddressAutocomplete
@@ -787,16 +787,16 @@ export default function PostJobPage() {
                     showTownCityField={true}
                     showCountyField={true}
                     addressLabel="Address"
-                    className="font-['Roboto',sans-serif]"
+                    className="font-['Poppins',sans-serif]"
                   />
                 </div>
 
                 {/* Timing Section */}
                 <div className="border-t pt-6">
-                  <h3 className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
                     When do you need this done? <span className="text-red-500">*</span>
                   </h3>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
                     Select your preferred timeframe
                   </p>
 
@@ -821,7 +821,7 @@ export default function PostJobPage() {
                         )} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-['Roboto',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
                           Urgent (Within 24 hours)
                         </p>
                       </div>
@@ -850,7 +850,7 @@ export default function PostJobPage() {
                         )} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-['Roboto',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
                           Soon (Within a week)
                         </p>
                       </div>
@@ -879,7 +879,7 @@ export default function PostJobPage() {
                         )} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-['Roboto',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
                           Flexible (Within a month)
                         </p>
                       </div>
@@ -891,14 +891,14 @@ export default function PostJobPage() {
 
                   {/* Optional Preferred Start Date */}
                   <div className="mt-6">
-                    <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                       Preferred Start Date (Optional)
                     </Label>
                     <Input
                       type="date"
                       value={preferredStartDate}
                       onChange={(e) => setPreferredStartDate(e.target.value)}
-                      className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                      className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                     />
                   </div>
                 </div>
@@ -909,10 +909,10 @@ export default function PostJobPage() {
             {currentStep === 5 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     What's your estimated budget?
                   </h2>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                     Please let us know your estimated budget for this job. Don't worry, there's still opportunity to settle on a final price that suits you and your professional. Just give us a reasonable estimate and we'll go from there.
                   </p>
                 </div>
@@ -933,7 +933,7 @@ export default function PostJobPage() {
                         <RadioGroupItem value={budget.value} id={budget.value} className="hidden md:flex" />
                         <Label
                           htmlFor={budget.value}
-                          className="md:ml-3 font-['Roboto',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
+                          className="md:ml-3 font-['Poppins',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
                         >
                           {budget.label}
                         </Label>
@@ -948,10 +948,10 @@ export default function PostJobPage() {
             {!isLoggedIn && currentStep === 6 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="font-['Roboto',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     Create a new account
                   </h2>
-                  <p className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b]">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                     Register to post your job and receive quotes
                   </p>
                 </div>
@@ -960,7 +960,7 @@ export default function PostJobPage() {
                   {/* First Name & Last Name */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
                         First name <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -969,13 +969,13 @@ export default function PostJobPage() {
                           type="text"
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                           required
                         />
                       </div>
                     </div>
                     <div>
-                      <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
                         Last name <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -984,7 +984,7 @@ export default function PostJobPage() {
                           type="text"
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                           required
                         />
                       </div>
@@ -994,7 +994,7 @@ export default function PostJobPage() {
                   {/* Phone & Email */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
                         Phone number <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -1003,13 +1003,13 @@ export default function PostJobPage() {
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                           required
                         />
                       </div>
                     </div>
                     <div>
-                      <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
                         Email <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -1018,7 +1018,7 @@ export default function PostJobPage() {
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                           required
                         />
                       </div>
@@ -1028,7 +1028,7 @@ export default function PostJobPage() {
                   {/* Password & Confirm Password */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
                         Password <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -1037,7 +1037,7 @@ export default function PostJobPage() {
                           type={showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="pl-10 pr-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 pr-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                           required
                         />
                         <button
@@ -1050,7 +1050,7 @@ export default function PostJobPage() {
                       </div>
                     </div>
                     <div>
-                      <Label className="font-['Roboto',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
                         Confirm password <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -1059,7 +1059,7 @@ export default function PostJobPage() {
                           type={showConfirmPassword ? "text" : "password"}
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="pl-10 pr-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Roboto',sans-serif] text-[14px]"
+                          className="pl-10 pr-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                           required
                         />
                         <button
@@ -1082,7 +1082,7 @@ export default function PostJobPage() {
                     />
                     <Label
                       htmlFor="terms"
-                      className="font-['Roboto',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed"
+                      className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed"
                     >
                       I agree to the{" "}
                       <a href="#" className="text-[#3B82F6] hover:underline">
@@ -1106,7 +1106,7 @@ export default function PostJobPage() {
               disabled={currentStep === 1}
               variant="outline"
               className={cn(
-                "h-12 px-6 rounded-full font-['Roboto',sans-serif] text-[14px] border-2 transition-all duration-300",
+                "h-12 px-6 rounded-full font-['Poppins',sans-serif] text-[14px] border-2 transition-all duration-300",
                 currentStep === 1 
                   ? "opacity-50 cursor-not-allowed" 
                   : "hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
@@ -1121,7 +1121,7 @@ export default function PostJobPage() {
                 onClick={handleNext}
                 disabled={!isStepValid()}
                 className={cn(
-                  "h-12 px-8 rounded-full font-['Roboto',sans-serif] text-[14px] transition-all duration-300",
+                  "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
                   isStepValid()
                     ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -1135,7 +1135,7 @@ export default function PostJobPage() {
                 onClick={handleSubmit}
                 disabled={!isStepValid()}
                 className={cn(
-                  "h-12 px-8 rounded-full font-['Roboto',sans-serif] text-[14px] transition-all duration-300",
+                  "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
                   isStepValid()
                     ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -1150,7 +1150,7 @@ export default function PostJobPage() {
           {/* Already have an account (only show on account step if not logged in) */}
           {!isLoggedIn && currentStep === 6 && (
             <div className="text-center mt-6">
-              <p className="font-['Roboto',sans-serif] text-[13px] text-gray-500">
+              <p className="font-['Poppins',sans-serif] text-[13px] text-gray-500">
                 Already have an account?{" "}
                 <a href="/login" className="text-[#FE8A0F] hover:underline">
                   Log in here
@@ -1173,7 +1173,7 @@ export default function PostJobPage() {
                 <Check className="w-5 h-5 text-[#10B981]" strokeWidth={3} />
               </div>
               <div>
-                <span className="font-['Roboto',sans-serif] text-[14px]">
+                <span className="font-['Poppins',sans-serif] text-[14px]">
                   <span className="text-[#FE8A0F] font-medium">Free</span>
                   <span className="text-[#6B7280]"> to post</span>
                 </span>
@@ -1186,7 +1186,7 @@ export default function PostJobPage() {
                 <Clock className="w-5 h-5 text-[#3B82F6]" strokeWidth={2} />
               </div>
               <div>
-                <span className="font-['Roboto',sans-serif] text-[14px] text-[#6B7280]">
+                <span className="font-['Poppins',sans-serif] text-[14px] text-[#6B7280]">
                   Quotes in <span className="text-[#FE8A0F] font-medium">24hrs</span>
                 </span>
               </div>
@@ -1198,7 +1198,7 @@ export default function PostJobPage() {
                 <Check className="w-5 h-5 text-[#FE8A0F]" strokeWidth={3} />
               </div>
               <div>
-                <span className="font-['Roboto',sans-serif] text-[14px]">
+                <span className="font-['Poppins',sans-serif] text-[14px]">
                   <span className="text-[#FE8A0F] font-medium">Verified</span>
                   <span className="text-[#6B7280]"> pros only</span>
                 </span>

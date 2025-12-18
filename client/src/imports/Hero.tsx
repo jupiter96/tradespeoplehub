@@ -9,7 +9,7 @@ function Cta() {
   return (
     <div className="absolute contents left-[calc(50%-481.9px)] top-[343px] translate-x-[-50%]" data-name="CTA">
       <button className="absolute bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 inset-[67.65%_82.5%_24.46%_4.83%] rounded-[20px] flex items-center justify-center cursor-pointer">
-        <span className="font-['Roboto:Regular',sans-serif] leading-[normal] not-italic text-[15px] text-white">Order Pro Now</span>
+        <span className="font-['Poppins:Regular',sans-serif] leading-[normal] not-italic text-[15px] text-white">Order Pro Now</span>
       </button>
     </div>
   );
@@ -56,7 +56,7 @@ function Stars() {
           <path d={svgPaths.p28bf6000} fill="var(--fill-0, #ED8A19)" id="Vector" />
         </svg>
       </div>
-      <p className="absolute font-['Roboto:Regular',sans-serif] h-[9.631px] leading-[1.24] left-[895.2px] not-italic text-[#5b5b5b] text-[10px] top-[368.07px] w-[23.795px]">4.3</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] h-[9.631px] leading-[1.24] left-[895.2px] not-italic text-[#5b5b5b] text-[10px] top-[368.07px] w-[23.795px]">4.3</p>
     </div>
   );
 }
@@ -68,7 +68,7 @@ function Group() {
       <div className="absolute left-[842.36px] size-[30.505px] top-[344.96px]">
         <img alt="" className="block max-w-none size-full" height="30.505" src={imgEllipse16} width="30.505" />
       </div>
-      <p className="absolute font-['Roboto:Regular',sans-serif] h-[15.595px] leading-[normal] left-[884.12px] not-italic text-[#5b5b5b] text-[14px] top-[347.77px] w-[114.625px]">Alexander Lesli</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] h-[15.595px] leading-[normal] left-[884.12px] not-italic text-[#5b5b5b] text-[14px] top-[347.77px] w-[114.625px]">Alexander Lesli</p>
       <Stars />
     </div>
   );
@@ -102,7 +102,7 @@ function Banner() {
       </div>
       <div className="absolute flex h-[calc(1px*((var(--transform-inner-width)*1)+(var(--transform-inner-height)*0)))] items-center justify-center left-[968px] top-[89px] translate-x-[-50%] w-[calc(1px*((var(--transform-inner-height)*1)+(var(--transform-inner-width)*0)))]" style={{ "--transform-inner-width": "36.21875", "--transform-inner-height": "69" } as React.CSSProperties}>
         <div className="flex-none rotate-[90deg]">
-          <div className="font-['Roboto:ExtraBold',sans-serif] font-extrabold leading-[0.36] relative text-[#fe8a0f] text-[24px] text-center text-nowrap tracking-[4.08px] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
+          <div className="font-['Poppins:ExtraBold',sans-serif] font-extrabold leading-[0.36] relative text-[#fe8a0f] text-[24px] text-center text-nowrap tracking-[4.08px] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
             <p className="mb-0">...</p>
             <p className="mb-0">...</p>
             <p className="mb-0">...</p>
@@ -124,7 +124,7 @@ function Banner() {
       <Image />
       <Group />
       <Group1 />
-      <div className="absolute font-['Roboto:ExtraBold',sans-serif] font-extrabold leading-[0.36] left-[719.5px] text-[24px] text-[rgba(205,205,205,0.26)] text-center text-nowrap top-[334px] tracking-[4.08px] translate-x-[-50%] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
+      <div className="absolute font-['Poppins:ExtraBold',sans-serif] font-extrabold leading-[0.36] left-[719.5px] text-[24px] text-[rgba(205,205,205,0.26)] text-center text-nowrap top-[334px] tracking-[4.08px] translate-x-[-50%] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
         <p className="mb-0">....</p>
         <p className="mb-0">....</p>
         <p className="mb-0">....</p>
@@ -142,14 +142,14 @@ export default function Hero() {
   return (
     <div className="relative size-full" data-name="Hero">
       <Banner />
-      <p className="absolute font-['Roboto:Bold',sans-serif] h-[73px] leading-[32px] left-[calc(50%-560.5px)] not-italic text-[24px] text-white top-[139px] w-[545px]">
+      <p className="absolute font-['Poppins:Bold',sans-serif] h-[73px] leading-[32px] left-[calc(50%-560.5px)] not-italic text-[24px] text-white top-[139px] w-[545px]">
         <span>{`Find the Right Professionals for Any Job – `}</span>
-        <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f]">Fast</span>
-        <span className="text-[#fe8a0f]">,</span> <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f]">Easy</span>
-        <span className="text-[#fe8a0f]">,</span> <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f]">Reliable</span>
+        <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">Fast</span>
+        <span className="text-[#fe8a0f]">,</span> <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">Easy</span>
+        <span className="text-[#fe8a0f]">,</span> <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">Reliable</span>
         <span className="text-[#fe8a0f]">!</span>
       </p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] leading-[20px] left-[calc(50%-560.5px)] not-italic text-[14px] text-white top-[228px] w-[649px]">Order skilled professionals across various industries, from home services and business support to legal advice and creative solutions. Whether you need a quick fix or a long-term partnership, we make it easy to find, hire, and work with top-rated service providers.</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] leading-[20px] left-[calc(50%-560.5px)] not-italic text-[14px] text-white top-[228px] w-[649px]">Order skilled professionals across various industries, from home services and business support to legal advice and creative solutions. Whether you need a quick fix or a long-term partnership, we make it easy to find, hire, and work with top-rated service providers.</p>
     </div>
   );
 }

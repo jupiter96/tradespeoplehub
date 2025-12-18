@@ -46,7 +46,7 @@ export default function FaqSection() {
   return (
     <div className="w-full">
       {/* Title */}
-      <h2 className="font-['Roboto:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] lg:text-[36px] text-center mb-8 md:mb-12 px-4">
+      <h2 className="font-['Poppins:Bold',sans-serif] text-[#2c353f] text-[24px] md:text-[28px] lg:text-[36px] text-center mb-8 md:mb-12 px-4">
         Frequently Asked Questions
       </h2>
 
@@ -62,10 +62,10 @@ export default function FaqSection() {
               onClick={() => toggleFaq(index)}
               className="w-full flex items-center justify-between px-4 md:px-6 lg:px-8 py-4 md:py-5 text-left hover:bg-gray-50 transition-colors"
             >
-              <span className="font-['Roboto:Bold',sans-serif] text-[#3d78cb] text-[14px] md:text-[16px] lg:text-[20px] pr-3 md:pr-4 leading-snug">
+              <span className="font-['Poppins:Bold',sans-serif] text-[#3d78cb] text-[14px] md:text-[16px] lg:text-[20px] pr-3 md:pr-4 leading-snug">
                 {faq.question}
               </span>
-              <span className="font-['Roboto:Black',sans-serif] text-[#fe8a0f] text-[20px] md:text-[24px] flex-shrink-0">
+              <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f] text-[20px] md:text-[24px] flex-shrink-0">
                 {openIndex === index ? "-" : "+"}
               </span>
             </button>
@@ -73,7 +73,7 @@ export default function FaqSection() {
             {/* Answer */}
             {openIndex === index && faq.answer && (
               <div className="px-4 md:px-6 lg:px-8 pb-4 md:pb-5 pt-2">
-                <p className="font-['Roboto:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6]">
+                <p className="font-['Poppins:Regular',sans-serif] text-[#5b5b5b] text-[14px] leading-[1.6]">
                   {faq.answer}
                 </p>
               </div>

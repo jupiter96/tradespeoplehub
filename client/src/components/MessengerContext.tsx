@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
+import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface Contact {
   id: string;
@@ -67,7 +68,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-1",
       name: "John Smith",
-      avatar: "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzc21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI3OTI1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Great! I'll be there on time.",
       timestamp: "Nov 5",
       unread: 0,
@@ -79,7 +80,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-2",
       name: "Sarah Johnson",
-      avatar: "https://images.unsplash.com/photo-1649589244330-09ca58e4fa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI5MjAyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "I'll bring all the necessary equipment.",
       timestamp: "Nov 8",
       unread: 0,
@@ -91,7 +92,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-3",
       name: "Mike Brown",
-      avatar: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBoZWFkc2hvdHxlbnwxfHx8fDE3NjMyOTQxMjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Perfect! I'll start early morning.",
       timestamp: "Nov 10",
       unread: 0,
@@ -103,7 +104,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-4",
       name: "David Wilson",
-      avatar: "https://images.unsplash.com/photo-1629507208649-70919ca33793?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzMzMzU4OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Thanks for your order! See you Monday.",
       timestamp: "Nov 12",
       unread: 0,
@@ -115,7 +116,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-5",
       name: "Emma Taylor",
-      avatar: "https://images.unsplash.com/photo-1689600944138-da3b150d9cb8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc2MzMzNTgyM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "I'll be there on Saturday afternoon.",
       timestamp: "Nov 11",
       unread: 0,
@@ -127,7 +128,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-6",
       name: "Rachel Green",
-      avatar: "https://images.unsplash.com/photo-1762505464553-1f4eb1578f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMHdvbWFufGVufDF8fHx8MTc2MzMzODQ3MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "I'll bring all cleaning supplies!",
       timestamp: "Nov 9",
       unread: 0,
@@ -139,7 +140,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "pro-7",
       name: "Tom Baker",
-      avatar: "https://images.unsplash.com/photo-1762522927402-f390672558d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMG1hbnxlbnwxfHx8fDE3NjMzMTEwMzl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Thank you! Have a great day!",
       timestamp: "Nov 8",
       unread: 0,
@@ -155,7 +156,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "client-1",
       name: "James Anderson",
-      avatar: "https://images.unsplash.com/photo-1762423058726-ddea1ec51b66?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYWxlJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzYzMzM4NTcxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Thanks! Looking forward to it.",
       timestamp: "Nov 13",
       unread: 2,
@@ -166,7 +167,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "client-2",
       name: "Emily Roberts",
-      avatar: "https://images.unsplash.com/photo-1762574821456-cdfe882d36c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzMwNzI2OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Perfect! See you tomorrow.",
       timestamp: "Nov 12",
       unread: 0,
@@ -177,7 +178,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "client-3",
       name: "Michael Chen",
-      avatar: "https://images.unsplash.com/photo-1667556205536-e5b04ee97ace?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwZXJzb24lMjBzbWlsaW5nfGVufDF8fHx8MTc2MzM1NDY0M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Can you come earlier?",
       timestamp: "Nov 11",
       unread: 1,
@@ -188,7 +189,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "client-4",
       name: "Sophie Turner",
-      avatar: "https://images.unsplash.com/photo-1649589244330-09ca58e4fa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI5MjAyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Quote looks good to me!",
       timestamp: "Nov 10",
       unread: 0,
@@ -199,7 +200,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     {
       id: "client-5",
       name: "Oliver Davis",
-      avatar: "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzc21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MzI3OTI1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      avatar: defaultAvatar,
       lastMessage: "Job completed, thank you!",
       timestamp: "Nov 9",
       unread: 0,

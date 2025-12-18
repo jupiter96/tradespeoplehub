@@ -117,10 +117,10 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
         {/* Header - Fixed */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex-1 pr-4">
-            <h2 className="font-['Roboto',sans-serif] text-[18px] sm:text-[22px] text-[#2c353f]">
+            <h2 className="font-['Poppins',sans-serif] text-[18px] sm:text-[22px] text-[#2c353f]">
               Create Service Package
             </h2>
-            <p className="font-['Roboto',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mt-1">
+            <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mt-1">
               Create bundled service packages to offer better value to your clients
             </p>
           </div>
@@ -135,7 +135,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="space-y-4 sm:space-y-6">
-            <p className="font-['Roboto',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+            <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
               Create pricing packages for your service. Clients can choose the package that best fits their needs.
             </p>
             
@@ -145,12 +145,12 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
               
               return (
               <div key={pkg.id} className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 space-y-4">
-                <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f]">
+                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                   {pkg.name} Package
                 </h3>
                 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                     Price (£)
                   </Label>
                   <Input
@@ -162,12 +162,12 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                       setPackages(updated);
                     }}
                     placeholder="0.00"
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
                 </div>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
                     Delivery Type
                   </Label>
                   <RadioGroup 
@@ -196,7 +196,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                         />
                         <span 
                           className={`
-                            font-['Roboto',sans-serif] text-[12px] text-center
+                            font-['Poppins',sans-serif] text-[12px] text-center
                             ${pkg.deliveryType === "standard" ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
                           `}
                         >
@@ -223,7 +223,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                         />
                         <span 
                           className={`
-                            font-['Roboto',sans-serif] text-[12px] text-center
+                            font-['Poppins',sans-serif] text-[12px] text-center
                             ${pkg.deliveryType === "same-day" ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
                           `}
                         >
@@ -238,7 +238,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                 </div>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
                     Description
                   </Label>
                   <Textarea
@@ -249,12 +249,12 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                       setPackages(updated);
                     }}
                     placeholder="Describe what's included..."
-                    className="font-['Roboto',sans-serif] text-[14px] border-gray-300 min-h-[80px] resize-none"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[80px] resize-none"
                   />
                 </div>
 
                 <div>
-                  <Label className="font-['Roboto',sans-serif] text-[13px] text-[#6b6b6b] mb-3 block">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3 block">
                     Features (Select up to 5)
                   </Label>
                   <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-2">
@@ -285,7 +285,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                             `}
                           />
                           <span className={`
-                            font-['Roboto',sans-serif] text-[13px] leading-snug
+                            font-['Poppins',sans-serif] text-[13px] leading-snug
                             ${isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'}
                           `}>
                             {option.label}
@@ -294,7 +294,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                       );
                     })}
                   </div>
-                  <p className="font-['Roboto',sans-serif] text-[11px] text-[#8d8d8d] mt-2">
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-2">
                     {pkg.features.length} of 5 features selected
                   </p>
                 </div>
@@ -309,13 +309,13 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
           <Button
             variant="outline"
             onClick={onClose}
-            className="font-['Roboto',sans-serif] border-gray-300 hover:bg-gray-100 text-[13px] sm:text-[14px] px-4 sm:px-6"
+            className="font-['Poppins',sans-serif] border-gray-300 hover:bg-gray-100 text-[13px] sm:text-[14px] px-4 sm:px-6"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Roboto',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6"
+            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             Create Package

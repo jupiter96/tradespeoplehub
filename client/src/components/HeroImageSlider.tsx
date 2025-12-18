@@ -1,44 +1,45 @@
 import { useState, useEffect } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import serviceVector from "../assets/service_vector.jpg";
 
 const categoryImages = [
   {
-    url: "https://images.unsplash.com/photo-1635221798248-8a3452ad07cd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwbHVtYmVyJTIwcHJvZmVzc2lvbmFsJTIwd29ya2luZ3xlbnwxfHx8fDE3NjM0OTE0NTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Plumbing Services",
     description: "Expert plumbers ready to help"
   },
   {
-    url: "https://images.unsplash.com/photo-1467733238130-bb6846885316?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVjdHJpY2lhbiUyMHdvcmtpbmclMjBwcm9mZXNzaW9uYWx8ZW58MXx8fHwxNzYzMzk2Nzk2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Electrical Work",
     description: "Certified electricians at your service"
   },
   {
-    url: "https://images.unsplash.com/photo-1601155474324-8f3481386742?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXJwZW50ZXIlMjBjcmFmdHNtYW4lMjB3b29kd29ya3xlbnwxfHx8fDE3NjM0OTE0NTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Carpentry & Woodwork",
     description: "Skilled craftsmen for your projects"
   },
   {
-    url: "https://images.unsplash.com/photo-1688372199140-cade7ae820fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYWludGVyJTIwZGVjb3JhdG9yJTIwd29ya2luZ3xlbnwxfHx8fDE3NjM0OTE0NTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Painting & Decorating",
     description: "Professional painters & decorators"
   },
   {
-    url: "https://images.unsplash.com/photo-1724556295135-ff92b9aa0a55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnYXJkZW5lciUyMGxhbmRzY2FwaW5nJTIwb3V0ZG9vcnxlbnwxfHx8fDE3NjM0OTE0NTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Gardening & Landscaping",
     description: "Transform your outdoor space"
   },
   {
-    url: "https://images.unsplash.com/photo-1671179517648-0e4e6ddd3ea7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWNoYW5pYyUyMHJlcGFpciUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NjM0OTE0NTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Repair & Maintenance",
     description: "Quick fixes by professionals"
   },
   {
-    url: "https://images.unsplash.com/photo-1692166567037-4009225486ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb25zdHJ1Y3Rpb24lMjB3b3JrZXIlMjBidWlsZGluZ3xlbnwxfHx8fDE3NjM0MDQ3Njh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Construction Services",
     description: "Building your dreams together"
   },
   {
-    url: "https://images.unsplash.com/photo-1760827797819-4361cd5cd353?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjbGVhbmluZyUyMHNlcnZpY2V8ZW58MXx8fHwxNzYzNDkwNDA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    url: serviceVector,
     category: "Professional Cleaning",
     description: "Spotless results guaranteed"
   }

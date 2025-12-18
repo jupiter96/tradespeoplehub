@@ -537,10 +537,48 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
 export function useAccount() {
   const context = useContext(AccountContext);
-  if (context === undefined) {
-    throw new Error("useAccount must be used within an AccountProvider");
+  if (context !== undefined && context !== null) return context;
+
+  // In rare dev/HMR edge cases (or misconfigured app shells), context can be missing.
+  // Returning a guarded fallback prevents a full app crash while keeping failures loud
+  // when any account action is attempted.
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.error("useAccount was called without an AccountProvider in the React tree.");
   }
-  return context;
+
+  const err = () => {
+    throw new Error("useAccount must be used within an AccountProvider");
+  };
+
+  return {
+    userRole: null,
+    isLoggedIn: false,
+    userInfo: null,
+    currentUser: null,
+    login: async () => err(),
+    register: async () => err(),
+    verifyRegistrationEmail: async () => err(),
+    completeRegistration: async () => err(),
+    fetchPendingSocialProfile: async () => err(),
+    sendSocialPhoneCode: async () => err(),
+    verifySocialPhone: async () => err(),
+    completeSocialRegistration: async () => err(),
+    updateProfile: async () => err(),
+    requestEmailChangeOTP: async () => err(),
+    requestPhoneChangeOTP: async () => err(),
+    verifyOTP: async () => err(),
+    uploadAvatar: async () => err(),
+    removeAvatar: async () => err(),
+    requestPasswordReset: async () => err(),
+    resetPassword: async () => err(),
+    changePassword: async () => err(),
+    deleteAccount: async () => err(),
+    logout: async () => err(),
+    updateUserInfo: () => err(),
+    refreshUser: async () => err(),
+    authReady: false,
+  };
 }
 
 export type {

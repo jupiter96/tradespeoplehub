@@ -120,10 +120,10 @@ export default function OrderServiceModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="font-['Roboto',sans-serif] text-[24px] text-[#2c353f]">
+            <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
               Order Service
             </h2>
-            <p className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
               from {professionalName}
             </p>
           </div>
@@ -139,14 +139,14 @@ export default function OrderServiceModal({
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {/* Service Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-['Roboto',sans-serif] text-[16px] text-[#2c353f] mb-2">
+            <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
               {serviceName}
             </h3>
             <div className="flex items-center justify-between">
-              <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                 Price per unit
               </span>
-              <span className="font-['Roboto',sans-serif] text-[18px] text-[#FE8A0F]">
+              <span className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F]">
                 {servicePrice}
               </span>
             </div>
@@ -154,7 +154,7 @@ export default function OrderServiceModal({
 
           {/* Quantity */}
           <div className="mb-6">
-            <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
               Quantity
             </Label>
             <div className="flex items-center gap-3 mt-2">
@@ -166,7 +166,7 @@ export default function OrderServiceModal({
               >
                 <Minus className="w-4 h-4" />
               </Button>
-              <span className="font-['Roboto',sans-serif] text-[18px] text-[#2c353f] w-12 text-center">
+              <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] w-12 text-center">
                 {quantity}
               </span>
               <Button
@@ -178,10 +178,10 @@ export default function OrderServiceModal({
                 <Plus className="w-4 h-4" />
               </Button>
               <div className="ml-auto">
-                <span className="font-['Roboto',sans-serif] text-[14px] text-[#6b6b6b]">
+                <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   Total: 
                 </span>
-                <span className="font-['Roboto',sans-serif] text-[20px] text-[#FE8A0F] ml-2">
+                <span className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] ml-2">
                   £{totalPrice.toFixed(2)}
                 </span>
               </div>
@@ -191,7 +191,7 @@ export default function OrderServiceModal({
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                 Date *
               </Label>
               <div className="relative mt-2">
@@ -200,13 +200,13 @@ export default function OrderServiceModal({
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="pl-10 font-['Roboto',sans-serif]"
+                  className="pl-10 font-['Poppins',sans-serif]"
                   required
                 />
               </div>
             </div>
             <div>
-              <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
                 Time *
               </Label>
               <div className="relative mt-2">
@@ -215,7 +215,7 @@ export default function OrderServiceModal({
                   type="time"
                   value={selectedTime}
                   onChange={(e) => setSelectedTime(e.target.value)}
-                  className="pl-10 font-['Roboto',sans-serif]"
+                  className="pl-10 font-['Poppins',sans-serif]"
                   required
                 />
               </div>
@@ -245,24 +245,24 @@ export default function OrderServiceModal({
               showTownCityField={true}
               showCountyField={true}
               addressLabel="Address"
-              className="font-['Roboto',sans-serif]"
+              className="font-['Poppins',sans-serif]"
             />
           </div>
-              className="font-['Roboto',sans-serif]"
+              className="font-['Poppins',sans-serif]"
               required
             />
           </div>
 
           {/* Additional Notes */}
           <div className="mb-6">
-            <Label className="font-['Roboto',sans-serif] text-[14px] text-[#2c353f] mb-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
               Additional Notes (Optional)
             </Label>
             <Textarea
               placeholder="Any special requirements or instructions..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="font-['Roboto',sans-serif] min-h-[100px] mt-2"
+              className="font-['Poppins',sans-serif] min-h-[100px] mt-2"
             />
           </div>
         </div>
@@ -273,13 +273,13 @@ export default function OrderServiceModal({
             <Button
               variant="outline"
               onClick={onClose}
-              className="flex-1 font-['Roboto',sans-serif]"
+              className="flex-1 font-['Poppins',sans-serif]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
-              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Roboto',sans-serif]"
+              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
             >
               Place Order - £{totalPrice.toFixed(2)}
             </Button>

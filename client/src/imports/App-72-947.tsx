@@ -920,8 +920,8 @@ export default function App() {
     <div className="relative size-full" data-name="App">
       <Frame />
       <div className="absolute bg-[#dbeaff] h-[375px] left-0 rounded-[20px] top-[26px] w-[541px]" />
-      <p className="absolute font-['Roboto:Bold',sans-serif] leading-[44px] left-[672px] not-italic text-[#2c353f] text-[36px] text-nowrap top-[105px] whitespace-pre">Our Mobile App</p>
-      <p className="absolute font-['Roboto:Regular',sans-serif] h-[80px] leading-[normal] left-[672px] not-italic text-[#5b5b5b] text-[14px] top-[163px] w-[448px]">Stay productive on the go—download our app to manage your tasks wherever you are.</p>
+      <p className="absolute font-['Poppins:Bold',sans-serif] leading-[44px] left-[672px] not-italic text-[#2c353f] text-[36px] text-nowrap top-[105px] whitespace-pre">Our Mobile App</p>
+      <p className="absolute font-['Poppins:Regular',sans-serif] h-[80px] leading-[normal] left-[672px] not-italic text-[#5b5b5b] text-[14px] top-[163px] w-[448px]">Stay productive on the go—download our app to manage your tasks wherever you are.</p>
       <DownloadOnTheAppStoreAppleLogoSvgrepoCom />
       <GooglePlayDownloadAndroidAppLogoSvgrepoCom />
       <div className="absolute flex h-[calc(1px*((var(--transform-inner-width)*0.05488346144556999)+(var(--transform-inner-height)*0.9984927177429199)))] items-center justify-center left-[333.31px] top-[46.62px] w-[calc(1px*((var(--transform-inner-height)*0.05488346144556999)+(var(--transform-inner-width)*0.9984927177429199)))]" style={{ "--transform-inner-width": "162.6875", "--transform-inner-height": "323.21875" } as React.CSSProperties}>
@@ -951,7 +951,7 @@ export default function App() {
       <div className="absolute h-[348px] left-[195px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.25)] top-[39px] w-[164px]" data-name="Phone 1">
         <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none size-full" src={imgPhone1} />
       </div>
-      <div className="absolute font-['Roboto:ExtraBold',sans-serif] font-extrabold leading-[0.36] left-[-31.5px] text-[#fe8a0f] text-[24px] text-center text-nowrap top-[-55px] tracking-[4.08px] translate-x-[-50%] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
+      <div className="absolute font-['Poppins:ExtraBold',sans-serif] font-extrabold leading-[0.36] left-[-31.5px] text-[#fe8a0f] text-[24px] text-center text-nowrap top-[-55px] tracking-[4.08px] translate-x-[-50%] whitespace-pre" style={{ fontVariationSettings: "'wdth' 100" }}>
         <p className="mb-0">....</p>
         <p className="mb-0">....</p>
         <p className="mb-0">....</p>
