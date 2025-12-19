@@ -65,13 +65,6 @@ export default function CookieConsent() {
             Customise
           </Button>
           <Button
-            onClick={handleRejectAll}
-            variant="outline"
-            className="flex-1 border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif] text-[10px] md:text-[12px] py-1 h-auto md:py-1.5 whitespace-nowrap"
-          >
-            Reject All
-          </Button>
-          <Button
             onClick={handleAcceptAll}
             className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[10px] md:text-[12px] py-1 h-auto md:py-1.5 whitespace-nowrap"
           >

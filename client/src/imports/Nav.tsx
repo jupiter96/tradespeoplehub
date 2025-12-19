@@ -1649,6 +1649,14 @@ export default function Nav() {
                       <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Overview</span>
                     </Link>
                     <Link
+                      to="/account?tab=profile"
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#FFF5EB] transition-colors cursor-pointer"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <User className="w-5 h-5 text-[#5b5b5b]" />
+                      <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">Profile</span>
+                    </Link>
+                    <Link
                       to="/account?tab=services"
                       className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#FFF5EB] transition-colors cursor-pointer"
                       onClick={() => setMobileMenuOpen(false)}

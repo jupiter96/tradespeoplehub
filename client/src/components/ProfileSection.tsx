@@ -819,30 +819,30 @@ export default function ProfileSection() {
               </span>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-shrink-0">
             <Button
               variant="outline"
               onClick={handleCopyLink}
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 text-[12px] sm:text-[14px] py-2 px-3 sm:px-4 w-full sm:w-auto"
             >
-              <Copy className="w-4 h-4 mr-2" />
-              Copy Link
+              <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="whitespace-nowrap">Copy Link</span>
             </Button>
             <Button
               variant="outline"
               onClick={handleShare}
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 text-[12px] sm:text-[14px] py-2 px-3 sm:px-4 w-full sm:w-auto"
             >
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
+              <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="whitespace-nowrap">Share</span>
             </Button>
             <Button
               variant="outline"
               onClick={() => window.open(fullProfileUrl, "_blank")}
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 text-[12px] sm:text-[14px] py-2 px-3 sm:px-4 w-full sm:w-auto"
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="whitespace-nowrap">Open</span>
             </Button>
           </div>
         </div>
