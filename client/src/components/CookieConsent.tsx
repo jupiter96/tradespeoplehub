@@ -22,6 +22,7 @@ export default function CookieConsent() {
     performance: false,
     targeting: false,
   });
+  const [hasCustomized, setHasCustomized] = useState(false);
 
   useEffect(() => {
     // Check if user has already made a choice
@@ -40,12 +41,23 @@ export default function CookieConsent() {
   }, []);
 
   const handleAcceptAll = () => {
-    localStorage.setItem("cookieConsent", "accepted");
-    localStorage.setItem("cookiePreferences", JSON.stringify({
-      necessary: true,
-      analytics: true,
-      marketing: true,
-    }));
+    if (hasCustomized) {
+      // If customized, apply current preferences and close GDPR box
+      localStorage.setItem("cookieConsent", "customised");
+      localStorage.setItem("cookiePreferences", JSON.stringify({
+        necessary: cookiePreferences.necessary,
+        analytics: cookiePreferences.performance,
+        marketing: cookiePreferences.targeting,
+      }));
+    } else {
+      // If not customized, accept all
+      localStorage.setItem("cookieConsent", "accepted");
+      localStorage.setItem("cookiePreferences", JSON.stringify({
+        necessary: true,
+        analytics: true,
+        marketing: true,
+      }));
+    }
     setIsOpen(false);
     setIsModalOpen(false);
   };
@@ -61,9 +73,26 @@ export default function CookieConsent() {
           performance: prefs.analytics || false,
           targeting: prefs.marketing || false,
         });
+        // Check if preferences differ from default (all false except necessary)
+        const hasCustomSettings = prefs.analytics !== false || prefs.marketing !== false;
+        setHasCustomized(hasCustomSettings);
       } catch (e) {
         // Use defaults if parsing fails
+        setCookiePreferences({
+          necessary: true,
+          performance: false,
+          targeting: false,
+        });
+        setHasCustomized(false);
       }
+    } else {
+      // No saved preferences, use defaults
+      setCookiePreferences({
+        necessary: true,
+        performance: false,
+        targeting: false,
+      });
+      setHasCustomized(false);
     }
     setIsModalOpen(true);
   };
@@ -74,17 +103,33 @@ export default function CookieConsent() {
       performance: true,
       targeting: true,
     });
+    setHasCustomized(false); // Reset since we're accepting all
   };
 
-  const handleConfirmChoices = () => {
-    localStorage.setItem("cookieConsent", "customised");
+  const handleAcceptInModal = () => {
+    // Save preferences but don't set cookieConsent
+    // User must click "Accept" in GDPR box to apply and close it
     localStorage.setItem("cookiePreferences", JSON.stringify({
       necessary: cookiePreferences.necessary,
       analytics: cookiePreferences.performance,
       marketing: cookiePreferences.targeting,
     }));
-    setIsOpen(false);
     setIsModalOpen(false);
+    // Don't close GDPR box - user must click "Accept" in GDPR box
+  };
+
+  const handleConfirmChoices = () => {
+    // Save preferences but don't set cookieConsent
+    // This allows GDPR box to remain visible after refresh
+    // Only "Accept" button in GDPR box will set cookieConsent
+    localStorage.setItem("cookiePreferences", JSON.stringify({
+      necessary: cookiePreferences.necessary,
+      analytics: cookiePreferences.performance,
+      marketing: cookiePreferences.targeting,
+    }));
+    setIsModalOpen(false);
+    // Keep hasCustomized true so GDPR box button shows "Accept"
+    // Don't reset hasCustomized here
   };
 
   const toggleSection = (section: string) => {
@@ -95,10 +140,20 @@ export default function CookieConsent() {
   };
 
   const toggleCookie = (type: "performance" | "targeting") => {
-    setCookiePreferences(prev => ({
-      ...prev,
-      [type]: !prev[type],
-    }));
+    setCookiePreferences(prev => {
+      const updated = {
+        ...prev,
+        [type]: !prev[type],
+      };
+      // If all cookies are enabled (performance and targeting both true), 
+      // it's equivalent to "Accept All", so reset hasCustomized
+      if (updated.performance && updated.targeting) {
+        setHasCustomized(false);
+      } else {
+        setHasCustomized(true);
+      }
+      return updated;
+    });
   };
 
   if (!isOpen) return null;
@@ -127,14 +182,24 @@ export default function CookieConsent() {
               onClick={handleAcceptAll}
               className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[10px] md:text-[12px] py-1 h-auto md:py-1.5 whitespace-nowrap"
             >
-              Accept All
+              {hasCustomized ? "Accept" : "Accept All"}
             </Button>
           </div>
         </div>
       </div>
 
       {/* Privacy Preference Center Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog 
+        open={isModalOpen} 
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          // When modal closes, check if preferences were customized
+          if (!open && hasCustomized) {
+            // Keep hasCustomized true so GDPR box button shows "Accept"
+            // Preferences are already in state, ready to be applied when "Accept" is clicked
+          }
+        }}
+      >
         <DialogContent className="privacy max-w-[800px] w-[95vw] max-h-[90vh] overflow-y-auto p-0 [&>button]:!hidden !z-[99999] [&_div[data-slot='dialog-overlay']]:!z-[99998]">
           <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b">
             <div className="flex items-center justify-between">
@@ -155,13 +220,22 @@ export default function CookieConsent() {
               </p>
             </div>
 
-            {/* Allow All Button */}
-            <Button
-              onClick={handleAllowAllInModal}
-              className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px] md:text-[14px] font-semibold py-2.5 md:py-3 uppercase"
-            >
-              Allow All
-            </Button>
+            {/* Allow All / Accept Button */}
+            {hasCustomized ? (
+              <Button
+                onClick={handleAcceptInModal}
+                className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px] md:text-[14px] font-semibold py-2.5 md:py-3 uppercase"
+              >
+                Accept
+              </Button>
+            ) : (
+              <Button
+                onClick={handleAllowAllInModal}
+                className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px] md:text-[14px] font-semibold py-2.5 md:py-3 uppercase"
+              >
+                Allow All
+              </Button>
+            )}
 
             {/* Manage Consent Preferences Section */}
             <div className="space-y-3 md:space-y-4">
