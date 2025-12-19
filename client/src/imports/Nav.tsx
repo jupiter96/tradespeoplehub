@@ -7,6 +7,7 @@ import { Menu, X, ShoppingCart, Bell, User, Search, Heart, ShoppingBag, Briefcas
 import { useCart } from "../components/CartContext";
 import { useAccount } from "../components/AccountContext";
 import { useSectors, useServiceCategories, type Sector, type Category, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
+import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../components/ui/alert-dialog";
@@ -629,49 +630,10 @@ export default function Nav() {
   // Get sectors from API
   const { sectors: apiSectors, loading: sectorsLoading } = useSectors(false, false);
   
-  // Fetch service categories for all sectors
-  const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Record<string, ServiceCategory[]>>({});
-  const [serviceCategoriesLoading, setServiceCategoriesLoading] = useState(true);
-  
-  useEffect(() => {
-    const fetchServiceCategories = async () => {
-      try {
-        setServiceCategoriesLoading(true);
-        if (apiSectors.length > 0) {
-          const { resolveApiUrl } = await import("../config/api");
-          const categoriesMap: Record<string, ServiceCategory[]> = {};
-          
-          const promises = apiSectors.map(async (sector: Sector) => {
-            try {
-              const response = await fetch(
-                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=true&sortBy=order&sortOrder=asc`),
-                { credentials: 'include' }
-              );
-              if (response.ok) {
-                const data = await response.json();
-                categoriesMap[sector._id] = data.serviceCategories || [];
-              }
-            } catch (error) {
-              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
-            }
-          });
-          
-          await Promise.all(promises);
-          setServiceCategoriesBySector(categoriesMap);
-        }
-      } catch (error) {
-        console.error('Error fetching service categories:', error);
-      } finally {
-        setServiceCategoriesLoading(false);
-      }
-    };
-    
-    if (apiSectors.length > 0) {
-      fetchServiceCategories();
-    } else {
-      setServiceCategoriesLoading(false);
-    }
-  }, [apiSectors]);
+  // Fetch service categories for all sectors using optimized hook
+  const { serviceCategoriesBySector, loading: serviceCategoriesLoading } = useAllServiceCategories(apiSectors, {
+    includeSubCategories: true,
+  });
   
   // Use API sectors if available, otherwise fall back to categoryTree
   const sectorsToUse = apiSectors.length > 0 ? apiSectors : categoryTree.map(s => ({ name: s.name, slug: s.sectorValue, order: s.id }));

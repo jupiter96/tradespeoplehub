@@ -1,57 +1,26 @@
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useSectors, useServiceCategories, type ServiceCategory } from "../hooks/useSectorsAndCategories";
+import { useSectors, type ServiceCategory } from "../hooks/useSectorsAndCategories";
+import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 
 export default function TopCategoriesSection() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { sectors } = useSectors(false, false);
-  const [topServiceCategories, setTopServiceCategories] = useState<ServiceCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { serviceCategoriesBySector, loading } = useAllServiceCategories(sectors, {
+    includeSubCategories: false,
+    limit: 16,
+  });
 
-  useEffect(() => {
-    const fetchTopServiceCategories = async () => {
-      try {
-        setLoading(true);
-        if (sectors.length > 0) {
-          const { resolveApiUrl } = await import("../config/api");
-          // Fetch service categories for all sectors and take top 16
-          const serviceCategoriesPromises = sectors.map(async (sector) => {
-            try {
-              const response = await fetch(
-                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=false&sortBy=order&sortOrder=asc&limit=16`),
-                { credentials: 'include' }
-              );
-              if (response.ok) {
-                const data = await response.json();
-                return data.serviceCategories || [];
-              }
-              return [];
-            } catch (error) {
-              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
-              return [];
-            }
-          });
-          
-          const allCategories = await Promise.all(serviceCategoriesPromises);
-          const flattened = allCategories.flat();
-          // Take top 16 by order
-          const sorted = flattened.sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 16);
-          setTopServiceCategories(sorted);
-        }
-      } catch (error) {
-        console.error('Error fetching top service categories:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (sectors.length > 0) {
-      fetchTopServiceCategories();
-    } else {
-      setLoading(false);
-    }
-  }, [sectors]);
+  // Get top 16 service categories from all sectors
+  const topServiceCategories = useMemo(() => {
+    const allCategories: ServiceCategory[] = [];
+    Object.values(serviceCategoriesBySector).forEach(categories => {
+      allCategories.push(...categories);
+    });
+    // Take top 16 by order
+    return allCategories.sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 16);
+  }, [serviceCategoriesBySector]);
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {

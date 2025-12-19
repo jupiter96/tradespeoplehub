@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { useSectors, useServiceCategories, type ServiceCategory } from "../hooks/useSectorsAndCategories";
+import { useSectors } from "../hooks/useSectorsAndCategories";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Sector } from "../hooks/useSectorsAndCategories";
 import serviceVector from "../assets/service_vector.jpg";
@@ -25,49 +25,8 @@ import serviceVector from "../assets/service_vector.jpg";
 export default function BrowseByCategory() {
   const { sectors, loading: sectorsLoading } = useSectors(false, false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Record<string, ServiceCategory[]>>({});
-  const [loading, setLoading] = useState(true);
-  
-  // Fetch service categories for all sectors
-  useEffect(() => {
-    const fetchServiceCategories = async () => {
-      try {
-        setLoading(true);
-        if (sectors.length > 0) {
-          const { resolveApiUrl } = await import("../config/api");
-          const categoriesMap: Record<string, ServiceCategory[]> = {};
-          
-          const promises = sectors.map(async (sector: Sector) => {
-            try {
-              const response = await fetch(
-                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=false&sortBy=order&sortOrder=asc&limit=1`),
-                { credentials: 'include' }
-              );
-              if (response.ok) {
-                const data = await response.json();
-                categoriesMap[sector._id] = data.serviceCategories || [];
-              }
-            } catch (error) {
-              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
-            }
-          });
-          
-          await Promise.all(promises);
-          setServiceCategoriesBySector(categoriesMap);
-        }
-      } catch (error) {
-        console.error('Error fetching service categories:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (sectors.length > 0) {
-      fetchServiceCategories();
-    } else {
-      setLoading(false);
-    }
-  }, [sectors]);
+  // Removed unnecessary service categories fetch - BrowseByCategory only uses sectors
+  const loading = sectorsLoading;
   // Icon mapping for sectors - Each sector now has a unique icon
   const iconMap: Record<string, any> = {
     "Home & Garden": Home,
