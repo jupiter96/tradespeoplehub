@@ -147,7 +147,7 @@ router.get('/', async (req, res) => {
       if (cacheKey) {
         setCached(cacheKey, payload);
         res.set('Cache-Control', 'public, max-age=300');
-      }
+    }
       return res.json(payload);
     }
     

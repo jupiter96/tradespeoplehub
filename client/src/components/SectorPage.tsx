@@ -1221,7 +1221,7 @@ export default function SectorPage() {
                         if (response.ok) {
                           const data = await response.json();
                           const hasNestedSubCategories = data.serviceSubCategories && data.serviceSubCategories.length > 0;
-
+                          
                           // If this is a leaf subcategory, jump to the services filter page.
                           // The last URL segment becomes the filter option (leaf slug).
                           const currentPathSlugs = subCategorySlugs.length > 0

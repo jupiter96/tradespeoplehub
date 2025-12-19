@@ -470,7 +470,7 @@ export default function ProfilePage() {
             <p className="seller-subtitle">{error || "The profile you're looking for doesn't exist."}</p>
             <div className="mt-6">
               <button className="action-btn message-button" onClick={() => navigate("/")}>
-                Go Home
+              Go Home
               </button>
             </div>
           </div>
@@ -505,11 +505,11 @@ export default function ProfilePage() {
                 ) : (
                   <div className="seller-avatar seller-avatar-initials" aria-label={displayName}>
                     {avatarInitials}
-                  </div>
+                      </div>
                 )}
                 {isOnline && <span className="online-badge" aria-label="Online" title="Online" />}
-              </div>
-            </div>
+                      </div>
+                    </div>
 
             {/* col 2: details */}
             <div className="profile-card-details min-w-0">
@@ -520,7 +520,7 @@ export default function ProfilePage() {
                     <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                   </span>
                 )}
-              </div>
+                  </div>
 
               {/* One primary category under trading name (not a badge) */}
               {topCategory && (
@@ -586,7 +586,7 @@ export default function ProfilePage() {
                 Portfolios
               </button>
               <button className={`nav-link ${activeTab === "reviews" ? "active" : ""}`} onClick={() => setActiveTab("reviews")}>
-                Reviews
+                  Reviews
               </button>
             </div>
 
@@ -632,12 +632,12 @@ export default function ProfilePage() {
                                   <div className="qa-text">
                                     <div className="qa-title">{it.title}</div>
                                     {it.meta && <div className="qa-meta">{it.meta}</div>}
-                                  </div>
-                                </div>
+                      </div>
+                    </div>
                                 <div className="qa-right" aria-label={it.verified ? "Verified" : "Not verified"}>
                                   {it.verified ? <CheckCircle2 className="qa-check" /> : null}
-                                </div>
-                              </div>
+                    </div>
+                            </div>
                             ))}
                           </div>
                         )}
@@ -854,8 +854,8 @@ export default function ProfilePage() {
                     </div>
                   ))
                 )}
-              </div>
-            )}
+                      </div>
+                    )}
           </div>
 
           <aside className="sidebar" aria-label="Right sidebar">
@@ -868,13 +868,13 @@ export default function ProfilePage() {
                     <div key={key} className="verification-item" role="listitem">
                       <div className={`verification-icon status-${status}`}>
                         <Icon className="w-4 h-4" />
-                      </div>
+                  </div>
                       <div className="verification-content">
                         <div className="verification-text">
                           <div className="verification-label">{label}</div>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
+                </div>
+                </div>
                   ))}
                 </div>
               </div>

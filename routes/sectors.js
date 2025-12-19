@@ -96,7 +96,7 @@ router.get('/', async (req, res) => {
           })
             .sort({ createdAt: 1, name: 1 })
             .lean();
-
+          
       const categoriesBySectorId = new Map();
       for (const cat of categories) {
         const key = String(cat.sector);
@@ -107,16 +107,16 @@ router.get('/', async (req, res) => {
 
       // Optionally fetch all subcategories for these categories in ONE query.
       let subCategoriesByCategoryId = null;
-      if (includeSubCategories === 'true') {
+          if (includeSubCategories === 'true') {
         const categoryIds = categories.map((c) => c._id);
         const subCategories = categoryIds.length === 0
           ? []
           : await SubCategory.find({
               category: { $in: categoryIds },
-              isActive: activeOnly === 'true' ? true : { $exists: true }
-            })
-              .sort({ createdAt: 1, name: 1 })
-              .lean();
+                  isActive: activeOnly === 'true' ? true : { $exists: true }
+                })
+                  .sort({ createdAt: 1, name: 1 })
+                  .lean();
 
         subCategoriesByCategoryId = new Map();
         for (const sc of subCategories) {

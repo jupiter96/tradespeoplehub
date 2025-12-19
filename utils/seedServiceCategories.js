@@ -395,7 +395,7 @@ const createLevel2SubCategories = async (serviceCategory) => {
 // Create all subcategories for a service category (new hierarchical structure)
 const createServiceSubCategories = async (serviceCategory) => {
   console.log(`  📁 Creating subcategories for: ${serviceCategory.name}`);
-  
+
   let totalCreated = 0;
 
   // Step 1: Create Level 2 Sub Categories (first tab - Sub Category tab)

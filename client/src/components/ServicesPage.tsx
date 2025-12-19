@@ -106,7 +106,7 @@ export default function ServicesPage() {
   const serviceSubCategorySlugParam =
     serviceSubCategorySlugParams.length > 0
       ? serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1]
-      : null;
+    : null;
   // Legacy URL params for backward compatibility
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");

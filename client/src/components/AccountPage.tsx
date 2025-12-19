@@ -159,17 +159,21 @@ export default function AccountPage() {
   }, [isLoggedIn, navigate, userInfo, location.search]);
 
   // If redirected here after PRO login with incomplete verification, show a centered modal.
+  // This works for both regular login (via sessionStorage flag) and social login (direct check).
   useEffect(() => {
     const isPro = userInfo?.role === "professional";
     if (!isLoggedIn || !isPro) return;
 
-    let shouldShow = false;
+    // Check if we have a sessionStorage flag (regular login) or need to check directly (social login)
+    let shouldCheck = false;
+    let hasSessionFlag = false;
     try {
-      shouldShow = sessionStorage.getItem("showVerificationModalAfterLogin") === "1";
+      hasSessionFlag = sessionStorage.getItem("showVerificationModalAfterLogin") === "1";
+      shouldCheck = hasSessionFlag || true; // Always check for professional users (covers social login)
     } catch {
-      shouldShow = false;
+      shouldCheck = true; // If sessionStorage fails, still check
     }
-    if (!shouldShow) return;
+    if (!shouldCheck) return;
 
     const isPassed = (s: string) => s === "verified" || s === "completed";
     const requiredTypes = ["address", "idCard", "paymentMethod", "publicLiabilityInsurance"] as const;
@@ -188,6 +192,15 @@ export default function AccountPage() {
         verificationModalTimeoutRef.current = null;
       }
     };
+
+    // Track if we've already shown the modal to avoid showing it multiple times
+    const hasShownModalKey = "verificationModalShown";
+    let hasShownModal = false;
+    try {
+      hasShownModal = sessionStorage.getItem(hasShownModalKey) === "1";
+    } catch {
+      // ignore
+    }
 
     const attemptFetchAndShow = async () => {
       try {
@@ -210,8 +223,22 @@ export default function AccountPage() {
         setVerificationModalData(v);
 
         const hasUnpassed = requiredTypes.some((t) => !isPassed(String(v?.[t]?.status || "not-started")));
-        setShowVerificationModal(hasUnpassed);
-        clearFlag();
+        
+        // Only show modal if there are unpassed verifications AND we haven't shown it already
+        if (hasUnpassed && !hasShownModal) {
+          setShowVerificationModal(true);
+          // Mark that we've shown the modal to avoid showing it again on subsequent navigations
+          try {
+            sessionStorage.setItem(hasShownModalKey, "1");
+          } catch {
+            // ignore
+          }
+        }
+        
+        // Clear the session flag if it was set (regular login)
+        if (hasSessionFlag) {
+          clearFlag();
+        }
       } catch {
         if (verificationModalRetryRef.current < 5) {
           verificationModalRetryRef.current += 1;

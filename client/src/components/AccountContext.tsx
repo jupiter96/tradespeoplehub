@@ -459,6 +459,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    // Clear verification modal flag on logout so it shows again on next login
+    try {
+      sessionStorage.removeItem("verificationModalShown");
+      sessionStorage.removeItem("showVerificationModalAfterLogin");
+    } catch {
+      // ignore
+    }
     try {
       await fetch(resolveApiUrl("/api/auth/logout"), {
         method: "POST",

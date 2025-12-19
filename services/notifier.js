@@ -185,7 +185,7 @@ async function loadSmtpConfig() {
   } catch (error) {
     console.error('[Notifier] Error loading SMTP config from database, using environment variables:', error);
     loadFromEnvFallback();
-    console.log('[Notifier] Category SMTP users loaded from environment variables (fallback):', Object.fromEntries(categorySmtpUsers));
+      console.log('[Notifier] Category SMTP users loaded from environment variables (fallback):', Object.fromEntries(categorySmtpUsers));
   }
 }
 
@@ -274,20 +274,20 @@ export async function initNotifier() {
 
     await initializeTransporters();
 
-    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-      try {
-        twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-        console.log('[Notifier] Twilio client initialized successfully');
-      } catch (error) {
-        console.error('[Notifier] Failed to initialize Twilio client:', error);
-      }
-    } else {
-      console.warn('[Notifier] Twilio credentials missing:', {
-        hasAccountSid: !!TWILIO_ACCOUNT_SID,
-        hasAuthToken: !!TWILIO_AUTH_TOKEN,
-        accountSid: TWILIO_ACCOUNT_SID ? `${TWILIO_ACCOUNT_SID.substring(0, 4)}...` : 'missing',
-        authToken: TWILIO_AUTH_TOKEN ? `${TWILIO_AUTH_TOKEN.substring(0, 4)}...` : 'missing'
-      });
+if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+  try {
+  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+    console.log('[Notifier] Twilio client initialized successfully');
+  } catch (error) {
+    console.error('[Notifier] Failed to initialize Twilio client:', error);
+  }
+} else {
+  console.warn('[Notifier] Twilio credentials missing:', {
+    hasAccountSid: !!TWILIO_ACCOUNT_SID,
+    hasAuthToken: !!TWILIO_AUTH_TOKEN,
+    accountSid: TWILIO_ACCOUNT_SID ? `${TWILIO_ACCOUNT_SID.substring(0, 4)}...` : 'missing',
+    authToken: TWILIO_AUTH_TOKEN ? `${TWILIO_AUTH_TOKEN.substring(0, 4)}...` : 'missing'
+  });
     }
 
     notifierInitialized = true;

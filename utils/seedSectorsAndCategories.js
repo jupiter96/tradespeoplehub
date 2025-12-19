@@ -1410,7 +1410,7 @@ const seedSectorsAndCategories = async () => {
         if (subCategories && Array.isArray(subCategories) && subCategories.length > 0) {
           // Remove duplicates from subCategories array
           const uniqueSubCategories = [...new Set(subCategories)];
-
+          
           // Keep only 2-3 subcategories per category (reduce to ~1/10th of prior volume)
           const desiredCount =
             uniqueSubCategories.length >= MAX_SUBCATEGORIES_PER_CATEGORY
