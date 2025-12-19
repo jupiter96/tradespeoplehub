@@ -37,42 +37,43 @@ export default function CookieConsent() {
   };
 
   const handleCustomise = () => {
-    // For now, just accept all when customise is clicked
-    // Can be extended later with a customise modal
-    handleAcceptAll();
+    // Placeholder for a future customise modal.
+    // IMPORTANT: Do NOT set consent here so the banner keeps showing
+    // until the user explicitly accepts or rejects.
+    console.info("Cookie customise clicked - no consent stored yet.");
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-[100] w-[400px] bg-white rounded-lg p-4 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]">
-      <div className="space-y-3">
-        <h2 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
+    <div className="fixed bottom-3 md:bottom-4 left-1/2 md:left-4 -translate-x-1/2 md:translate-x-0 z-[300] w-[92vw] max-w-[400px] bg-white rounded-lg px-3 py-3 md:p-4 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]">
+      <div className="space-y-2.5 md:space-y-3">
+        <h2 className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] font-semibold text-[#2c353f]">
           We value your privacy
         </h2>
         
-        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+        <p className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#6b6b6b] leading-relaxed">
           We use cookies to enhance your browsing experience, serve personalised ads or content, and analyse our traffic. By clicking "Accept All", you consent to our use of cookies.
         </p>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-1.5 md:gap-2 pt-1">
           <Button
             onClick={handleCustomise}
             variant="outline"
-            className="flex-1 border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif] text-[12px] py-1.5 h-auto whitespace-nowrap"
+            className="flex-1 border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif] text-[10px] md:text-[12px] py-1 h-auto md:py-1.5 whitespace-nowrap"
           >
             Customise
           </Button>
           <Button
             onClick={handleRejectAll}
             variant="outline"
-            className="flex-1 border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif] text-[12px] py-1.5 h-auto whitespace-nowrap"
+            className="flex-1 border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif] text-[10px] md:text-[12px] py-1 h-auto md:py-1.5 whitespace-nowrap"
           >
             Reject All
           </Button>
           <Button
             onClick={handleAcceptAll}
-            className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px] py-1.5 h-auto whitespace-nowrap"
+            className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[10px] md:text-[12px] py-1 h-auto md:py-1.5 whitespace-nowrap"
           >
             Accept All
           </Button>
