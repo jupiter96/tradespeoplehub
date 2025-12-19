@@ -29,6 +29,7 @@ import { MessengerProvider } from "./components/MessengerContext";
 import { OrdersProvider } from "./components/OrdersContext";
 import FloatingMessenger from "./components/FloatingMessenger";
 import { Toaster } from "./components/ui/sonner";
+import CookieConsent from "./components/CookieConsent";
 
 function AppContent() {
   const { isLoggedIn } = useAccount();
@@ -72,6 +73,7 @@ function AppContent() {
         <Route path="*" element={<HomePage />} />
       </Routes>
       {isLoggedIn && <FloatingMessenger />}
+      <CookieConsent />
       <Toaster position="top-right" richColors />
     </>
   );

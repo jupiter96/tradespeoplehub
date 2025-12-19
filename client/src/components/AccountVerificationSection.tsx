@@ -714,14 +714,17 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
                             {item.documentName}
                           </span>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteDocument(item.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif]"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {/* Only show delete button if status is not verified or completed */}
+                        {item.status !== "verified" && item.status !== "completed" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteDocument(item.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif]"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     )}
 

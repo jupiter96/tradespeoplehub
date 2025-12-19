@@ -238,7 +238,7 @@ export default function AccountPage() {
         // Clear the session flag if it was set (regular login)
         if (hasSessionFlag) {
           clearFlag();
-        }
+    }
       } catch {
         if (verificationModalRetryRef.current < 5) {
           verificationModalRetryRef.current += 1;
@@ -824,8 +824,8 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         Account Overview
       </h2>
       
-      {/* Welcome Message */}
-      <div className="bg-gradient-to-r from-[#EFF6FF] to-[#FFF5EB] border border-[#3B82F6]/30 rounded-xl p-6 mb-8">
+      {/* Welcome Message - Hidden on mobile (shown in Nav sidebar) */}
+      <div className="hidden md:block bg-gradient-to-r from-[#EFF6FF] to-[#FFF5EB] border border-[#3B82F6]/30 rounded-xl p-6 mb-8">
         <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
           Welcome Back! 👋
         </h3>

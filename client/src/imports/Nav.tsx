@@ -1351,57 +1351,71 @@ export default function Nav() {
       {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed top-[100px] left-0 right-[15%] bottom-0 bg-white shadow-lg z-[45] overflow-y-auto">
-          <div className="flex flex-col p-6 gap-5">
+          <div className="flex flex-col p-6 gap-3">
             {/* Login/Account Button - Moved to top */}
             <MobileLoginButton />
 
             {/* Action Buttons Row - Clean Design */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {/* Get Quote Button - Hide for professionals */}
               {(!isLoggedIn || userRole === "client") && (
                 <Link to="/post-job" onClick={() => setMobileMenuOpen(false)}>
-                  <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-[#FE8A0F] to-[#FF6B00] hover:shadow-lg transition-all cursor-pointer">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20">
-                      <FileText className="w-5 h-5 text-white" />
+                  <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-gradient-to-br from-[#FE8A0F] to-[#FF6B00] hover:shadow-lg transition-all cursor-pointer">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/20">
+                      <FileText className="w-4 h-4 text-white" />
                     </div>
-                    <span className="font-['Poppins',sans-serif] text-[11px] text-white text-center leading-tight">Get Quote</span>
+                    <span className="font-['Poppins',sans-serif] text-[10px] text-white text-center leading-tight">Get Quote</span>
                   </div>
                 </Link>
               )}
 
               {/* Notification */}
-              <button className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#F8F9FA] hover:bg-[#FFF5EB] transition-all cursor-pointer relative">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white">
-                  <Bell className="w-5 h-5 text-[#5b5b5b]" />
+              <button className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#F8F9FA] hover:bg-[#FFF5EB] transition-all cursor-pointer relative">
+                <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white">
+                  <Bell className="w-4 h-4 text-[#5b5b5b]" />
                   {notificationsData.filter(n => !n.read).length > 0 && (
-                    <span className="absolute top-2 right-[50%] translate-x-[10px] bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
                       {notificationsData.filter(n => !n.read).length}
                     </span>
                   )}
                 </div>
-                <span className="font-['Poppins',sans-serif] text-[11px] text-[#5b5b5b] text-center leading-tight">Alerts</span>
+                <span className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] text-center leading-tight">Alerts</span>
               </button>
 
               {/* Shopping Cart */}
               <Link
                 to="/cart"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#F8F9FA] hover:bg-[#FFF5EB] transition-all cursor-pointer relative"
+                className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#F8F9FA] hover:bg-[#FFF5EB] transition-all cursor-pointer relative"
               >
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white">
-                  <ShoppingCart className="w-5 h-5 text-[#5b5b5b]" />
+                <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white">
+                  <ShoppingCart className="w-4 h-4 text-[#5b5b5b]" />
                   {cartCount > 0 && (
-                    <span className="absolute top-2 right-[50%] translate-x-[10px] bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
                       {cartCount}
                     </span>
                   )}
                 </div>
-                <span className="font-['Poppins',sans-serif] text-[11px] text-[#5b5b5b] text-center leading-tight">Cart</span>
+                <span className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] text-center leading-tight">Cart</span>
               </Link>
             </div>
             
+            {/* Welcome Back Card - Only for professionals on account page */}
+            {isLoggedIn && userRole === "professional" && location.pathname === '/account' && (
+              <div className="pt-1 border-t border-[#E5E5E5]">
+                <div className="bg-gradient-to-r from-[#EFF6FF] to-[#FFF5EB] border border-[#3B82F6]/30 rounded-xl p-4">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1.5">
+                    Welcome Back! 👋
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    Your profile is active and visible to potential clients. Keep up the great work and maintain your high ratings!
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Menu Links */}
-            <div className="pt-2 border-t border-[#E5E5E5]">
+            <div>
               {/* Services - Hide for professionals after login */}
               {(!isLoggedIn || userRole === "client") && (
                 <Link
