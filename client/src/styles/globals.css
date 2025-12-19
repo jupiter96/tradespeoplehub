@@ -319,3 +319,11 @@ html {
 .benefits-auto-scroll:hover {
   animation-play-state: paused;
 }
+
+.gdpr{
+  z-index: 100!important;
+}
+
+.privacy{
+  z-index: 110!important;
+}

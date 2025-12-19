@@ -8,7 +8,7 @@ import {
 } from "./ui/dialog";
 import { Switch } from "./ui/switch";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-
+import "../styles/globals.css";
 export default function CookieConsent() {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,12 +26,16 @@ export default function CookieConsent() {
   useEffect(() => {
     // Check if user has already made a choice
     const consent = localStorage.getItem("cookieConsent");
+    console.log("[CookieConsent] Checking localStorage cookieConsent:", consent);
     if (!consent) {
       // Show dialog after a short delay
       const timer = setTimeout(() => {
+        console.log("[CookieConsent] Setting isOpen to true");
         setIsOpen(true);
       }, 500);
       return () => clearTimeout(timer);
+    } else {
+      console.log("[CookieConsent] Consent already exists, not showing banner");
     }
   }, []);
 
@@ -101,7 +105,7 @@ export default function CookieConsent() {
 
   return (
     <>
-      <div className="fixed bottom-3 md:bottom-4 left-1/4 md:left-4 z-[100] bg-white rounded-lg px-3 py-3 md:p-4 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]">
+      <div className="fixed bottom-3 md:bottom-4 left-1/4 md:left-4 gdpr isolate bg-white rounded-lg px-3 py-3 md:p-4 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]">
         <div className="space-y-2.5 md:space-y-3">
           <h2 className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] font-semibold text-[#2c353f]">
             We value your privacy
@@ -131,7 +135,7 @@ export default function CookieConsent() {
 
       {/* Privacy Preference Center Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-[800px] w-[95vw] max-h-[90vh] overflow-y-auto p-0 [&>button]:!hidden">
+        <DialogContent className="privacy max-w-[800px] w-[95vw] max-h-[90vh] overflow-y-auto p-0 [&>button]:!hidden !z-[99999] [&_div[data-slot='dialog-overlay']]:!z-[99998]">
           <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b">
             <div className="flex items-center justify-between">
               <DialogTitle className="font-['Poppins',sans-serif] text-[18px] md:text-[24px] font-semibold text-[#2c353f]">

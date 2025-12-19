@@ -67,7 +67,7 @@ export default function HomePage() {
                 Your browser does not support the video tag.
               </video>
           
-              <div className="absolute inset-0 z-40 px-6 md:px-12 lg:px-20 xl:px-24 w-full h-full flex flex-col justify-center items-center">
+              <div className="absolute inset-0 z-10 px-6 md:px-12 lg:px-20 xl:px-24 w-full h-full flex flex-col justify-center items-center">
               <div className="max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] 2xl:max-w-[1200px] mx-auto w-full flex flex-col items-center">
                 {/* Modern Badge */}
                 <div className="inline-flex items-center gap-2 px-3 md:px-3.5 py-1.5 md:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-3 md:mb-4 lg:mb-5">
@@ -152,7 +152,7 @@ export default function HomePage() {
               className="absolute inset-0 bg-black/20"
             />
           
-            <div className="relative z-40 px-4 sm:px-6 w-full h-full flex flex-col justify-center py-6">
+            <div className="relative z-10 px-4 sm:px-6 w-full h-full flex flex-col justify-center py-6">
               <div className="max-w-[600px] mx-auto w-full flex flex-col items-center">
                 {/* Hero Title - Mobile */}
                 <h1 className="mb-4 text-center px-2">
@@ -200,7 +200,7 @@ export default function HomePage() {
         </section>
 
         {/* Category and Featured Services Section */}
-        <section className="relative md:-mt-[20%] z-40 bg-white pt-0">
+        <section className="relative md:-mt-[20%] z-10 bg-white pt-0">
           <div className="max-w-[1200px] mx-auto px-4 md:px-6">
             {/* Browse Service by Category */}
             <div className="w-full py-6 md:py-8">
