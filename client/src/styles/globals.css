@@ -327,3 +327,24 @@ html {
 .privacy{
   z-index: 110!important;
 }
+
+/* Custom styling for rating stars, checkboxes, and radio buttons */
+input[type="radio"] {
+  accent-color: #FE8A0F;
+}
+
+input[type="radio"]:checked {
+  accent-color: #FE8A0F;
+  background-color: #FE8A0F;
+  border-color: #FE8A0F;
+}
+
+input[type="checkbox"] {
+  accent-color: #FE8A0F;
+}
+
+input[type="checkbox"]:checked {
+  accent-color: #FE8A0F;
+  background-color: #FE8A0F;
+  border-color: #FE8A0F;
+}

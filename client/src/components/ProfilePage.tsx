@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap } from "lucide-react";
+import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap, Loader2 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import API_BASE_URL from "../config/api";
@@ -9,7 +9,7 @@ import { useMessenger } from "./MessengerContext";
 import { useCategories, useSectors, useServiceCategories } from "../hooks/useSectorsAndCategories";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useCart } from "./CartContext";
-import { allServices, type Service as ServiceDataType } from "./servicesData";
+import type { Service as ServiceDataType } from "./servicesData";
 import ServiceAreaMap from "./ServiceAreaMap";
 import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
@@ -88,6 +88,83 @@ export default function ProfilePage() {
   }, [sectors, profile?.sector]);
   const { categories } = useCategories(sectorId, undefined, true);
   const { addToCart } = useCart();
+
+  // Fetch services for this professional
+  const [homeServiceCards, setHomeServiceCards] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!id) return;
+      
+      try {
+        setServicesLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        const response = await fetch(
+          resolveApiUrl(`/api/services?professionalId=${id}&activeOnly=true&status=active&limit=100`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const transformed = (data.services || []).map((s: any) => ({
+            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
+            subcategory: typeof s.serviceCategory === 'object'
+              ? s.serviceCategory.name || ""
+              : "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+            _id: s._id,
+          }));
+          setHomeServiceCards(transformed);
+        } else {
+          setHomeServiceCards([]);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setHomeServiceCards([]);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [id]);
 
   // Default cover images (Unsplash) when user hasn't set a custom cover.
   // Chosen to be "service provider" themed and sector-relevant where possible.
@@ -435,14 +512,7 @@ export default function ProfilePage() {
     });
   }, [profile?.reviews]);
 
-  const homeServiceCards = useMemo(() => {
-    // Use HomePage/FeaturedServices data source, but show ONLY 3 cards.
-    const ids = [1, 4, 7];
-    const selected = ids
-      .map((sid) => allServices.find((s) => s.id === sid))
-      .filter((s): s is ServiceDataType => Boolean(s));
-    return selected.slice(0, 3);
-  }, []);
+  // homeServiceCards is now fetched from API above
 
   if (loading) {
     return (
@@ -677,10 +747,20 @@ export default function ProfilePage() {
 
             {activeTab === "services" && (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-                {homeServiceCards.map((service) => (
-                  <div
-                    key={service.id}
-                    onClick={() => navigate(`/service/${service.id}`)}
+                {servicesLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F] mx-auto mb-2" />
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading services...</p>
+                  </div>
+                ) : homeServiceCards.length === 0 ? (
+                  <div className="col-span-full text-center py-8">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">No services available yet.</p>
+                  </div>
+                ) : (
+                  homeServiceCards.map((service) => (
+                    <div
+                      key={service._id || service.id}
+                      onClick={() => navigate(`/service/${service.slug || service._id || service.id}`)}
                     className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
                   >
                     {/* Image Section */}
@@ -785,7 +865,7 @@ export default function ProfilePage() {
                           className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/service/${service.id}`);
+                            navigate(`/service/${service.slug || service._id || service.id}`);
                           }}
                         >
                           <Zap className="w-3 h-3 md:w-4 md:h-4" />
@@ -814,7 +894,8 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 

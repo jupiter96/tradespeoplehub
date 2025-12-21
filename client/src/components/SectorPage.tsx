@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { allServices } from "./servicesData";
+// Removed static import - will fetch from API
 import { 
   getSectorByName,
   getSectorBySlug,
@@ -280,6 +280,154 @@ export default function SectorPage() {
 
   // Fetch sector data from API if we have a sectorSlug
   const { sector: apiSector, loading: sectorLoading } = useSector(sectorSlug || '', false);
+  
+  // Fetch services from API
+  const [allServices, setAllServices] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setServicesLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        
+        const params = new URLSearchParams();
+        params.append('activeOnly', 'true');
+        params.append('status', 'active');
+        
+        if (apiSector?._id) {
+          // Fetch service categories for this sector first
+          const categoriesResponse = await fetch(
+            resolveApiUrl(`/api/service-categories?sectorId=${apiSector._id}&activeOnly=true&limit=100`),
+            { credentials: 'include' }
+          );
+          if (categoriesResponse.ok) {
+            const categoriesData = await categoriesResponse.json();
+            const categoryIds = categoriesData.serviceCategories?.map((c: any) => c._id).join(',') || '';
+            if (categoryIds) {
+              // Fetch services for these categories
+              const servicesResponse = await fetch(
+                resolveApiUrl(`/api/services?${params.toString()}&limit=1000`),
+                { credentials: 'include' }
+              );
+              if (servicesResponse.ok) {
+                const servicesData = await servicesResponse.json();
+                // Transform API data
+                const transformed = (servicesData.services || []).map((s: any) => ({
+                  id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+                  slug: s.slug,
+                  image: s.images?.[0] || s.portfolioImages?.[0] || "",
+                  providerName: typeof s.professional === 'object' 
+                    ? `${s.professional.firstName} ${s.professional.lastName}` 
+                    : "",
+                  tradingName: typeof s.professional === 'object' 
+                    ? s.professional.tradingName || ""
+                    : "",
+                  providerImage: typeof s.professional === 'object' 
+                    ? s.professional.avatar || ""
+                    : "",
+                  description: s.title || "",
+                  category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+                    ? s.serviceCategory.sector.name || ""
+                    : "",
+                  subcategory: typeof s.serviceCategory === 'object'
+                    ? s.serviceCategory.name || ""
+                    : "",
+                  detailedSubcategory: typeof s.serviceSubCategory === 'object'
+                    ? s.serviceSubCategory.name || ""
+                    : undefined,
+                  rating: s.rating || 0,
+                  reviewCount: s.reviewCount || 0,
+                  completedTasks: s.completedTasks || 0,
+                  price: `£${s.price?.toFixed(2) || '0.00'}`,
+                  originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+                  priceUnit: s.priceUnit || "fixed",
+                  badges: s.badges || [],
+                  deliveryType: s.deliveryType || "standard",
+                  postcode: s.postcode || "",
+                  location: s.location || "",
+                  latitude: s.latitude,
+                  longitude: s.longitude,
+                  highlights: s.highlights || [],
+                  addons: s.addons || [],
+                  idealFor: s.idealFor || [],
+                  specialization: "",
+                  packages: s.packages || [],
+                  skills: s.skills || [],
+                  responseTime: s.responseTime || "",
+                  portfolioImages: s.portfolioImages || [],
+                  _id: s._id,
+                }));
+                setAllServices(transformed);
+              }
+            }
+          }
+        } else {
+          // Fetch all services if no sector
+          const servicesResponse = await fetch(
+            resolveApiUrl(`/api/services?${params.toString()}&limit=1000`),
+            { credentials: 'include' }
+          );
+          if (servicesResponse.ok) {
+            const servicesData = await servicesResponse.json();
+            const transformed = (servicesData.services || []).map((s: any) => ({
+              id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+              slug: s.slug,
+              image: s.images?.[0] || s.portfolioImages?.[0] || "",
+              providerName: typeof s.professional === 'object' 
+                ? `${s.professional.firstName} ${s.professional.lastName}` 
+                : "",
+              tradingName: typeof s.professional === 'object' 
+                ? s.professional.tradingName || ""
+                : "",
+              providerImage: typeof s.professional === 'object' 
+                ? s.professional.avatar || ""
+                : "",
+              description: s.title || "",
+              category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+                ? s.serviceCategory.sector.name || ""
+                : "",
+              subcategory: typeof s.serviceCategory === 'object'
+                ? s.serviceCategory.name || ""
+                : "",
+              detailedSubcategory: typeof s.serviceSubCategory === 'object'
+                ? s.serviceSubCategory.name || ""
+                : undefined,
+              rating: s.rating || 0,
+              reviewCount: s.reviewCount || 0,
+              completedTasks: s.completedTasks || 0,
+              price: `£${s.price?.toFixed(2) || '0.00'}`,
+              originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: s.priceUnit || "fixed",
+              badges: s.badges || [],
+              deliveryType: s.deliveryType || "standard",
+              postcode: s.postcode || "",
+              location: s.location || "",
+              latitude: s.latitude,
+              longitude: s.longitude,
+              highlights: s.highlights || [],
+              addons: s.addons || [],
+              idealFor: s.idealFor || [],
+              specialization: "",
+              packages: s.packages || [],
+              skills: s.skills || [],
+              responseTime: s.responseTime || "",
+              portfolioImages: s.portfolioImages || [],
+              _id: s._id,
+            }));
+            setAllServices(transformed);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setAllServices([]);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [apiSector?._id]);
   
   // Filter state - declare early to avoid initialization errors
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
@@ -1479,7 +1627,7 @@ export default function SectorPage() {
                       >
                         <div className="flex items-center">
                           {[...Array(rating)].map((_, i) => (
-                            <Star key={i} className="w-4 h-4 fill-[#FFB800] text-[#FFB800]" />
+                            <Star key={i} className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
                           ))}
                         </div>
                         <span>& up</span>
@@ -1940,7 +2088,7 @@ export default function SectorPage() {
                     {displayServices.map((service) => (
                   <Link
                     key={service.id}
-                    to={`/service/${service.id}`}
+                    to={`/service/${service.slug || service._id || service.id}`}
                     className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 flex flex-col cursor-pointer"
                   >
                     {/* Image Section */}
@@ -2004,7 +2152,7 @@ export default function SectorPage() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 md:gap-2 text-[#8d8d8d] text-[8px] md:text-[12px]">
-                            <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#E5E5E5] text-[#E5E5E5]" />
+                            <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#FE8A0F] text-[#FE8A0F]" />
                             <span className="font-['Poppins',sans-serif]">New</span>
                           </div>
                         )}
@@ -2053,7 +2201,7 @@ export default function SectorPage() {
                         <button 
                           onClick={(e) => {
                             e.preventDefault();
-                            navigate(`/service/${service.id}`);
+                            navigate(`/service/${service.slug || service._id || service.id}`);
                           }}
                           className="w-full h-[26px] md:h-[38px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                         >
@@ -2085,7 +2233,7 @@ export default function SectorPage() {
                     {displayServices.map((service) => (
                       <Link
                         key={`list-${service.id}`}
-                        to={`/service/${service.id}`}
+                        to={`/service/${service.slug || service._id || service.id}`}
                         className="bg-white rounded-lg shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_12px_0px_rgba(254,138,15,0.3)] overflow-hidden transition-shadow duration-300 cursor-pointer flex min-h-[145px]"
                       >
                         {/* Image Section - Left Side */}
@@ -2198,7 +2346,7 @@ export default function SectorPage() {
                               <button 
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  navigate(`/service/${service.id}`);
+                                  navigate(`/service/${service.slug || service._id || service.id}`);
                                 }}
                                 className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                               >

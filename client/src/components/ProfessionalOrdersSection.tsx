@@ -304,7 +304,7 @@ export default function ProfessionalOrdersSection() {
           </p>
           {order.rating && (
             <div className="flex items-center gap-1 justify-end">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
               <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                 {order.rating}
               </span>
@@ -2046,7 +2046,7 @@ export default function ProfessionalOrdersSection() {
                       <TableCell>
                         {order.rating && (
                           <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
                             <span className="font-['Poppins',sans-serif] text-[13px]">{order.rating}</span>
                           </div>
                         )}

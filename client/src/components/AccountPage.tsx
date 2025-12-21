@@ -16,6 +16,7 @@ import {
   LogOut,
   ChevronRight,
   Settings,
+  Pencil,
   Clock,
   CheckCircle,
   XCircle,
@@ -56,7 +57,9 @@ import {
   Ticket,
   Package,
   PoundSterling,
+  Loader2,
 } from "lucide-react";
+import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount, ProfileUpdatePayload } from "./AccountContext";
@@ -4820,7 +4823,7 @@ function InviteSection() {
 
 // Services Section - Professional Only
 function ServicesSection() {
-  const [activeTab, setActiveTab] = useState<"myservices" | "orders" | "packages" | "reviews" | "analytics">("myservices");
+  const [activeTab, setActiveTab] = useState<"myservices" | "servicepackages" | "reviews" | "analytics">("myservices");
   const { userInfo } = useAccount();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -4830,70 +4833,43 @@ function ServicesSection() {
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
   const [isCreatePackageOpen, setIsCreatePackageOpen] = useState(false);
-  const [newService, setNewService] = useState({
-    title: "",
-    category: "",
-    description: "",
-    price: "",
-    duration: "",
-    availability: "available"
-  });
+  const [myServices, setMyServices] = useState<any[]>([]);
+  const [myPackages, setMyPackages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage, setEntriesPerPage] = useState("10");
 
-  // Mock services data
-  const myServices = [
-    {
-      id: "SVC001",
-      title: "Bathroom Installation",
-      category: "Plumbing",
-      description: "Complete bathroom fitting including tiling, plumbing, and fixtures",
-      price: "£450",
-      priceValue: 450,
-      duration: "2-3 days",
-      status: "Active",
-      bookings: 12,
-      rating: 4.8,
-      lastBooked: "2024-11-10",
-    },
-    {
-      id: "SVC002",
-      title: "Kitchen Sink Repair",
-      category: "Plumbing",
-      description: "Fix leaking sinks, replace taps, and drainage work",
-      price: "£85",
-      priceValue: 85,
-      duration: "2-4 hours",
-      status: "Active",
-      bookings: 28,
-      rating: 4.9,
-      lastBooked: "2024-11-11",
-    },
-    {
-      id: "SVC003",
-      title: "Emergency Plumbing",
-      category: "Plumbing",
-      description: "24/7 emergency plumbing services for urgent issues",
-      price: "£120",
-      priceValue: 120,
-      duration: "1-2 hours",
-      status: "Active",
-      bookings: 45,
-      rating: 4.7,
-      lastBooked: "2024-11-11",
-    },
-    {
-      id: "SVC004",
-      title: "Boiler Servicing",
-      category: "Heating",
-      description: "Annual boiler maintenance and safety checks",
-      price: "£95",
-      priceValue: 95,
-      duration: "1-2 hours",
-      status: "Paused",
-      bookings: 8,
-      rating: 4.6,
-      lastBooked: "2024-10-28",
-    },
-  ];
+  // Fetch services from API
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!userInfo?.id) return;
+      
+      try {
+        setLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        const response = await fetch(
+          resolveApiUrl(`/api/services?professionalId=${userInfo.id}&activeOnly=false`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setMyServices(data.services || []);
+        } else {
+          console.error("Failed to fetch services");
+          setMyServices([]);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setMyServices([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [userInfo?.id]);
 
   // Mock reviews data
   const serviceReviews = ([
@@ -4938,17 +4914,34 @@ function ServicesSection() {
     }
   };
 
-  const handleAddService = (serviceData: any) => {
+  const handleAddService = async (serviceData: any) => {
     // Check if user is blocked
     if (userInfo?.isBlocked) {
       toast.error("Your account has been blocked. You cannot add services. Please contact support.");
       setIsAddServiceOpen(false);
       return;
     }
-    console.log("Adding service:", serviceData);
-    // Here you would typically save to your backend/context
-    // For now, just log it
-    setIsAddServiceOpen(false);
+    
+    try {
+      setRefreshing(true);
+      // Refresh services list
+      const { resolveApiUrl } = await import("../config/api");
+      const response = await fetch(
+        resolveApiUrl(`/api/services?professionalId=${userInfo?.id}&activeOnly=false`),
+        { credentials: 'include' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMyServices(data.services || []);
+        toast.success("Service added successfully!");
+      }
+    } catch (error) {
+      console.error("Error refreshing services:", error);
+    } finally {
+      setRefreshing(false);
+      setIsAddServiceOpen(false);
+    }
   };
 
   const handleEditService = (service: any) => {
@@ -4961,29 +4954,152 @@ function ServicesSection() {
     setIsEditServiceOpen(true);
   };
 
+  const handleUpdateService = async (serviceData: any) => {
+    // Check if user is blocked
+    if (userInfo?.isBlocked) {
+      toast.error("Your account has been blocked. You cannot update services. Please contact support.");
+      setIsEditServiceOpen(false);
+      setSelectedService(null);
+      return;
+    }
+    
+    try {
+      setRefreshing(true);
+      // Refresh services list
+      const { resolveApiUrl } = await import("../config/api");
+      const response = await fetch(
+        resolveApiUrl(`/api/services?professionalId=${userInfo?.id}&activeOnly=false`),
+        { credentials: 'include' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMyServices(data.services || []);
+        toast.success("Service updated successfully!");
+      }
+    } catch (error) {
+      console.error("Error refreshing services:", error);
+      toast.error("Failed to refresh services list");
+    } finally {
+      setRefreshing(false);
+      setIsEditServiceOpen(false);
+      setSelectedService(null);
+    }
+  };
+
+  const handleToggleServiceDisable = async (serviceId: string, currentStatus: boolean) => {
+    try {
+      const { resolveApiUrl } = await import("../config/api");
+      const response = await fetch(
+        resolveApiUrl(`/api/services/${serviceId}/toggle-disable`),
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ isUserDisabled: !currentStatus }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update the service in the local state
+        setMyServices(prevServices =>
+          prevServices.map(service =>
+            service._id === serviceId
+              ? { ...service, isUserDisabled: data.service.isUserDisabled }
+              : service
+          )
+        );
+        toast.success(
+          data.service.isUserDisabled
+            ? "Service disabled successfully"
+            : "Service enabled successfully"
+        );
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to toggle service status");
+      }
+    } catch (error) {
+      console.error("Error toggling service disable:", error);
+      toast.error("Failed to toggle service status");
+    }
+  };
+
   const handleDeleteService = (serviceId: string) => {
-    if (confirm("Are you sure you want to delete this service?")) {
-      console.log("Deleting service:", serviceId);
+    setServiceToDelete(serviceId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteService = async () => {
+    if (!serviceToDelete) return;
+
+    try {
+      setRefreshing(true);
+      const { resolveApiUrl } = await import("../config/api");
+      const response = await fetch(
+        resolveApiUrl(`/api/services/${serviceToDelete}`),
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        // Remove from local state
+        setMyServices(myServices.filter(s => s._id !== serviceToDelete));
+        toast.success("Service deleted successfully!");
+        setIsDeleteDialogOpen(false);
+        setServiceToDelete(null);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to delete service");
+      }
+    } catch (error: any) {
+      console.error("Error deleting service:", error);
+      toast.error("Failed to delete service. Please try again.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
   const handleSavePackage = (packages: any[]) => {
-    console.log("Saving packages:", packages);
-    // Here you would typically save to your backend/context
+    // Save packages to state
+    setMyPackages(prev => [...prev, ...packages.map((pkg, idx) => ({
+      ...pkg,
+      id: `pkg-${Date.now()}-${idx}`,
+    }))]);
     setIsCreatePackageOpen(false);
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
+      "pending": "bg-yellow-100 text-yellow-700 border-yellow-200",
+      "required_modification": "bg-orange-100 text-orange-700 border-orange-200",
+      "denied": "bg-red-100 text-red-700 border-red-200",
+      "paused": "bg-blue-100 text-blue-700 border-blue-200",
+      "inactive": "bg-gray-100 text-gray-700 border-gray-200",
+      "approved": "bg-green-100 text-green-700 border-green-200",
+      // Legacy support
       "Active": "bg-green-100 text-green-700 border-green-200",
-      "Paused": "bg-orange-100 text-orange-700 border-orange-200",
+      "Paused": "bg-blue-100 text-blue-700 border-blue-200",
       "Inactive": "bg-gray-100 text-gray-700 border-gray-200",
-      "Confirmed": "bg-blue-100 text-blue-700 border-blue-200",
-      "Pending": "bg-orange-100 text-orange-700 border-orange-200",
-      "Completed": "bg-green-100 text-green-700 border-green-200",
-      "Cancelled": "bg-red-100 text-red-700 border-red-200",
+      "Pending": "bg-yellow-100 text-yellow-700 border-yellow-200",
     };
-    return styles[status as keyof typeof styles] || "bg-gray-100 text-gray-700 border-gray-200";
+    return styles[status.toLowerCase()] || styles[status] || "bg-gray-100 text-gray-700 border-gray-200";
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      "pending": "Pending",
+      "required_modification": "Required Modification",
+      "denied": "Denied",
+      "paused": "Paused",
+      "inactive": "Inactive",
+      "approved": "Approved",
+    };
+    return labels[status.toLowerCase()] || labels[status] || status || "Unknown";
   };
 
   return (
@@ -5038,6 +5154,15 @@ function ServicesSection() {
               onClose={() => setIsAddServiceOpen(false)}
               onSave={handleAddService}
             />
+          ) : isEditServiceOpen && selectedService ? (
+            <AddServiceSection
+              onClose={() => {
+                setIsEditServiceOpen(false);
+                setSelectedService(null);
+              }}
+              onSave={handleUpdateService}
+              initialService={selectedService}
+            />
           ) : (
             <>
           {/* Action Bar */}
@@ -5047,20 +5172,29 @@ function ServicesSection() {
               <Input
                 placeholder="Search services..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1); // Reset to first page on search
+                }}
                 className="pl-10 font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"
               />
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus} onValueChange={(value) => {
+              setFilterStatus(value);
+              setCurrentPage(1); // Reset to first page on filter change
+            }}>
               <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Paused">Paused</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="required_modification">Required Modification</SelectItem>
+                <SelectItem value="denied">Denied</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
               </SelectContent>
             </Select>
             <Button 
@@ -5079,22 +5213,36 @@ function ServicesSection() {
             </Button>
           </div>
 
+          {/* Table Controls - Rows per page */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Show</span>
+              <Select value={entriesPerPage} onValueChange={(value) => {
+                setEntriesPerPage(value);
+                setCurrentPage(1); // Reset to first page when changing entries per page
+              }}>
+                <SelectTrigger className="w-[80px] h-9 font-['Poppins',sans-serif] text-[14px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">entries</span>
+            </div>
+          </div>
+
           {/* Services Table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
+              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50">
+                <TableRow className="border-b border-gray-200/50">
+                  <TableHead className="font-['Poppins',sans-serif]">Active</TableHead>
                   <TableHead 
-                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort("id")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Service ID
-                      <ArrowUpDown className="w-4 h-4 text-[#6b6b6b]" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100/70 transition-all duration-200 shadow-sm"
                     onClick={() => handleSort("title")}
                   >
                     <div className="flex items-center gap-2">
@@ -5104,7 +5252,7 @@ function ServicesSection() {
                   </TableHead>
                   <TableHead className="font-['Poppins',sans-serif]">Category</TableHead>
                   <TableHead 
-                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100/70 transition-all duration-200 shadow-sm"
                     onClick={() => handleSort("price")}
                   >
                     <div className="flex items-center gap-2">
@@ -5113,7 +5261,7 @@ function ServicesSection() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100/70 transition-all duration-200 shadow-sm"
                     onClick={() => handleSort("bookings")}
                   >
                     <div className="flex items-center gap-2">
@@ -5127,76 +5275,144 @@ function ServicesSection() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {myServices.map((service) => (
-                  <TableRow 
-                    key={service.id} 
-                    className="hover:bg-[#FFF5EB]/30 transition-colors"
-                  >
-                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB]">
-                      {service.id}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          {service.title}
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                          {service.duration}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      {service.category}
-                    </TableCell>
-                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      {service.price}
-                    </TableCell>
-                    <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      {service.bookings}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          {service.rating}
-                        </span>
-                        <span className="text-[#FE8A0F]">★</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusBadge(service.status)} border font-['Poppins',sans-serif] text-[11px]`}>
-                        {service.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedService(service)}
-                          className="h-8 w-8 p-0 hover:bg-[#EFF6FF] hover:text-[#3B82F6]"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditService(service)}
-                          className="h-8 w-8 p-0 hover:bg-[#FFF5EB] hover:text-[#FE8A0F]"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteService(service.id)}
-                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F] mr-2" />
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading services...</span>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : myServices.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        No services found. Click "Add Service" to create your first service.
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  myServices
+                    .filter((service) => {
+                      const matchesSearch = !searchQuery || 
+                        service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        service.description?.toLowerCase().includes(searchQuery.toLowerCase());
+                      const matchesStatus = filterStatus === "all" || 
+                        service.status?.toLowerCase() === filterStatus.toLowerCase();
+                      return matchesSearch && matchesStatus;
+                    })
+                    .sort((a, b) => {
+                      let aValue: any = a[sortField];
+                      let bValue: any = b[sortField];
+                      
+                      if (sortField === "date") {
+                        aValue = new Date(a.createdAt || 0).getTime();
+                        bValue = new Date(b.createdAt || 0).getTime();
+                      } else if (sortField === "price") {
+                        aValue = a.price || 0;
+                        bValue = b.price || 0;
+                      }
+                      
+                      if (sortDirection === "asc") {
+                        return aValue > bValue ? 1 : -1;
+                      } else {
+                        return aValue < bValue ? 1 : -1;
+                      }
+                    })
+                    .map((service) => {
+                      const categoryName = typeof service.serviceCategory === 'object' 
+                        ? service.serviceCategory?.name 
+                        : 'N/A';
+                      const statusDisplay = getStatusLabel(service.status || 'pending');
+                      
+                      return (
+                        <TableRow 
+                          key={service._id} 
+                          className="hover:bg-[#FFF5EB]/30 hover:shadow-md transition-all duration-200 border-b border-gray-100/50 bg-white"
+                        >
+                          <TableCell>
+                            <div className="flex items-center justify-center">
+                              <Switch
+                                checked={!service.isUserDisabled}
+                                onCheckedChange={() => handleToggleServiceDisable(service._id, service.isUserDisabled || false)}
+                                className="data-[state=checked]:bg-[#FE8A0F]"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              {service.title}
+                            </p>
+                          </TableCell>
+                          <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            {categoryName}
+                          </TableCell>
+                          <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            £{service.price?.toFixed(2) || '0.00'}
+                            {service.priceUnit && service.priceUnit !== 'fixed' && (
+                              <span className="text-[12px] text-[#8d8d8d] ml-1">
+                                / {service.priceUnit.replace('per ', '')}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            {service.completedTasks || 0}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                {service.rating?.toFixed(1) || '0.0'}
+                              </span>
+                              <span className="text-[#FE8A0F]">★</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${getStatusBadge(statusDisplay)} border font-['Poppins',sans-serif] text-[11px]`}>
+                              {statusDisplay}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  // Use slug if available, otherwise fall back to _id
+                                  const serviceIdentifier = service.slug || service._id;
+                                  if (serviceIdentifier) {
+                                    window.open(`/service/${serviceIdentifier}`, '_blank');
+                                  }
+                                }}
+                                className="h-8 w-8 p-0 hover:bg-[#EFF6FF] hover:text-[#3B82F6]"
+                                title="View Service Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditService(service)}
+                                className="h-8 w-8 p-0 hover:bg-[#FFF5EB] hover:text-[#FE8A0F]"
+                                title="Edit Service"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteService(service._id)}
+                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                title="Delete Service"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                )}
               </TableBody>
             </Table>
           </div>
@@ -5205,19 +5421,28 @@ function ServicesSection() {
           <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-4 mt-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
             <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-3 md:p-4 rounded-xl border border-[#3B82F6]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
               <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Services</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">{myServices.length}</p>
             </div>
             <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Active Services</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">3</p>
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Approved Services</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+                {myServices.filter(s => s.status === 'approved').length}
+              </p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[200px] md:min-w-0 flex-shrink-0">
               <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Bookings</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">93</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+                {myServices.reduce((sum, s) => sum + (s.completedTasks || 0), 0)}
+              </p>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-white p-3 md:p-4 rounded-xl border border-purple-200 min-w-[200px] md:min-w-0 flex-shrink-0">
               <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Rating</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4.8 ★</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+                {myServices.length > 0 
+                  ? (myServices.reduce((sum, s) => sum + (s.rating || 0), 0) / myServices.length).toFixed(1)
+                  : '0.0'
+                } ★
+              </p>
             </div>
           </div>
             </>
@@ -5248,378 +5473,221 @@ function ServicesSection() {
           </div>
 
           {/* Packages Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Example Package 1 */}
-            <div className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                    Complete Home Plumbing
-                  </h4>
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                    3 services included
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Eye className="w-4 h-4 text-[#6b6b6b]" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Settings className="w-4 h-4 text-[#6b6b6b]" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Leak Detection & Repair</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Pipe Installation</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Drain Cleaning</span>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£450</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-600">£50 (10%)</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
-                  <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
-                    Active
-                  </span>
-                </div>
-              </div>
+          {myPackages.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
+              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] mb-2">
+                No packages created yet
+              </p>
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                Click "Create Package" to get started
+              </p>
             </div>
-
-            {/* Example Package 2 */}
-            <div className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                    Electrical Safety Bundle
-                  </h4>
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                    4 services included
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Eye className="w-4 h-4 text-[#6b6b6b]" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Settings className="w-4 h-4 text-[#6b6b6b]" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Full Home Inspection</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Wiring Upgrade</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Safety Certificate</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Free Follow-up Visit</span>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£620</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {myPackages.map((pkg) => (
+                <div key={pkg.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                        {pkg.name}
+                      </h4>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        {pkg.features?.length || 0} features included
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          // View package details
+                          toast.info("Package details view coming soon");
+                        }}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Eye className="w-4 h-4 text-[#6b6b6b]" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          // Edit package
+                          toast.info("Package editing coming soon");
+                        }}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-[#6b6b6b]" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-600">£80 (12%)</p>
+
+                  {pkg.description && (
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4 line-clamp-2">
+                      {pkg.description}
+                    </p>
+                  )}
+
+                  {pkg.features && pkg.features.length > 0 && (
+                    <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
+                      {pkg.features.slice(0, 5).map((featureId: string, idx: number) => {
+                        // Find feature label from PACKAGE_FEATURE_OPTIONS
+                        const featureOptions = [
+                          { id: "feature-1", label: "Professional consultation included" },
+                          { id: "feature-2", label: "24/7 emergency support" },
+                          { id: "feature-3", label: "Quality guarantee" },
+                          { id: "feature-4", label: "Free follow-up visit" },
+                          { id: "feature-5", label: "All materials included" },
+                          { id: "feature-6", label: "Insurance covered" },
+                          { id: "feature-7", label: "Before & after photos" },
+                          { id: "feature-8", label: "Detailed report provided" },
+                          { id: "feature-9", label: "Eco-friendly options" },
+                          { id: "feature-10", label: "Senior discount available" },
+                          { id: "feature-11", label: "Free quote revision" },
+                          { id: "feature-12", label: "Weekend service available" },
+                          { id: "feature-13", label: "Licensed & certified" },
+                          { id: "feature-14", label: "No hidden fees" },
+                          { id: "feature-15", label: "Satisfaction guaranteed" },
+                          { id: "feature-16", label: "Multi-service discount" },
+                          { id: "feature-17", label: "Priority booking" },
+                          { id: "feature-18", label: "Flexible scheduling" },
+                          { id: "feature-19", label: "Money-back guarantee" },
+                          { id: "feature-20", label: "Cleanup included" },
+                        ];
+                        const feature = featureOptions.find(f => f.id === featureId);
+                        return feature ? (
+                          <div key={idx} className="flex items-center gap-2 text-[13px]">
+                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <span className="font-['Poppins',sans-serif] text-[#2c353f]">{feature.label}</span>
+                          </div>
+                        ) : null;
+                      })}
+                      {pkg.features.length > 5 && (
+                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] pl-6">
+                          +{pkg.features.length - 5} more features
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
+                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£{parseFloat(pkg.price || "0").toFixed(2)}</p>
+                      </div>
+                      {pkg.deliveryType && (
+                        <div className="text-right">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Delivery</p>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            {pkg.deliveryType === "same-day" ? "Same Day" : "Standard"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
+                      <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
+                        Active
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
-                  <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
-                    Active
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
+          )}
 
-            {/* Example Package 3 */}
-            <div className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                    Garden Maintenance Pro
-                  </h4>
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                    5 services included
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Eye className="w-4 h-4 text-[#6b6b6b]" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Settings className="w-4 h-4 text-[#6b6b6b]" />
-                  </button>
-                </div>
-              </div>
+          {/* Create Package Modal */}
+          {isCreatePackageOpen && (
+            <CreatePackageModal
+              onClose={() => setIsCreatePackageOpen(false)}
+              onSave={(packages) => {
+                // Save packages to state
+                setMyPackages(prev => [...prev, ...packages.map((pkg, idx) => ({
+                  ...pkg,
+                  id: `pkg-${Date.now()}-${idx}`,
+                }))]);
+                setIsCreatePackageOpen(false);
+              }}
+            />
+          )}
 
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Lawn Mowing (4 visits)</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Hedge Trimming</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Weed Control</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Fertilization</span>
-                </div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="font-['Poppins',sans-serif] text-[#2c353f]">Seasonal Planting</span>
-                </div>
+          {/* Delete Service Dialog */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="font-['Poppins',sans-serif]">
+              <DialogHeader>
+                <DialogTitle className="text-[18px] text-[#2c353f]">
+                  Delete Service
+                </DialogTitle>
+                <DialogDescription className="text-[14px] text-[#6b6b6b]">
+                  Are you sure you want to delete this service? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsDeleteDialogOpen(false);
+                    setServiceToDelete(null);
+                  }}
+                  className="font-['Poppins',sans-serif]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmDeleteService}
+                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                  disabled={refreshing}
+                >
+                  {refreshing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
               </div>
-
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                    <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£380</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">You Save</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-green-600">£70 (15%)</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
-                  <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-orange-100 text-orange-700">
-                    Draft
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Info Section */}
-          <div className="mt-8 bg-gradient-to-r from-[#FFF5EB] to-white border border-[#FE8A0F]/20 rounded-xl p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-[#FE8A0F] rounded-full flex items-center justify-center flex-shrink-0">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                  Why Create Service Packages?
-                </h4>
-                <ul className="space-y-2 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                    <span>Increase revenue by bundling complementary services together</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                    <span>Offer better value to clients with discounted package pricing</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                    <span>Streamline your workflow by creating standard service combinations</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                    <span>Stand out from competitors with unique package offerings</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+            </DialogContent>
+          </Dialog>
         </div>
-      )}
-
-      {/* Create Package Modal */}
-      {isCreatePackageOpen && (
-        <CreatePackageModal
-          onClose={() => setIsCreatePackageOpen(false)}
-          onSave={handleSavePackage}
-        />
       )}
 
       {/* Reviews Tab */}
       {activeTab === "reviews" && (
         <div>
-          <div className="space-y-4">
-            {serviceReviews.map((review) => (
-              <div key={review.id} className="border border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F]/30 hover:bg-[#FFF5EB]/20 transition-all">
-                <div className="flex items-start gap-4">
-                  <Avatar className="w-12 h-12 border-2 border-gray-200">
-                    <AvatarImage src={review.clientAvatar} alt={review.clientName} />
-                    <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
-                      {review.clientName.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
-                          {review.clientName}
-                        </h4>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-                          {review.serviceTitle}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {[...Array(review.rating)].map((_, i) => (
-                          <span key={i} className="text-[#FE8A0F] text-[16px]">★</span>
-                        ))}
-                      </div>
-                    </div>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-                      {review.comment}
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                      {review.date}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Review Stats */}
-          <div className="flex md:grid md:grid-cols-3 gap-3 md:gap-4 mt-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
-            <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Average Rating</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">4.8 ★</p>
-            </div>
-            <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Reviews</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">23</p>
-            </div>
-            <div className="bg-gradient-to-br from-blue-50 to-white p-3 md:p-4 rounded-xl border border-blue-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">5-Star Reviews</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">18</p>
-            </div>
-          </div>
+          {/* Reviews content will be implemented here */}
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            Reviews section coming soon
+          </p>
         </div>
       )}
 
       {/* Analytics Tab */}
       {activeTab === "analytics" && (
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-6 rounded-xl border border-[#3B82F6]/20">
-              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
-                Monthly Revenue
-              </h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={[
-                  { month: "Jun", revenue: 1200 },
-                  { month: "Jul", revenue: 1850 },
-                  { month: "Aug", revenue: 1650 },
-                  { month: "Sep", revenue: 2100 },
-                  { month: "Oct", revenue: 1950 },
-                  { month: "Nov", revenue: 2450 },
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Poppins' }} />
-                  <YAxis stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Poppins' }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="revenue" stroke="#3D78CB" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-6 rounded-xl border border-[#FE8A0F]/20">
-              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-4">
-                Service Popularity
-              </h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={[
-                  { service: "Emergency", bookings: 45 },
-                  { service: "Sink Repair", bookings: 28 },
-                  { service: "Bathroom", bookings: 12 },
-                  { service: "Boiler", bookings: 8 },
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="service" stroke="#6b6b6b" style={{ fontSize: '11px', fontFamily: 'Poppins' }} />
-                  <YAxis stroke="#6b6b6b" style={{ fontSize: '12px', fontFamily: 'Poppins' }} />
-                  <Tooltip />
-                  <Bar dataKey="bookings" fill="#FE8A0F" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Performance Metrics */}
-          <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
-            <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-1 md:mb-2" />
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Revenue</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">£11,200</p>
-              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-green-600 mt-1">+18% this month</p>
-            </div>
-            <div className="bg-gradient-to-br from-blue-50 to-white p-3 md:p-4 rounded-xl border border-blue-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <Calendar className="w-6 h-6 md:w-8 md:h-8 text-blue-600 mb-1 md:mb-2" />
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Bookings</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">93</p>
-              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 mt-1">12 this week</p>
-            </div>
-            <div className="bg-gradient-to-br from-purple-50 to-white p-3 md:p-4 rounded-xl border border-purple-200 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <Heart className="w-6 h-6 md:w-8 md:h-8 text-purple-600 mb-1 md:mb-2" />
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Customer Satisfaction</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">96%</p>
-              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-purple-600 mt-1">Excellent</p>
-            </div>
-            <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[220px] md:min-w-0 flex-shrink-0">
-              <Clock className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] mb-1 md:mb-2" />
-              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Response Time</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">2.5h</p>
-              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#FE8A0F] mt-1">Very responsive</p>
-            </div>
-          </div>
+          {/* Analytics content will be implemented here */}
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            Analytics section coming soon
+          </p>
         </div>
       )}
-
-
     </div>
   );
 }
+
+// Helper function to get status badge
+const getStatusBadge = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case "active":
+      return "bg-green-100 text-green-700 border-green-200";
+    case "paused":
+      return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    case "inactive":
+      return "bg-gray-100 text-gray-700 border-gray-200";
+    default:
+      return "bg-gray-100 text-gray-700 border-gray-200";
+  };
+};
 
 

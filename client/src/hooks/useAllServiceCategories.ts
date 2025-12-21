@@ -14,8 +14,12 @@ let globalCache: Map<CacheKey, {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 const getCacheKey = (includeSubCategories: boolean, limit?: number): CacheKey => {
-  return `${includeSubCategories ? 'with' : 'without'}_subs${limit ? `_limit${limit}` : ''}`;
+  const effectiveLimit = limit ?? DEFAULT_LIMIT;
+  return `${includeSubCategories ? 'with' : 'without'}_subs_limit${effectiveLimit}`;
 };
+
+// Default limit to fetch more categories at once and reduce API calls
+const DEFAULT_LIMIT = 100;
 
 // Fetch all service categories for all sectors in parallel
 const fetchAllServiceCategories = async (
@@ -28,13 +32,13 @@ const fetchAllServiceCategories = async (
   const { resolveApiUrl } = await import('../config/api');
   const categoriesMap: Record<string, ServiceCategory[]> = {};
 
+  // Use default limit of 100 if not specified to reduce API calls
+  const effectiveLimit = limit ?? DEFAULT_LIMIT;
+
   // Fetch all in parallel
   const promises = sectors.map(async (sector: Sector) => {
     try {
-      let url = `/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=${includeSubCategories}&sortBy=order&sortOrder=asc`;
-      if (limit) {
-        url += `&limit=${limit}`;
-      }
+      const url = `/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=${includeSubCategories}&sortBy=order&sortOrder=asc&limit=${effectiveLimit}`;
 
       const response = await fetch(resolveApiUrl(url), {
         credentials: 'include',

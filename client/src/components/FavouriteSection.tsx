@@ -185,7 +185,7 @@ export default function FavouriteSection() {
                 {/* Rating */}
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
                     <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                       {service.rating}
                     </span>

@@ -25,6 +25,8 @@ export interface ServicePackage {
 
 export interface Service {
   id: number;
+  _id?: string; // MongoDB id (API)
+  slug?: string; // SEO-friendly unique slug (API)
   image: string;
   providerName: string;
   tradingName: string; // Business/Trading name displayed to users

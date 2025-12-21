@@ -326,7 +326,7 @@ export default function ClientOrdersSection() {
           </p>
           {order.rating && (
             <div className="flex items-center gap-1 justify-end">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
               <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                 {order.rating}
               </span>
@@ -1289,7 +1289,7 @@ export default function ClientOrdersSection() {
                           Your Rating
                         </h4>
                         <div className="flex items-center gap-2">
-                          <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                          <Star className="w-5 h-5 fill-[#FE8A0F] text-[#FE8A0F]" />
                           <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                             {currentOrder.rating} / 5
                           </span>
@@ -1614,7 +1614,7 @@ export default function ClientOrdersSection() {
                       <Star
                         className={`w-10 h-10 ${
                           star <= rating
-                            ? "fill-yellow-400 text-yellow-400"
+                            ? "fill-[#FE8A0F] text-[#FE8A0F]"
                             : "text-gray-300"
                         }`}
                       />
@@ -2141,7 +2141,7 @@ export default function ClientOrdersSection() {
                       <TableCell>
                         {order.rating && (
                           <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
                             <span className="font-['Poppins',sans-serif] text-[13px]">{order.rating}</span>
                           </div>
                         )}
@@ -2384,7 +2384,7 @@ export default function ClientOrdersSection() {
                     <Star
                       className={`w-10 h-10 ${
                         star <= rating
-                          ? "fill-yellow-400 text-yellow-400"
+                          ? "fill-[#FE8A0F] text-[#FE8A0F]"
                           : "text-gray-300"
                       }`}
                     />

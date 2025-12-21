@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -26,13 +26,30 @@ import {
   ArrowRight,
   ChevronLeft,
   CheckCircle,
-  TrendingUp
+  TrendingUp,
+  Loader2,
+  FileText,
+  Package,
+  Settings,
+  ImagePlus,
+  MessageSquare,
+  CalendarDays,
+  UserCircle,
+  ChevronRight,
+  Check
 } from "lucide-react";
 import { toast } from "sonner@2.0.3";
+import { useSectors } from "../hooks/useSectorsAndCategories";
+import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
+import type { ServiceCategory, ServiceSubCategory, Sector } from "../hooks/useSectorsAndCategories";
+import { resolveApiUrl } from "../config/api";
+import { useAccount } from "./AccountContext";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 interface AddServiceSectionProps {
   onClose: () => void;
   onSave: (serviceData: any) => void;
+  initialService?: any; // For editing existing service
 }
 
 // Complete category tree structure with Service Types and Attributes
@@ -1243,16 +1260,337 @@ interface FAQ {
   answer: string;
 }
 
-export default function AddServiceSection({ onClose, onSave }: AddServiceSectionProps) {
+interface ServicePackage {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  originalPrice?: string;
+  deliveryDays: string;
+  revisions: string;
+  features: string[];
+  order: number;
+}
+
+// Component for displaying a single level of subcategories with radio buttons
+function SubCategoryLevelDisplay({
+  parentSubCategoryId,
+  levelIndex,
+  selectedSubCategoryPath,
+  setSelectedSubCategoryPath,
+  nestedSubCategories,
+  setNestedSubCategories,
+  loadingSubCategories,
+  setLoadingSubCategories,
+  selectedAttributes,
+  setSelectedAttributes,
+  attributeTypeLabels,
+}: {
+  parentSubCategoryId: string;
+  levelIndex: number;
+  selectedSubCategoryPath: string[];
+  setSelectedSubCategoryPath: React.Dispatch<React.SetStateAction<string[]>>;
+  nestedSubCategories: Record<string, ServiceSubCategory[]>;
+  setNestedSubCategories: React.Dispatch<React.SetStateAction<Record<string, ServiceSubCategory[]>>>;
+  loadingSubCategories: Record<string, boolean>;
+  setLoadingSubCategories: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  selectedAttributes: Record<string, string>;
+  setSelectedAttributes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  attributeTypeLabels: Record<string, string>;
+}) {
+  const currentLevelSubCats = nestedSubCategories[parentSubCategoryId] || [];
+  const isLoading = loadingSubCategories[parentSubCategoryId];
+
+  // Fetch nested subcategories when needed
+  useEffect(() => {
+    const fetchNestedSubCategories = async (parentId: string) => {
+      if (nestedSubCategories[parentId] || loadingSubCategories[parentId]) {
+        return;
+      }
+
+      try {
+        setLoadingSubCategories(prev => ({ ...prev, [parentId]: true }));
+        const { resolveApiUrl } = await import("../config/api");
+        const response = await fetch(
+          resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${parentId}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
+          { credentials: 'include' }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) => 
+            sc?._id && sc._id.trim() !== ""
+          );
+          setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
+        }
+      } catch (error) {
+        console.error(`Error fetching nested subcategories for ${parentId}:`, error);
+      } finally {
+        setLoadingSubCategories(prev => ({ ...prev, [parentId]: false }));
+      }
+    };
+
+    if (parentSubCategoryId) {
+      fetchNestedSubCategories(parentSubCategoryId);
+    }
+  }, [parentSubCategoryId]);
+
+  // Group subcategories by attributeType
+  const subCategoriesByAttributeType = currentLevelSubCats.reduce((acc, subCat) => {
+    const attrType = subCat.attributeType || 'other';
+    if (!acc[attrType]) {
+      acc[attrType] = [];
+    }
+    acc[attrType].push(subCat);
+    return acc;
+  }, {} as Record<string, ServiceSubCategory[]>);
+
+  const handleSelectionChange = (value: string) => {
+    // Update path: keep previous selections up to this level, then add new selection
+    const newPath = selectedSubCategoryPath.slice(0, levelIndex);
+    newPath.push(value);
+    setSelectedSubCategoryPath(newPath);
+    
+    // Update selectedSubCategoryId to the last selected item
+    if (newPath.length > 0) {
+      // This will be handled by parent component
+    }
+    
+    // Clear deeper selections and attributes
+    const newAttributes = { ...selectedAttributes };
+    Object.keys(newAttributes).forEach(key => {
+      if (key.startsWith(`${value}_`)) {
+        delete newAttributes[key];
+      }
+    });
+    setSelectedAttributes(newAttributes);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
+        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Loading options...</span>
+      </div>
+    );
+  }
+
+  if (Object.keys(subCategoriesByAttributeType).length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4 mt-4">
+      {Object.entries(subCategoriesByAttributeType).map(([attrType, subCats]) => {
+        const label = attributeTypeLabels[attrType] || attrType;
+        const sortedSubCats = subCats.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const groupName = `${parentSubCategoryId}_${levelIndex}_${attrType}`;
+        // Get selected value for this level (check if any subcat in this group is selected)
+        const selectedInThisGroup = sortedSubCats.find(sc => selectedSubCategoryPath[levelIndex] === sc._id)?._id || "";
+
+        return (
+          <div key={attrType} className="space-y-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              {label} <span className="text-red-500">*</span>
+            </Label>
+            <RadioGroup
+              value={selectedInThisGroup}
+              onValueChange={handleSelectionChange}
+              className="grid grid-cols-2 gap-3"
+            >
+              {sortedSubCats.map((subCat) => {
+                const isSelected = selectedInThisGroup === subCat._id;
+                return (
+                  <label
+                    key={subCat._id}
+                    htmlFor={`${groupName}_${subCat._id}`}
+                    className={`
+                      flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+                      ${isSelected 
+                        ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
+                        : 'border-gray-200 bg-white hover:border-[#FE8A0F]/50 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <RadioGroupItem 
+                        value={subCat._id} 
+                        id={`${groupName}_${subCat._id}`}
+                        className={`
+                          ${isSelected ? 'border-[#FE8A0F]' : ''} shrink-0
+                        `}
+                      />
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium truncate">
+                        {subCat.name || "Unnamed Option"}
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FE8A0F] ml-2 shrink-0">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </label>
+                );
+              })}
+            </RadioGroup>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function AddServiceSection({ onClose, onSave, initialService }: AddServiceSectionProps) {
+  const { userInfo } = useAccount();
   const [activeTab, setActiveTab] = useState("service-details");
+  const [loading, setLoading] = useState(false);
+  const isEditMode = !!initialService;
+  
+  // Fetch sectors and service categories
+  const { sectors } = useSectors(false, false);
+  const { serviceCategoriesBySector, loading: categoriesLoading } = useAllServiceCategories(sectors, {
+    includeSubCategories: true,
+  });
   
   // Service Details Tab
-  const [category, setCategory] = useState(""); // Main category (e.g., "Plumbing")
-  const [subCategory, setSubCategory] = useState(""); // Sub category
-  const [serviceType, setServiceType] = useState(""); // Service Type (e.g., "Emergency Service")
-  const [attributeValue, setAttributeValue] = useState(""); // Attribute value (e.g., "Small", "Large")
+  // Get user's sector from registration and set as default (cannot be changed)
+  const userSector = userInfo?.sector;
+  const userSectorObj = sectors.find((s: Sector) => s.name === userSector);
+  const defaultSectorId = userSectorObj?._id || "";
+  
+  const [selectedSectorId, setSelectedSectorId] = useState<string>(defaultSectorId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(""); // ServiceCategory ID
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string>(""); // ServiceSubCategory ID (first level only)
+  const [selectedSubCategoryPath, setSelectedSubCategoryPath] = useState<string[]>([]); // Path of selected subcategory IDs (one per level)
+  const [nestedSubCategories, setNestedSubCategories] = useState<Record<string, ServiceSubCategory[]>>({}); // Nested subcategories by parent ID
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({}); // Selected attribute values by level (single select)
+  const [loadingSubCategories, setLoadingSubCategories] = useState<Record<string, boolean>>({});
+  
+  // Set default sector when sectors are loaded (only if user has a registered sector)
+  useEffect(() => {
+    if (userSector && defaultSectorId && selectedSectorId !== defaultSectorId) {
+      setSelectedSectorId(defaultSectorId);
+    }
+  }, [userSector, defaultSectorId]);
+
+  // Set default address fields from userInfo (only once on mount)
+  useEffect(() => {
+    if (userInfo) {
+      if (userInfo.address) {
+        setAddress(userInfo.address);
+      }
+      if (userInfo.townCity) {
+        setTownCity(userInfo.townCity);
+      }
+      if (userInfo.county) {
+        setCounty(userInfo.county);
+      }
+      if (userInfo.postcode) {
+        setPostcode(userInfo.postcode);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInfo?._id]); // Only run when userInfo._id changes (user changes)
+
+  // Initialize form with existing service data when editing
+  useEffect(() => {
+    if (initialService && isEditMode) {
+      // Set basic fields
+      setServiceTitle(initialService.title || "");
+      setDescription(initialService.description || "");
+      setBasePrice(initialService.price?.toString() || "");
+      setOriginalPrice(initialService.originalPrice?.toString() || "");
+      setPriceUnit(initialService.priceUnit || "fixed");
+      setDeliveryType(initialService.deliveryType || "standard");
+      setResponseTime(initialService.responseTime || "");
+      
+      // Set address fields
+      if (initialService.address) setAddress(initialService.address);
+      if (initialService.townCity) setTownCity(initialService.townCity);
+      if (initialService.county) setCounty(initialService.county);
+      if (initialService.postcode) setPostcode(initialService.postcode);
+      
+      // Set keywords/skills
+      if (initialService.skills && Array.isArray(initialService.skills)) {
+        setKeywords(initialService.skills.join(", "));
+      }
+      
+      // Set idealFor
+      if (initialService.idealFor && Array.isArray(initialService.idealFor)) {
+        const idealForIds = initialService.idealFor.map((label: string) => {
+          const option = IDEAL_FOR_OPTIONS.find(opt => opt.label === label);
+          return option?.id || "";
+        }).filter(Boolean);
+        setIdealFor(idealForIds);
+      }
+      
+      // Set service highlights
+      if (initialService.highlights && Array.isArray(initialService.highlights)) {
+        const highlightIds = initialService.highlights.map((label: string) => {
+          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.label === label);
+          return option?.id || "";
+        }).filter(Boolean);
+        setServiceHighlights(highlightIds);
+      }
+      
+      // Set gallery images
+      if (initialService.images && Array.isArray(initialService.images)) {
+        setGalleryImages(initialService.images);
+      } else if (initialService.portfolioImages && Array.isArray(initialService.portfolioImages)) {
+        setGalleryImages(initialService.portfolioImages);
+      }
+      
+      // Set extra services (addons)
+      if (initialService.addons && Array.isArray(initialService.addons)) {
+        const mappedAddons = initialService.addons.map((addon: any, index: number) => ({
+          id: addon.id || `extra-${index}`,
+          title: addon.name || addon.title || "",
+          price: addon.price?.toString() || "",
+          description: addon.description || "",
+        }));
+        setExtraServices(mappedAddons);
+      }
+      
+      // Set FAQs
+      if (initialService.faqs && Array.isArray(initialService.faqs)) {
+        const mappedFAQs = initialService.faqs.map((faq: any, index: number) => ({
+          id: faq.id || `faq-${index}`,
+          question: faq.question || "",
+          answer: faq.answer || "",
+        }));
+        setFAQs(mappedFAQs);
+      }
+      
+      // Set availability
+      if (initialService.availability) {
+        setAvailability(initialService.availability);
+      }
+      
+      // Set category and subcategory
+      if (initialService.serviceCategory) {
+        const categoryId = typeof initialService.serviceCategory === 'object' 
+          ? initialService.serviceCategory._id 
+          : initialService.serviceCategory;
+        setSelectedCategoryId(categoryId);
+      }
+      
+      if (initialService.serviceSubCategory) {
+        const subCategoryId = typeof initialService.serviceSubCategory === 'object' 
+          ? initialService.serviceSubCategory._id 
+          : initialService.serviceSubCategory;
+        setSelectedSubCategoryId(subCategoryId);
+      }
+      
+      // Set subcategory path if available
+      if (initialService.serviceSubCategoryPath && Array.isArray(initialService.serviceSubCategoryPath)) {
+        setSelectedSubCategoryPath(initialService.serviceSubCategoryPath);
+      }
+    }
+  }, [initialService, isEditMode]);
   const [serviceTitle, setServiceTitle] = useState("");
-  const [location, setLocation] = useState("");
+  const [address, setAddress] = useState("");
+  const [townCity, setTownCity] = useState("");
+  const [county, setCounty] = useState("");
   const [postcode, setPostcode] = useState("");
   const [keywords, setKeywords] = useState("");
   const [description, setDescription] = useState("");
@@ -1260,7 +1598,11 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
   const [serviceHighlights, setServiceHighlights] = useState<string[]>([]);
   const [deliveryType, setDeliveryType] = useState<"standard" | "same-day">("standard");
   const [basePrice, setBasePrice] = useState("");
-  const [priceUnit, setPriceUnit] = useState("hour");
+  const [originalPrice, setOriginalPrice] = useState("");
+  const [priceUnit, setPriceUnit] = useState("fixed");
+  
+  // Packages Tab
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   
   // Extra Services Tab
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
@@ -1271,6 +1613,10 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
   
   // Gallery Tab
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState<Record<number, boolean>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // FAQs Tab
   const [faqs, setFAQs] = useState<FAQ[]>([]);
@@ -1410,15 +1756,180 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
     ));
   };
 
+  // Gallery image upload functions
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const filesArray = Array.from(files);
+    const remainingSlots = 6 - galleryImages.length;
+    const filesToUpload = filesArray.slice(0, remainingSlots);
+
+    if (filesArray.length > remainingSlots) {
+      toast.error(`You can only upload ${remainingSlots} more image(s). Maximum 6 images allowed.`);
+    }
+
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const file = filesToUpload[i];
+      const tempIndex = galleryImages.length + i;
+
+      // Validate file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`${file.name}: Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.`);
+        continue;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name}: Image size must be less than 5MB`);
+        continue;
+      }
+
+      setUploadingImages(prev => ({ ...prev, [tempIndex]: true }));
+      setUploadProgress(prev => ({ ...prev, [tempIndex]: 0 }));
+
+      try {
+        const formData = new FormData();
+        formData.append("portfolioImage", file);
+
+        // Simulate progress for better UX
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const current = prev[tempIndex] || 0;
+            if (current < 90) {
+              return { ...prev, [tempIndex]: current + 10 };
+            }
+            return prev;
+          });
+        }, 200);
+
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(prev => ({ ...prev, [tempIndex]: percentComplete }));
+          }
+        });
+
+        const uploadPromise = new Promise<string>((resolve, reject) => {
+          xhr.addEventListener('load', () => {
+            clearInterval(progressInterval);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                setUploadProgress(prev => ({ ...prev, [tempIndex]: 100 }));
+                resolve(data.imageUrl);
+              } catch (error) {
+                reject(new Error('Failed to parse response'));
+              }
+            } else {
+              try {
+                const error = JSON.parse(xhr.responseText);
+                reject(new Error(error.error || "Failed to upload image"));
+              } catch {
+                reject(new Error("Failed to upload image"));
+              }
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            clearInterval(progressInterval);
+            reject(new Error("Network error"));
+          });
+
+          xhr.addEventListener('abort', () => {
+            clearInterval(progressInterval);
+            reject(new Error("Upload aborted"));
+          });
+
+          xhr.open("POST", resolveApiUrl("/api/auth/profile/portfolio/upload"));
+          xhr.withCredentials = true;
+          xhr.send(formData);
+        });
+
+        const imageUrl = await uploadPromise;
+        setGalleryImages(prev => [...prev, imageUrl]);
+        toast.success(`${file.name} uploaded successfully`);
+        
+        // Clear progress after a short delay
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newState = { ...prev };
+            delete newState[tempIndex];
+            return newState;
+          });
+        }, 500);
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast.error(error instanceof Error ? error.message : `Failed to upload ${file.name}`);
+        setUploadProgress(prev => {
+          const newState = { ...prev };
+          delete newState[tempIndex];
+          return newState;
+        });
+      } finally {
+        setUploadingImages(prev => {
+          const newState = { ...prev };
+          delete newState[tempIndex];
+          return newState;
+        });
+      }
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+  };
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === index) return;
+
+    const newImages = [...galleryImages];
+    const draggedItem = newImages[dragIndex];
+    newImages.splice(dragIndex, 1);
+    newImages.splice(index, 0, draggedItem);
+    setGalleryImages(newImages);
+    setDragIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragIndex(null);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleImageUpload(files);
+    }
+  };
+
   // Tab order for navigation
   const TAB_ORDER = [
     "service-details",
-    "package",
     "extra-service",
     "gallery",
     "faqs",
     "availability",
     "profile"
+  ];
+
+  // Step configuration with icons
+  const STEPS = [
+    { id: "service-details", label: "Service Details", icon: FileText },
+    { id: "extra-service", label: "Extra Service", icon: Settings },
+    { id: "gallery", label: "Gallery", icon: ImagePlus },
+    { id: "faqs", label: "FAQs", icon: MessageSquare },
+    { id: "availability", label: "Availability", icon: CalendarDays },
+    { id: "profile", label: "Profile", icon: UserCircle },
   ];
 
   const getCurrentTabIndex = () => TAB_ORDER.indexOf(activeTab);
@@ -1436,36 +1947,31 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
   const handleSaveAndContinue = () => {
     // Validate current tab before proceeding
     if (activeTab === "service-details") {
-      if (!category) {
-        toast.error("Please select a category");
+      if (!selectedSectorId) {
+        toast.error("Please select a sector");
+        return;
+      }
+      if (!selectedCategoryId) {
+        toast.error("Please select a service category");
+        return;
+      }
+      if (availableSubCategories.length > 0 && selectedSubCategoryPath.length === 0) {
+        toast.error("Please select a service sub category");
         return;
       }
       if (!serviceTitle) {
         toast.error("Please enter a service title");
         return;
       }
-      if (!location) {
-        toast.error("Please select a location");
-        return;
-      }
       if (!description || description.length < 100) {
         toast.error("Please provide at least 100 characters description");
         return;
       }
-      const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
-      if (keywordArray.length === 0) {
-        toast.error("Please add at least one keyword");
+      if (!basePrice || parseFloat(basePrice) <= 0) {
+        toast.error("Please enter a valid base price");
         return;
       }
       toast.success("Service details saved!");
-    } else if (activeTab === "package") {
-      // Validate at least one package is filled
-      const validPackages = packages.filter(p => p.price);
-      if (validPackages.length === 0) {
-        toast.error("Please fill at least one package with price");
-        return;
-      }
-      toast.success("Package details saved!");
     } else if (activeTab === "extra-service") {
       // Optional, just save
       toast.success("Extra services saved!");
@@ -1493,10 +1999,138 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
     }
   };
 
-  const handlePublish = () => {
+  // Get available service categories for selected sector
+  const availableCategories = (selectedSectorId 
+    ? (serviceCategoriesBySector[selectedSectorId] || [])
+    : []
+  ).filter((cat) => cat?._id && cat._id.trim() !== ""); // Filter out invalid categories
+
+  // Get available subcategories for selected category
+  const selectedCategory = availableCategories.find(cat => cat._id === selectedCategoryId);
+  const availableSubCategories = Array.isArray(selectedCategory?.subCategories)
+    ? selectedCategory.subCategories.filter((subCat) => 
+        subCat && 
+        subCat._id && 
+        typeof subCat._id === 'string' && 
+        subCat._id.trim() !== "" &&
+        subCat.name &&
+        subCat.level === 2 // Only show level 2 subcategories initially
+      )
+    : [];
+
+  // Fetch nested subcategories when a subcategory is selected
+  useEffect(() => {
+    const fetchNestedSubCategories = async (parentId: string) => {
+      if (nestedSubCategories[parentId] || loadingSubCategories[parentId]) {
+        return; // Already fetched or currently loading
+      }
+
+      try {
+        setLoadingSubCategories(prev => ({ ...prev, [parentId]: true }));
+        const response = await fetch(
+          resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${parentId}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
+          { credentials: 'include' }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) => 
+            sc?._id && sc._id.trim() !== ""
+          );
+          setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
+        }
+      } catch (error) {
+        console.error(`Error fetching nested subcategories for ${parentId}:`, error);
+      } finally {
+        setLoadingSubCategories(prev => ({ ...prev, [parentId]: false }));
+      }
+    };
+
+    // Fetch nested subcategories for the selected subcategory
+    if (selectedSubCategoryId) {
+      fetchNestedSubCategories(selectedSubCategoryId);
+    }
+  }, [selectedSubCategoryId]);
+
+  // Get current level subcategories based on selection path
+  const getCurrentLevelSubCategories = useCallback((): ServiceSubCategory[] => {
+    if (selectedSubCategoryPath.length === 0) {
+      return availableSubCategories;
+    }
+    const lastSelected = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+    return nestedSubCategories[lastSelected._id] || [];
+  }, [selectedSubCategoryPath, nestedSubCategories, availableSubCategories]);
+
+  // Get attributes for the selected subcategory
+  const getCurrentAttributes = useCallback((): Array<{
+    level: number;
+    attributeType: string;
+    values: Array<{ label: string; value: string; order: number }>;
+  }> => {
+    if (selectedSubCategoryPath.length === 0) {
+      return [];
+    }
+    const lastSelected = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+    return Array.isArray(lastSelected.attributes) ? lastSelected.attributes : [];
+  }, [selectedSubCategoryPath]);
+
+  // Add package
+  const addPackage = () => {
+    const newPackage: ServicePackage = {
+      id: `pkg-${Date.now()}`,
+      name: "",
+      description: "",
+      price: "",
+      deliveryDays: "",
+      revisions: "",
+      features: [],
+      order: packages.length,
+    };
+    setPackages([...packages, newPackage]);
+  };
+
+  // Remove package
+  const removePackage = (id: string) => {
+    setPackages(packages.filter(p => p.id !== id));
+  };
+
+  // Update package
+  const updatePackage = (id: string, field: keyof ServicePackage, value: any) => {
+    setPackages(packages.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
+  };
+
+  // Add feature to package
+  const addPackageFeature = (packageId: string, feature: string) => {
+    const pkg = packages.find(p => p.id === packageId);
+    if (pkg && !pkg.features.includes(feature)) {
+      updatePackage(packageId, "features", [...pkg.features, feature]);
+    }
+  };
+
+  // Remove feature from package
+  const removePackageFeature = (packageId: string, feature: string) => {
+    const pkg = packages.find(p => p.id === packageId);
+    if (pkg) {
+      updatePackage(packageId, "features", pkg.features.filter(f => f !== feature));
+    }
+  };
+
+  const handlePublish = async () => {
     // Validation
-    if (!category) {
-      toast.error("Please select a category");
+    if (!selectedSectorId) {
+      toast.error("Please select a sector");
+      setActiveTab("service-details");
+      return;
+    }
+    if (!selectedCategoryId) {
+      toast.error("Please select a service category");
+      setActiveTab("service-details");
+      return;
+    }
+    if (availableSubCategories.length > 0 && selectedSubCategoryPath.length === 0) {
+      toast.error("Please select a service sub category");
       setActiveTab("service-details");
       return;
     }
@@ -1505,52 +2139,93 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
       setActiveTab("service-details");
       return;
     }
-    if (!location) {
-      toast.error("Please select a location");
-      setActiveTab("service-details");
-      return;
-    }
     if (!description || description.length < 100) {
       toast.error("Please provide at least 100 characters description");
       setActiveTab("service-details");
       return;
     }
-
-    const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
-    if (keywordArray.length === 0) {
-      toast.error("Please add at least one keyword");
+    if (!basePrice || parseFloat(basePrice) <= 0) {
+      toast.error("Please enter a valid base price");
       setActiveTab("service-details");
       return;
     }
 
-    // Prepare service data
-    const serviceData = {
-      category,
-      subCategory,
-      serviceType,
-      attributeValue,
-      title: serviceTitle,
-      location,
-      postcode,
-      keywords: keywordArray,
-      description,
-      idealFor,
-      serviceHighlights,
-      deliveryType,
-      basePrice,
-      priceUnit,
-      extraServices: extraServices.filter(e => e.title && e.price),
-      galleryImages,
-      faqs: faqs.filter(f => f.question && f.answer),
-      availability,
-      responseTime,
-      experienceYears,
-      qualifications
-    };
+    const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
 
-    onSave(serviceData);
-    toast.success("Service published successfully!");
-    onClose();
+    setLoading(true);
+    try {
+      // Prepare service data for API
+      const serviceData = {
+        serviceCategoryId: selectedCategoryId,
+        serviceSubCategoryId: selectedSubCategoryPath[selectedSubCategoryPath.length - 1] || selectedSubCategoryId || undefined,
+        serviceSubCategoryPath: selectedSubCategoryPath,
+        title: serviceTitle.trim(),
+        description: description.trim(),
+        price: parseFloat(basePrice),
+        originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+        priceUnit: priceUnit || "fixed",
+        images: galleryImages,
+        portfolioImages: galleryImages,
+        packages: [], // Packages are now managed separately in AccountPage Service Packages tab
+        addons: extraServices
+          .filter(e => e.title && e.price)
+          .map((e, index) => ({
+            id: e.id,
+            name: e.title,
+            description: e.description || "",
+            price: parseFloat(e.price),
+            order: index,
+          })),
+        highlights: serviceHighlights.map(id => {
+          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.id === id);
+          return option ? option.label : id;
+        }),
+        idealFor: idealFor.map(id => {
+          const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
+          return option ? option.label : id;
+        }),
+        deliveryType,
+        responseTime: responseTime || undefined,
+        skills: keywordArray,
+        postcode: postcode || userInfo?.postcode || "",
+        address: address || userInfo?.address || "",
+        townCity: townCity || userInfo?.townCity || "",
+        county: county || userInfo?.county || "",
+        badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
+        status: "active",
+      };
+
+      // Call API to create or update service
+      const url = isEditMode && initialService?._id 
+        ? resolveApiUrl(`/api/services/${initialService._id}`)
+        : resolveApiUrl("/api/services");
+      
+      const method = isEditMode ? "PUT" : "POST";
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(serviceData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `Failed to ${isEditMode ? 'update' : 'create'} service`);
+      }
+
+      const result = await response.json();
+      toast.success(`Service ${isEditMode ? 'updated' : 'published'} successfully!`);
+      onSave(result.service || result);
+      onClose();
+    } catch (error: any) {
+      console.error("Error creating service:", error);
+      toast.error(error.message || "Failed to create service. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -1566,10 +2241,10 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
           Back to My Services
         </Button>
         <h2 className="font-['Poppins',sans-serif] text-[22px] sm:text-[24px] md:text-[28px] text-[#2c353f] mb-2">
-          Add Service
+          {isEditMode ? "Edit Service" : "Add Service"}
         </h2>
         <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
-          Create a new service offering with all the details
+          {isEditMode ? "Update your service offering details" : "Create a new service offering with all the details"}
         </p>
       </div>
 
@@ -1577,270 +2252,309 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="px-6 pt-6 pb-4 border-b border-gray-200">
             {/* Progress Indicator */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                   Step {getCurrentTabIndex() + 1} of {TAB_ORDER.length}
                 </p>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F] font-medium">
                   {Math.round(((getCurrentTabIndex() + 1) / TAB_ORDER.length) * 100)}% Complete
                 </p>
               </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-6">
                 <div 
                   className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] transition-all duration-500 ease-out"
                   style={{ width: `${((getCurrentTabIndex() + 1) / TAB_ORDER.length) * 100}%` }}
                 />
               </div>
+
+              {/* Horizontal Stepper */}
+              <div className="relative px-4">
+                {/* Connection Line - positioned at center of step circles */}
+                <div className="absolute top-6 left-12 right-12 h-0.5 bg-gray-200 -z-10 hidden md:block">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] transition-all duration-500 ease-out"
+                    style={{ width: `${(getCurrentTabIndex() / (STEPS.length - 1)) * 100}%` }}
+                  />
+                </div>
+
+                {/* Steps */}
+                <div className="flex items-start justify-between relative z-10 overflow-x-auto pb-2 scrollbar-hide">
+                  {STEPS.map((step, index) => {
+                    const Icon = step.icon;
+                    const stepIndex = TAB_ORDER.indexOf(step.id);
+                    const isActive = activeTab === step.id;
+                    const isCompleted = stepIndex < getCurrentTabIndex();
+                    const isClickable = stepIndex <= getCurrentTabIndex() + 1;
+
+                    return (
+                      <div key={step.id} className="flex flex-col items-center flex-1 min-w-[80px] md:min-w-0">
+                        {/* Step Circle */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isClickable) {
+                              setActiveTab(step.id);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                          }}
+                          disabled={!isClickable}
+                          className={`
+                            relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-300 border-2
+                            ${isActive 
+                              ? 'bg-[#FE8A0F] text-white shadow-lg shadow-[#FE8A0F]/30 scale-110 border-[#FE8A0F]' 
+                              : isCompleted
+                              ? 'bg-green-500 text-white shadow-md border-green-500'
+                              : 'bg-white text-gray-400 border-gray-300'
+                            }
+                            ${isClickable ? 'cursor-pointer hover:scale-105 hover:border-[#FE8A0F]' : 'cursor-not-allowed opacity-50'}
+                          `}
+                        >
+                          {isCompleted && !isActive ? (
+                            <CheckCircle className="w-6 h-6 md:w-7 md:h-7" />
+                          ) : (
+                            <Icon className="w-5 h-5 md:w-6 md:h-6" />
+                          )}
+                          {isActive && (
+                            <div className="absolute -inset-1 bg-[#FE8A0F]/20 rounded-full animate-ping" />
+                          )}
+                        </button>
+
+                        {/* Step Label */}
+                        <div className="mt-3 text-center max-w-[100px] md:max-w-none">
+                          <p className={`
+                            font-['Poppins',sans-serif] text-[10px] md:text-[11px] font-medium transition-colors leading-tight
+                            ${isActive 
+                              ? 'text-[#FE8A0F]' 
+                              : isCompleted
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                            }
+                          `}>
+                            {step.label}
+                          </p>
+                          <p className={`
+                            font-['Poppins',sans-serif] text-[9px] md:text-[10px] mt-0.5
+                            ${isActive 
+                              ? 'text-[#FE8A0F]' 
+                              : isCompleted
+                              ? 'text-green-600'
+                              : 'text-gray-400'
+                            }
+                          `}>
+                            Step {stepIndex + 1}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            
-            <TabsList className="grid w-full grid-cols-6 bg-gray-100 h-auto">
-              <TabsTrigger value="service-details" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5 whitespace-nowrap">
-                Service Details
-              </TabsTrigger>
-              <TabsTrigger value="extra-service" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5 whitespace-nowrap">
-                Extra Service
-              </TabsTrigger>
-              <TabsTrigger value="gallery" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
-                Gallery
-              </TabsTrigger>
-              <TabsTrigger value="faqs" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
-                FAQs
-              </TabsTrigger>
-              <TabsTrigger value="availability" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
-                Availability
-              </TabsTrigger>
-              <TabsTrigger value="profile" className="font-['Poppins',sans-serif] text-[12px] px-3 py-2.5">
-                Profile
-              </TabsTrigger>
-            </TabsList>
           </div>
 
           <ScrollArea className="h-[calc(100vh-400px)] px-6">
             {/* Service Details Tab */}
             <TabsContent value="service-details" className="mt-0 py-6">
               <div className="space-y-6">
-                {/* Main Category */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Main Category
-                  </Label>
-                  <Select 
-                    value={category} 
-                    onValueChange={(value) => {
-                      setCategory(value);
-                      setSubCategory(""); // Reset sub category when main category changes
-                      setServiceType(""); // Reset service type
-                      setAttributeValue(""); // Reset attribute
-                    }}
-                  >
-                    <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[400px]">
-                      {CATEGORY_TREE.map((sector) => (
-                        <div key={sector.sectorValue}>
-                          <div className="px-2 py-1.5 font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] uppercase tracking-wider">
-                            {sector.sector}
-                          </div>
-                          {sector.mainCategories.map((cat) => (
-                            <SelectItem 
-                              key={cat.value} 
-                              value={cat.name} 
-                              className="font-['Poppins',sans-serif] text-[14px] pl-4"
-                            >
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </div>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {categoriesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
+                    <span className="ml-2 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading categories...</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Sector Selection - Locked to user's registered sector */}
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Sector <span className="text-red-500">*</span>
+                        {userSector && (
+                          <span className="ml-2 text-[11px] text-[#6b6b6b] font-normal">
+                            (Locked to your registered sector)
+                          </span>
+                        )}
+                      </Label>
+                      <Select 
+                        value={selectedSectorId || undefined} 
+                        onValueChange={(value) => {
+                          // Prevent changing sector if user has a registered sector
+                          if (userSector) {
+                            return;
+                          }
+                          if (value) {
+                            setSelectedSectorId(value);
+                            setSelectedCategoryId("");
+                            setSelectedSubCategoryId("");
+                          }
+                        }}
+                        disabled={!!userSector}
+                      >
+                        <SelectTrigger 
+                          className={`font-['Poppins',sans-serif] text-[14px] border-gray-300 ${
+                            userSector ? 'bg-gray-100 cursor-not-allowed opacity-75' : ''
+                          }`}
+                        >
+                          <SelectValue placeholder={userSector ? userSector : "Select Sector"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[400px]">
+                          {sectors
+                            .filter((sector) => sector._id && sector._id.trim() !== "") // Filter out any sectors without valid _id
+                            .map((sector) => (
+                              <SelectItem 
+                                key={sector._id} 
+                                value={sector._id} 
+                                className="font-['Poppins',sans-serif] text-[14px]"
+                                disabled={userSector && sector._id !== defaultSectorId}
+                              >
+                                {sector.name}
+                                {userSector && sector._id === defaultSectorId && (
+                                  <span className="ml-2 text-[10px] text-[#6b6b6b]">(Your Sector)</span>
+                                )}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {userSector && (
+                        <p className="mt-2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          This sector is locked based on your registration and cannot be changed.
+                        </p>
+                      )}
+                    </div>
 
-                {/* Sub Category - Only show if main category is selected */}
-                {category && (() => {
-                  // Find the selected category in the tree
-                  let selectedCategoryData: { name: string; value: string; subCategories: SubCategoryDetail[] } | undefined;
-                  for (const sector of CATEGORY_TREE) {
-                    const found = sector.mainCategories.find(cat => cat.name === category);
-                    if (found) {
-                      selectedCategoryData = found;
-                      break;
-                    }
-                  }
-                  
-                  if (selectedCategoryData && selectedCategoryData.subCategories.length > 0) {
-                    return (
+                    {/* Service Category Selection */}
+                    {selectedSectorId && (
                       <div>
                         <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                          Sub Category
+                          Service Category <span className="text-red-500">*</span>
                         </Label>
                         <Select 
-                          value={subCategory} 
+                          value={selectedCategoryId || undefined} 
                           onValueChange={(value) => {
-                            setSubCategory(value);
-                            setServiceType(""); // Reset service type when sub category changes
-                            setAttributeValue(""); // Reset attribute when sub category changes
+                            if (value) {
+                              setSelectedCategoryId(value);
+                              setSelectedSubCategoryId("");
+                              setSelectedSubCategoryPath([]);
+                              setSelectedAttributes({});
+                            }
                           }}
                         >
                           <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                            <SelectValue placeholder="Select Sub Category" />
+                            <SelectValue placeholder="Select Service Category" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-[300px]">
-                            {selectedCategoryData.subCategories.map((subCat) => (
-                              <SelectItem 
-                                key={subCat.name} 
-                                value={subCat.name} 
-                                className="font-['Poppins',sans-serif] text-[14px]"
-                              >
-                                {subCat.name}
-                              </SelectItem>
-                            ))}
+                          <SelectContent className="max-h-[400px]">
+                            {availableCategories
+                              .filter((cat) => cat?._id && cat._id.trim() !== "")
+                              .map((cat) => (
+                                <SelectItem 
+                                  key={cat._id} 
+                                  value={cat._id} 
+                                  className="font-['Poppins',sans-serif] text-[14px]"
+                                >
+                                  {cat.name || "Unnamed Category"}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
+                    )}
 
-                {/* Service Type - Only show if sub category is selected */}
-                {subCategory && (() => {
-                  // Find the selected sub category details
-                  let selectedSubCategoryData: SubCategoryDetail | undefined;
-                  for (const sector of CATEGORY_TREE) {
-                    for (const mainCat of sector.mainCategories) {
-                      if (mainCat.name === category) {
-                        selectedSubCategoryData = mainCat.subCategories.find(sub => sub.name === subCategory);
-                        if (selectedSubCategoryData) break;
-                      }
-                    }
-                    if (selectedSubCategoryData) break;
-                  }
-                  
-                  if (selectedSubCategoryData && selectedSubCategoryData.serviceTypes.length > 0) {
-                    return (
-                      <div>
-                        <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                          Service Type
+                    {/* Service SubCategory Selection - Required (Single select with radio buttons) */}
+                    {selectedCategoryId && availableSubCategories.length > 0 && (
+                      <div className="space-y-4">
+                        <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                          Service Sub Category <span className="text-red-500">*</span>
                         </Label>
-                        <RadioGroup 
-                          value={serviceType} 
+                        <RadioGroup
+                          value={selectedSubCategoryPath[0] || ""}
                           onValueChange={(value) => {
-                            setServiceType(value);
-                            setAttributeValue(""); // Reset attribute when service type changes
+                            if (value) {
+                              setSelectedSubCategoryPath([value]);
+                              setSelectedSubCategoryId(value);
+                              // Clear deeper selections
+                              setSelectedAttributes({});
+                            }
                           }}
+                          className="grid grid-cols-2 gap-3"
                         >
-                          <div className="grid grid-cols-2 gap-3">
-                            {selectedSubCategoryData.serviceTypes.map((type) => (
-                              <label 
-                                key={type} 
-                                htmlFor={`service-${type}`}
-                                className={`
-                                  relative flex items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                                  ${serviceType === type 
-                                    ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
-                                    : 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-sm'
-                                  }
-                                `}
-                              >
-                                <RadioGroupItem 
-                                  value={type} 
-                                  id={`service-${type}`}
-                                  className="sr-only"
-                                />
-                                <span 
+                          {availableSubCategories
+                            .filter((subCat) => subCat?._id && subCat._id.trim() !== "")
+                            .sort((a, b) => (a.order || 0) - (b.order || 0))
+                            .map((subCat) => {
+                              const isSelected = selectedSubCategoryPath[0] === subCat._id;
+                              return (
+                                <label
+                                  key={subCat._id}
+                                  htmlFor={`subcat-${subCat._id}`}
                                   className={`
-                                    font-['Poppins',sans-serif] text-[13px] text-center
-                                    ${serviceType === type ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
+                                    flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+                                    ${isSelected 
+                                      ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
+                                      : 'border-gray-200 bg-white hover:border-[#FE8A0F]/50 hover:bg-gray-50'
+                                    }
                                   `}
                                 >
-                                  {type}
-                                </span>
-                                {serviceType === type && (
-                                  <div className="absolute top-2 right-2 w-5 h-5 bg-[#FE8A0F] rounded-full flex items-center justify-center">
-                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
+                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    <RadioGroupItem 
+                                      value={subCat._id} 
+                                      id={`subcat-${subCat._id}`}
+                                      className={`
+                                        ${isSelected ? 'border-[#FE8A0F]' : ''} shrink-0
+                                      `}
+                                    />
+                                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium truncate">
+                                      {subCat.name || "Unnamed Sub Category"}
+                                    </span>
                                   </div>
-                                )}
-                              </label>
-                            ))}
-                          </div>
+                                  {isSelected && (
+                                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FE8A0F] ml-2 shrink-0">
+                                      <Check className="w-4 h-4 text-white" />
+                                    </div>
+                                  )}
+                                </label>
+                              );
+                            })}
                         </RadioGroup>
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
+                    )}
 
-                {/* Attribute - Only show if service type is selected */}
-                {serviceType && (() => {
-                  // Find the selected sub category details for attributes
-                  let selectedSubCategoryData: SubCategoryDetail | undefined;
-                  for (const sector of CATEGORY_TREE) {
-                    for (const mainCat of sector.mainCategories) {
-                      if (mainCat.name === category) {
-                        selectedSubCategoryData = mainCat.subCategories.find(sub => sub.name === subCategory);
-                        if (selectedSubCategoryData) break;
-                      }
-                    }
-                    if (selectedSubCategoryData) break;
-                  }
-                  
-                  if (selectedSubCategoryData && selectedSubCategoryData.attributes.options.length > 0) {
-                    return (
-                      <div>
-                        <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                          {selectedSubCategoryData.attributes.label}
-                        </Label>
-                        <RadioGroup 
-                          value={attributeValue} 
-                          onValueChange={setAttributeValue}
-                        >
-                          <div className="grid grid-cols-2 gap-3">
-                            {selectedSubCategoryData.attributes.options.map((option) => (
-                              <label 
-                                key={option} 
-                                htmlFor={`attr-${option}`}
-                                className={`
-                                  relative flex items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                                  ${attributeValue === option 
-                                    ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
-                                    : 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-sm'
-                                  }
-                                `}
-                              >
-                                <RadioGroupItem 
-                                  value={option} 
-                                  id={`attr-${option}`}
-                                  className="sr-only"
-                                />
-                                <span 
-                                  className={`
-                                    font-['Poppins',sans-serif] text-[13px] text-center
-                                    ${attributeValue === option ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
-                                  `}
-                                >
-                                  {option}
-                                </span>
-                                {attributeValue === option && (
-                                  <div className="absolute top-2 right-2 w-5 h-5 bg-[#FE8A0F] rounded-full flex items-center justify-center">
-                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                )}
-                              </label>
-                            ))}
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                    {/* Display nested subcategory levels sequentially */}
+                    {selectedSubCategoryPath.length > 0 && selectedSubCategoryPath.map((parentId, levelIndex) => {
+                      // Check if this level has children
+                      const hasChildren = nestedSubCategories[parentId]?.length > 0;
+                      const nextLevelSelected = selectedSubCategoryPath[levelIndex + 1];
+
+                      return (
+                        <div key={`level-${levelIndex}-${parentId}`}>
+                          {/* Display current level's children */}
+                          {hasChildren && (
+                            <SubCategoryLevelDisplay
+                              parentSubCategoryId={parentId}
+                              levelIndex={levelIndex + 1}
+                              selectedSubCategoryPath={selectedSubCategoryPath}
+                              setSelectedSubCategoryPath={setSelectedSubCategoryPath}
+                              nestedSubCategories={nestedSubCategories}
+                              setNestedSubCategories={setNestedSubCategories}
+                              loadingSubCategories={loadingSubCategories}
+                              setLoadingSubCategories={setLoadingSubCategories}
+                              selectedAttributes={selectedAttributes}
+                              setSelectedAttributes={setSelectedAttributes}
+                              attributeTypeLabels={{
+                                'serviceType': 'Service Type',
+                                'size': 'Size',
+                                'frequency': 'Frequency',
+                                'make': 'Make',
+                                'model': 'Model',
+                                'brand': 'Brand',
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
 
                 {/* Service Title */}
                 <div>
@@ -1856,9 +2570,9 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                     placeholder="Select or write a title"
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
-                  {category && TITLE_SUGGESTIONS[category] && (
+                  {selectedCategory?.name && TITLE_SUGGESTIONS[selectedCategory.name] && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {TITLE_SUGGESTIONS[category].map((suggestion) => (
+                      {TITLE_SUGGESTIONS[selectedCategory.name]?.map((suggestion) => (
                         <Badge
                           key={suggestion}
                           variant="outline"
@@ -1872,36 +2586,32 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   )}
                 </div>
 
-                {/* Location */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Location
-                    </Label>
-                    <Select value={location} onValueChange={setLocation}>
-                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                        <SelectValue placeholder="Select Location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UK_LOCATIONS.map((loc) => (
-                          <SelectItem key={loc} value={loc} className="font-['Poppins',sans-serif] text-[14px]">
-                            {loc}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Postcode (Optional)
-                    </Label>
-                    <Input
-                      value={postcode}
-                      onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                      placeholder="e.g., SW1A 1AA"
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                    />
-                  </div>
+                {/* Address */}
+                <div>
+                  <AddressAutocomplete
+                    postcode={postcode}
+                    onPostcodeChange={setPostcode}
+                    address={address}
+                    onAddressChange={setAddress}
+                    townCity={townCity}
+                    onTownCityChange={setTownCity}
+                    county={county}
+                    onCountyChange={setCounty}
+                    onAddressSelect={(selectedAddress) => {
+                      setPostcode(selectedAddress.postcode);
+                      setAddress(selectedAddress.address);
+                      setTownCity(selectedAddress.townCity);
+                      if (selectedAddress.county) {
+                        setCounty(selectedAddress.county);
+                      }
+                    }}
+                    label="Postcode"
+                    required={false}
+                    showAddressField={true}
+                    showTownCityField={true}
+                    showCountyField={true}
+                    addressLabel="Address"
+                  />
                 </div>
 
                 {/* Positive Keywords */}
@@ -1951,6 +2661,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                               }
                             }}
                             disabled={idealFor.length >= 5 && !idealFor.includes(option.id)}
+                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
                           />
                           <label
                             htmlFor={option.id}
@@ -2005,7 +2716,7 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                                 }
                               }}
                               disabled={!canSelect}
-                              className={isSelected ? "border-[#3D78CB] data-[state=checked]:bg-[#3D78CB]" : ""}
+                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
                             />
                             <label
                               htmlFor={option.id}
@@ -2090,10 +2801,12 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Base Price (£)
+                      Base Price (£) <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="number"
+                      step="0.01"
+                      min="0"
                       value={basePrice}
                       onChange={(e) => setBasePrice(e.target.value)}
                       placeholder="0.00"
@@ -2102,20 +2815,35 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
                   </div>
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Price Unit
+                      Original Price (£) (Optional)
                     </Label>
-                    <Select value={priceUnit} onValueChange={setPriceUnit}>
-                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hour">Per Hour</SelectItem>
-                        <SelectItem value="day">Per Day</SelectItem>
-                        <SelectItem value="project">Per Project</SelectItem>
-                        <SelectItem value="item">Per Item</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={originalPrice}
+                      onChange={(e) => setOriginalPrice(e.target.value)}
+                      placeholder="0.00"
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                    />
                   </div>
+                </div>
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Price Unit
+                  </Label>
+                  <Select value={priceUnit} onValueChange={setPriceUnit}>
+                    <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixed Price</SelectItem>
+                      <SelectItem value="per hour">Per Hour</SelectItem>
+                      <SelectItem value="per day">Per Day</SelectItem>
+                      <SelectItem value="per project">Per Project</SelectItem>
+                      <SelectItem value="per item">Per Item</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* About Your Service */}
@@ -2280,36 +3008,138 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {/* Gallery Tab */}
             <TabsContent value="gallery" className="mt-0 py-6">
               <div className="space-y-6">
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                  Upload images of your previous work to showcase your skills. Recommended size: 1200x800px.
-                </p>
-
-                <div className="grid grid-cols-3 gap-4">
-                  {galleryImages.map((image, index) => (
-                    <div key={index} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden group">
-                      <img src={image} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => setGalleryImages(galleryImages.filter((_, i) => i !== index))}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  
-                  {galleryImages.length < 6 && (
-                    <div className="aspect-video bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#FE8A0F] hover:bg-[#FFF5EB] transition-all">
-                      <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                        Upload Image
-                      </p>
-                    </div>
-                  )}
+                <div>
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-2">
+                    Gallery Images
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    Upload images of your previous work to showcase your skills. Recommended size: 1200x800px.
+                  </p>
                 </div>
 
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                  Maximum 6 images. Supported formats: JPG, PNG (Max 5MB each)
-                </p>
+                {/* Upload Area */}
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  className={`
+                    relative border-2 border-dashed rounded-xl p-8 transition-all duration-200
+                    ${galleryImages.length >= 6 
+                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50' 
+                      : 'border-[#FE8A0F]/30 bg-[#FFF5EB]/30 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/50 cursor-pointer'
+                    }
+                  `}
+                  onClick={() => {
+                    if (galleryImages.length < 6 && fileInputRef.current) {
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                    multiple
+                    onChange={(e) => handleImageUpload(e.target.files)}
+                    className="hidden"
+                    disabled={galleryImages.length >= 6}
+                  />
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center mb-4">
+                      <ImagePlus className="w-8 h-8 text-[#FE8A0F]" />
+                    </div>
+                    <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-1">
+                      {galleryImages.length >= 6 
+                        ? 'Maximum images reached' 
+                        : 'Click or drag images to upload'
+                      }
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      {galleryImages.length >= 6 
+                        ? 'Remove images to upload more' 
+                        : `Upload up to ${6 - galleryImages.length} more image(s). JPG, PNG, GIF, WEBP (Max 5MB each)`
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Gallery Grid */}
+                {galleryImages.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        Uploaded Images ({galleryImages.length}/6)
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        Drag to reorder
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {galleryImages.map((image, index) => (
+                        <div
+                          key={index}
+                          draggable
+                          onDragStart={() => handleDragStart(index)}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDragEnd={handleDragEnd}
+                          className={`
+                            relative group aspect-video bg-gray-100 rounded-xl overflow-hidden border-2 transition-all duration-200
+                            ${dragIndex === index 
+                              ? 'border-[#FE8A0F] scale-105 shadow-lg z-10' 
+                              : 'border-transparent hover:border-[#FE8A0F]/50 hover:shadow-md'
+                            }
+                          `}
+                        >
+                          {uploadingImages[index] ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-sm z-20 rounded-xl">
+                              <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
+                              <div className="w-full px-4">
+                                <div className="w-full bg-gray-700 rounded-full h-2 mb-2 overflow-hidden">
+                                  <div 
+                                    className="bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] h-2 rounded-full transition-all duration-300 ease-out relative"
+                                    style={{ width: `${uploadProgress[index] || 0}%` }}
+                                  >
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                  </div>
+                                </div>
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-white text-center font-medium">
+                                  {uploadProgress[index] || 0}% - Uploading...
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <img 
+                                src={image} 
+                                alt={`Gallery ${index + 1}`} 
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded-md font-['Poppins',sans-serif] text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                #{index + 1}
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveImage(index);
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                              <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-md px-2 py-1">
+                                  <p className="font-['Poppins',sans-serif] text-[10px] text-[#2c353f] truncate">
+                                    Drag to reorder
+                                  </p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -2561,10 +3391,20 @@ export default function AddServiceSection({ onClose, onSave }: AddServiceSection
             {isLastTab() ? (
               <Button
                 onClick={handlePublish}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                disabled={loading}
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px] disabled:opacity-50"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Publish Service
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isEditMode ? "Updating..." : "Publishing..."}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {isEditMode ? "Update Service" : "Publish Service"}
+                  </>
+                )}
               </Button>
             ) : (
               <Button

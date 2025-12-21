@@ -34,6 +34,7 @@ import {
   Stethoscope,
   PawPrint,
   TruckIcon,
+  Loader2,
   type LucideIcon
 } from "lucide-react";
 import { useCart } from "./CartContext";
@@ -48,7 +49,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { allServices, type Service } from "./servicesData";
+import type { Service } from "./servicesData";
 import { categoryTreeForServicesPage } from "./unifiedCategoriesData";
 import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
@@ -147,6 +148,119 @@ export default function ServicesPage() {
     latitude: 51.4875,
     longitude: -0.1687
   });
+
+  // Fetch services from API
+  const [allServices, setAllServices] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setServicesLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        
+        // Build query params
+        const params = new URLSearchParams();
+        params.append('activeOnly', 'true');
+        params.append('status', 'active');
+        if (sectorSlugParam) {
+          // Find sector ID from slug
+          const sectors = await fetch(resolveApiUrl('/api/sectors?activeOnly=true'), { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => d.sectors || []);
+          const sector = sectors.find((s: any) => s.slug === sectorSlugParam);
+          if (sector) {
+            params.append('serviceCategoryId', sector._id);
+          }
+        }
+        
+        const response = await fetch(
+          resolveApiUrl(`/api/services?${params.toString()}&limit=1000`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Transform API data to match Service interface
+          const transformedServices: Service[] = (data.services || []).map((s: any) => ({
+            id: parseInt(s._id.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            _id: s._id,
+            slug: s.slug,
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
+            subcategory: typeof s.serviceCategory === 'object'
+              ? s.serviceCategory.name || ""
+              : "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+            _id: s._id, // Keep original ID for navigation
+            _serviceCategory: s.serviceCategory,
+            _serviceSubCategory: s.serviceSubCategory,
+          }));
+          setAllServices(transformedServices);
+        } else {
+          console.error("Failed to fetch services");
+          setAllServices([]);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setAllServices([]);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [sectorSlugParam, serviceCategorySlugParam]);
   const [showRadiusSlider, setShowRadiusSlider] = useState(false);
 
   // Main Sectors (Main Categories)
@@ -1655,7 +1769,14 @@ export default function ServicesPage() {
 
           {/* Services Grid/List */}
           <div className="flex-1">
-            {filteredAndSortedServices.length === 0 ? (
+            {servicesLoading ? (
+              <div className="col-span-full flex items-center justify-center py-20">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading services...</p>
+                </div>
+              </div>
+            ) : filteredAndSortedServices.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
                 <h3 className="font-['Poppins',sans-serif] text-[24px] text-[#5a5a5a] mb-4">
                   Sorry, no services found
@@ -1683,7 +1804,7 @@ export default function ServicesPage() {
                     className={`bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer ${
                       viewMode === "list" ? "flex flex-row min-h-[145px]" : "flex flex-col"
                     }`}
-                    onClick={() => navigate(`/service/${service.id}`, { state: { userCoords } })}
+                    onClick={() => navigate(`/service/${service.slug || service._id || service.id}`, { state: { userCoords } })}
                   >
                     {/* Image Section */}
                     <div 
@@ -1818,7 +1939,7 @@ export default function ServicesPage() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/service/${service.id}`, { state: { userCoords } });
+                                  navigate(`/service/${service.slug || service._id || service.id}`, { state: { userCoords } });
                                 }}
                                 className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
                               >
@@ -1883,7 +2004,7 @@ export default function ServicesPage() {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 md:gap-2 text-[#8d8d8d] text-[8px] md:text-[12px]">
-                                <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#E5E5E5] text-[#E5E5E5]" />
+                                <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#FE8A0F] text-[#FE8A0F]" />
                                 <span className="font-['Poppins',sans-serif]">New</span>
                               </div>
                             )}
@@ -1980,7 +2101,7 @@ export default function ServicesPage() {
               })) || [];
 
             addToCart({
-              id: selectedServiceForCart.id.toString(),
+              id: (selectedServiceForCart._id || selectedServiceForCart.id).toString(),
               title: selectedServiceForCart.description,
               seller: selectedServiceForCart.providerName,
               price: data.packageType && selectedServiceForCart.packages 

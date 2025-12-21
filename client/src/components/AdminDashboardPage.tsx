@@ -53,6 +53,7 @@ import AdminSectorsPage from "./admin/AdminSectorsPage";
 import AdminCategoriesPage from "./admin/AdminCategoriesPage";
 import AdminServiceCategoriesPage from "./admin/AdminServiceCategoriesPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
+import AdminServicesPage from "./admin/AdminServicesPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -265,6 +266,14 @@ export default function AdminDashboardPage() {
         return <AdminCategoriesPage />;
       case "service-category":
         return <AdminServiceCategoriesPage />;
+      case "all-service":
+        return (
+          <AdminServicesPage
+            initialTab="all"
+            title="All Services"
+            description="View and manage all professional services"
+          />
+        );
       case "email-campaign":
         // Check permission-based access for email campaign
         if (!hasRouteAccess("/admin/email-campaign")) {
@@ -500,243 +509,36 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   ) : (
-                    <section className="grid gap-4 md:grid-cols-3">
-                  {/* Column 1 - Orange Cards */}
-                  <div className="space-y-4">
-                    {shouldShowCard("PROFESSIONALS") && (
-                      <StatCard
-                        icon={Users}
-                        title="PROFESSIONALS"
-                        value={statistics?.professionals || 0}
-                        color="orange"
-                        dailyChange={statistics?.professionalsDailyChange}
-                        badge={statistics?.professionalsNew}
-                        onClick={() => navigate("/admin/professionals")}
-                      />
-                    )}
-                    <StatCard
-                      icon={Hammer}
-                      title="TOTAL JOB"
-                      value={statistics?.totalJob || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalJobDailyChange}
-                      badge={statistics?.totalJobDailyChange}
-                      onClick={() => navigate("/admin/job-manage")}
-                    />
-                    <StatCard
-                      icon={FolderTree}
-                      title="TOTAL JOB CATEGORY"
-                      value={statistics?.totalJobCategory || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalJobCategoryDailyChange}
-                      badge={statistics?.totalJobCategoryDailyChange}
-                      onClick={() => navigate("/admin/categories")}
-                    />
-                    <StatCard
-                      icon={FolderTree}
-                      title="TOTAL SECTOR"
-                      value={statistics?.totalSector || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalSectorDailyChange}
-                      badge={statistics?.totalSectorDailyChange}
-                      onClick={() => navigate("/admin/sectors")}
-                    />
-                    <StatCard
-                      icon={FolderTree}
-                      title="TOTAL JOB SUB CATEGORY"
-                      value={statistics?.totalJobSubCategory || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalJobSubCategoryDailyChange}
-                      badge={statistics?.totalJobSubCategoryDailyChange}
-                      onClick={() => navigate("/admin/categories")}
-                    />
-                    <StatCard
-                      icon={FolderTree}
-                      title="TOTAL SERVICE CATEGORY"
-                      value={statistics?.totalServiceCategory || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalServiceCategoryDailyChange}
-                      badge={statistics?.totalServiceCategoryDailyChange}
-                      onClick={() => navigate("/admin/service-categories")}
-                    />
-                    <StatCard
-                      icon={FolderTree}
-                      title="TOTAL SERVICE SUB CATEGORY"
-                      value={statistics?.totalServiceSubCategory || 0}
-                      color="orange"
-                      dailyChange={statistics?.totalServiceSubCategoryDailyChange}
-                      badge={statistics?.totalServiceSubCategoryDailyChange}
-                      onClick={() => navigate("/admin/service-categories")}
-                    />
-                    <StatCard
-                      icon={ShieldCheck}
-                      title="ACCOUNT VERIFICATION DOCUMENT"
-                      value={statistics?.accountVerificationDocument || 0}
-                      badge={statistics?.accountVerificationDocumentNew || 0}
-                      color="orange"
-                      dailyChange={statistics?.accountVerificationDocumentDailyChange}
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={UserCheck}
-                      title="TOTAL VERIFICATION USERS"
-                      value={statistics?.totalVerificationUsers || 0}
-                      color="orange"
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={Calendar}
-                      title="VERIFICATION USERS TODAY"
-                      value={statistics?.verificationUsersToday || 0}
-                      color="orange"
-                      onClick={() => navigate("/admin/professionals")}
-                    />
-                    <StatCard
-                      icon={TrendingUp}
-                      title="PROFESSIONAL REFERRALS"
-                      value={statistics?.professionalsReferrals || 0}
-                      color="orange"
-                      dailyChange={statistics?.professionalsReferralsDailyChange}
-                      badge={statistics?.professionalsReferralsDailyChange}
-                      onClick={() => navigate("/admin/referrals-professional")}
-                    />
-                    <StatCard
-                      icon={AlertCircle}
-                      title="FLAGGED"
-                      value={statistics?.flagged || 0}
-                      color="orange"
-                      dailyChange={statistics?.flaggedDailyChange}
-                      badge={statistics?.flaggedDailyChange}
-                      onClick={() => navigate("/admin/flagged")}
-                    />
-                  </div>
+                    <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[
+                        // Orange
+                        { show: shouldShowCard("PROFESSIONALS"), icon: Users, title: "PROFESSIONALS", value: statistics?.professionals || 0, color: "orange" as const, dailyChange: statistics?.professionalsDailyChange, badge: statistics?.professionalsNew, onClick: () => navigate("/admin/professionals") },
+                        { show: shouldShowCard("TOTAL JOB"), icon: Hammer, title: "TOTAL JOB", value: statistics?.totalJob || 0, color: "orange" as const, dailyChange: statistics?.totalJobDailyChange, badge: statistics?.totalJobDailyChange, onClick: () => navigate("/admin/job-manage") },
+                        { show: shouldShowCard("TOTAL JOB CATEGORY"), icon: FolderTree, title: "TOTAL JOB CATEGORY", value: statistics?.totalJobCategory || 0, color: "orange" as const, dailyChange: statistics?.totalJobCategoryDailyChange, badge: statistics?.totalJobCategoryDailyChange, onClick: () => navigate("/admin/categories") },
+                        { show: shouldShowCard("TOTAL SECTOR"), icon: FolderTree, title: "TOTAL SECTOR", value: statistics?.totalSector || 0, color: "orange" as const, dailyChange: statistics?.totalSectorDailyChange, badge: statistics?.totalSectorDailyChange, onClick: () => navigate("/admin/sectors") },
+                        { show: shouldShowCard("TOTAL JOB SUB CATEGORY"), icon: FolderTree, title: "TOTAL JOB SUB CATEGORY", value: statistics?.totalJobSubCategory || 0, color: "orange" as const, dailyChange: statistics?.totalJobSubCategoryDailyChange, badge: statistics?.totalJobSubCategoryDailyChange, onClick: () => navigate("/admin/categories") },
+                        { show: shouldShowCard("TOTAL SERVICE CATEGORY"), icon: FolderTree, title: "TOTAL SERVICE CATEGORY", value: statistics?.totalServiceCategory || 0, color: "orange" as const, dailyChange: statistics?.totalServiceCategoryDailyChange, badge: statistics?.totalServiceCategoryDailyChange, onClick: () => navigate("/admin/service-categories") },
+                        { show: shouldShowCard("TOTAL SERVICE SUB CATEGORY"), icon: FolderTree, title: "TOTAL SERVICE SUB CATEGORY", value: statistics?.totalServiceSubCategory || 0, color: "orange" as const, dailyChange: statistics?.totalServiceSubCategoryDailyChange, badge: statistics?.totalServiceSubCategoryDailyChange, onClick: () => navigate("/admin/service-categories") },
+                        { show: shouldShowCard("ACCOUNT VERIFICATION DOCUMENT"), icon: ShieldCheck, title: "ACCOUNT VERIFICATION DOCUMENT", value: statistics?.accountVerificationDocument || 0, color: "orange" as const, dailyChange: statistics?.accountVerificationDocumentDailyChange, badge: statistics?.accountVerificationDocumentNew || 0, onClick: () => navigate("/admin/professionals") },
+                        { show: shouldShowCard("TOTAL VERIFICATION USERS"), icon: UserCheck, title: "TOTAL VERIFICATION USERS", value: statistics?.totalVerificationUsers || 0, color: "orange" as const, onClick: () => navigate("/admin/professionals") },
+                        { show: shouldShowCard("VERIFICATION USERS TODAY"), icon: Calendar, title: "VERIFICATION USERS TODAY", value: statistics?.verificationUsersToday || 0, color: "orange" as const, onClick: () => navigate("/admin/professionals") },
+                        { show: shouldShowCard("PROFESSIONAL REFERRALS"), icon: TrendingUp, title: "PROFESSIONAL REFERRALS", value: statistics?.professionalsReferrals || 0, color: "orange" as const, dailyChange: statistics?.professionalsReferralsDailyChange, badge: statistics?.professionalsReferralsDailyChange, onClick: () => navigate("/admin/referrals-professional") },
+                        { show: shouldShowCard("FLAGGED"), icon: AlertCircle, title: "FLAGGED", value: statistics?.flagged || 0, color: "orange" as const, dailyChange: statistics?.flaggedDailyChange, badge: statistics?.flaggedDailyChange, onClick: () => navigate("/admin/flagged") },
 
-                  {/* Column 2 - Red Cards */}
-                  <div className="space-y-4">
-                    {shouldShowCard("CLIENTS") && (
-                      <StatCard
-                        icon={Users}
-                        title="CLIENTS"
-                        value={statistics?.clients || 0}
-                        color="red"
-                        dailyChange={statistics?.clientsDailyChange}
-                        badge={statistics?.clientsNew}
-                        onClick={() => navigate("/admin/clients")}
-                      />
-                    )}
-                    {shouldShowCard("TOTAL JOB IN DISPUTE") && (
-                      <StatCard
-                        icon={Gavel}
-                        title="TOTAL JOB IN DISPUTE"
-                        value={statistics?.totalJobInDispute || 0}
-                        color="red"
-                        dailyChange={statistics?.totalJobInDisputeDailyChange}
-                        badge={statistics?.totalJobInDisputeDailyChange}
-                        onClick={() => navigate("/admin/dispute-list")}
-                      />
-                    )}
-                    {shouldShowCard("PENDING WITHDRAWAL REQUEST") && (
-                      <StatCard
-                        icon={CreditCard}
-                        title="PENDING WITHDRAWAL REQUEST"
-                        value={statistics?.pendingWithdrawalRequest || 0}
-                        color="red"
-                        dailyChange={statistics?.pendingWithdrawalRequestDailyChange}
-                        badge={statistics?.pendingWithdrawalRequestDailyChange}
-                        onClick={() => navigate("/admin/withdrawal-request")}
-                      />
-                    )}
-                    {shouldShowCard("MESSAGE CENTER") && (
-                      <StatCard
-                        icon={MessageCircle}
-                        title="MESSAGE CENTER"
-                        value={statistics?.messageCenter || 0}
-                        badge={statistics?.messageCenterNew || 0}
-                        color="red"
-                        dailyChange={statistics?.messageCenterDailyChange}
-                        onClick={() => navigate("/admin/message-center")}
-                      />
-                    )}
-                    {shouldShowCard("CLIENT REFERRALS") && (
-                      <StatCard
-                        icon={TrendingUp}
-                        title="CLIENT REFERRALS"
-                        value={statistics?.clientsReferrals || 0}
-                        color="red"
-                        dailyChange={statistics?.clientsReferralsDailyChange}
-                        badge={statistics?.clientsReferralsDailyChange}
-                        onClick={() => navigate("/admin/referrals-client")}
-                      />
-                    )}
-                    {shouldShowCard("DELETED ACCOUNT") && (
-                      <StatCard
-                        icon={Archive}
-                        title="DELETED ACCOUNT"
-                        value={statistics?.deletedAccount || 0}
-                        badge={statistics?.deletedAccountNew || 0}
-                        color="red"
-                        dailyChange={statistics?.deletedAccountDailyChange}
-                        onClick={() => navigate("/admin/delete-account")}
-                      />
-                    )}
-                    {shouldShowCard("ORDERS") && (
-                      <StatCard
-                        icon={Package}
-                        title="ORDERS"
-                        value={statistics?.orders || 0}
-                        badge={statistics?.ordersNew || 0}
-                        color="red"
-                        dailyChange={statistics?.ordersDailyChange}
-                        onClick={() => navigate("/admin/service-order")}
-                      />
-                    )}
-                    {shouldShowCard("APPROVAL PENDING SERVICE") && (
-                      <StatCard
-                        icon={Clock}
-                        title="APPROVAL PENDING SERVICE"
-                        value={statistics?.approvalPendingService || 0}
-                        color="red"
-                        dailyChange={statistics?.approvalPendingServiceDailyChange}
-                        badge={statistics?.approvalPendingServiceDailyChange}
-                        onClick={() => navigate("/admin/approval-pending-service")}
-                      />
-                    )}
-                  </div>
+                        // Red
+                        { show: shouldShowCard("CLIENTS"), icon: Users, title: "CLIENTS", value: statistics?.clients || 0, color: "red" as const, dailyChange: statistics?.clientsDailyChange, badge: statistics?.clientsNew, onClick: () => navigate("/admin/clients") },
+                        { show: shouldShowCard("TOTAL JOB IN DISPUTE"), icon: Gavel, title: "TOTAL JOB IN DISPUTE", value: statistics?.totalJobInDispute || 0, color: "red" as const, dailyChange: statistics?.totalJobInDisputeDailyChange, badge: statistics?.totalJobInDisputeDailyChange, onClick: () => navigate("/admin/dispute-list") },
+                        { show: shouldShowCard("PENDING WITHDRAWAL REQUEST"), icon: CreditCard, title: "PENDING WITHDRAWAL REQUEST", value: statistics?.pendingWithdrawalRequest || 0, color: "red" as const, dailyChange: statistics?.pendingWithdrawalRequestDailyChange, badge: statistics?.pendingWithdrawalRequestDailyChange, onClick: () => navigate("/admin/withdrawal-request") },
+                        { show: shouldShowCard("MESSAGE CENTER"), icon: MessageCircle, title: "MESSAGE CENTER", value: statistics?.messageCenter || 0, color: "red" as const, dailyChange: statistics?.messageCenterDailyChange, badge: statistics?.messageCenterNew || 0, onClick: () => navigate("/admin/message-center") },
+                        { show: shouldShowCard("CLIENT REFERRALS"), icon: TrendingUp, title: "CLIENT REFERRALS", value: statistics?.clientsReferrals || 0, color: "red" as const, dailyChange: statistics?.clientsReferralsDailyChange, badge: statistics?.clientsReferralsDailyChange, onClick: () => navigate("/admin/referrals-client") },
+                        { show: shouldShowCard("DELETED ACCOUNT"), icon: Archive, title: "DELETED ACCOUNT", value: statistics?.deletedAccount || 0, color: "red" as const, dailyChange: statistics?.deletedAccountDailyChange, badge: statistics?.deletedAccountNew || 0, onClick: () => navigate("/admin/delete-account") },
+                        { show: shouldShowCard("ORDERS"), icon: Package, title: "ORDERS", value: statistics?.orders || 0, color: "red" as const, dailyChange: statistics?.ordersDailyChange, badge: statistics?.ordersNew || 0, onClick: () => navigate("/admin/service-order") },
+                        { show: shouldShowCard("APPROVAL PENDING SERVICE"), icon: Clock, title: "APPROVAL PENDING SERVICE", value: statistics?.approvalPendingService || 0, color: "red" as const, dailyChange: statistics?.approvalPendingServiceDailyChange, badge: statistics?.approvalPendingServiceDailyChange, onClick: () => navigate("/admin/approval-pending-service") },
 
-                  {/* Column 3 - Green Cards */}
-                  <div className="space-y-4">
-                    {shouldShowCard("SUBADMIN") && (
-                      <StatCard
-                        icon={Users}
-                        title="SUBADMIN"
-                        value={statistics?.subadmin || 0}
-                        color="green"
-                        dailyChange={statistics?.subadminDailyChange}
-                        badge={statistics?.subadminNew}
-                        onClick={() => navigate("/admin/sub-admins")}
-                      />
-                    )}
-                    {shouldShowCard("TOTAL PLANS & PACKAGES") && (
-                      <StatCard
-                        icon={Package}
-                        title="TOTAL PLANS & PACKAGES"
-                        value={statistics?.totalPlansPackages || 0}
-                        color="green"
-                        dailyChange={statistics?.totalPlansPackagesDailyChange}
-                        badge={statistics?.totalPlansPackagesDailyChange}
-                        onClick={() => navigate("/admin/packages")}
-                      />
-                    )}
-                    {shouldShowCard("NEW CONTACT REQUEST") && (
-                      <StatCard
-                        icon={Send}
-                        title="NEW CONTACT REQUEST"
-                        value={statistics?.newContactRequest || 0}
-                        badge={statistics?.newContactRequestNew || 0}
-                        color="green"
-                        dailyChange={statistics?.newContactRequestDailyChange}
-                        onClick={() => {
-                          // Navigate to appropriate page based on permissions
+                        // Green
+                        { show: shouldShowCard("SUBADMIN"), icon: Users, title: "SUBADMIN", value: statistics?.subadmin || 0, color: "green" as const, dailyChange: statistics?.subadminDailyChange, badge: statistics?.subadminNew, onClick: () => navigate("/admin/sub-admins") },
+                        { show: shouldShowCard("TOTAL PLANS & PACKAGES"), icon: Package, title: "TOTAL PLANS & PACKAGES", value: statistics?.totalPlansPackages || 0, color: "green" as const, dailyChange: statistics?.totalPlansPackagesDailyChange, badge: statistics?.totalPlansPackagesDailyChange, onClick: () => navigate("/admin/packages") },
+                        { show: shouldShowCard("NEW CONTACT REQUEST"), icon: Send, title: "NEW CONTACT REQUEST", value: statistics?.newContactRequest || 0, color: "green" as const, dailyChange: statistics?.newContactRequestDailyChange, badge: statistics?.newContactRequestNew || 0, onClick: () => {
                           if (hasPermission("professionals-management") && !hasPermission("clients-management")) {
                             navigate("/admin/professional-requests");
                           } else if (hasPermission("clients-management") && !hasPermission("professionals-management")) {
@@ -744,54 +546,25 @@ export default function AdminDashboardPage() {
                           } else {
                             navigate("/admin/contact-requests");
                           }
-                        }}
-                      />
-                    )}
-                    {shouldShowCard("AFFILIATE") && (
-                      <StatCard
-                        icon={Gift}
-                        title="AFFILIATE"
-                        value={statistics?.affiliate || 0}
-                        badge={statistics?.affiliateNew || 0}
-                        color="green"
-                        dailyChange={statistics?.affiliateDailyChange}
-                        onClick={() => navigate("/admin/affiliate")}
-                      />
-                    )}
-                    {shouldShowCard("ASK TO STEP IN") && (
-                      <StatCard
-                        icon={Handshake}
-                        title="ASK TO STEP IN"
-                        value={statistics?.askToStepIn || 0}
-                        color="green"
-                        dailyChange={statistics?.askToStepInDailyChange}
-                        badge={statistics?.askToStepInDailyChange}
-                        onClick={() => navigate("/admin/ask-step-in")}
-                      />
-                    )}
-                    {shouldShowCard("SERVICE LISTING") && (
-                      <StatCard
-                        icon={List}
-                        title="SERVICE LISTING"
-                        value={statistics?.serviceListing || 0}
-                        color="green"
-                        dailyChange={statistics?.serviceListingDailyChange}
-                        badge={statistics?.serviceListingDailyChange}
-                        onClick={() => navigate("/admin/service")}
-                      />
-                    )}
-                    {shouldShowCard("CUSTOM ORDERS") && (
-                      <StatCard
-                        icon={Box}
-                        title="CUSTOM ORDERS"
-                        value={statistics?.customOrders || 0}
-                        badge={statistics?.customOrdersNew || 0}
-                        color="green"
-                        dailyChange={statistics?.customOrdersDailyChange}
-                        onClick={() => navigate("/admin/custom-order")}
-                      />
-                    )}
-                    </div>
+                        } },
+                        { show: shouldShowCard("AFFILIATE"), icon: Gift, title: "AFFILIATE", value: statistics?.affiliate || 0, color: "green" as const, dailyChange: statistics?.affiliateDailyChange, badge: statistics?.affiliateNew || 0, onClick: () => navigate("/admin/affiliate") },
+                        { show: shouldShowCard("ASK TO STEP IN"), icon: Handshake, title: "ASK TO STEP IN", value: statistics?.askToStepIn || 0, color: "green" as const, dailyChange: statistics?.askToStepInDailyChange, badge: statistics?.askToStepInDailyChange, onClick: () => navigate("/admin/ask-step-in") },
+                        { show: shouldShowCard("SERVICE LISTING"), icon: List, title: "SERVICE LISTING", value: statistics?.serviceListing || 0, color: "green" as const, dailyChange: statistics?.serviceListingDailyChange, badge: statistics?.serviceListingDailyChange, onClick: () => navigate("/admin/service") },
+                        { show: shouldShowCard("CUSTOM ORDERS"), icon: Box, title: "CUSTOM ORDERS", value: statistics?.customOrders || 0, color: "green" as const, dailyChange: statistics?.customOrdersDailyChange, badge: statistics?.customOrdersNew || 0, onClick: () => navigate("/admin/custom-order") },
+                      ]
+                        .filter((c) => c.show)
+                        .map((c, idx) => (
+                          <StatCard
+                            key={`${c.title}-${idx}`}
+                            icon={c.icon}
+                            title={c.title}
+                            value={c.value}
+                            color={c.color}
+                            dailyChange={c.dailyChange}
+                            badge={c.badge}
+                            onClick={c.onClick}
+                          />
+                        ))}
                     </section>
                   )}
                 </TabsContent>

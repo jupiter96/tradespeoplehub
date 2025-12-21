@@ -1,13 +1,101 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu } from "lucide-react@0.487.0";
+import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle } from "lucide-react@0.487.0";
 import { toast } from "sonner@2.0.3";
 import BookingModal from "./BookingModal";
 import AddToCartModal from "./AddToCartModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "./ui/sheet";
 import { nameToSlug } from "./categoriesHierarchy";
+
+// Join URL path segments safely (prevents accidental double slashes)
+const joinPath = (...parts: Array<string | null | undefined>) => {
+  const cleaned = parts
+    .map((p) => (p ?? "").toString().trim().replace(/^\/+|\/+$/g, ""))
+    .filter((p) => p.length > 0);
+  return "/" + cleaned.join("/");
+};
+
+// Smart image renderer:
+// - Foreground: object-contain (preserves portrait/landscape ratio, centered)
+// - Background: blurred version of the same image to fill leftover space (modern look)
+function SmartImageLayers({
+  src,
+  alt,
+  mode = "main",
+}: {
+  src: string;
+  alt: string;
+  mode?: "main" | "thumb";
+}) {
+  if (!src) {
+    return <div className="absolute inset-0 bg-gray-200" aria-hidden="true" />;
+  }
+
+  return (
+    <>
+      {/* Blurred background layer (use <img> instead of CSS backgroundImage so it reliably loads everywhere) */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className={`absolute inset-0 h-full w-full object-cover scale-110 ${
+          // Stronger blur for both main & thumbnails (requested)
+          mode === "thumb" ? "blur-2xl opacity-85" : "blur-3xl opacity-90"
+        }`}
+        decoding="async"
+        loading="eager"
+      />
+      <div
+        className={`absolute inset-0 ${mode === "thumb" ? "bg-black/15" : "bg-black/20"}`}
+        aria-hidden="true"
+      />
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-contain"
+        decoding="async"
+        // Thumbnails sometimes don't lazy-load reliably inside horizontal carousels
+        loading="eager"
+      />
+    </>
+  );
+}
+
+function ThumbnailButtons({
+  images,
+  activeIndex,
+  onSelect,
+  className = "",
+}: {
+  images: string[];
+  activeIndex: number;
+  onSelect: (idx: number) => void;
+  className?: string;
+}) {
+  if (!images || images.length <= 1) return null;
+
+  return (
+    <div className={`flex flex-wrap gap-2 ${className}`}>
+      {images.map((imgUrl, idx) => (
+        <button
+          key={`${imgUrl}-${idx}`}
+          type="button"
+          onClick={() => onSelect(idx)}
+          className={`relative h-[60px] w-[100px] overflow-hidden rounded-lg border-2 bg-gray-100 transition-all ${
+            idx === activeIndex
+              ? "border-[#FE8A0F] shadow-[0_0_0_3px_rgba(254,138,15,0.18)]"
+              : "border-transparent hover:border-[#FE8A0F]/50"
+          }`}
+          aria-label={`View image ${idx + 1}`}
+        >
+          <SmartImageLayers src={imgUrl} alt={`Service thumbnail ${idx + 1}`} mode="thumb" />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // Helper function to calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -40,7 +128,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "./ui/breadcrumb";
-import { allServices } from "./servicesData";
+// Removed static import - will fetch from API
 
 interface Review {
   id: number;
@@ -137,8 +225,125 @@ export default function ServiceDetailPage() {
   // Add to Cart Modal
   const [showAddToCartModal, setShowAddToCartModal] = useState(false);
   
-  // Find actual service data
-  const service = allServices.find(s => s.id === Number(id));
+  // Fetch service from API
+  const [service, setService] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isPendingService, setIsPendingService] = useState(false);
+
+  useEffect(() => {
+    const fetchService = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        
+        // Try to find by ID (could be MongoDB _id or numeric id)
+        const response = await fetch(
+          resolveApiUrl(`/api/services/${id}`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const s = data.service;
+          
+          // Transform API data to match Service interface
+          const transformedService = {
+            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            images: s.images || [],
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
+            subcategory: typeof s.serviceCategory === 'object'
+              ? s.serviceCategory.name || ""
+              : "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+            _id: s._id,
+            _serviceCategory: s.serviceCategory,
+            _serviceSubCategory: s.serviceSubCategory,
+            status: s.status, // Store original status for pending check
+          };
+          setService(transformedService);
+          
+          // Check if service is pending
+          if (s.status === 'pending') {
+            setIsPendingService(true);
+          }
+        } else {
+          console.error("Service not found");
+          setService(null);
+        }
+      } catch (error) {
+        console.error("Error fetching service:", error);
+        setService(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchService();
+  }, [id]);
+
+  // Handle pending service redirect
+  useEffect(() => {
+    if (isPendingService) {
+      const timer = setTimeout(() => {
+        navigate('/account');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isPendingService, navigate]);
   
   // Get user coordinates from URL state (passed from ServicesPage) or use default Chelsea, London
   useEffect(() => {
@@ -172,6 +377,105 @@ export default function ServiceDetailPage() {
   
   // Initialize vote counts from review data - will be set properly after service check
   const [reviewVoteCounts, setReviewVoteCounts] = useState<Map<number, { helpful: number; notHelpful: number }>>(new Map());
+
+  // Derived data (must be declared before any early returns to keep hook order stable)
+  const reviews = useMemo(() => {
+    if (!service) return [];
+    return generateReviews(service.id, service.reviewCount, service.providerName, service.providerImage);
+  }, [service]);
+
+  const selectedPackage = useMemo(() => {
+    if (!service?.packages) return undefined;
+    return service.packages.find((pkg: any) => pkg.id === selectedPackageId);
+  }, [service, selectedPackageId]);
+
+  const serviceImages = useMemo(() => {
+    if (!service) return [];
+    const combined = [
+      ...(Array.isArray(service.images) ? service.images : []),
+      ...(Array.isArray(service.portfolioImages) ? service.portfolioImages : []),
+    ].filter(Boolean);
+    const unique = combined.filter((url, idx) => combined.indexOf(url) === idx);
+    if (unique.length === 0 && service.image) unique.push(service.image);
+    return unique;
+  }, [service]);
+
+  const mainImageUrl = useMemo(() => {
+    if (serviceImages.length === 0) return service?.image || "";
+    return serviceImages[activeImageIndex] || serviceImages[0] || "";
+  }, [serviceImages, activeImageIndex, service]);
+
+  useEffect(() => {
+    // Reset to first image when service changes
+    setActiveImageIndex(0);
+  }, [service?._id]);
+
+  // Initialize/update values based on service data
+  useEffect(() => {
+    if (!service) return;
+
+    // Set initial package ID (only once when packages exist)
+    if (service.packages && service.packages.length > 0) {
+      setSelectedPackageId((prev) => (prev ? prev : service.packages[0].id));
+    }
+
+    // Initialize vote counts from review data
+    const initialCounts = new Map<number, { helpful: number; notHelpful: number }>();
+    reviews.forEach((review: any) => {
+      initialCounts.set(review.id, {
+        helpful: review.helpfulVotes,
+        notHelpful: review.notHelpfulVotes,
+      });
+    });
+    setReviewVoteCounts(initialCounts);
+  }, [service, reviews]);
+  
+  // Loading state
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-[#f0f0f0]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
+        </header>
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-16 text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F] mx-auto mb-4" />
+          <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">Loading service...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // If service is pending - show message and redirect
+  if (isPendingService) {
+    return (
+      <div className="w-full min-h-screen bg-[#f0f0f0]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
+        </header>
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-16">
+          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8 text-yellow-600" />
+              </div>
+              <h1 className="font-['Poppins',sans-serif] text-[24px] md:text-[28px] font-semibold text-[#2c353f] mb-4">
+                Service Not Yet Approved
+              </h1>
+              <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] mb-6">
+                This service is currently pending approval and is not yet available for viewing. You will be redirected to your account page in a few seconds.
+              </p>
+              <div className="flex items-center justify-center gap-2 text-[#FE8A0F]">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="font-['Poppins',sans-serif] text-[14px]">Redirecting...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
   
   // If service not found
   if (!service) {
@@ -199,30 +503,6 @@ export default function ServiceDetailPage() {
       </div>
     );
   }
-
-  // Generate reviews
-  const reviews = generateReviews(service.id, service.reviewCount, service.providerName, service.providerImage);
-  
-  // Get current package (if applicable)
-  const selectedPackage = service.packages?.find(pkg => pkg.id === selectedPackageId);
-  
-  // Initialize/update values based on service data
-  useEffect(() => {
-    // Set initial package ID
-    if (service.packages && service.packages.length > 0) {
-      setSelectedPackageId(service.packages[0].id);
-    }
-    
-    // Initialize vote counts from review data
-    const initialCounts = new Map();
-    reviews.forEach(review => {
-      initialCounts.set(review.id, {
-        helpful: review.helpfulVotes,
-        notHelpful: review.notHelpfulVotes
-      });
-    });
-    setReviewVoteCounts(initialCounts);
-  }, [service.id]);
 
   // Toggle professional response expansion
   const toggleResponseExpansion = (reviewId: number) => {
@@ -321,14 +601,25 @@ export default function ServiceDetailPage() {
       .reduce((sum, addon) => sum + addon.price, 0);
   };
   
+  // Helper to safely parse price strings like "£12.00" or "12.00"
+  const parseMoney = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if (typeof value === "string") {
+      const cleaned = value.replace(/[^0-9.\-]+/g, "");
+      const n = parseFloat(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+    const n = parseFloat(String(value));
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // Price information (use selected package if available, otherwise use service base price)
   const hasPackages = !!(service.packages && service.packages.length > 0);
-  const basePrice = selectedPackage 
-    ? parseFloat(selectedPackage.price) 
-    : parseFloat(service.price);
+  const basePrice = selectedPackage ? parseMoney(selectedPackage.price) : parseMoney(service.price);
   const originalPrice = selectedPackage && selectedPackage.originalPrice
-    ? parseFloat(selectedPackage.originalPrice)
-    : (service.originalPrice ? parseFloat(service.originalPrice) : null);
+    ? parseMoney(selectedPackage.originalPrice)
+    : (service.originalPrice ? parseMoney(service.originalPrice) : null);
   const addonsTotal = calculateAddonsTotal();
   const totalPrice = (basePrice + addonsTotal) * quantity;
 
@@ -645,13 +936,10 @@ export default function ServiceDetailPage() {
     "Follow-up support"
   ];
 
-  // Portfolio images based on service category/subcategory
-  const getPortfolioImages = () => {
-    // We intentionally avoid remote/Unsplash images for SEO/perf and use local assets.
-    return Array.from({ length: 5 }, () => serviceVector);
-  };
-
-  const portfolioImages = getPortfolioImages();
+  // Portfolio images (use uploaded images, fall back to placeholder)
+  // NOTE: do NOT use hooks here (this code runs after early returns).
+  const portfolioImages =
+    serviceImages.length > 0 ? serviceImages : Array.from({ length: 5 }, () => serviceVector);
 
   // SEO-friendly slugs for navigation (sector -> category -> leaf -> services filter)
   const sectorSlug = nameToSlug(service.category);
@@ -699,15 +987,12 @@ export default function ServiceDetailPage() {
       {/* Mobile Hero Section with Background Image */}
       <div className="md:hidden relative w-full h-[400px] bg-gray-900">
         {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ 
-            backgroundImage: `url(${service.image})`,
-            backgroundPosition: 'center'
-          }}
-        >
-          {/* Dark Overlay */}
-          <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0">
+          <SmartImageLayers
+            src={mainImageUrl || service.image}
+            alt={service.description}
+            mode="main"
+          />
         </div>
 
         {/* Top Controls */}
@@ -737,7 +1022,9 @@ export default function ServiceDetailPage() {
         {/* Image Count Indicator */}
         <div className="absolute bottom-4 left-4 z-10">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-            <span className="text-white text-[13px] font-medium">1</span>
+            <span className="text-white text-[13px] font-medium">
+              {Math.min(activeImageIndex + 1, serviceImages.length || 1)}/{serviceImages.length || 1}
+            </span>
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -745,6 +1032,17 @@ export default function ServiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Thumbnail Slider */}
+      {serviceImages.length > 1 && (
+        <div className="md:hidden bg-white px-4 py-3 border-b border-gray-100">
+          <ThumbnailButtons
+            images={serviceImages}
+            activeIndex={activeImageIndex}
+            onSelect={setActiveImageIndex}
+          />
+        </div>
+      )}
 
       {/* Breadcrumb - Desktop Only */}
       <div className="hidden md:block bg-transparent pt-[78px] mt-[50px] md:mt-0">
@@ -761,7 +1059,7 @@ export default function ServiceDetailPage() {
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to={`/sector/${sectorSlug}`} className="text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
+                  <Link to={joinPath("sector", sectorSlug)} className="text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
                     {service.category}
                   </Link>
                 </BreadcrumbLink>
@@ -771,7 +1069,7 @@ export default function ServiceDetailPage() {
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                      <Link to={`/sector/${sectorSlug}/${serviceCategorySlug}`} className="text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
+                      <Link to={joinPath("sector", sectorSlug, serviceCategorySlug)} className="text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
                         {service.subcategory}
                       </Link>
                     </BreadcrumbLink>
@@ -783,7 +1081,7 @@ export default function ServiceDetailPage() {
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                      <Link to={`/services/${sectorSlug}/${serviceCategorySlug}/${detailedSubCategorySlug}`} className="text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
+                      <Link to={joinPath("services", sectorSlug, serviceCategorySlug, detailedSubCategorySlug)} className="text-[#6b6b6b] hover:text-[#FE8A0F] transition-colors">
                         {service.detailedSubcategory}
                       </Link>
                     </BreadcrumbLink>
@@ -907,12 +1205,13 @@ export default function ServiceDetailPage() {
             </div>
 
             {/* Service Image - Desktop Only */}
-            <div className="hidden md:block relative rounded-2xl overflow-hidden aspect-video bg-gray-100">
-              <img
-                src={service.image}
-                alt={service.description}
-                className="w-full h-full object-cover"
-              />
+            <div className="hidden md:block">
+              <div className="relative rounded-2xl overflow-hidden aspect-video bg-gray-100">
+                  <SmartImageLayers
+                    src={mainImageUrl || service.image}
+                    alt={service.description}
+                    mode="main"
+                  />
               {service.badges && service.badges.length > 0 && (
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                   {service.badges.map((badge, idx) => (
@@ -920,6 +1219,18 @@ export default function ServiceDetailPage() {
                       {badge}
                     </Badge>
                   ))}
+                </div>
+              )}
+              </div>
+
+              {/* Thumbnail slider */}
+              {serviceImages.length > 1 && (
+                <div className="mt-3">
+                  <ThumbnailButtons
+                    images={serviceImages}
+                    activeIndex={activeImageIndex}
+                    onSelect={setActiveImageIndex}
+                  />
                 </div>
               )}
             </div>
@@ -1549,7 +1860,7 @@ export default function ServiceDetailPage() {
                     {selectedPackage && selectedPackage.revisions && (
                       <div className="flex items-center justify-between">
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          <Star className="w-4 h-4 inline mr-1.5" />
+                          <Star className="w-4 h-4 inline mr-1.5 fill-[#FE8A0F] text-[#FE8A0F]" />
                           Revisions
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
@@ -1895,7 +2206,7 @@ export default function ServiceDetailPage() {
                       {selectedPackage && selectedPackage.revisions && (
                         <div className="flex items-center justify-between">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            <Star className="w-4 h-4 inline mr-1.5" />
+                            <Star className="w-4 h-4 inline mr-1.5 fill-[#FE8A0F] text-[#FE8A0F]" />
                             Revisions
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
@@ -2150,7 +2461,7 @@ export default function ServiceDetailPage() {
         packages={service.packages ? service.packages.map(pkg => ({
           type: pkg.name.toLowerCase() as "basic" | "standard" | "premium",
           name: pkg.name,
-          price: parseFloat(pkg.price),
+          price: parseMoney(pkg.price),
           features: pkg.highlights
         })) : []}
         serviceImage={service.image}

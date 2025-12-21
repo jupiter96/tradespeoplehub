@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Star, ShoppingCart, Zap, ChevronLeft, ChevronRight, Grid, List } from "lucide-react";
 import { useCart } from "./CartContext";
 import ServicesBannerSection from "./ServicesBannerSection";
 import AddToCartModal from "./AddToCartModal";
-import { allServices, type Service as ServiceDataType } from "./servicesData";
+import type { Service as ServiceDataType } from "./servicesData";
 import {
   Carousel,
   CarouselContent,
@@ -15,6 +15,8 @@ import {
 
 interface Service {
   id: number;
+  _id?: string;
+  slug?: string;
   image: string;
   providerName: string;
   tradingName: string;
@@ -50,8 +52,9 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
     setVisibleCount(prev => Math.min(prev + 8, services.length));
   };
 
-  const handleServiceClick = (serviceId: number) => {
-    navigate(`/service/${serviceId}`);
+  const handleServiceClick = (service: Service) => {
+    const identifier = service.slug || service._id || service.id;
+    navigate(`/service/${identifier}`);
   };
 
   const hasMore = visibleCount < services.length;
@@ -105,11 +108,11 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
       {viewMode === 'pane' && (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {services.slice(0, visibleCount).map((service) => {
-            const uniqueId = `${sectionId}-${service.id}`;
+            const uniqueId = `${sectionId}-${service.slug || service._id || service.id}`;
             return (
               <div
                 key={uniqueId}
-                onClick={() => handleServiceClick(service.id)}
+                onClick={() => handleServiceClick(service)}
                 className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
               >
                 {/* Image Section */}
@@ -412,7 +415,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
           }}
           onConfirm={(data) => {
             // Find the full service data from allServices to get addons and packages
-            const fullService = allServices.find(s => s.id === selectedServiceForCart.id);
+            const fullService = allServices.find(s => (s._id || s.id) === (selectedServiceForCart._id || selectedServiceForCart.id));
             
             const selectedAddonsData = fullService?.addons
               ?.filter(addon => data.selectedAddons.includes(addon.id))
@@ -423,7 +426,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
               })) || [];
 
             addToCart({
-              id: selectedServiceForCart.id.toString(),
+              id: (selectedServiceForCart._id || selectedServiceForCart.id).toString(),
               title: selectedServiceForCart.description,
               seller: selectedServiceForCart.tradingName,
               price: data.packageType && fullService?.packages 
@@ -446,8 +449,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
           serviceTitle={selectedServiceForCart.description}
           sellerName={selectedServiceForCart.tradingName}
           basePrice={parseFloat(selectedServiceForCart.price)}
-          addons={allServices.find(s => s.id === selectedServiceForCart.id)?.addons || []}
-          packages={allServices.find(s => s.id === selectedServiceForCart.id)?.packages || []}
+          addons={allServices.find(s => (s._id || s.id) === (selectedServiceForCart._id || selectedServiceForCart.id))?.addons || []}
+          packages={allServices.find(s => (s._id || s.id) === (selectedServiceForCart._id || selectedServiceForCart.id))?.packages || []}
           serviceImage={selectedServiceForCart.image}
         />
       )}
@@ -462,8 +465,9 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
   const [showAddToCartModal, setShowAddToCartModal] = useState(false);
   const [selectedServiceForCart, setSelectedServiceForCart] = useState<Service | null>(null);
 
-  const handleServiceClick = (serviceId: number) => {
-    navigate(`/service/${serviceId}`);
+  const handleServiceClick = (service: Service) => {
+    const identifier = service.slug || service._id || service.id;
+    navigate(`/service/${identifier}`);
   };
 
   return (
@@ -488,7 +492,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
             {services.map((service) => (
               <CarouselItem key={service.id} className="pl-2 md:pl-3 basis-1/2 sm:basis-1/2 lg:basis-1/4">
                 <div 
-                  onClick={() => handleServiceClick(service.id)}
+                  onClick={() => handleServiceClick(service)}
                   className="bg-white rounded-[8px] shadow-[0px_3px_10px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_14px_0px_rgba(254,138,15,0.35)] overflow-hidden transition-shadow duration-300 cursor-pointer h-full"
                 >
                   {/* Image Section */}
@@ -651,7 +655,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
           }}
           onConfirm={(data) => {
             // Find the full service data from allServices to get addons and packages
-            const fullService = allServices.find(s => s.id === selectedServiceForCart.id);
+            const fullService = allServices.find(s => (s._id || s.id) === (selectedServiceForCart._id || selectedServiceForCart.id));
             
             const selectedAddonsData = fullService?.addons
               ?.filter(addon => data.selectedAddons.includes(addon.id))
@@ -662,7 +666,7 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
               })) || [];
 
             addToCart({
-              id: selectedServiceForCart.id.toString(),
+              id: (selectedServiceForCart._id || selectedServiceForCart.id).toString(),
               title: selectedServiceForCart.description,
               seller: selectedServiceForCart.tradingName,
               price: data.packageType && fullService?.packages 
@@ -685,8 +689,8 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
           serviceTitle={selectedServiceForCart.description}
           sellerName={selectedServiceForCart.tradingName}
           basePrice={parseFloat(selectedServiceForCart.price)}
-          addons={allServices.find(s => s.id === selectedServiceForCart.id)?.addons || []}
-          packages={allServices.find(s => s.id === selectedServiceForCart.id)?.packages || []}
+          addons={allServices.find(s => (s._id || s.id) === (selectedServiceForCart._id || selectedServiceForCart.id))?.addons || []}
+          packages={allServices.find(s => (s._id || s.id) === (selectedServiceForCart._id || selectedServiceForCart.id))?.packages || []}
           serviceImage={selectedServiceForCart.image}
         />
       )}
@@ -695,81 +699,148 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
 }
 
 export default function FeaturedServices() {
-  // Get featured services from allServices - mapping IDs to ensure correct data
-  const featuredServiceIds = [1, 4, 7, 11, 51, 26, 31, 42]; // Selected service IDs from allServices
-  const mappedFeaturedServices: Service[] = featuredServiceIds
-    .map(id => {
-      const service = allServices.find(s => s.id === id);
-      if (!service) return null;
-      return {
-        id: service.id,
-        image: service.image,
-        providerName: service.providerName,
-        tradingName: service.tradingName,
-        providerImage: service.providerImage,
-        description: service.description,
-        rating: service.rating,
-        reviewCount: service.reviewCount,
-        completedTasks: service.completedTasks,
-        price: service.price,
-        originalPrice: service.originalPrice,
-        priceUnit: service.priceUnit,
-        badges: service.badges,
-        deliveryType: service.deliveryType,
-      };
-    })
-    .filter((s): s is Service => s !== null);
-  
-  // Ensure we have at least 8 services for the grid
-  const featuredServices: Service[] = mappedFeaturedServices.length >= 8 
-    ? mappedFeaturedServices 
-    : [
-    ...mappedFeaturedServices,
-    ...allServices
-      .filter(s => !featuredServiceIds.includes(s.id) && s.rating >= 4.5 && s.reviewCount > 50)
-      .slice(0, 8 - mappedFeaturedServices.length)
-      .map(s => ({
-        id: s.id,
-        image: s.image,
-        providerName: s.providerName,
-        tradingName: s.tradingName,
-        providerImage: s.providerImage,
-        description: s.description,
-        rating: s.rating,
-        reviewCount: s.reviewCount,
-        completedTasks: s.completedTasks,
-        price: s.price,
-        originalPrice: s.originalPrice,
-        priceUnit: s.priceUnit,
-        badges: s.badges,
-        deliveryType: s.deliveryType,
-      }))
-  ];
+  // Fetch services from API
+  const [allServices, setAllServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get popular/best sellers services from allServices
-  const popularServiceIds = [2, 6, 14, 18, 25, 30, 37, 46, 53, 60]; // High-rated service IDs
-  const popularServices: Service[] = popularServiceIds
-    .map(id => {
-      const service = allServices.find(s => s.id === id);
-      if (!service) return null;
-      return {
-        id: service.id,
-        image: service.image,
-        providerName: service.providerName,
-        tradingName: service.tradingName,
-        providerImage: service.providerImage,
-        description: service.description,
-        rating: service.rating,
-        reviewCount: service.reviewCount,
-        completedTasks: service.completedTasks,
-        price: service.price,
-        originalPrice: service.originalPrice,
-        priceUnit: service.priceUnit,
-        badges: service.badges,
-        deliveryType: service.deliveryType,
-      };
-    })
-    .filter((s): s is Service => s !== null);
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        const response = await fetch(
+          resolveApiUrl(`/api/services?activeOnly=true&status=active&limit=100&sortBy=rating&sortOrder=desc`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const transformed = (data.services || []).map((s: any) => ({
+            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            _id: s._id,
+            slug: s.slug,
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
+            subcategory: typeof s.serviceCategory === 'object'
+              ? s.serviceCategory.name || ""
+              : "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+          }));
+          setAllServices(transformed);
+        } else {
+          setAllServices([]);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setAllServices([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  // Get featured services - top rated with good review count
+  const featuredServices: Service[] = allServices
+    .filter(s => s.rating >= 4.5 && s.reviewCount >= 10)
+    .slice(0, 8)
+    .map(s => ({
+      id: s.id,
+      _id: s._id,
+      slug: s.slug,
+      image: s.image,
+      providerName: s.providerName,
+      tradingName: s.tradingName,
+      providerImage: s.providerImage,
+      description: s.description,
+      rating: s.rating,
+      reviewCount: s.reviewCount,
+      completedTasks: s.completedTasks,
+      price: s.price,
+      originalPrice: s.originalPrice,
+      priceUnit: s.priceUnit,
+      badges: s.badges,
+      deliveryType: s.deliveryType,
+      addons: s.addons,
+      packages: s.packages,
+    }));
+
+  // Get popular/best sellers services - high completed tasks
+  const popularServices: Service[] = allServices
+    .filter(s => s.completedTasks >= 5)
+    .sort((a, b) => b.completedTasks - a.completedTasks)
+    .slice(0, 10)
+    .map(s => ({
+      id: s.id,
+      _id: s._id,
+      slug: s.slug,
+      image: s.image,
+      providerName: s.providerName,
+      tradingName: s.tradingName,
+      providerImage: s.providerImage,
+      description: s.description,
+      rating: s.rating,
+      reviewCount: s.reviewCount,
+      completedTasks: s.completedTasks,
+      price: s.price,
+      originalPrice: s.originalPrice,
+      priceUnit: s.priceUnit,
+      badges: s.badges,
+      deliveryType: s.deliveryType,
+      addons: s.addons,
+      packages: s.packages,
+    }));
 
   return (
     <div className="w-full">

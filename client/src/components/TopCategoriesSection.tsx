@@ -7,9 +7,10 @@ import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 export default function TopCategoriesSection() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { sectors } = useSectors(false, false);
+  // Fetch up to 100 categories per sector, then filter to top 16
   const { serviceCategoriesBySector, loading } = useAllServiceCategories(sectors, {
     includeSubCategories: false,
-    limit: 16,
+    // No limit specified - will use default 100 to reduce API calls
   });
 
   // Get top 16 service categories from all sectors
