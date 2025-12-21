@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, Eye, Ban, CheckCircle2, MoreVertical, ArrowUpDown, XCircle, AlertCircle, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Search, Loader2, Eye, Ban, CheckCircle2, MoreVertical, ArrowUpDown, XCircle, AlertCircle, ChevronLeft, ChevronRight, FileText, Clock } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -25,6 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
@@ -97,12 +98,15 @@ type AdminServicesPageProps = {
   title?: string;
   /** Override page description */
   description?: string;
+  /** Hide status filter selector */
+  hideStatusFilter?: boolean;
 };
 
 export default function AdminServicesPage({
   initialTab = "all",
   title = "Services Management",
   description = "Review and manage professional services, approve or request modifications",
+  hideStatusFilter = false,
 }: AdminServicesPageProps) {
   useAdminRouteGuard();
   const navigate = useNavigate();
@@ -119,7 +123,7 @@ export default function AdminServicesPage({
   const [isModificationDialogOpen, setIsModificationDialogOpen] = useState(false);
   const [modificationReason, setModificationReason] = useState("");
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject" | "request_modification">("approve");
-  const [newStatus, setNewStatus] = useState<"approved" | "paused" | "inactive">("approved");
+  const [newStatus, setNewStatus] = useState<"pending" | "required_modification" | "denied" | "paused" | "inactive" | "approved">("approved");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -224,7 +228,7 @@ export default function AdminServicesPage({
     }
   };
 
-  const handleStatusChange = (service: Service, newStatus: "approved" | "paused" | "inactive") => {
+  const handleStatusChange = (service: Service, newStatus: "pending" | "required_modification" | "denied" | "paused" | "inactive" | "approved") => {
     setSelectedService(service);
     setNewStatus(newStatus as any);
     setIsStatusDialogOpen(true);
@@ -240,31 +244,91 @@ export default function AdminServicesPage({
         statusToSet = "approved";
       }
 
-      const response = await fetch(
-        resolveApiUrl(`/api/services/${selectedService._id}`),
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ status: statusToSet }),
-        }
-      );
+      // For required_modification, use approval endpoint to allow modificationReason
+      if (statusToSet === "required_modification") {
+        const response = await fetch(
+          resolveApiUrl(`/api/services/${selectedService._id}/approval`),
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ 
+              status: statusToSet,
+              modificationReason: modificationReason || "Status changed to Required Modification"
+            }),
+          }
+        );
 
-      if (response.ok) {
-        toast.success(`Service status updated to ${getStatusLabel(statusToSet)}`);
-        fetchServices();
+        if (response.ok) {
+          const updatedService = await response.json();
+          toast.success(`Service status updated to ${getStatusLabel(statusToSet)}`);
+          // Immediately update the service in the local state
+          setServices(prevServices => 
+            prevServices.map(s => 
+              s._id === selectedService._id 
+                ? { ...s, status: statusToSet, modificationReason: updatedService.service?.modificationReason || s.modificationReason }
+                : s
+            )
+          );
+          // Remove from current list if status doesn't match current filter
+          const currentFilter = getApprovalStatusFilter();
+          if (currentFilter && statusToSet !== currentFilter) {
+            setServices(prevServices => prevServices.filter(s => s._id !== selectedService._id));
+            setTotalCount(prev => Math.max(0, prev - 1));
+          }
+          // Always refresh in background to ensure data consistency
+          setTimeout(() => fetchServices(), 500);
+        } else {
+          const error = await response.json();
+          toast.error(error.error || "Failed to update service status");
+        }
       } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to update service status");
+        const response = await fetch(
+          resolveApiUrl(`/api/services/${selectedService._id}`),
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ status: statusToSet }),
+          }
+        );
+
+        if (response.ok) {
+          const updatedService = await response.json();
+          toast.success(`Service status updated to ${getStatusLabel(statusToSet)}`);
+          // Immediately update the service in the local state
+          setServices(prevServices => 
+            prevServices.map(s => 
+              s._id === selectedService._id 
+                ? { ...s, status: statusToSet }
+                : s
+            )
+          );
+          // Remove from current list if status doesn't match current filter
+          const currentFilter = getApprovalStatusFilter();
+          if (currentFilter && statusToSet !== currentFilter) {
+            setServices(prevServices => prevServices.filter(s => s._id !== selectedService._id));
+            setTotalCount(prev => Math.max(0, prev - 1));
+          }
+          // Always refresh in background to ensure data consistency
+          setTimeout(() => fetchServices(), 500);
+        } else {
+          const error = await response.json();
+          toast.error(error.error || "Failed to update service status");
+        }
       }
     } catch (error) {
       console.error("Error updating service status:", error);
       toast.error("Error updating service status");
     } finally {
       setIsStatusDialogOpen(false);
+      setIsModificationDialogOpen(false);
       setSelectedService(null);
+      setModificationReason("");
     }
   };
 
@@ -313,9 +377,26 @@ export default function AdminServicesPage({
       );
 
       if (response.ok) {
+        const updatedService = await response.json();
         const actionText = approvalAction === "approve" ? "approved" : approvalAction === "reject" ? "denied" : "marked for modification";
         toast.success(`Service ${actionText} successfully`);
-        fetchServices();
+        // Immediately update the service in the local state
+        setServices(prevServices => 
+          prevServices.map(s => 
+            s._id === selectedService._id 
+              ? { ...s, status: newStatus, modificationReason: updatedService.service?.modificationReason || s.modificationReason }
+              : s
+          )
+        );
+        // Remove from current list if status doesn't match current filter
+        const currentFilter = getApprovalStatusFilter();
+        if (currentFilter && newStatus !== currentFilter) {
+          setServices(prevServices => prevServices.filter(s => s._id !== selectedService._id));
+          setTotalCount(prev => Math.max(0, prev - 1));
+        } else {
+          // Refresh to get latest data including any other changes
+          fetchServices();
+        }
       } else {
         const error = await response.json();
         toast.error(error.error || `Failed to ${approvalAction} service`);
@@ -440,19 +521,21 @@ export default function AdminServicesPage({
                 className="pl-10 border-gray-300 focus:border-[#FE8A0F] focus:ring-[#FE8A0F]"
               />
             </div>
-            <select
-              value={approvalStatusFilter}
-              onChange={(e) => setApprovalStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus:border-[#FE8A0F] focus:ring-[#FE8A0F]"
-            >
-              <option value="all">All Status ({totalAll})</option>
-              <option value="pending">Pending ({serviceCounts.pending})</option>
-              <option value="required_modification">Required Modification ({serviceCounts.required_modification})</option>
-              <option value="denied">Denied ({serviceCounts.rejected})</option>
-              <option value="paused">Paused</option>
-              <option value="inactive">Inactive</option>
-              <option value="approved">Approved ({serviceCounts.approved})</option>
-            </select>
+            {!hideStatusFilter && (
+              <select
+                value={approvalStatusFilter}
+                onChange={(e) => setApprovalStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:border-[#FE8A0F] focus:ring-[#FE8A0F]"
+              >
+                <option value="all">All Status ({totalAll})</option>
+                <option value="pending">Pending ({serviceCounts.pending})</option>
+                <option value="required_modification">Required Modification ({serviceCounts.required_modification})</option>
+                <option value="denied">Denied ({serviceCounts.rejected})</option>
+                <option value="paused">Paused</option>
+                <option value="inactive">Inactive</option>
+                <option value="approved">Approved ({serviceCounts.approved})</option>
+              </select>
+            )}
           </div>
 
             {/* Services Table */}
@@ -572,84 +655,78 @@ export default function AdminServicesPage({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem
-                                    onClick={() => navigate(`/service/${service.slug || service._id}`)}
+                                    onClick={() => {
+                                      // Only allow viewing approved services
+                                      if (service.status === 'approved') {
+                                        window.open(`/service/${service.slug || service._id}`, '_blank');
+                                      } else {
+                                        toast.error(`This service is ${service.status.replace('_', ' ')} and cannot be viewed. Only approved services can be viewed.`);
+                                      }
+                                    }}
                                   >
                                     <Eye className="w-4 h-4 mr-2" />
-                                    View Details
+                                    View Service
                                   </DropdownMenuItem>
-                                  {service.status === "pending" && (
-                                    <>
-                                      <DropdownMenuItem
-                                        onClick={() => handleApproval(service, "approve")}
-                                        className="text-green-600"
-                                      >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Approve
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleApproval(service, "request_modification")}
-                                        className="text-orange-600"
-                                      >
-                                        <AlertCircle className="w-4 h-4 mr-2" />
-                                        Request Modification
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleApproval(service, "reject")}
-                                        className="text-red-600"
-                                      >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Deny
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {service.status === "required_modification" && (
-                                    <>
-                                      <DropdownMenuItem
-                                        onClick={() => handleApproval(service, "approve")}
-                                        className="text-green-600"
-                                      >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Approve After Review
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleApproval(service, "reject")}
-                                        className="text-red-600"
-                                      >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Deny
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {service.status === "approved" && (
-                                    <>
-                                      <DropdownMenuItem
-                                        onClick={() => handleStatusChange(service, "paused")}
-                                      >
-                                        <Ban className="w-4 h-4 mr-2" />
-                                        Pause
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleStatusChange(service, "inactive")}
-                                      >
-                                        <Ban className="w-4 h-4 mr-2" />
-                                        Deactivate
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {service.status === "paused" && (
+                                  <DropdownMenuSeparator />
+                                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">
+                                    Change Status
+                                  </div>
+                                  {service.status !== "pending" && (
                                     <DropdownMenuItem
-                                      onClick={() => handleStatusChange(service, "approved")}
+                                      onClick={() => handleStatusChange(service, "pending")}
+                                      className="text-yellow-600"
                                     >
-                                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                                      Resume (Approve)
+                                      <Clock className="w-4 h-4 mr-2" />
+                                      Set to Pending
                                     </DropdownMenuItem>
                                   )}
-                                  {service.status === "inactive" && (
+                                  {service.status !== "required_modification" && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedService(service);
+                                        setNewStatus("required_modification");
+                                        setIsModificationDialogOpen(true);
+                                      }}
+                                      className="text-orange-600"
+                                    >
+                                      <AlertCircle className="w-4 h-4 mr-2" />
+                                      Set to Required Modification
+                                    </DropdownMenuItem>
+                                  )}
+                                  {service.status !== "denied" && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStatusChange(service, "denied")}
+                                      className="text-red-600"
+                                    >
+                                      <XCircle className="w-4 h-4 mr-2" />
+                                      Set to Denied
+                                    </DropdownMenuItem>
+                                  )}
+                                  {service.status !== "paused" && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStatusChange(service, "paused")}
+                                      className="text-blue-600"
+                                    >
+                                      <Ban className="w-4 h-4 mr-2" />
+                                      Set to Paused
+                                    </DropdownMenuItem>
+                                  )}
+                                  {service.status !== "inactive" && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStatusChange(service, "inactive")}
+                                      className="text-gray-600"
+                                    >
+                                      <Ban className="w-4 h-4 mr-2" />
+                                      Set to Inactive
+                                    </DropdownMenuItem>
+                                  )}
+                                  {service.status !== "approved" && (
                                     <DropdownMenuItem
                                       onClick={() => handleStatusChange(service, "approved")}
+                                      className="text-green-600"
                                     >
                                       <CheckCircle2 className="w-4 h-4 mr-2" />
-                                      Activate (Approve)
+                                      Set to Approved
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuItem
@@ -801,7 +878,13 @@ export default function AdminServicesPage({
               Cancel
             </Button>
             <Button
-              onClick={confirmApproval}
+              onClick={() => {
+                if (newStatus === "required_modification") {
+                  confirmStatusChange();
+                } else {
+                  confirmApproval();
+                }
+              }}
               disabled={!modificationReason.trim()}
               className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif] disabled:opacity-50"
             >

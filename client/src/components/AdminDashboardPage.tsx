@@ -274,6 +274,33 @@ export default function AdminDashboardPage() {
             description="View and manage all professional services"
           />
         );
+      case "approval-pending-service":
+        return (
+          <AdminServicesPage
+            initialTab="pending"
+            title="Approval Pending Services"
+            description="View and manage services pending approval"
+            hideStatusFilter={true}
+          />
+        );
+      case "required-modification-service":
+        return (
+          <AdminServicesPage
+            initialTab="required_modification"
+            title="Required Modification Services"
+            description="View and manage services that require modification"
+            hideStatusFilter={true}
+          />
+        );
+      case "approved-service":
+        return (
+          <AdminServicesPage
+            initialTab="approved"
+            title="Approved Services"
+            description="View and manage approved services"
+            hideStatusFilter={true}
+          />
+        );
       case "email-campaign":
         // Check permission-based access for email campaign
         if (!hasRouteAccess("/admin/email-campaign")) {

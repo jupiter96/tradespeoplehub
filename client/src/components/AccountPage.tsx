@@ -4833,6 +4833,7 @@ function ServicesSection() {
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
   const [isCreatePackageOpen, setIsCreatePackageOpen] = useState(false);
+  const [isModificationReasonDialogOpen, setIsModificationReasonDialogOpen] = useState(false);
   const [myServices, setMyServices] = useState<any[]>([]);
   const [myPackages, setMyPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4855,7 +4856,15 @@ function ServicesSection() {
         
         if (response.ok) {
           const data = await response.json();
-          setMyServices(data.services || []);
+          const services = data.services || [];
+          // Debug: Check if modificationReason is included
+          console.log('Fetched services:', services.map((s: any) => ({
+            _id: s._id,
+            title: s.title,
+            status: s.status,
+            modificationReason: s.modificationReason
+          })));
+          setMyServices(services);
         } else {
           console.error("Failed to fetch services");
           setMyServices([]);
@@ -5374,14 +5383,41 @@ function ServicesSection() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {service.status === 'required_modification' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    console.log('Alert icon clicked, service:', {
+                                      _id: service._id,
+                                      title: service.title,
+                                      status: service.status,
+                                      modificationReason: service.modificationReason
+                                    });
+                                    setSelectedService(service);
+                                    setIsModificationReasonDialogOpen(true);
+                                    console.log('Dialog state set to true, isModificationReasonDialogOpen should be true');
+                                  }}
+                                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                  title={service.modificationReason ? "View Modification Reason" : "No modification reason available"}
+                                >
+                                  <AlertCircle className="w-4 h-4 text-red-600" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  // Use slug if available, otherwise fall back to _id
-                                  const serviceIdentifier = service.slug || service._id;
-                                  if (serviceIdentifier) {
-                                    window.open(`/service/${serviceIdentifier}`, '_blank');
+                                  // Only allow viewing approved services
+                                  if (service.status === 'approved') {
+                                    const serviceIdentifier = service.slug || service._id;
+                                    if (serviceIdentifier) {
+                                      window.open(`/service/${serviceIdentifier}`, '_blank');
+                                    }
+                                  } else {
+                                    toast.error(`This service is ${getStatusLabel(service.status || 'pending').toLowerCase()} and cannot be viewed. Only approved services can be viewed.`);
                                   }
                                 }}
                                 className="h-8 w-8 p-0 hover:bg-[#EFF6FF] hover:text-[#3B82F6]"
@@ -5610,6 +5646,43 @@ function ServicesSection() {
               }}
             />
           )}
+
+          {/* Modification Reason Dialog */}
+          <Dialog open={isModificationReasonDialogOpen} onOpenChange={(open) => {
+            setIsModificationReasonDialogOpen(open);
+            if (!open) {
+              setSelectedService(null);
+            }
+          }}>
+            <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  Modification Required
+                </DialogTitle>
+                <DialogDescription className="text-[14px] text-[#6b6b6b]">
+                  Your service "{selectedService?.title || 'Unknown'}" requires modifications before it can be approved.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-[14px] text-[#2c353f] font-medium mb-2">Reason:</p>
+                <p className="text-[14px] text-[#6b6b6b] whitespace-pre-wrap">
+                  {selectedService?.modificationReason || 'No reason provided.'}
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <Button
+                  onClick={() => {
+                    setIsModificationReasonDialogOpen(false);
+                    setSelectedService(null);
+                  }}
+                  className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
+                >
+                  Understood
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Delete Service Dialog */}
           <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

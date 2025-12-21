@@ -5,6 +5,118 @@ import ServiceSubCategory from '../models/ServiceSubCategory.js';
 
 const router = express.Router();
 
+// Helper function to find all last-level subcategories for a service category
+async function findLastLevelSubCategories(serviceCategoryId) {
+  const serviceCategory = await ServiceCategory.findById(serviceCategoryId);
+  if (!serviceCategory || !serviceCategory.level) {
+    return [];
+  }
+
+  const maxLevel = serviceCategory.level;
+  const lastLevelSubCategories = [];
+
+  // Recursive function to find all subcategories at the last level
+  async function findSubCategoriesAtLevel(parentId, currentLevel, targetLevel) {
+    if (currentLevel === targetLevel) {
+      // We've reached the target level, find all subcategories at this level
+      const query = currentLevel === 2 
+        ? { serviceCategory: serviceCategoryId, level: 2, parentSubCategory: null }
+        : { parentSubCategory: parentId, level: currentLevel };
+      
+      const subCategories = await ServiceSubCategory.find(query).lean();
+      return subCategories;
+    }
+
+    // Find subcategories at current level
+    const query = currentLevel === 2
+      ? { serviceCategory: serviceCategoryId, level: 2, parentSubCategory: null }
+      : { parentSubCategory: parentId, level: currentLevel };
+    
+    const currentLevelSubCategories = await ServiceSubCategory.find(query).lean();
+    
+    // Recursively find subcategories at next level
+    const results = [];
+    for (const subCategory of currentLevelSubCategories) {
+      const nextLevelSubCategories = await findSubCategoriesAtLevel(
+        subCategory._id,
+        currentLevel + 1,
+        targetLevel
+      );
+      results.push(...nextLevelSubCategories);
+    }
+    
+    return results;
+  }
+
+  // Start from level 2 and traverse to the last level
+  const lastLevelSubs = await findSubCategoriesAtLevel(null, 2, maxLevel);
+  return lastLevelSubs;
+}
+
+// Helper function to cascade titles and attributes from category to last-level subcategories
+async function cascadeTitlesAndAttributesToSubCategories(serviceCategoryId, serviceCategory) {
+  const lastLevelSubCategories = await findLastLevelSubCategories(serviceCategoryId);
+  
+  if (lastLevelSubCategories.length === 0) {
+    return; // No subcategories to update
+  }
+
+  const categoryLevelMapping = serviceCategory.categoryLevelMapping || [];
+  const categoryAttributes = serviceCategory.attributes || [];
+
+  // Update each last-level subcategory
+  for (const subCategory of lastLevelSubCategories) {
+    const subCategoryDoc = await ServiceSubCategory.findById(subCategory._id);
+    if (!subCategoryDoc) continue;
+
+    // Update titles based on categoryLevelMapping
+    for (const mapping of categoryLevelMapping) {
+      if (mapping.title) {
+        // Check if title for this level already exists
+        const existingTitleIndex = subCategoryDoc.titles.findIndex(t => t.level === mapping.level);
+        if (existingTitleIndex >= 0) {
+          subCategoryDoc.titles[existingTitleIndex].title = mapping.title;
+        } else {
+          subCategoryDoc.titles.push({
+            level: mapping.level,
+            title: mapping.title
+          });
+        }
+      }
+    }
+
+    // Update attributes based on categoryLevelMapping and category attributes
+    for (const mapping of categoryLevelMapping) {
+      // Convert category attributes to attribute values
+      const attributeValues = categoryAttributes
+        .map((attr, idx) => ({
+          label: attr.name,
+          value: attr.name.toLowerCase().replace(/\s+/g, '-'),
+          order: attr.order || idx + 1
+        }));
+
+      // Find or create attribute entry for this level and attributeType
+      const existingAttrIndex = subCategoryDoc.attributes.findIndex(
+        a => a.level === mapping.level && a.attributeType === mapping.attributeType
+      );
+
+      if (existingAttrIndex >= 0) {
+        // Update existing attribute
+        subCategoryDoc.attributes[existingAttrIndex].values = attributeValues;
+      } else if (attributeValues.length > 0) {
+        // Create new attribute entry
+        subCategoryDoc.attributes.push({
+          level: mapping.level,
+          attributeType: mapping.attributeType,
+          values: attributeValues
+        });
+      }
+    }
+
+    await subCategoryDoc.save();
+  }
+}
+
 // Small in-memory cache to reduce repeat DB work for hot public endpoints.
 // Keyed by req.originalUrl. Safe only for GET + activeOnly=true + no search.
 const _cache = new Map();
@@ -458,6 +570,16 @@ router.put('/:id', async (req, res) => {
     if (req.body.pricePerUnit !== undefined) serviceCategory.pricePerUnit = req.body.pricePerUnit;
     
     await serviceCategory.save();
+    
+    // Cascade titles and attributes to last-level subcategories if categoryLevelMapping or attributes were updated
+    if (categoryLevelMapping !== undefined || req.body.attributes !== undefined) {
+      try {
+        await cascadeTitlesAndAttributesToSubCategories(serviceCategory._id, serviceCategory);
+      } catch (cascadeError) {
+        console.error('Error cascading titles and attributes to subcategories:', cascadeError);
+        // Don't fail the main update if cascading fails
+      }
+    }
     
     // Populate sector for response
     await serviceCategory.populate('sector', 'name slug icon');

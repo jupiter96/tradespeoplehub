@@ -230,6 +230,7 @@ export default function ServiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isPendingService, setIsPendingService] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchService = async () => {
@@ -316,9 +317,10 @@ export default function ServiceDetailPage() {
           };
           setService(transformedService);
           
-          // Check if service is pending
-          if (s.status === 'pending') {
+          // Check if service is not approved
+          if (s.status !== 'approved') {
             setIsPendingService(true);
+            setServiceStatus(s.status);
           }
         } else {
           console.error("Service not found");
@@ -446,8 +448,51 @@ export default function ServiceDetailPage() {
     );
   }
 
-  // If service is pending - show message and redirect
+  // Get status message based on service status
+  const getStatusMessage = () => {
+    switch (serviceStatus) {
+      case 'pending':
+        return {
+          title: 'Service Pending Approval',
+          message: 'This service is currently pending approval and is not yet available for viewing. Please wait for admin review.',
+          iconColor: 'bg-yellow-100 text-yellow-600',
+        };
+      case 'required_modification':
+        return {
+          title: 'Modification Required',
+          message: 'This service requires modifications before it can be approved. Please check your account page for details.',
+          iconColor: 'bg-orange-100 text-orange-600',
+        };
+      case 'denied':
+        return {
+          title: 'Service Denied',
+          message: 'This service has been denied and is not available for viewing. Please contact support for more information.',
+          iconColor: 'bg-red-100 text-red-600',
+        };
+      case 'paused':
+        return {
+          title: 'Service Paused',
+          message: 'This service is currently paused and is not available for viewing.',
+          iconColor: 'bg-gray-100 text-gray-600',
+        };
+      case 'inactive':
+        return {
+          title: 'Service Inactive',
+          message: 'This service is currently inactive and is not available for viewing.',
+          iconColor: 'bg-gray-100 text-gray-600',
+        };
+      default:
+        return {
+          title: 'Service Not Available',
+          message: 'This service is not available for viewing at this time.',
+          iconColor: 'bg-gray-100 text-gray-600',
+        };
+    }
+  };
+
+  // If service is not approved - show message and redirect
   if (isPendingService) {
+    const statusMessage = getStatusMessage();
     return (
       <div className="w-full min-h-screen bg-[#f0f0f0]">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
@@ -456,14 +501,14 @@ export default function ServiceDetailPage() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-16">
           <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <div className="max-w-md mx-auto">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertCircle className="w-8 h-8 text-yellow-600" />
+              <div className={`w-16 h-16 ${statusMessage.iconColor} rounded-full flex items-center justify-center mx-auto mb-6`}>
+                <AlertCircle className="w-8 h-8" />
               </div>
               <h1 className="font-['Poppins',sans-serif] text-[24px] md:text-[28px] font-semibold text-[#2c353f] mb-4">
-                Service Not Yet Approved
+                {statusMessage.title}
               </h1>
               <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] mb-6">
-                This service is currently pending approval and is not yet available for viewing. You will be redirected to your account page in a few seconds.
+                {statusMessage.message} You will be redirected to your account page in a few seconds.
               </p>
               <div className="flex items-center justify-center gap-2 text-[#FE8A0F]">
                 <Loader2 className="w-5 h-5 animate-spin" />
