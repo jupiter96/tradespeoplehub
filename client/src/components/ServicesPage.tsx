@@ -242,6 +242,7 @@ export default function ServicesPage() {
             skills: s.skills || [],
             responseTime: s.responseTime || "",
             portfolioImages: s.portfolioImages || [],
+            _id: s._id, // Keep original ID for navigation
             _serviceCategory: s.serviceCategory,
             _serviceSubCategory: s.serviceSubCategory,
           }));
