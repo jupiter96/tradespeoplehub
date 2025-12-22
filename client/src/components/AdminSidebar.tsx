@@ -360,7 +360,15 @@ export default function AdminSidebar({
   // Determine which menu item is active based on current URL
   const getActiveMenuInfo = useMemo(() => {
     const currentPath = location.pathname;
-    
+
+    // Special case: /admin/service-titles should highlight "Service Category"
+    if (currentPath === "/admin/service-titles") {
+      return {
+        activeMenuKey: "category-manage",
+        activeChildKey: "service-category",
+      };
+    }
+
     // Check if current path matches any child path
     for (const menu of menuItems) {
       for (const child of menu.children) {
@@ -379,7 +387,7 @@ export default function AdminSidebar({
         };
       }
     }
-    
+
     // Default to dashboard
     return {
       activeMenuKey: "dashboard",

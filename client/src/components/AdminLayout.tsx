@@ -11,8 +11,11 @@ export default function AdminLayout() {
   const [isDesktop, setIsDesktop] = useState(false);
 
   // Extract section from path (e.g., "/admin/clients" -> "clients")
+  // Remove query parameters before extracting section
   const getSectionFromPath = (path: string): string => {
-    const match = path.match(/\/admin\/(.+)$/);
+    // Remove query parameters
+    const pathWithoutQuery = path.split('?')[0];
+    const match = pathWithoutQuery.match(/\/admin\/(.+)$/);
     return match ? match[1] : "dashboard";
   };
 
