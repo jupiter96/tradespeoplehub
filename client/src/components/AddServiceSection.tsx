@@ -1465,6 +1465,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [nestedSubCategories, setNestedSubCategories] = useState<Record<string, ServiceSubCategory[]>>({}); // Nested subcategories by parent ID
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({}); // Selected attribute values by level (single select)
   const [loadingSubCategories, setLoadingSubCategories] = useState<Record<string, boolean>>({});
+  const [selectedSubCategoryTitles, setSelectedSubCategoryTitles] = useState<string[]>([]); // Titles for the selected subcategory
+  const [loadingTitles, setLoadingTitles] = useState<boolean>(false);
   
   // Set default sector when sectors are loaded (only if user has a registered sector)
   useEffect(() => {
@@ -2070,9 +2072,73 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     if (selectedSubCategoryPath.length === 0) {
       return [];
     }
-    const lastSelected = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
-    return Array.isArray(lastSelected.attributes) ? lastSelected.attributes : [];
-  }, [selectedSubCategoryPath]);
+    // Find the subcategory object from nestedSubCategories or availableSubCategories
+    const lastSelectedId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+    let lastSelected: ServiceSubCategory | undefined;
+    
+    // Check in nestedSubCategories first
+    for (const subCats of Object.values(nestedSubCategories)) {
+      const found = subCats.find(sc => sc._id === lastSelectedId);
+      if (found) {
+        lastSelected = found;
+        break;
+      }
+    }
+    
+    // If not found, check in availableSubCategories
+    if (!lastSelected) {
+      lastSelected = availableSubCategories.find(sc => sc._id === lastSelectedId);
+    }
+    
+    return lastSelected && Array.isArray(lastSelected.attributes) ? lastSelected.attributes : [];
+  }, [selectedSubCategoryPath, nestedSubCategories, availableSubCategories]);
+
+  // Fetch titles for the selected subcategory
+  useEffect(() => {
+    const fetchSubCategoryTitles = async () => {
+      // Get the last selected subcategory ID from the path
+      const lastSubCategoryId = selectedSubCategoryPath.length > 0 
+        ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
+        : selectedSubCategoryId;
+
+      if (!lastSubCategoryId) {
+        setSelectedSubCategoryTitles([]);
+        return;
+      }
+
+      try {
+        setLoadingTitles(true);
+        const response = await fetch(
+          resolveApiUrl(`/api/service-subcategories/${lastSubCategoryId}?includeServiceCategory=false&activeOnly=false`),
+          { credentials: 'include' }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const subCategory = data.serviceSubCategory;
+          
+          // Extract titles from the subcategory's titles array
+          if (subCategory?.titles && Array.isArray(subCategory.titles)) {
+            const titles = subCategory.titles
+              .map((t: { level: number; title: string }) => t.title)
+              .filter((title: string) => title && title.trim() !== "");
+            setSelectedSubCategoryTitles(titles);
+          } else {
+            setSelectedSubCategoryTitles([]);
+          }
+        } else {
+          setSelectedSubCategoryTitles([]);
+        }
+      } catch (error) {
+        console.error('Error fetching subcategory titles:', error);
+        setSelectedSubCategoryTitles([]);
+      } finally {
+        setLoadingTitles(false);
+      }
+    };
+
+    fetchSubCategoryTitles();
+  }, [selectedSubCategoryPath, selectedSubCategoryId]);
 
   // Add package
   const addPackage = () => {
@@ -2570,7 +2636,25 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     placeholder="Select or write a title"
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
-                  {selectedCategory?.name && TITLE_SUGGESTIONS[selectedCategory.name] && (
+                  {loadingTitles ? (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Loading titles...</span>
+                    </div>
+                  ) : selectedSubCategoryTitles.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedSubCategoryTitles.map((suggestion) => (
+                        <Badge
+                          key={suggestion}
+                          variant="outline"
+                          className="cursor-pointer hover:bg-[#FFF5EB] hover:border-[#FE8A0F] font-['Poppins',sans-serif] text-[12px] transition-colors"
+                          onClick={() => setServiceTitle(suggestion)}
+                        >
+                          {suggestion}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : selectedCategory?.name && TITLE_SUGGESTIONS[selectedCategory.name] ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {TITLE_SUGGESTIONS[selectedCategory.name]?.map((suggestion) => (
                         <Badge
@@ -2583,7 +2667,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                         </Badge>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Address */}
