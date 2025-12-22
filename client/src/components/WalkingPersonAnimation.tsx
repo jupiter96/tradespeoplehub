@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import walkingPerson from "figma:asset/f7d2d5e8e4c1a88d1b083f490138959c69f83611.png";
 
 export default function WalkingPersonAnimation() {

@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Hammer, Wrench, Settings, Drill, Paintbrush, Ruler } from "lucide-react";
 
 export default function FloatingShapesBackground() {
