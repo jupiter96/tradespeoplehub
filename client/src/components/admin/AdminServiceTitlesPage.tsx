@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronRight, Plus, Trash2, Loader2, ArrowLeft, Save } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
@@ -45,16 +45,20 @@ export default function AdminServiceTitlesPage() {
   useEffect(() => {
     const fetchServiceCategory = async () => {
       if (!categoryId) return;
-      
+
       try {
         const response = await fetch(
           resolveApiUrl(`/api/service-categories/${categoryId}`),
           { credentials: "include" }
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           setServiceCategory(data.serviceCategory);
+
+          // Set default level to 2 and fetch subcategories
+          setSelectedCategoryLevel("2");
+          await fetchSubCategoriesForLevel(data.serviceCategory._id, 2);
         } else {
           toast.error("Failed to load service category");
           navigate("/admin/service-category");
@@ -70,7 +74,7 @@ export default function AdminServiceTitlesPage() {
   }, [categoryId, navigate]);
 
   // Fetch subcategories for a specific level and load their titles
-  const fetchSubCategoriesForLevel = async (serviceCategoryId: string, level: number, parentSubCategoryId?: string) => {
+  const fetchSubCategoriesForLevel = useCallback(async (serviceCategoryId: string, level: number, parentSubCategoryId?: string) => {
     try {
       setLoadingSubCategories(prev => ({ ...prev, [level]: true }));
       const params = new URLSearchParams();
@@ -108,7 +112,7 @@ export default function AdminServiceTitlesPage() {
         const data = await response.json();
         const subCategories = data.serviceSubCategories || [];
         setSubCategoriesByLevel(prev => ({ ...prev, [level]: subCategories }));
-        
+
         // Load titles for all subcategories at this level
         const titlesMap: Record<string, string[]> = {};
         for (const subCat of subCategories) {
@@ -122,19 +126,19 @@ export default function AdminServiceTitlesPage() {
     } finally {
       setLoadingSubCategories(prev => ({ ...prev, [level]: false }));
     }
-  };
+  }, [serviceCategory]);
 
   // Toggle subcategory expansion and load children
-  const toggleSubCategoryExpansion = async (subCategoryId: string, level: number) => {
+  const toggleSubCategoryExpansion = useCallback(async (subCategoryId: string, level: number) => {
     const newExpanded = new Set(expandedSubCategories);
-    
+
     if (newExpanded.has(subCategoryId)) {
       // Collapse
       newExpanded.delete(subCategoryId);
     } else {
       // Expand and fetch children
       newExpanded.add(subCategoryId);
-      
+
       if (serviceCategory) {
         const nextLevel = level + 1;
         const maxLevel = serviceCategory.level || 7;
@@ -143,9 +147,9 @@ export default function AdminServiceTitlesPage() {
         }
       }
     }
-    
+
     setExpandedSubCategories(newExpanded);
-  };
+  }, [expandedSubCategories, serviceCategory, fetchSubCategoriesForLevel]);
 
   // Handle level selection
   const handleLevelChange = async (value: string) => {
