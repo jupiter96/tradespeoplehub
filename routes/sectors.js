@@ -5,29 +5,12 @@ import SubCategory from '../models/SubCategory.js';
 
 const router = express.Router();
 
-// Small in-memory cache to reduce repeat DB work for hot public endpoints.
-// Keyed by req.originalUrl. Safe only for GET + activeOnly=true + no search.
-const _cache = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
-const getCached = (key) => {
-  const hit = _cache.get(key);
-  if (!hit) return null;
-  if (Date.now() > hit.expiresAt) {
-    _cache.delete(key);
-    return null;
-  }
-  return hit.value;
-};
-const setCached = (key, value) => {
-  _cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
-};
-
 // Get all sectors (with optional filtering)
 router.get('/', async (req, res) => {
   try {
-    const { 
-      activeOnly = 'true', 
-      includeCategories = 'false', 
+    const {
+      activeOnly = 'true',
+      includeCategories = 'false',
       includeSubCategories = 'false',
       search = '',
       sortBy = 'order',
@@ -35,19 +18,6 @@ router.get('/', async (req, res) => {
       page = '1',
       limit = '20'
     } = req.query;
-
-    const shouldCache =
-      req.method === 'GET' &&
-      activeOnly === 'true' &&
-      !search;
-    const cacheKey = shouldCache ? req.originalUrl : null;
-    if (cacheKey) {
-      const cached = getCached(cacheKey);
-      if (cached) {
-        res.set('Cache-Control', 'public, max-age=300');
-        return res.json(cached);
-      }
-    }
     
     const query = activeOnly === 'true' ? { isActive: true } : {};
     
@@ -142,7 +112,7 @@ router.get('/', async (req, res) => {
       });
     }
 
-    const payload = { 
+    return res.json({
       sectors,
       pagination: {
         page: pageNum,
@@ -150,13 +120,7 @@ router.get('/', async (req, res) => {
         total,
         totalPages: Math.ceil(total / limitNum)
       }
-    };
-
-    if (cacheKey) {
-      setCached(cacheKey, payload);
-      res.set('Cache-Control', 'public, max-age=300');
-    }
-    return res.json(payload);
+    });
   } catch (error) {
     console.error('Get sectors error', error);
     return res.status(500).json({ error: 'Failed to fetch sectors' });

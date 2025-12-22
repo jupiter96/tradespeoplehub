@@ -122,7 +122,6 @@ export function useAdminPermissions() {
       "/admin/referrals-client": "referrals",
       "/admin/referrals-professional": "referrals",
       "/admin/flagged": "flagged",
-      "/admin/service-category": "service",
       "/admin/approval-pending-service": "service",
       "/admin/required-modification-service": "service",
       "/admin/approved-service": "service",

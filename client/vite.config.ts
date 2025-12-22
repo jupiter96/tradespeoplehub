@@ -9,6 +9,7 @@
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'],
+      preserveSymlinks: false,
       alias: {
         'vaul@1.1.2': 'vaul',
         'sonner@2.0.3': 'sonner',
@@ -123,13 +124,36 @@
       outDir: '../build',
       minify: 'esbuild',
       sourcemap: false,
+      emptyOutDir: true,
+      commonjsOptions: {
+        include: [/node_modules/],
+        transformMixedEsModules: true,
+      },
       rollupOptions: {
         output: {
           manualChunks: (id) => {
             // Vendor chunks
             if (id.includes('node_modules')) {
-              // React core
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              // React core - MUST be in a single chunk to avoid multiple React instances
+              // Normalize path separators for cross-platform compatibility
+              const normalizedId = id.replace(/\\/g, '/');
+              
+              // React core package (exact match, not react-* packages)
+              if (normalizedId.includes('/node_modules/react/') && 
+                  !normalizedId.includes('/node_modules/react-')) {
+                return 'react-vendor';
+              }
+              // React DOM
+              if (normalizedId.includes('/node_modules/react-dom/')) {
+                return 'react-vendor';
+              }
+              // React Router (but not react-router-dom)
+              if (normalizedId.includes('/node_modules/react-router/') && 
+                  !normalizedId.includes('/node_modules/react-router-dom/')) {
+                return 'react-vendor';
+              }
+              // React Router DOM
+              if (normalizedId.includes('/node_modules/react-router-dom/')) {
                 return 'react-vendor';
               }
               // Radix UI components
@@ -159,6 +183,13 @@
         },
       },
       chunkSizeWarningLimit: 1000, // Increase limit to 1MB
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-router', 'react-router-dom'],
+      exclude: [],
+      esbuildOptions: {
+        target: 'esnext',
+      },
     },
     server: {
       port: 3000,
