@@ -3,14 +3,15 @@
   import react from '@vitejs/plugin-react-swc';
   import path from 'path';
 
-  export default defineConfig({
+  export default defineConfig(({ mode }) => ({
     base: '/',
     plugins: [react()],
     esbuild: {
-      drop: ['console', 'debugger'],
+      drop: mode === 'production' ? ['debugger'] : [],
     },
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+      dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'],
       alias: {
         'vaul@1.1.2': 'vaul',
         'sonner@2.0.3': 'sonner',
@@ -166,4 +167,4 @@
       port: 3000,
       open: true,
     },
-  });
+  }));

@@ -451,6 +451,7 @@ export default function AdminServiceCategoriesPage() {
       icon?: string;
       metadata?: Record<string, any>;
     }>;
+    serviceIdealFor: Array<{ name: string; order: number }>;
     extraServices: Array<{ name: string; price: number; days: number; order: number }>;
     pricePerUnit: {
       enabled: boolean;
@@ -469,6 +470,7 @@ export default function AdminServiceCategoriesPage() {
     isActive: true,
     level: 3,
     categoryLevelMapping: [],
+      serviceIdealFor: [],
       extraServices: [],
       pricePerUnit: {
         enabled: false,
@@ -1045,6 +1047,7 @@ export default function AdminServiceCategoriesPage() {
       isActive: true,
       level: 3,
       categoryLevelMapping: [],
+      serviceIdealFor: [],
       extraServices: [],
       pricePerUnit: {
         enabled: false,
@@ -1604,6 +1607,7 @@ export default function AdminServiceCategoriesPage() {
       isActive: serviceCategory.isActive,
       level: serviceCategory.level || 3,
       categoryLevelMapping: serviceCategory.categoryLevelMapping || [],
+      serviceIdealFor: (serviceCategory as any).serviceIdealFor || [],
       extraServices: (serviceCategory as any).extraServices || [],
       pricePerUnit: (serviceCategory as any).pricePerUnit || { enabled: false, units: [] },
     });
@@ -1726,6 +1730,7 @@ export default function AdminServiceCategoriesPage() {
         isActive: formData.isActive,
         level: formData.level,
         categoryLevelMapping: formData.categoryLevelMapping || [],
+        serviceIdealFor: formData.serviceIdealFor || [],
         extraServices: formData.extraServices || [],
         pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
@@ -3048,6 +3053,75 @@ export default function AdminServiceCategoriesPage() {
                       }}
                     />
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Add Service Ideal For */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <Label className="text-black dark:text-white">Service Ideal For</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      serviceIdealFor: [
+                        ...(prev.serviceIdealFor || []),
+                        { name: "", order: (prev.serviceIdealFor || []).length + 1 },
+                      ],
+                    }));
+                  }}
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Ideal For Option
+                </Button>
+              </div>
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+                {(!formData.serviceIdealFor || formData.serviceIdealFor.length === 0) ? (
+                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                    No ideal for options. Click "Add Ideal For Option" to add one.
+                  </p>
+                ) : (
+                  (formData.serviceIdealFor || []).map((option, index) => (
+                    <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Label className="text-black dark:text-white text-sm">Name</Label>
+                          <Input
+                            value={option.name || ""}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                const updated = [...prev.serviceIdealFor];
+                                updated[index] = { ...updated[index], name: e.target.value };
+                                return { ...prev, serviceIdealFor: updated };
+                              });
+                            }}
+                            placeholder="e.g., Homeowners, Small businesses, etc."
+                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              serviceIdealFor: prev.serviceIdealFor.filter((_, i) => i !== index),
+                            }));
+                          }}
+                          className="h-8 px-3 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-6"
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>

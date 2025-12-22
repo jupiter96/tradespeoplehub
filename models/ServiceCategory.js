@@ -76,6 +76,21 @@ const serviceCategorySchema = new mongoose.Schema(
       }],
       default: [],
     },
+    // Service ideal for options for this category
+    serviceIdealFor: {
+      type: [{
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        order: {
+          type: Number,
+          default: 0,
+        },
+      }],
+      default: [],
+    },
     // Extra services for this category
     extraServices: {
       type: [{

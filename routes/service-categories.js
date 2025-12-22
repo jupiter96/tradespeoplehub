@@ -346,6 +346,7 @@ router.post('/', async (req, res) => {
       isActive,
       level,
       categoryLevelMapping,
+      serviceIdealFor,
       extraServices,
       pricePerUnit,
     } = req.body;
@@ -443,6 +444,7 @@ router.post('/', async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       level: level || 3,
       categoryLevelMapping: categoryLevelMapping || [],
+      serviceIdealFor: serviceIdealFor || [],
       extraServices: extraServices || [],
       pricePerUnit: pricePerUnit || { enabled: false, units: [] },
     };
@@ -564,6 +566,7 @@ router.put('/:id', async (req, res) => {
     if (level !== undefined) serviceCategory.level = level;
     if (categoryLevelMapping !== undefined) serviceCategory.categoryLevelMapping = categoryLevelMapping;
     if (req.body.attributes !== undefined) serviceCategory.attributes = req.body.attributes;
+    if (req.body.serviceIdealFor !== undefined) serviceCategory.serviceIdealFor = req.body.serviceIdealFor;
     if (req.body.extraServices !== undefined) serviceCategory.extraServices = req.body.extraServices;
     if (req.body.pricePerUnit !== undefined) serviceCategory.pricePerUnit = req.body.pricePerUnit;
     

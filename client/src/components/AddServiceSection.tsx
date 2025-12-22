@@ -1556,6 +1556,27 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       if (userInfo.postcode) {
         setPostcode(userInfo.postcode);
       }
+      // Populate About Me from user profile
+      if (userInfo.aboutService) {
+        setAboutMe(userInfo.aboutService);
+      }
+      // Populate Trade Qualification status
+      if (userInfo.hasTradeQualification) {
+        setHasTradeQualification(
+          userInfo.hasTradeQualification === true || userInfo.hasTradeQualification === "yes" ? "yes" : "no"
+        );
+      }
+      // Populate Qualifications from user profile
+      if (userInfo.publicProfile?.qualifications) {
+        const quals = typeof userInfo.publicProfile.qualifications === 'string'
+          ? userInfo.publicProfile.qualifications.split('\n').filter((q: string) => q.trim())
+          : Array.isArray(userInfo.publicProfile.qualifications)
+          ? userInfo.publicProfile.qualifications
+          : [];
+        setQualifications(quals.length > 0 ? quals : [""]);
+      } else if (userInfo.hasTradeQualification === "yes") {
+        setQualifications([""]);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo?._id]); // Only run when userInfo._id changes (user changes)
@@ -1586,7 +1607,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       // Set idealFor
       if (initialService.idealFor && Array.isArray(initialService.idealFor)) {
         const idealForIds = initialService.idealFor.map((label: string) => {
-          const option = IDEAL_FOR_OPTIONS.find(opt => opt.label === label);
+          const option = idealForOptions.find(opt => opt.label === label);
           return option?.id || "";
         }).filter(Boolean);
         setIdealFor(idealForIds);
@@ -1670,10 +1691,17 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   
   // Extra Services Tab
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-  const [predefinedExtras, setPredefinedExtras] = useState([
-    { id: "express-delivery", label: "typefaces", price: "", selected: false, placeholder: "Enter price" },
-    { id: "additional-revision", label: "placeholder text", price: "", selected: false, placeholder: "Enter price" },
-  ]);
+  const [predefinedExtras, setPredefinedExtras] = useState<Array<{
+    id: string;
+    label: string;
+    price: string;
+    days?: number;
+    selected: boolean;
+    placeholder: string;
+  }>>([]);
+
+  // Service Ideal For options (populated from category)
+  const [idealForOptions, setIdealForOptions] = useState<Array<{ id: string; label: string }>>(IDEAL_FOR_OPTIONS);
   
   // Gallery Tab
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
@@ -1755,9 +1783,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   };
 
   // Profile/Settings Tab
+  const [aboutMe, setAboutMe] = useState("");
   const [responseTime, setResponseTime] = useState("within 1 hour");
   const [experienceYears, setExperienceYears] = useState("");
-  const [qualifications, setQualifications] = useState("");
+  const [hasTradeQualification, setHasTradeQualification] = useState("no");
+  const [qualifications, setQualifications] = useState<string[]>([""]);
   
   const handleKeywordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -2072,15 +2102,53 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   // Get available subcategories for selected category
   const selectedCategory = availableCategories.find(cat => cat._id === selectedCategoryId);
   const availableSubCategories = Array.isArray(selectedCategory?.subCategories)
-    ? selectedCategory.subCategories.filter((subCat) => 
-        subCat && 
-        subCat._id && 
-        typeof subCat._id === 'string' && 
+    ? selectedCategory.subCategories.filter((subCat) =>
+        subCat &&
+        subCat._id &&
+        typeof subCat._id === 'string' &&
         subCat._id.trim() !== "" &&
         subCat.name &&
         subCat.level === 2 // Only show level 2 subcategories initially
       )
     : [];
+
+  // Populate "Service Ideal For" and "Extra Services" from selected category
+  useEffect(() => {
+    if (selectedCategory) {
+      // Populate Service Ideal For options
+      if ((selectedCategory as any).serviceIdealFor && Array.isArray((selectedCategory as any).serviceIdealFor)) {
+        const categoryIdealForOptions = (selectedCategory as any).serviceIdealFor.map((option: any, index: number) => ({
+          id: `ideal-category-${index}`,
+          label: option.name,
+        }));
+        setIdealForOptions(categoryIdealForOptions.length > 0 ? categoryIdealForOptions : IDEAL_FOR_OPTIONS);
+      } else {
+        // Use default options if category doesn't have custom ones
+        setIdealForOptions(IDEAL_FOR_OPTIONS);
+      }
+
+      // Populate Extra Services as predefined options
+      if ((selectedCategory as any).extraServices && Array.isArray((selectedCategory as any).extraServices)) {
+        const categoryExtras = (selectedCategory as any).extraServices.map((service: any, index: number) => ({
+          id: `category-extra-${index}`,
+          label: service.name,
+          price: service.price?.toString() || "",
+          days: service.days || 0,
+          selected: false,
+          placeholder: `£${service.price || 0}`,
+        }));
+        setPredefinedExtras(categoryExtras);
+      } else {
+        // Clear predefined extras if category doesn't have any
+        setPredefinedExtras([]);
+      }
+    } else {
+      // Reset to defaults when no category is selected
+      setIdealForOptions(IDEAL_FOR_OPTIONS);
+      setPredefinedExtras([]);
+    }
+  }, [selectedCategory]);
+
 
   // Fetch nested subcategories when a subcategory is selected
   useEffect(() => {
@@ -2331,6 +2399,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       setActiveTab("service-details");
       return;
     }
+    // Validate About Me field in Profile tab
+    if (!aboutMe || aboutMe.trim().length === 0) {
+      toast.error("Please fill in the 'About Me' section in the Profile tab");
+      setActiveTab("profile");
+      return;
+    }
 
     const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
 
@@ -2360,7 +2434,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           })),
         highlights: serviceHighlights, // Now stored as attribute strings directly
         idealFor: idealFor.map(id => {
-          const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
+          const option = idealForOptions.find(opt => opt.id === id);
           return option ? option.label : id;
         }),
         deliveryType,
@@ -2818,38 +2892,44 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     What is the service ideal for?
                   </Label>
                   <div className="border border-gray-300 rounded-md p-4 max-h-[300px] overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-3">
-                      {IDEAL_FOR_OPTIONS.map((option) => (
-                        <div key={option.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={option.id}
-                            checked={idealFor.includes(option.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                if (idealFor.length < 5) {
-                                  setIdealFor([...idealFor, option.id]);
+                    {idealForOptions.length === 0 ? (
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] text-center py-4">
+                        No ideal for options available for this category.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        {idealForOptions.map((option) => (
+                          <div key={option.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={option.id}
+                              checked={idealFor.includes(option.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  if (idealFor.length < 5) {
+                                    setIdealFor([...idealFor, option.id]);
+                                  }
+                                } else {
+                                  setIdealFor(idealFor.filter(id => id !== option.id));
                                 }
-                              } else {
-                                setIdealFor(idealFor.filter(id => id !== option.id));
-                              }
-                            }}
-                            disabled={idealFor.length >= 5 && !idealFor.includes(option.id)}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                          />
-                          <label
-                            htmlFor={option.id}
-                            className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
-                          >
-                            {option.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
+                              }}
+                              disabled={idealFor.length >= 5 && !idealFor.includes(option.id)}
+                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                            />
+                            <label
+                              htmlFor={option.id}
+                              className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
+                            >
+                              {option.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {idealFor.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {idealFor.map((id) => {
-                        const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
+                        const option = idealForOptions.find(opt => opt.id === id);
                         return option ? (
                           <Badge key={id} className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[12px]">
                             {option.label}
@@ -3053,49 +3133,58 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             <TabsContent value="extra-service" className="mt-0 py-6">
               <div className="space-y-6">
                 {/* Predefined Extra Services */}
-                <div className="space-y-4">
-                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                    Choose an additional service
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    {predefinedExtras.map((extra) => (
-                      <div 
-                        key={extra.id} 
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <Checkbox
-                            id={extra.id}
-                            checked={extra.selected}
-                            onCheckedChange={(checked) => togglePredefinedExtra(extra.id, checked as boolean)}
-                            className="data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                          />
-                          <label
-                            htmlFor={extra.id}
-                            className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
-                          >
-                            {extra.label}
-                          </label>
+                {predefinedExtras.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Choose an additional service
+                    </h3>
+
+                    <div className="space-y-3">
+                      {predefinedExtras.map((extra) => (
+                        <div
+                          key={extra.id}
+                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              id={extra.id}
+                              checked={extra.selected}
+                              onCheckedChange={(checked) => togglePredefinedExtra(extra.id, checked as boolean)}
+                              className="data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                            />
+                            <div className="flex flex-col">
+                              <label
+                                htmlFor={extra.id}
+                                className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                              >
+                                {extra.label}
+                              </label>
+                              {extra.days !== undefined && extra.days > 0 && (
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                  Delivery: {extra.days} {extra.days === 1 ? 'day' : 'days'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1">
+                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                              Extra Service Price
+                            </Label>
+                            <Input
+                              type="number"
+                              value={extra.price}
+                              onChange={(e) => updatePredefinedExtraPrice(extra.id, e.target.value)}
+                              placeholder={extra.placeholder || "Enter price"}
+                              disabled={!extra.selected}
+                              className="w-[160px] font-['Poppins',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
+                            />
+                          </div>
                         </div>
-                        
-                        <div className="flex flex-col items-end gap-1">
-                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                            Extra Service Price
-                          </Label>
-                          <Input
-                            type="number"
-                            value={extra.price}
-                            onChange={(e) => updatePredefinedExtraPrice(extra.id, e.target.value)}
-                            placeholder={extra.placeholder || "Enter price"}
-                            disabled={!extra.selected}
-                            className="w-[160px] font-['Poppins',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Divider */}
                 <div className="relative">
@@ -3505,6 +3594,27 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   Additional professional information about you and your service.
                 </p>
 
+                {/* About Me Section */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    About Me <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    value={aboutMe}
+                    onChange={(e) => setAboutMe(e.target.value)}
+                    placeholder="Tell customers about your business, experience, and what makes your service special..."
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
+                  />
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                    This information is populated from your profile. It's the first thing customers read about you, so make sure it's well written.
+                    {!aboutMe && (
+                      <span className="text-red-500 block mt-1">
+                        ⚠️ This field is required. Please fill it in your profile or update it here.
+                      </span>
+                    )}
+                  </p>
+                </div>
+
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Typical Response Time
@@ -3535,19 +3645,90 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   />
                 </div>
 
+                {/* Trade Qualification */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Qualifications & Certifications
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                    Do you have a trade qualification or accreditation?
                   </Label>
-                  <Textarea
-                    value={qualifications}
-                    onChange={(e) => setQualifications(e.target.value)}
-                    placeholder="List your qualifications, certifications, trade memberships..."
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
-                  />
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
-                    Include any relevant trade qualifications, certifications, insurance details, or professional memberships.
-                  </p>
+                  <RadioGroup
+                    value={hasTradeQualification}
+                    onValueChange={(value) => {
+                      setHasTradeQualification(value);
+                      if (value === "no") {
+                        setQualifications([""]);
+                      } else if (qualifications.length === 0 || (qualifications.length === 1 && !qualifications[0])) {
+                        setQualifications([""]);
+                      }
+                    }}
+                    className="flex items-center gap-8"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="trade-yes" className="border-2 border-gray-400 text-[#FE8A0F]" />
+                      <Label htmlFor="trade-yes" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
+                        YES
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="trade-no" className="border-2 border-gray-400 text-[#FE8A0F]" />
+                      <Label htmlFor="trade-no" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
+                        NO
+                      </Label>
+                    </div>
+                  </RadioGroup>
+
+                  {/* Qualifications Input - Show when YES is selected */}
+                  {hasTradeQualification === "yes" && (
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {qualifications.map((qual, index) => (
+                          <div key={index} className="flex items-start gap-2">
+                            <Input
+                              value={qual}
+                              onChange={(e) => {
+                                const newQualifications = [...qualifications];
+                                newQualifications[index] = e.target.value;
+                                setQualifications(newQualifications);
+                              }}
+                              placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
+                              className="flex-1 border-2 border-gray-300 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                            />
+                            {qualifications.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const newQualifications = qualifications.filter((_, i) => i !== index);
+                                  setQualifications(newQualifications.length > 0 ? newQualifications : [""]);
+                                }}
+                                className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setQualifications([...qualifications, ""]);
+                          }}
+                          className="w-full border-2 border-dashed border-gray-300 hover:border-[#3B82F6] text-gray-600 hover:text-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px] h-10"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Another Qualification
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
