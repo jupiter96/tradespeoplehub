@@ -516,16 +516,11 @@ router.post('/', async (req, res) => {
       if (calculatedLevel < 2 || calculatedLevel > 7) {
         return res.status(400).json({ error: 'Level must be between 2 and 7' });
       }
-      
-      // Level 3-7 must have a parentSubCategory
-      if (calculatedLevel >= 3 && calculatedLevel <= 7) {
-        return res.status(400).json({ error: `Level ${calculatedLevel} subcategories must have a parentSubCategory` });
-      }
     }
-    
-    // Additional validation: Level 3-7 must have parentSubCategory
+
+    // Validation: Level 3-7 must have parentSubCategory
     if (calculatedLevel >= 3 && calculatedLevel <= 7 && !parentSubCategoryDoc) {
-      return res.status(400).json({ error: `Level ${calculatedLevel} subcategories require a parentSubCategory` });
+      return res.status(400).json({ error: `Level ${calculatedLevel} subcategories require a parentSubCategory. Please select a parent from Level ${calculatedLevel - 1}.` });
     }
     
     // Generate slug automatically from name (ignore provided slug)

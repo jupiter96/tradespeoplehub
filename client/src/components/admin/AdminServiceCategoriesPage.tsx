@@ -1266,7 +1266,7 @@ export default function AdminServiceCategoriesPage() {
     }
   };
 
-  const handleCreateSubCategory = () => {
+  const handleCreateSubCategory = async () => {
     if (!selectedServiceCategory) return;
     
     // If viewing nested subcategories (selectedParentSubCategory exists)
@@ -1363,17 +1363,23 @@ export default function AdminServiceCategoriesPage() {
       return;
     }
     
+    // Fetch parent level subcategories if not first tab (for parent selection)
+    // This must be done BEFORE setting form data so we can set default parent
+    if (!isFirstTabNow && targetLevel >= 3) {
+      await fetchParentSubCategories();
+    }
+
     // For Level 3-7, parentSubCategory is required - set default from selectedParentSubCategory or first available parent
     let defaultParentSubCategory = "";
     if (!isFirstTabNow && targetLevel >= 3) {
       if (selectedParentSubCategory) {
         defaultParentSubCategory = selectedParentSubCategory._id;
-      } else if (serviceSubCategories.length > 0) {
-        // Use first available parent subcategory from current level
-        defaultParentSubCategory = serviceSubCategories[0]._id;
+      } else if (level1SubCategories.length > 0) {
+        // Use first available parent subcategory from parent level (level1SubCategories)
+        defaultParentSubCategory = level1SubCategories[0]._id;
       }
     }
-    
+
     setSubCategoryFormData({
       serviceCategory: selectedServiceCategory._id,
       parentSubCategory: defaultParentSubCategory, // Set default parent for Level 3-7
@@ -1384,8 +1390,8 @@ export default function AdminServiceCategoriesPage() {
       metaDescription: "",
       bannerImage: "",
       icon: "",
-      order: serviceSubCategories.length > 0 
-        ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
+      order: serviceSubCategories.length > 0
+        ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1
         : 1,
       level: targetLevel,
       isActive: true,
@@ -1396,11 +1402,6 @@ export default function AdminServiceCategoriesPage() {
     setSubCategoryIconPreview(null);
     setSubCategoryBannerPreview(null);
     
-    // Fetch parent level subcategories if not first tab (for parent selection)
-    if (!isFirstTabNow) {
-      fetchParentSubCategories();
-    }
-    
     setIsSubCategoryModalOpen(true);
   };
 
@@ -1408,10 +1409,20 @@ export default function AdminServiceCategoriesPage() {
     const parentSubCategoryId = typeof subCategory.parentSubCategory === "string"
       ? subCategory.parentSubCategory
       : (subCategory.parentSubCategory as ServiceSubCategory)?._id || "";
+
+    // Get serviceCategory ID with null check
+    let serviceCategoryId = "";
+    if (typeof subCategory.serviceCategory === "string") {
+      serviceCategoryId = subCategory.serviceCategory;
+    } else if (subCategory.serviceCategory && typeof subCategory.serviceCategory === "object") {
+      serviceCategoryId = (subCategory.serviceCategory as ServiceCategory)._id;
+    } else if (selectedServiceCategory) {
+      // Fallback to currently selected service category
+      serviceCategoryId = selectedServiceCategory._id;
+    }
+
     setSubCategoryFormData({
-      serviceCategory: typeof subCategory.serviceCategory === "string"
-        ? subCategory.serviceCategory
-        : (subCategory.serviceCategory as ServiceCategory)._id,
+      serviceCategory: serviceCategoryId,
       parentSubCategory: parentSubCategoryId,
       name: subCategory.name,
       slug: subCategory.slug || generateSlug(subCategory.name),
@@ -2135,9 +2146,9 @@ export default function AdminServiceCategoriesPage() {
                         </button>
                       )}
 
-                      {/* Level 3-6 Tabs from categoryLevelMapping */}
+                      {/* Level 3-7 Tabs from categoryLevelMapping */}
                       {selectedServiceCategory.categoryLevelMapping
-                        ?.filter(m => m.level >= 3 && m.level <= 6) // Only show up to level 6
+                        ?.filter(m => m.level >= 3 && m.level <= 7) // Show up to level 7
                         .sort((a, b) => a.level - b.level)
                         .map((mapping) => {
                           const attributeTypeLabels: Record<string, string> = {
@@ -3430,7 +3441,7 @@ export default function AdminServiceCategoriesPage() {
                     } else {
                       // Other tabs: "Adding to [현재 탭 이름]"
                       const sortedMappings = selectedServiceCategory?.categoryLevelMapping
-                        ?.filter(m => m.level >= 3 && m.level <= 6)
+                        ?.filter(m => m.level >= 3 && m.level <= 7)
                         .sort((a, b) => a.level - b.level) || [];
                       const currentTabLabel = selectedAttributeType 
                         ? (sortedMappings.find(m => m.attributeType === selectedAttributeType)?.title 
