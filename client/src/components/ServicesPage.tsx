@@ -184,16 +184,16 @@ export default function ServicesPage() {
           // Transform API data to match Service interface
           const transformedServices: Service[] = (data.services || []).map((s: any) => ({
             id: parseInt(s._id.slice(-8), 16) || Math.floor(Math.random() * 10000),
-            _id: s._id,
+            _id: s._id, // Keep original ID for navigation
             slug: s.slug,
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
-            providerName: typeof s.professional === 'object' 
-              ? `${s.professional.firstName} ${s.professional.lastName}` 
+            providerName: typeof s.professional === 'object'
+              ? `${s.professional.firstName} ${s.professional.lastName}`
               : "",
-            tradingName: typeof s.professional === 'object' 
+            tradingName: typeof s.professional === 'object'
               ? s.professional.tradingName || ""
               : "",
-            providerImage: typeof s.professional === 'object' 
+            providerImage: typeof s.professional === 'object'
               ? s.professional.avatar || ""
               : "",
             description: s.title || "",
@@ -242,7 +242,6 @@ export default function ServicesPage() {
             skills: s.skills || [],
             responseTime: s.responseTime || "",
             portfolioImages: s.portfolioImages || [],
-            _id: s._id, // Keep original ID for navigation
             _serviceCategory: s.serviceCategory,
             _serviceSubCategory: s.serviceSubCategory,
           }));
