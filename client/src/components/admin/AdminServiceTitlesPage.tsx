@@ -5,7 +5,6 @@ import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { resolveApiUrl } from "../../config/api";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
@@ -347,86 +346,50 @@ export default function AdminServiceTitlesPage() {
 
                 if (!shouldShow) break;
 
-                // Level 2 uses radio buttons, other levels use select dropdown
-                if (level === 2) {
-                  levels.push(
-                    <div key={level} className="space-y-3">
-                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Level {level} - {levelName}
-                      </Label>
-                      {loadingSubCategories[level] ? (
-                        <div className="flex items-center gap-2 p-3 border rounded-lg">
-                          <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
-                          <span className="text-sm text-gray-500">Loading...</span>
-                        </div>
-                      ) : subCategories.length === 0 ? (
-                        <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                          <span className="text-sm text-gray-500">No subcategories available</span>
-                        </div>
-                      ) : (
-                        <RadioGroup
-                          value={selectedId || ""}
-                          onValueChange={(value) => handleSubCategorySelect(level, value)}
-                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-                        >
-                          {subCategories.map((subCat) => (
-                            <div
-                              key={subCat._id}
-                              className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
-                                selectedId === subCat._id
-                                  ? 'border-[#FE8A0F] bg-[#FFF5EB] dark:bg-[#FE8A0F]/10'
-                                  : 'border-gray-200 dark:border-gray-700 hover:border-[#FE8A0F]/50'
-                              }`}
-                              onClick={() => handleSubCategorySelect(level, subCat._id)}
+                // All levels use radio buttons
+                levels.push(
+                  <div key={level} className="space-y-3">
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Level {level} - {levelName}
+                    </Label>
+                    {loadingSubCategories[level] ? (
+                      <div className="flex items-center gap-2 p-3 border rounded-lg">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
+                        <span className="text-sm text-gray-500">Loading...</span>
+                      </div>
+                    ) : subCategories.length === 0 ? (
+                      <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                        <span className="text-sm text-gray-500">No subcategories available</span>
+                      </div>
+                    ) : (
+                      <RadioGroup
+                        value={selectedId || ""}
+                        onValueChange={(value) => handleSubCategorySelect(level, value)}
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                      >
+                        {subCategories.map((subCat) => (
+                          <div
+                            key={subCat._id}
+                            className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
+                              selectedId === subCat._id
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB] dark:bg-[#FE8A0F]/10'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-[#FE8A0F]/50'
+                            }`}
+                            onClick={() => handleSubCategorySelect(level, subCat._id)}
+                          >
+                            <RadioGroupItem value={subCat._id} id={`${level}-${subCat._id}`} />
+                            <Label
+                              htmlFor={`${level}-${subCat._id}`}
+                              className="flex-1 cursor-pointer text-sm font-medium text-black dark:text-white"
                             >
-                              <RadioGroupItem value={subCat._id} id={subCat._id} />
-                              <Label
-                                htmlFor={subCat._id}
-                                className="flex-1 cursor-pointer text-sm font-medium text-black dark:text-white"
-                              >
-                                {subCat.name}
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      )}
-                    </div>
-                  );
-                } else {
-                  levels.push(
-                    <div key={level} className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Level {level} - {levelName}
-                      </Label>
-                      {loadingSubCategories[level] ? (
-                        <div className="flex items-center gap-2 p-3 border rounded-lg">
-                          <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
-                          <span className="text-sm text-gray-500">Loading...</span>
-                        </div>
-                      ) : subCategories.length === 0 ? (
-                        <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                          <span className="text-sm text-gray-500">No subcategories available</span>
-                        </div>
-                      ) : (
-                        <Select
-                          value={selectedId || ""}
-                          onValueChange={(value) => handleSubCategorySelect(level, value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder={`Select ${levelName}`} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {subCategories.map((subCat) => (
-                              <SelectItem key={subCat._id} value={subCat._id}>
-                                {subCat.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  );
-                }
+                              {subCat.name}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    )}
+                  </div>
+                );
               }
 
               return levels;
