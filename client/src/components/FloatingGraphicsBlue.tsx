@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Hammer, Wrench, Drill, Paintbrush, Scissors, Ruler, Lightbulb, Camera, Stethoscope, ShoppingBag } from "lucide-react";
 
 export default function FloatingGraphicsBlue() {

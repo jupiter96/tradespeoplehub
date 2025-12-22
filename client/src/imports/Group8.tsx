@@ -2,7 +2,7 @@ import imgEllipse9 from "figma:asset/d040e49e61f672a1133d6a29ffba1afdc3a08f8b.pn
 import imgEllipse10 from "figma:asset/9b61b5d0d7f96707aca154f4962f012df96de602.png";
 import imgEllipse11 from "figma:asset/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import imgEllipse12 from "figma:asset/6b183226d37cb39ef4f3b9151960d16140733b40.png";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 
 function Review() {
   return (

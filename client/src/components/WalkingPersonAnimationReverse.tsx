@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import walkingPersonReverse from "figma:asset/894ea1b27a77c9b8a7866c73c9d44608bbac6d8a.png";
 
 export default function WalkingPersonAnimationReverse() {
