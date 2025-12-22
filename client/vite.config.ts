@@ -3,12 +3,9 @@
   import react from '@vitejs/plugin-react-swc';
   import path from 'path';
 
-  export default defineConfig(({ mode }) => ({
+  export default defineConfig({
     base: '/',
     plugins: [react()],
-    esbuild: {
-      drop: mode === 'production' ? ['debugger'] : [],
-    },
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'],
@@ -167,4 +164,4 @@
       port: 3000,
       open: true,
     },
-  }));
+  });
