@@ -2116,11 +2116,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         if (response.ok) {
           const data = await response.json();
           const subCategory = data.serviceSubCategory;
-          
-          // Extract titles from the subcategory's titles array
-          if (subCategory?.titles && Array.isArray(subCategory.titles)) {
-            const titles = subCategory.titles
-              .map((t: { level: number; title: string }) => t.title)
+
+          // Extract service title suggestions from the subcategory
+          if (subCategory?.serviceTitleSuggestions && Array.isArray(subCategory.serviceTitleSuggestions)) {
+            const titles = subCategory.serviceTitleSuggestions
               .filter((title: string) => title && title.trim() !== "");
             setSelectedSubCategoryTitles(titles);
           } else {

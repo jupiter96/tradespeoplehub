@@ -109,6 +109,13 @@ const serviceSubCategorySchema = new mongoose.Schema(
       default: [],
       // Array of titles: [{ level: 3, title: 'Service Type' }, ...]
     },
+    // Service title suggestions for this subcategory
+    serviceTitleSuggestions: {
+      type: [String],
+      default: [],
+      // Array of suggested service titles specific to this subcategory
+      // e.g., ['Residential Electrical Installation', 'Commercial Wiring', 'Electrical Repairs']
+    },
     // Attributes for each level (Level 3-7)
     attributes: {
       type: [{

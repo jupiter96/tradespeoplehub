@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -348,6 +348,8 @@ export default function AdminServiceCategoriesPage() {
   const [titlesForSelectedPath, setTitlesForSelectedPath] = useState<string[]>([]);
   const [subCategoriesByLevel, setSubCategoriesByLevel] = useState<Record<number, ServiceSubCategory[]>>({});
   const [loadingSubCategories, setLoadingSubCategories] = useState<Record<number, boolean>>({});
+  const [expandedSubCategories, setExpandedSubCategories] = useState<Set<string>>(new Set());
+  const [subCategoryTitles, setSubCategoryTitles] = useState<Record<string, string[]>>({});
   const [viewMode, setViewMode] = useState<"categories" | "subcategories">("categories");
   const [selectedServiceCategory, setSelectedServiceCategory] = useState<ServiceCategory | null>(null);
   const [selectedParentSubCategory, setSelectedParentSubCategory] = useState<ServiceSubCategory | null>(null);
@@ -400,6 +402,7 @@ export default function AdminServiceCategoriesPage() {
     isActive: boolean;
     attributeType?: 'serviceType' | 'size' | 'frequency' | 'make' | 'model' | 'brand';
     categoryLevel?: number;
+    serviceTitleSuggestions?: string[];
   }>({
     serviceCategory: "",
     parentSubCategory: "",
@@ -415,6 +418,7 @@ export default function AdminServiceCategoriesPage() {
     isActive: true,
     attributeType: undefined,
     categoryLevel: undefined,
+    serviceTitleSuggestions: [],
   });
   const [subCategoryIconPreview, setSubCategoryIconPreview] = useState<string | null>(null);
   const [subCategoryBannerPreview, setSubCategoryBannerPreview] = useState<string | null>(null);
@@ -1065,19 +1069,16 @@ export default function AdminServiceCategoriesPage() {
   const handleManageTitles = async (serviceCategory: ServiceCategory) => {
     setManagingServiceCategory(serviceCategory);
     setIsTitlesModalOpen(true);
-    // Initialize with first level if available
-    if (serviceCategory.categoryLevelMapping && serviceCategory.categoryLevelMapping.length > 0) {
-      const firstLevel = serviceCategory.categoryLevelMapping[0].level.toString();
-      setSelectedCategoryLevel(firstLevel);
-      setSelectedSubCategoryPath([]);
-      setTitlesForSelectedPath([]);
-      setSubCategoriesByLevel({});
-      // Fetch subcategories for the first level
-      await fetchSubCategoriesForTitles(serviceCategory._id, parseInt(firstLevel));
-    }
+    // Reset state
+    setSelectedCategoryLevel("");
+    setSelectedSubCategoryPath([]);
+    setTitlesForSelectedPath([]);
+    setSubCategoriesByLevel({});
+    setExpandedSubCategories(new Set());
+    setSubCategoryTitles({});
   };
 
-  // Fetch subcategories for a specific level
+  // Fetch subcategories for a specific level and load their titles
   const fetchSubCategoriesForTitles = async (serviceCategoryId: string, level: number, parentSubCategoryId?: string) => {
     try {
       setLoadingSubCategories(prev => ({ ...prev, [level]: true }));
@@ -1116,11 +1117,13 @@ export default function AdminServiceCategoriesPage() {
         const data = await response.json();
         const subCategories = data.serviceSubCategories || [];
         setSubCategoriesByLevel(prev => ({ ...prev, [level]: subCategories }));
-        
-        // Load titles for the selected path if a subcategory is selected
-        if (selectedSubCategoryPath.length > 0 && selectedSubCategoryPath[selectedSubCategoryPath.length - 1]) {
-          await loadTitlesForPath(selectedSubCategoryPath);
+
+        // Load titles for all subcategories at this level
+        const titlesMap: Record<string, string[]> = {};
+        for (const subCat of subCategories) {
+          titlesMap[subCat._id] = subCat.serviceTitleSuggestions || [];
         }
+        setSubCategoryTitles(prev => ({ ...prev, ...titlesMap }));
       }
     } catch (error) {
       console.error('Error fetching subcategories for titles:', error);
@@ -1147,37 +1150,47 @@ export default function AdminServiceCategoriesPage() {
       if (response.ok) {
         const data = await response.json();
         const subCategory = data.serviceSubCategory;
-        // Extract titles from the subcategory
-        // Titles are stored in the titles array with level and title
-        const level = parseInt(selectedCategoryLevel);
-        const titles = subCategory.titles?.filter((t: any) => t.level === level).map((t: any) => t.title) || [];
-        setTitlesForSelectedPath(titles);
+        // Extract service title suggestions from the subcategory
+        const suggestions = subCategory.serviceTitleSuggestions || [];
+        setTitlesForSelectedPath(suggestions);
       }
     } catch (error) {
-      console.error('Error loading titles for path:', error);
+      console.error('Error loading service title suggestions for path:', error);
       setTitlesForSelectedPath([]);
     }
   };
 
-  // Handle subcategory selection in titles management
-  const handleSubCategorySelect = async (subCategoryId: string, level: number) => {
-    const startLevel = parseInt(selectedCategoryLevel);
-    const levelIndex = level - startLevel;
-    const newPath = selectedSubCategoryPath.slice(0, levelIndex); // Keep only up to previous level
-    newPath.push(subCategoryId);
-    setSelectedSubCategoryPath(newPath);
+  // Toggle subcategory expansion and load children
+  const toggleSubCategoryExpansion = async (subCategoryId: string, level: number) => {
+    const newExpanded = new Set(expandedSubCategories);
 
-    // Fetch next level subcategories if available
-    if (managingServiceCategory) {
+    if (newExpanded.has(subCategoryId)) {
+      // Collapse - remove this and all descendants
+      newExpanded.delete(subCategoryId);
+      // Remove child levels from subCategoriesByLevel
       const nextLevel = level + 1;
-      const maxLevel = managingServiceCategory.level || 7;
-      if (nextLevel <= maxLevel) {
-        await fetchSubCategoriesForTitles(managingServiceCategory._id, nextLevel, subCategoryId);
-      } else {
-        // Reached last level, load titles
-        await loadTitlesForPath(newPath);
+      const maxLevel = managingServiceCategory?.level || 7;
+      for (let i = nextLevel; i <= maxLevel; i++) {
+        setSubCategoriesByLevel(prev => {
+          const updated = { ...prev };
+          delete updated[i];
+          return updated;
+        });
+      }
+    } else {
+      // Expand - add to expanded set and fetch children
+      newExpanded.add(subCategoryId);
+
+      if (managingServiceCategory) {
+        const nextLevel = level + 1;
+        const maxLevel = managingServiceCategory.level || 7;
+        if (nextLevel <= maxLevel) {
+          await fetchSubCategoriesForTitles(managingServiceCategory._id, nextLevel, subCategoryId);
+        }
       }
     }
+
+    setExpandedSubCategories(newExpanded);
   };
 
   const handleManageAttributes = (serviceCategory: ServiceCategory) => {
@@ -1397,12 +1410,12 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const handleEditSubCategory = (subCategory: ServiceSubCategory) => {
-    const parentSubCategoryId = typeof subCategory.parentSubCategory === "string" 
-      ? subCategory.parentSubCategory 
+    const parentSubCategoryId = typeof subCategory.parentSubCategory === "string"
+      ? subCategory.parentSubCategory
       : (subCategory.parentSubCategory as ServiceSubCategory)?._id || "";
     setSubCategoryFormData({
-      serviceCategory: typeof subCategory.serviceCategory === "string" 
-        ? subCategory.serviceCategory 
+      serviceCategory: typeof subCategory.serviceCategory === "string"
+        ? subCategory.serviceCategory
         : (subCategory.serviceCategory as ServiceCategory)._id,
       parentSubCategory: parentSubCategoryId,
       name: subCategory.name,
@@ -1417,6 +1430,7 @@ export default function AdminServiceCategoriesPage() {
       isActive: subCategory.isActive,
       attributeType: subCategory.attributeType,
       categoryLevel: (subCategory as any).categoryLevel,
+      serviceTitleSuggestions: (subCategory as any).serviceTitleSuggestions || [],
     });
     setEditingServiceSubCategory(subCategory);
     setSubCategoryIconPreview(subCategory.icon || null);
@@ -1464,6 +1478,7 @@ export default function AdminServiceCategoriesPage() {
         level: subCategoryFormData.level,
         isActive: subCategoryFormData.isActive,
         categoryLevel: subCategoryFormData.categoryLevel || subCategoryFormData.level,
+        serviceTitleSuggestions: subCategoryFormData.serviceTitleSuggestions || [],
       };
       
       // Handle attributeType - include it even if null for Level 2
@@ -3703,6 +3718,36 @@ export default function AdminServiceCategoriesPage() {
                 )}
               </div>
             </div>
+
+            {/* Service Title Suggestions */}
+            <div>
+              <Label htmlFor="serviceTitleSuggestions" className="text-black dark:text-white">
+                Service Title Suggestions
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                  (Enter titles separated by commas)
+                </span>
+              </Label>
+              <Textarea
+                id="serviceTitleSuggestions"
+                value={(subCategoryFormData as any).serviceTitleSuggestions?.join(', ') || ''}
+                onChange={(e) => {
+                  const suggestions = e.target.value
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0);
+                  setSubCategoryFormData({
+                    ...subCategoryFormData,
+                    serviceTitleSuggestions: suggestions
+                  } as any);
+                }}
+                placeholder="e.g., Residential Electrical Installation, Commercial Wiring, Electrical Repairs"
+                className="mt-1"
+                rows={3}
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                These suggestions will appear when users create services in this subcategory
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -3821,146 +3866,225 @@ export default function AdminServiceCategoriesPage() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
               <Type className="w-6 h-6 text-[#FE8A0F]" />
-              {managingServiceCategory?.name} Titles
+              {managingServiceCategory?.name} - Service Title Suggestions
             </DialogTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+              Manage service title suggestions that will appear when users create services in each subcategory
+            </p>
           </DialogHeader>
           <div className="space-y-6 mt-4">
             {/* Category Level Dropdown */}
             <div>
-              <Label className="text-sm font-semibold text-[#FE8A0F] mb-2 block">Category Level</Label>
+              <Label className="text-sm font-semibold text-[#FE8A0F] mb-2 block">Select Starting Level</Label>
               <Select
                 value={selectedCategoryLevel}
                 onValueChange={async (value) => {
                   setSelectedCategoryLevel(value);
-                  setSelectedSubCategoryPath([]);
-                  setTitlesForSelectedPath([]);
                   setSubCategoriesByLevel({});
+                  setExpandedSubCategories(new Set());
+                  setSubCategoryTitles({});
                   if (managingServiceCategory) {
                     await fetchSubCategoriesForTitles(managingServiceCategory._id, parseInt(value));
                   }
                 }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select category level" />
+                  <SelectValue placeholder="Select category level to start" />
                 </SelectTrigger>
                 <SelectContent>
-                  {managingServiceCategory?.categoryLevelMapping?.map((mapping) => (
-                    <SelectItem key={mapping.level} value={mapping.level.toString()}>
-                      Level {mapping.level} - {mapping.attributeType}
-                    </SelectItem>
-                  ))}
+                  {(() => {
+                    const maxLevel = managingServiceCategory?.level || 7;
+                    const levels = [];
+                    for (let i = 2; i <= maxLevel; i++) {
+                      const mapping = managingServiceCategory?.categoryLevelMapping?.find(m => m.level === i);
+                      levels.push(
+                        <SelectItem key={i} value={i.toString()}>
+                          Level {i}{mapping ? ` - ${mapping.attributeType}` : ' - Sub Category'}
+                        </SelectItem>
+                      );
+                    }
+                    return levels;
+                  })()}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Subcategory Selection by Level */}
+            {/* Subcategories Tree with Title Management */}
             {selectedCategoryLevel && managingServiceCategory && (
-              <div className="space-y-4">
-                {(() => {
-                  const startLevel = parseInt(selectedCategoryLevel);
-                  const maxLevel = managingServiceCategory.level || 7;
-                  const levels: number[] = [];
-                  for (let i = startLevel; i <= maxLevel; i++) {
-                    levels.push(i);
-                  }
-
-                  return levels.map((level, levelIndex) => {
-                    const subCategories = subCategoriesByLevel[level] || [];
-                    const selectedId = selectedSubCategoryPath[levelIndex];
-                    const isLoading = loadingSubCategories[level];
-
-                    if (levelIndex > 0 && !selectedSubCategoryPath[levelIndex - 1]) {
-                      return null; // Don't show this level if parent is not selected
-                    }
-
-                    return (
-                      <div key={level} className="space-y-2">
-                        <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          {level === 2 ? 'Sub Category' : `Level ${level} - ${managingServiceCategory.categoryLevelMapping?.find(m => m.level === level)?.attributeType || ''}`}
-                        </Label>
-                        {isLoading ? (
-                          <div className="flex items-center justify-center py-4">
-                            <Loader2 className="w-5 h-5 animate-spin text-[#FE8A0F]" />
-                          </div>
-                        ) : subCategories.length > 0 ? (
-                          <RadioGroup
-                            value={selectedId || ""}
-                            onValueChange={(value) => handleSubCategorySelect(value, level)}
-                            className="grid grid-cols-2 gap-3"
-                          >
-                            {subCategories.map((subCategory) => (
-                              <div key={subCategory._id} className="flex items-center space-x-2">
-                                <RadioGroupItem value={subCategory._id} id={`subcat-${subCategory._id}`} />
-                                <Label
-                                  htmlFor={`subcat-${subCategory._id}`}
-                                  className="text-sm font-normal cursor-pointer flex-1"
-                                >
-                                  {subCategory.name}
-                                </Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        ) : levelIndex === 0 ? (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
-                            No subcategories found for this level.
-                          </p>
-                        ) : null}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            )}
-
-            {/* Titles Management Section */}
-            {selectedSubCategoryPath.length > 0 && (
               <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold text-[#FE8A0F]">Titles Management</Label>
-                  <Button
-                    onClick={() => {
-                      setTitlesForSelectedPath([...titlesForSelectedPath, '']);
-                    }}
-                    size="sm"
-                    variant="outline"
-                    className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Title
-                  </Button>
-                </div>
-                {titlesForSelectedPath.length > 0 ? (
-                  <div className="space-y-3">
-                    {titlesForSelectedPath.map((title, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <Input
-                          value={title}
-                          onChange={(e) => {
-                            const updated = [...titlesForSelectedPath];
-                            updated[index] = e.target.value;
-                            setTitlesForSelectedPath(updated);
-                          }}
-                          placeholder="Enter title"
-                          className="flex-1"
-                        />
-                        <Button
-                          onClick={() => {
-                            const updated = titlesForSelectedPath.filter((_, i) => i !== index);
-                            setTitlesForSelectedPath(updated);
-                          }}
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                <Label className="text-sm font-semibold text-[#FE8A0F]">
+                  Subcategories & Title Suggestions
+                </Label>
+
+                {loadingSubCategories[parseInt(selectedCategoryLevel)] ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(subCategoriesByLevel[parseInt(selectedCategoryLevel)] || []).map((subCategory) => (
+                      <div key={subCategory._id} className="border rounded-lg p-4 space-y-3">
+                        {/* Subcategory Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleSubCategoryExpansion(subCategory._id, parseInt(selectedCategoryLevel))}
+                              className="h-6 w-6 p-0"
+                            >
+                              {expandedSubCategories.has(subCategory._id) ? (
+                                <ChevronDown className="w-4 h-4" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <span className="font-semibold text-black dark:text-white">
+                              {subCategory.name}
+                            </span>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              const current = subCategoryTitles[subCategory._id] || [];
+                              setSubCategoryTitles({
+                                ...subCategoryTitles,
+                                [subCategory._id]: [...current, '']
+                              });
+                            }}
+                            size="sm"
+                            variant="outline"
+                            className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Add Title
+                          </Button>
+                        </div>
+
+                        {/* Title Suggestions for this subcategory */}
+                        <div className="ml-8 space-y-2">
+                          {(subCategoryTitles[subCategory._id] || []).length > 0 ? (
+                            (subCategoryTitles[subCategory._id] || []).map((title, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <Input
+                                  value={title}
+                                  onChange={(e) => {
+                                    const updated = [...(subCategoryTitles[subCategory._id] || [])];
+                                    updated[index] = e.target.value;
+                                    setSubCategoryTitles({
+                                      ...subCategoryTitles,
+                                      [subCategory._id]: updated
+                                    });
+                                  }}
+                                  placeholder="e.g., Residential Electrical Installation"
+                                  className="flex-1 text-sm"
+                                />
+                                <Button
+                                  onClick={() => {
+                                    const updated = (subCategoryTitles[subCategory._id] || []).filter((_, i) => i !== index);
+                                    setSubCategoryTitles({
+                                      ...subCategoryTitles,
+                                      [subCategory._id]: updated
+                                    });
+                                  }}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              No title suggestions yet
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Child subcategories (if expanded) */}
+                        {expandedSubCategories.has(subCategory._id) && (
+                          <div className="ml-8 mt-3 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                            {loadingSubCategories[parseInt(selectedCategoryLevel) + 1] ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
+                              </div>
+                            ) : (
+                              (subCategoriesByLevel[parseInt(selectedCategoryLevel) + 1] || [])
+                                .filter((child: any) => {
+                                  const parentId = typeof child.parentSubCategory === 'string'
+                                    ? child.parentSubCategory
+                                    : child.parentSubCategory?._id;
+                                  return parentId === subCategory._id;
+                                })
+                                .map((childSubCategory: any) => (
+                                  <div key={childSubCategory._id} className="border rounded p-3 space-y-2 bg-gray-50 dark:bg-gray-900">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm font-medium text-black dark:text-white">
+                                        {childSubCategory.name}
+                                      </span>
+                                      <Button
+                                        onClick={() => {
+                                          const current = subCategoryTitles[childSubCategory._id] || [];
+                                          setSubCategoryTitles({
+                                            ...subCategoryTitles,
+                                            [childSubCategory._id]: [...current, '']
+                                          });
+                                        }}
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                                      >
+                                        <Plus className="w-3 h-3 mr-1" />
+                                        Add Title
+                                      </Button>
+                                    </div>
+                                    <div className="ml-4 space-y-2">
+                                      {(subCategoryTitles[childSubCategory._id] || []).length > 0 ? (
+                                        (subCategoryTitles[childSubCategory._id] || []).map((title, index) => (
+                                          <div key={index} className="flex items-center gap-2">
+                                            <Input
+                                              value={title}
+                                              onChange={(e) => {
+                                                const updated = [...(subCategoryTitles[childSubCategory._id] || [])];
+                                                updated[index] = e.target.value;
+                                                setSubCategoryTitles({
+                                                  ...subCategoryTitles,
+                                                  [childSubCategory._id]: updated
+                                                });
+                                              }}
+                                              placeholder="e.g., Service title"
+                                              className="flex-1 text-sm"
+                                            />
+                                            <Button
+                                              onClick={() => {
+                                                const updated = (subCategoryTitles[childSubCategory._id] || []).filter((_, i) => i !== index);
+                                                setSubCategoryTitles({
+                                                  ...subCategoryTitles,
+                                                  [childSubCategory._id]: updated
+                                                });
+                                              }}
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          No title suggestions yet
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
-                    No titles yet. Click "Add Title" to create one.
-                  </p>
                 )}
               </div>
             )}
@@ -3975,50 +4099,74 @@ export default function AdminServiceCategoriesPage() {
             </Button>
             <Button
               onClick={async () => {
-                if (!managingServiceCategory || selectedSubCategoryPath.length === 0) {
-                  toast.error("Please select a subcategory path");
+                if (!managingServiceCategory || !selectedCategoryLevel) {
+                  toast.error("Please select a category level");
                   return;
                 }
+
+                // Check if there are any titles to save
+                const hasAnyTitles = Object.values(subCategoryTitles).some(titles => titles.length > 0);
+                if (!hasAnyTitles) {
+                  toast.error("Please add at least one title suggestion");
+                  return;
+                }
+
                 try {
                   setIsSaving(true);
-                  const lastSubCategoryId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
-                  const level = parseInt(selectedCategoryLevel);
-                  
-                  // Update the subcategory with titles
-                  const response = await fetch(
-                    resolveApiUrl(`/api/service-subcategories/${lastSubCategoryId}`),
-                    {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({
-                        titles: titlesForSelectedPath.map(title => ({
-                          level: level,
-                          title: title.trim()
-                        })).filter(t => t.title.length > 0)
-                      }),
+                  let successCount = 0;
+                  let errorCount = 0;
+
+                  // Update all subcategories that have titles
+                  for (const [subCategoryId, titles] of Object.entries(subCategoryTitles)) {
+                    if (titles.length > 0) {
+                      try {
+                        const response = await fetch(
+                          resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
+                          {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({
+                              serviceTitleSuggestions: titles
+                                .map(title => title.trim())
+                                .filter(t => t.length > 0)
+                            }),
+                          }
+                        );
+                        if (response.ok) {
+                          successCount++;
+                        } else {
+                          errorCount++;
+                        }
+                      } catch (err) {
+                        errorCount++;
+                      }
                     }
-                  );
-                  if (response.ok) {
-                    toast.success("Titles saved successfully");
+                  }
+
+                  if (successCount > 0) {
+                    toast.success(`Successfully saved title suggestions for ${successCount} subcategor${successCount === 1 ? 'y' : 'ies'}`);
+                  }
+                  if (errorCount > 0) {
+                    toast.error(`Failed to save ${errorCount} subcategor${errorCount === 1 ? 'y' : 'ies'}`);
+                  }
+
+                  if (errorCount === 0) {
                     setIsTitlesModalOpen(false);
                     // Reset state
                     setSelectedCategoryLevel("");
-                    setSelectedSubCategoryPath([]);
-                    setTitlesForSelectedPath([]);
                     setSubCategoriesByLevel({});
-                  } else {
-                    const error = await response.json();
-                    toast.error(error.error || "Failed to save titles");
+                    setExpandedSubCategories(new Set());
+                    setSubCategoryTitles({});
                   }
                 } catch (error) {
-                  console.error("Error saving titles:", error);
-                  toast.error("Failed to save titles");
+                  console.error("Error saving service title suggestions:", error);
+                  toast.error("Failed to save service title suggestions");
                 } finally {
                   setIsSaving(false);
                 }
               }}
-              disabled={isSaving || selectedSubCategoryPath.length === 0}
+              disabled={isSaving || !selectedCategoryLevel}
               className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
             >
               {isSaving ? (
@@ -4029,7 +4177,7 @@ export default function AdminServiceCategoriesPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save
+                  Save Suggestions
                 </>
               )}
             </Button>

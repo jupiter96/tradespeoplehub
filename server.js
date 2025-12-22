@@ -88,6 +88,7 @@ app.use(
       mongoUrl: MONGODB_URI,
       collectionName: 'sessions',
       ttl: 60 * 60 * 24 * 30,
+      touchAfter: 24 * 3600, // Lazy session update - only touch once per 24 hours
     }),
     cookie: {
       httpOnly: true,
