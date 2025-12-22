@@ -2653,19 +2653,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                         </Badge>
                       ))}
                     </div>
-                  ) : selectedCategory?.name && TITLE_SUGGESTIONS[selectedCategory.name] ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {TITLE_SUGGESTIONS[selectedCategory.name]?.map((suggestion) => (
-                        <Badge
-                          key={suggestion}
-                          variant="outline"
-                          className="cursor-pointer hover:bg-[#FFF5EB] hover:border-[#FE8A0F] font-['Poppins',sans-serif] text-[12px] transition-colors"
-                          onClick={() => setServiceTitle(suggestion)}
-                        >
-                          {suggestion}
-                        </Badge>
-                      ))}
-                    </div>
                   ) : null}
                 </div>
 
