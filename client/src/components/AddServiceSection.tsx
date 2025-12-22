@@ -1318,7 +1318,7 @@ function SubCategoryLevelDisplay({
 
         if (response.ok) {
           const data = await response.json();
-          const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) => 
+          const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) =>
             sc?._id && sc._id.trim() !== ""
           );
           setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
@@ -1334,6 +1334,36 @@ function SubCategoryLevelDisplay({
       fetchNestedSubCategories(parentSubCategoryId);
     }
   }, [parentSubCategoryId]);
+
+  // Fetch children for selected item at this level
+  useEffect(() => {
+    const selectedAtThisLevel = selectedSubCategoryPath[levelIndex];
+    if (selectedAtThisLevel && !nestedSubCategories[selectedAtThisLevel] && !loadingSubCategories[selectedAtThisLevel]) {
+      const fetchChildren = async () => {
+        try {
+          setLoadingSubCategories(prev => ({ ...prev, [selectedAtThisLevel]: true }));
+          const { resolveApiUrl } = await import("../config/api");
+          const response = await fetch(
+            resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${selectedAtThisLevel}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
+            { credentials: 'include' }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) =>
+              sc?._id && sc._id.trim() !== ""
+            );
+            setNestedSubCategories(prev => ({ ...prev, [selectedAtThisLevel]: subCats }));
+          }
+        } catch (error) {
+          console.error(`Error fetching children for ${selectedAtThisLevel}:`, error);
+        } finally {
+          setLoadingSubCategories(prev => ({ ...prev, [selectedAtThisLevel]: false }));
+        }
+      };
+      fetchChildren();
+    }
+  }, [selectedSubCategoryPath, levelIndex]);
 
   // Group subcategories by attributeType
   const subCategoriesByAttributeType = currentLevelSubCats.reduce((acc, subCat) => {
@@ -1379,6 +1409,10 @@ function SubCategoryLevelDisplay({
     return null;
   }
 
+  // Get the selected subcategory ID at this level
+  const selectedAtThisLevel = selectedSubCategoryPath[levelIndex];
+  const hasChildrenAtNextLevel = selectedAtThisLevel && nestedSubCategories[selectedAtThisLevel]?.length > 0;
+
   return (
     <div className="space-y-4 mt-4">
       {Object.entries(subCategoriesByAttributeType).map(([attrType, subCats]) => {
@@ -1406,15 +1440,15 @@ function SubCategoryLevelDisplay({
                     htmlFor={`${groupName}_${subCat._id}`}
                     className={`
                       flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                      ${isSelected 
-                        ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
+                      ${isSelected
+                        ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md'
                         : 'border-gray-200 bg-white hover:border-[#FE8A0F]/50 hover:bg-gray-50'
                       }
                     `}
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <RadioGroupItem 
-                        value={subCat._id} 
+                      <RadioGroupItem
+                        value={subCat._id}
                         id={`${groupName}_${subCat._id}`}
                         className={`
                           ${isSelected ? 'border-[#FE8A0F]' : ''} shrink-0
@@ -1436,6 +1470,36 @@ function SubCategoryLevelDisplay({
           </div>
         );
       })}
+
+      {/* Recursively render the next level if a selection has been made at this level */}
+      {selectedAtThisLevel && (
+        <>
+          {/* Show loading state while fetching children */}
+          {loadingSubCategories[selectedAtThisLevel] && (
+            <div className="flex items-center gap-2 py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
+              <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Loading next level...</span>
+            </div>
+          )}
+
+          {/* Render next level if children exist */}
+          {hasChildrenAtNextLevel && (
+            <SubCategoryLevelDisplay
+              parentSubCategoryId={selectedAtThisLevel}
+              levelIndex={levelIndex + 1}
+              selectedSubCategoryPath={selectedSubCategoryPath}
+              setSelectedSubCategoryPath={setSelectedSubCategoryPath}
+              nestedSubCategories={nestedSubCategories}
+              setNestedSubCategories={setNestedSubCategories}
+              loadingSubCategories={loadingSubCategories}
+              setLoadingSubCategories={setLoadingSubCategories}
+              selectedAttributes={selectedAttributes}
+              setSelectedAttributes={setSelectedAttributes}
+              attributeTypeLabels={attributeTypeLabels}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -1467,6 +1531,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [loadingSubCategories, setLoadingSubCategories] = useState<Record<string, boolean>>({});
   const [selectedSubCategoryTitles, setSelectedSubCategoryTitles] = useState<string[]>([]); // Titles for the selected subcategory
   const [loadingTitles, setLoadingTitles] = useState<boolean>(false);
+  const [selectedSubCategoryAttributes, setSelectedSubCategoryAttributes] = useState<string[]>([]); // Attributes for the selected subcategory
+  const [loadingAttributes, setLoadingAttributes] = useState<boolean>(false);
   
   // Set default sector when sectors are loaded (only if user has a registered sector)
   useEffect(() => {
@@ -1526,13 +1592,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         setIdealFor(idealForIds);
       }
       
-      // Set service highlights
+      // Set service highlights (now stored as attribute strings directly)
       if (initialService.highlights && Array.isArray(initialService.highlights)) {
-        const highlightIds = initialService.highlights.map((label: string) => {
-          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.label === label);
-          return option?.id || "";
-        }).filter(Boolean);
-        setServiceHighlights(highlightIds);
+        setServiceHighlights(initialService.highlights);
       }
       
       // Set gallery images
@@ -2139,6 +2201,61 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     fetchSubCategoryTitles();
   }, [selectedSubCategoryPath, selectedSubCategoryId]);
 
+  // Fetch attributes for ALL selected subcategories in the path
+  useEffect(() => {
+    const fetchAllSubCategoryAttributes = async () => {
+      // Get all subcategory IDs from the path
+      const subCategoryIds = selectedSubCategoryPath.length > 0
+        ? selectedSubCategoryPath
+        : (selectedSubCategoryId ? [selectedSubCategoryId] : []);
+
+      if (subCategoryIds.length === 0) {
+        setSelectedSubCategoryAttributes([]);
+        return;
+      }
+
+      try {
+        setLoadingAttributes(true);
+        const allAttributes: string[] = [];
+
+        // Fetch attributes from each subcategory in the path
+        for (const subCatId of subCategoryIds) {
+          try {
+            const response = await fetch(
+              resolveApiUrl(`/api/service-subcategories/${subCatId}?includeServiceCategory=false&activeOnly=false`),
+              { credentials: 'include' }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              const subCategory = data.serviceSubCategory;
+
+              // Extract service attribute suggestions from this subcategory
+              if (subCategory?.serviceAttributeSuggestions && Array.isArray(subCategory.serviceAttributeSuggestions)) {
+                const attributes = subCategory.serviceAttributeSuggestions
+                  .filter((attr: string) => attr && attr.trim() !== "");
+                allAttributes.push(...attributes);
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching attributes for subcategory ${subCatId}:`, error);
+          }
+        }
+
+        // Remove duplicates and set the combined attributes
+        const uniqueAttributes = Array.from(new Set(allAttributes));
+        setSelectedSubCategoryAttributes(uniqueAttributes);
+      } catch (error) {
+        console.error('Error fetching subcategory attributes:', error);
+        setSelectedSubCategoryAttributes([]);
+      } finally {
+        setLoadingAttributes(false);
+      }
+    };
+
+    fetchAllSubCategoryAttributes();
+  }, [selectedSubCategoryPath, selectedSubCategoryId]);
+
   // Add package
   const addPackage = () => {
     const newPackage: ServicePackage = {
@@ -2241,10 +2358,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             price: parseFloat(e.price),
             order: index,
           })),
-        highlights: serviceHighlights.map(id => {
-          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.id === id);
-          return option ? option.label : id;
-        }),
+        highlights: serviceHighlights, // Now stored as attribute strings directly
         idealFor: idealFor.map(id => {
           const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
           return option ? option.label : id;
@@ -2583,40 +2697,29 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                       </div>
                     )}
 
-                    {/* Display nested subcategory levels sequentially */}
-                    {selectedSubCategoryPath.length > 0 && selectedSubCategoryPath.map((parentId, levelIndex) => {
-                      // Check if this level has children
-                      const hasChildren = nestedSubCategories[parentId]?.length > 0;
-                      const nextLevelSelected = selectedSubCategoryPath[levelIndex + 1];
-
-                      return (
-                        <div key={`level-${levelIndex}-${parentId}`}>
-                          {/* Display current level's children */}
-                          {hasChildren && (
-                            <SubCategoryLevelDisplay
-                              parentSubCategoryId={parentId}
-                              levelIndex={levelIndex + 1}
-                              selectedSubCategoryPath={selectedSubCategoryPath}
-                              setSelectedSubCategoryPath={setSelectedSubCategoryPath}
-                              nestedSubCategories={nestedSubCategories}
-                              setNestedSubCategories={setNestedSubCategories}
-                              loadingSubCategories={loadingSubCategories}
-                              setLoadingSubCategories={setLoadingSubCategories}
-                              selectedAttributes={selectedAttributes}
-                              setSelectedAttributes={setSelectedAttributes}
-                              attributeTypeLabels={{
-                                'serviceType': 'Service Type',
-                                'size': 'Size',
-                                'frequency': 'Frequency',
-                                'make': 'Make',
-                                'model': 'Model',
-                                'brand': 'Brand',
-                              }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
+                    {/* Display nested subcategory levels recursively */}
+                    {selectedSubCategoryPath.length > 0 && selectedSubCategoryPath[0] && (
+                      <SubCategoryLevelDisplay
+                        parentSubCategoryId={selectedSubCategoryPath[0]}
+                        levelIndex={1}
+                        selectedSubCategoryPath={selectedSubCategoryPath}
+                        setSelectedSubCategoryPath={setSelectedSubCategoryPath}
+                        nestedSubCategories={nestedSubCategories}
+                        setNestedSubCategories={setNestedSubCategories}
+                        loadingSubCategories={loadingSubCategories}
+                        setLoadingSubCategories={setLoadingSubCategories}
+                        selectedAttributes={selectedAttributes}
+                        setSelectedAttributes={setSelectedAttributes}
+                        attributeTypeLabels={{
+                          'serviceType': 'Service Type',
+                          'size': 'Size',
+                          'frequency': 'Frequency',
+                          'make': 'Make',
+                          'model': 'Model',
+                          'brand': 'Brand',
+                        }}
+                      />
+                    )}
                   </>
                 )}
 
@@ -2762,63 +2865,75 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                     What's Included
                   </Label>
-                  <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {SERVICE_HIGHLIGHTS_OPTIONS.map((option) => {
-                        const isSelected = serviceHighlights.includes(option.id);
-                        const canSelect = serviceHighlights.length < 6 || isSelected;
-                        
-                        return (
-                          <div 
-                            key={option.id} 
-                            className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
-                          >
-                            <Checkbox
-                              id={option.id}
-                              checked={isSelected}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  if (serviceHighlights.length < 6) {
-                                    setServiceHighlights([...serviceHighlights, option.id]);
-                                  }
-                                } else {
-                                  setServiceHighlights(serviceHighlights.filter(id => id !== option.id));
-                                }
-                              }}
-                              disabled={!canSelect}
-                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                            />
-                            <label
-                              htmlFor={option.id}
-                              className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
-                                isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
-                              }`}
-                            >
-                              {option.label}
-                            </label>
-                          </div>
-                        );
-                      })}
+                  {loadingAttributes ? (
+                    <div className="border border-gray-300 rounded-md p-4 flex items-center justify-center">
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Loading attributes...</span>
                     </div>
-                  </div>
-                  {serviceHighlights.length > 0 && (
-                    <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
-                        Selected Highlights:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        {serviceHighlights.map((id) => {
-                          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.id === id);
-                          return option ? (
-                            <div key={id} className="flex items-start gap-2">
-                              <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
-                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
-                                {option.label}
-                              </span>
-                            </div>
-                          ) : null;
-                        })}
+                  ) : selectedSubCategoryAttributes.length > 0 ? (
+                    <>
+                      <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {selectedSubCategoryAttributes.map((attribute, index) => {
+                            const attributeId = `attr-${index}`;
+                            const isSelected = serviceHighlights.includes(attribute);
+                            const canSelect = serviceHighlights.length < 6 || isSelected;
+
+                            return (
+                              <div
+                                key={attributeId}
+                                className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
+                              >
+                                <Checkbox
+                                  id={attributeId}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      if (serviceHighlights.length < 6) {
+                                        setServiceHighlights([...serviceHighlights, attribute]);
+                                      }
+                                    } else {
+                                      setServiceHighlights(serviceHighlights.filter(h => h !== attribute));
+                                    }
+                                  }}
+                                  disabled={!canSelect}
+                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                                />
+                                <label
+                                  htmlFor={attributeId}
+                                  className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
+                                    isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
+                                  }`}
+                                >
+                                  {attribute}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
+                      {serviceHighlights.length > 0 && (
+                        <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
+                            Selected Highlights:
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {serviceHighlights.map((highlight, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                                  {highlight}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="border border-gray-300 rounded-md p-4">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
+                        No attributes available for this subcategory. Please select a subcategory first.
+                      </p>
                     </div>
                   )}
                 </div>

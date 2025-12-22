@@ -346,7 +346,6 @@ router.post('/', async (req, res) => {
       isActive,
       level,
       categoryLevelMapping,
-      attributes,
       extraServices,
       pricePerUnit,
     } = req.body;
@@ -444,7 +443,6 @@ router.post('/', async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       level: level || 3,
       categoryLevelMapping: categoryLevelMapping || [],
-      attributes: attributes || [],
       extraServices: extraServices || [],
       pricePerUnit: pricePerUnit || { enabled: false, units: [] },
     };

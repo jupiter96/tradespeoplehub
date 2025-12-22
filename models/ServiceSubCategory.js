@@ -116,6 +116,13 @@ const serviceSubCategorySchema = new mongoose.Schema(
       // Array of suggested service titles specific to this subcategory
       // e.g., ['Residential Electrical Installation', 'Commercial Wiring', 'Electrical Repairs']
     },
+    // Service attribute suggestions for this subcategory (for "What's Included" section)
+    serviceAttributeSuggestions: {
+      type: [String],
+      default: [],
+      // Array of suggested service attributes/highlights specific to this subcategory
+      // e.g., ['Professional service guaranteed', 'Quality materials included', 'Same-day service available']
+    },
     // Attributes for each level (Level 3-7)
     attributes: {
       type: [{

@@ -342,7 +342,6 @@ export default function AdminServiceCategoriesPage() {
   const [viewingSubCategories, setViewingSubCategories] = useState<ServiceCategory | null>(null);
   const [isSubCategoriesModalOpen, setIsSubCategoriesModalOpen] = useState(false);
   const [isTitlesModalOpen, setIsTitlesModalOpen] = useState(false);
-  const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false);
   const [managingServiceCategory, setManagingServiceCategory] = useState<ServiceCategory | null>(null);
   // Titles management state
   const [selectedCategoryLevel, setSelectedCategoryLevel] = useState<string>("");
@@ -452,7 +451,6 @@ export default function AdminServiceCategoriesPage() {
       icon?: string;
       metadata?: Record<string, any>;
     }>;
-    attributes: Array<{ name: string; order: number }>;
     extraServices: Array<{ name: string; price: number; days: number; order: number }>;
     pricePerUnit: {
       enabled: boolean;
@@ -471,7 +469,6 @@ export default function AdminServiceCategoriesPage() {
     isActive: true,
     level: 3,
     categoryLevelMapping: [],
-      attributes: [],
       extraServices: [],
       pricePerUnit: {
         enabled: false,
@@ -1041,12 +1038,18 @@ export default function AdminServiceCategoriesPage() {
       slug: "",
       order: getNextAvailableOrder(),
       description: "",
+      metaTitle: "",
+      metaDescription: "",
       icon: "",
       bannerImage: "",
       isActive: true,
       level: 3,
       categoryLevelMapping: [],
-      subCategories: [],
+      extraServices: [],
+      pricePerUnit: {
+        enabled: false,
+        units: [],
+      },
     });
     setEditingServiceCategory(null);
     setIconPreview(null);
@@ -1189,8 +1192,8 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const handleManageAttributes = (serviceCategory: ServiceCategory) => {
-    setManagingServiceCategory(serviceCategory);
-    setIsAttributesModalOpen(true);
+    // Navigate to the service attributes page with category ID as query parameter
+    navigate(`/admin/service-attributes?categoryId=${serviceCategory._id}`);
   };
 
   const handleViewNestedSubCategories = (subCategory: ServiceSubCategory) => {
@@ -1601,7 +1604,6 @@ export default function AdminServiceCategoriesPage() {
       isActive: serviceCategory.isActive,
       level: serviceCategory.level || 3,
       categoryLevelMapping: serviceCategory.categoryLevelMapping || [],
-      attributes: (serviceCategory as any).attributes || [],
       extraServices: (serviceCategory as any).extraServices || [],
       pricePerUnit: (serviceCategory as any).pricePerUnit || { enabled: false, units: [] },
     });
@@ -1724,7 +1726,6 @@ export default function AdminServiceCategoriesPage() {
         isActive: formData.isActive,
         level: formData.level,
         categoryLevelMapping: formData.categoryLevelMapping || [],
-        attributes: formData.attributes || [],
         extraServices: formData.extraServices || [],
         pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
@@ -3051,69 +3052,6 @@ export default function AdminServiceCategoriesPage() {
               </div>
             </div>
 
-            {/* Add Attributes */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Attributes</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      attributes: [
-                        ...(prev.attributes || []),
-                        { name: "", order: (prev.attributes || []).length + 1 },
-                      ],
-                    }));
-                  }}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Attribute
-                </Button>
-              </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
-                {(!formData.attributes || formData.attributes.length === 0) ? (
-                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
-                    No attributes. Click "Add Attribute" to add one.
-                  </p>
-                ) : (
-                  (formData.attributes || []).map((attribute, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
-                      <Input
-                        value={attribute.name || ""}
-                        onChange={(e) => {
-                          setFormData((prev) => {
-                            const updated = [...prev.attributes];
-                            updated[index] = { ...updated[index], name: e.target.value };
-                            return { ...prev, attributes: updated };
-                          });
-                        }}
-                        placeholder="Attribute name"
-                        className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            attributes: prev.attributes.filter((_, i) => i !== index),
-                          }));
-                        }}
-                        className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
             {/* Add Extra Services */}
             <div>
               <div className="flex justify-between items-center mb-3">
@@ -4184,169 +4122,6 @@ export default function AdminServiceCategoriesPage() {
                 <>
                   <Save className="w-4 h-4 mr-2" />
                   Save Suggestions
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manage Attributes Modal */}
-      <Dialog open={isAttributesModalOpen} onOpenChange={setIsAttributesModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-white dark:bg-black border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
-              <List className="w-6 h-6 text-[#FE8A0F]" />
-              Manage Attributes - {managingServiceCategory?.name}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Note:</strong> Attributes defined here will be cascaded to all last-level subcategories. Each last-level subcategory will have its own set of attributes based on the category level mapping.
-              </p>
-            </div>
-            <div className="flex justify-between items-center mb-4">
-              <Label className="text-sm font-semibold text-[#FE8A0F]">Shared Attributes</Label>
-              <Button
-                onClick={() => {
-                  if (!managingServiceCategory) return;
-                  const newAttributes = [...(managingServiceCategory.attributes || [])];
-                  newAttributes.push({ name: '', order: newAttributes.length + 1 });
-                  setManagingServiceCategory({
-                    ...managingServiceCategory,
-                    attributes: newAttributes
-                  });
-                }}
-                size="sm"
-                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Attribute
-              </Button>
-            </div>
-            {managingServiceCategory?.attributes && managingServiceCategory.attributes.length > 0 ? (
-              <div className="space-y-3">
-                {managingServiceCategory.attributes.map((attr, attrIndex) => (
-                  <div key={attrIndex} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-4">
-                    <div className="flex-1">
-                      <Input
-                        value={attr.name}
-                        onChange={(e) => {
-                          if (!managingServiceCategory) return;
-                          const updatedAttributes = [...(managingServiceCategory.attributes || [])];
-                          updatedAttributes[attrIndex] = { ...updatedAttributes[attrIndex], name: e.target.value };
-                          setManagingServiceCategory({
-                            ...managingServiceCategory,
-                            attributes: updatedAttributes
-                          });
-                        }}
-                        placeholder="Attribute name"
-                        className="mb-2"
-                      />
-                      <Input
-                        type="number"
-                        value={attr.order}
-                        onChange={(e) => {
-                          if (!managingServiceCategory) return;
-                          const updatedAttributes = [...(managingServiceCategory.attributes || [])];
-                          updatedAttributes[attrIndex] = { ...updatedAttributes[attrIndex], order: parseInt(e.target.value) || 0 };
-                          setManagingServiceCategory({
-                            ...managingServiceCategory,
-                            attributes: updatedAttributes
-                          });
-                        }}
-                        placeholder="Order"
-                        className="w-24"
-                      />
-                    </div>
-                    <Button
-                      onClick={() => {
-                        if (!managingServiceCategory) return;
-                        const updatedAttributes = managingServiceCategory.attributes?.filter((_, i) => i !== attrIndex) || [];
-                        setManagingServiceCategory({
-                          ...managingServiceCategory,
-                          attributes: updatedAttributes
-                        });
-                      }}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                {managingServiceCategory?.categoryLevelMapping && managingServiceCategory.categoryLevelMapping.length > 0 && (
-                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-xs text-blue-800 dark:text-blue-200">
-                      These attributes will be applied to all levels ({managingServiceCategory.categoryLevelMapping.map(m => `Level ${m.level}`).join(', ')}) in last-level subcategories.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <List className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  No attributes found. Click "Add Attribute" to create one.
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => setIsAttributesModalOpen(false)}
-              variant="outline"
-              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!managingServiceCategory) return;
-                try {
-                  setIsSaving(true);
-                  const response = await fetch(
-                    resolveApiUrl(`/api/service-categories/${managingServiceCategory._id}`),
-                    {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({
-                        attributes: managingServiceCategory.attributes,
-                      }),
-                    }
-                  );
-                  if (response.ok) {
-                    toast.success("Attributes updated successfully and cascaded to all last-level subcategories");
-                    setIsAttributesModalOpen(false);
-                    if (selectedSectorId) {
-                      fetchServiceCategories(selectedSectorId);
-                    }
-                  } else {
-                    const error = await response.json();
-                    toast.error(error.error || "Failed to update attributes");
-                  }
-                } catch (error) {
-                  console.error("Error updating attributes:", error);
-                  toast.error("Failed to update attributes");
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-              disabled={isSaving}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Attributes
                 </>
               )}
             </Button>

@@ -656,6 +656,7 @@ router.put('/:id', async (req, res) => {
       categoryLevel,
       titles,
       serviceTitleSuggestions,
+      serviceAttributeSuggestions,
     } = req.body;
     
     const serviceSubCategory = await ServiceSubCategory.findById(id);
@@ -719,6 +720,7 @@ router.put('/:id', async (req, res) => {
     if (isActive !== undefined) serviceSubCategory.isActive = isActive;
     if (categoryLevel !== undefined) serviceSubCategory.categoryLevel = parseInt(categoryLevel);
     if (serviceTitleSuggestions !== undefined) serviceSubCategory.serviceTitleSuggestions = serviceTitleSuggestions;
+    if (serviceAttributeSuggestions !== undefined) serviceSubCategory.serviceAttributeSuggestions = serviceAttributeSuggestions;
     if (titles !== undefined) {
       // Update titles - merge with existing titles, replacing those with the same level
       const existingTitles = serviceSubCategory.titles || [];
