@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List } from "lucide-react";
 import {
   DndContext,
@@ -330,6 +331,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
 
 export default function AdminServiceCategoriesPage() {
   useAdminRouteGuard();
+  const navigate = useNavigate();
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [selectedSectorId, setSelectedSectorId] = useState<string>("");
@@ -1066,16 +1068,9 @@ export default function AdminServiceCategoriesPage() {
     fetchServiceSubCategories(serviceCategory._id, undefined);
   };
 
-  const handleManageTitles = async (serviceCategory: ServiceCategory) => {
-    setManagingServiceCategory(serviceCategory);
-    setIsTitlesModalOpen(true);
-    // Reset state
-    setSelectedCategoryLevel("");
-    setSelectedSubCategoryPath([]);
-    setTitlesForSelectedPath([]);
-    setSubCategoriesByLevel({});
-    setExpandedSubCategories(new Set());
-    setSubCategoryTitles({});
+  const handleManageTitles = (serviceCategory: ServiceCategory) => {
+    // Navigate to the service titles page with category ID as query parameter
+    navigate(`/admin/service-titles?categoryId=${serviceCategory._id}`);
   };
 
   // Fetch subcategories for a specific level and load their titles

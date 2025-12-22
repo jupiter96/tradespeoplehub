@@ -52,6 +52,7 @@ import AdminCostGuidePage from "./admin/AdminCostGuidePage";
 import AdminSectorsPage from "./admin/AdminSectorsPage";
 import AdminCategoriesPage from "./admin/AdminCategoriesPage";
 import AdminServiceCategoriesPage from "./admin/AdminServiceCategoriesPage";
+import AdminServiceTitlesPage from "./admin/AdminServiceTitlesPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
 import API_BASE_URL from "../config/api";
@@ -266,6 +267,8 @@ export default function AdminDashboardPage() {
         return <AdminCategoriesPage />;
       case "service-category":
         return <AdminServiceCategoriesPage />;
+      case "service-titles":
+        return <AdminServiceTitlesPage />;
       case "all-service":
         return (
           <AdminServicesPage
