@@ -1035,25 +1035,8 @@ export default function AdminServiceCategoriesPage() {
   }, [serviceCategories]);
 
   const handleCreateNew = () => {
-    setFormData({
-      sector: selectedSectorId,
-      name: "",
-      slug: "",
-      order: getNextAvailableOrder(),
-      description: "",
-      icon: "",
-      bannerImage: "",
-      isActive: true,
-      level: 3,
-      categoryLevelMapping: [],
-      subCategories: [],
-    });
-    setEditingServiceCategory(null);
-    setIconPreview(null);
-    setBannerPreview(null);
-    setPendingIconFile(null);
-    setPendingBannerFile(null);
-    setIsModalOpen(true);
+    // Navigate to the form page with sectorId as query parameter
+    navigate(`/admin/service-category-form?sectorId=${selectedSectorId}`);
   };
 
   const handleViewSubCategories = (serviceCategory: ServiceCategory) => {
@@ -1577,27 +1560,8 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const handleEdit = (serviceCategory: ServiceCategory) => {
-    setFormData({
-      sector: typeof serviceCategory.sector === "string" ? serviceCategory.sector : serviceCategory.sector._id,
-      name: serviceCategory.name,
-      slug: serviceCategory.slug || generateSlug(serviceCategory.name),
-      order: serviceCategory.order,
-      description: serviceCategory.description || "",
-      metaTitle: (serviceCategory as any).metaTitle || "",
-      metaDescription: (serviceCategory as any).metaDescription || "",
-      icon: serviceCategory.icon || "",
-      bannerImage: serviceCategory.bannerImage || "",
-      isActive: serviceCategory.isActive,
-      level: serviceCategory.level || 3,
-      categoryLevelMapping: serviceCategory.categoryLevelMapping || [],
-      serviceIdealFor: (serviceCategory as any).serviceIdealFor || [],
-      extraServices: (serviceCategory as any).extraServices || [],
-      pricePerUnit: (serviceCategory as any).pricePerUnit || { enabled: false, units: [] },
-    });
-    setEditingServiceCategory(serviceCategory);
-    setIconPreview(serviceCategory.icon || null);
-    setBannerPreview(serviceCategory.bannerImage || null);
-    setIsModalOpen(true);
+    // Navigate to the form page with category ID as query parameter
+    navigate(`/admin/service-category-form?id=${serviceCategory._id}`);
   };
 
   const handleToggleActive = async (serviceCategory: ServiceCategory) => {
