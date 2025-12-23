@@ -19,6 +19,12 @@ const serviceSchema = new mongoose.Schema(
       ref: 'ServiceSubCategory',
       default: null,
     },
+    // Full nested subcategory path (one ID per level)
+    serviceSubCategoryPath: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: 'ServiceSubCategory',
+      default: [],
+    },
     title: {
       type: String,
       required: false, // Optional for drafts
@@ -179,6 +185,11 @@ const serviceSchema = new mongoose.Schema(
     experienceYears: {
       type: Number,
       min: 0,
+    },
+    // Weekly availability schedule (per day with time blocks)
+    availability: {
+      type: mongoose.Schema.Types.Mixed, // { monday: { enabled, blocks: [...] }, ... }
+      default: {},
     },
     // Skills required
     skills: {

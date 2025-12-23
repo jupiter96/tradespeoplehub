@@ -146,6 +146,10 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (activeSection === "dashboard") {
       fetchStatistics();
+
+      // Refresh statistics every 5 seconds to keep badges up to date in real-time
+      const interval = setInterval(() => fetchStatistics(false), 5000);
+      return () => clearInterval(interval);
     }
   }, [activeSection, fetchStatistics]);
 
@@ -475,7 +479,7 @@ export default function AdminDashboardPage() {
                 { title: "CLIENT REFERRALS", icon: TrendingUp, color: "red" as const, value: statistics?.clientsReferrals || 0, dailyChange: statistics?.clientsReferralsDailyChange, badge: statistics?.clientsReferralsDailyChange, onClick: () => navigate("/admin/referrals-client") },
                 { title: "DELETED ACCOUNT", icon: Archive, color: "red" as const, value: statistics?.deletedAccount || 0, dailyChange: statistics?.deletedAccountDailyChange, badge: statistics?.deletedAccountNew || 0, onClick: () => navigate("/admin/delete-account") },
                 { title: "ORDERS", icon: Package, color: "red" as const, value: statistics?.orders || 0, dailyChange: statistics?.ordersDailyChange, badge: statistics?.ordersNew || 0, onClick: () => navigate("/admin/service-order") },
-                { title: "APPROVAL PENDING SERVICE", icon: Clock, color: "red" as const, value: statistics?.approvalPendingService || 0, dailyChange: statistics?.approvalPendingServiceDailyChange, badge: statistics?.approvalPendingService || 0, onClick: () => navigate("/admin/approval-pending-service") },
+                { title: "APPROVAL PENDING SERVICE", icon: Clock, color: "red" as const, value: statistics?.approvalPendingService || 0, dailyChange: statistics?.approvalPendingServiceDailyChange, badge: statistics?.approvalPendingService > 0 ? statistics?.approvalPendingService : undefined, onClick: () => navigate("/admin/approval-pending-service") },
                 // Green Cards
                 { title: "SUBADMIN", icon: Users, color: "green" as const, value: statistics?.subadmin || 0, dailyChange: statistics?.subadminDailyChange, badge: statistics?.subadminNew, onClick: () => navigate("/admin/sub-admins") },
                 { title: "TOTAL PLANS & PACKAGES", icon: Package, color: "green" as const, value: statistics?.totalPlansPackages || 0, dailyChange: statistics?.totalPlansPackagesDailyChange, badge: statistics?.totalPlansPackagesDailyChange, onClick: () => navigate("/admin/packages") },
@@ -491,7 +495,7 @@ export default function AdminDashboardPage() {
                   } },
                 { title: "AFFILIATE", icon: Gift, color: "green" as const, value: statistics?.affiliate || 0, dailyChange: statistics?.affiliateDailyChange, badge: statistics?.affiliateNew || 0, onClick: () => navigate("/admin/affiliate") },
                 { title: "ASK TO STEP IN", icon: Handshake, color: "green" as const, value: statistics?.askToStepIn || 0, dailyChange: statistics?.askToStepInDailyChange, badge: statistics?.askToStepInDailyChange, onClick: () => navigate("/admin/ask-step-in") },
-                { title: "SERVICE LISTING", icon: List, color: "green" as const, value: statistics?.serviceListing || 0, dailyChange: statistics?.serviceListingDailyChange, badge: statistics?.serviceListingDailyChange, onClick: () => navigate("/admin/service") },
+                { title: "SERVICE LISTING", icon: List, color: "green" as const, value: statistics?.serviceListing || 0, dailyChange: statistics?.serviceListingDailyChange, badge: statistics?.serviceListingDailyChange, onClick: () => navigate("/admin/all-service") },
                 { title: "CUSTOM ORDERS", icon: Box, color: "green" as const, value: statistics?.customOrders || 0, dailyChange: statistics?.customOrdersDailyChange, badge: statistics?.customOrdersNew || 0, onClick: () => navigate("/admin/custom-order") },
               ]
                 .filter(card => shouldShowCard(card.title))
@@ -566,7 +570,7 @@ export default function AdminDashboardPage() {
                         { show: shouldShowCard("CLIENT REFERRALS"), icon: TrendingUp, title: "CLIENT REFERRALS", value: statistics?.clientsReferrals || 0, color: "red" as const, dailyChange: statistics?.clientsReferralsDailyChange, badge: statistics?.clientsReferralsDailyChange, onClick: () => navigate("/admin/referrals-client") },
                         { show: shouldShowCard("DELETED ACCOUNT"), icon: Archive, title: "DELETED ACCOUNT", value: statistics?.deletedAccount || 0, color: "red" as const, dailyChange: statistics?.deletedAccountDailyChange, badge: statistics?.deletedAccountNew || 0, onClick: () => navigate("/admin/delete-account") },
                         { show: shouldShowCard("ORDERS"), icon: Package, title: "ORDERS", value: statistics?.orders || 0, color: "red" as const, dailyChange: statistics?.ordersDailyChange, badge: statistics?.ordersNew || 0, onClick: () => navigate("/admin/service-order") },
-                        { show: shouldShowCard("APPROVAL PENDING SERVICE"), icon: Clock, title: "APPROVAL PENDING SERVICE", value: statistics?.approvalPendingService || 0, color: "red" as const, dailyChange: statistics?.approvalPendingServiceDailyChange, badge: statistics?.approvalPendingServiceDailyChange, onClick: () => navigate("/admin/approval-pending-service") },
+                        { show: shouldShowCard("APPROVAL PENDING SERVICE"), icon: Clock, title: "APPROVAL PENDING SERVICE", value: statistics?.approvalPendingService || 0, color: "red" as const, dailyChange: statistics?.approvalPendingServiceDailyChange, badge: statistics?.approvalPendingService > 0 ? statistics?.approvalPendingService : undefined, onClick: () => navigate("/admin/approval-pending-service") },
 
                         // Green
                         { show: shouldShowCard("SUBADMIN"), icon: Users, title: "SUBADMIN", value: statistics?.subadmin || 0, color: "green" as const, dailyChange: statistics?.subadminDailyChange, badge: statistics?.subadminNew, onClick: () => navigate("/admin/sub-admins") },
@@ -582,7 +586,7 @@ export default function AdminDashboardPage() {
                         } },
                         { show: shouldShowCard("AFFILIATE"), icon: Gift, title: "AFFILIATE", value: statistics?.affiliate || 0, color: "green" as const, dailyChange: statistics?.affiliateDailyChange, badge: statistics?.affiliateNew || 0, onClick: () => navigate("/admin/affiliate") },
                         { show: shouldShowCard("ASK TO STEP IN"), icon: Handshake, title: "ASK TO STEP IN", value: statistics?.askToStepIn || 0, color: "green" as const, dailyChange: statistics?.askToStepInDailyChange, badge: statistics?.askToStepInDailyChange, onClick: () => navigate("/admin/ask-step-in") },
-                        { show: shouldShowCard("SERVICE LISTING"), icon: List, title: "SERVICE LISTING", value: statistics?.serviceListing || 0, color: "green" as const, dailyChange: statistics?.serviceListingDailyChange, badge: statistics?.serviceListingDailyChange, onClick: () => navigate("/admin/service") },
+                        { show: shouldShowCard("SERVICE LISTING"), icon: List, title: "SERVICE LISTING", value: statistics?.serviceListing || 0, color: "green" as const, dailyChange: statistics?.serviceListingDailyChange, badge: statistics?.serviceListingDailyChange, onClick: () => navigate("/admin/all-service") },
                         { show: shouldShowCard("CUSTOM ORDERS"), icon: Box, title: "CUSTOM ORDERS", value: statistics?.customOrders || 0, color: "green" as const, dailyChange: statistics?.customOrdersDailyChange, badge: statistics?.customOrdersNew || 0, onClick: () => navigate("/admin/custom-order") },
                       ]
                         .filter((c) => c.show)

@@ -567,8 +567,8 @@ export default function AdminSidebar({
 
     fetchStatistics();
 
-    // Refresh periodically to keep badges up to date
-    const interval = setInterval(fetchStatistics, 30000);
+    // Refresh every 5 seconds to keep badges up to date in real-time
+    const interval = setInterval(fetchStatistics, 5000);
     return () => clearInterval(interval);
   }, []);
 

@@ -14,6 +14,7 @@ import Sector from '../models/Sector.js';
 import SubCategory from '../models/SubCategory.js';
 import ServiceCategory from '../models/ServiceCategory.js';
 import ServiceSubCategory from '../models/ServiceSubCategory.js';
+import Service from '../models/Service.js';
 
 // Load environment variables
 dotenv.config();
@@ -1210,6 +1211,27 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
     });
     const subadminDailyChange = subadminToday - subadminYesterday;
 
+    // Calculate approval pending service daily change
+    const approvalPendingServiceToday = await Service.countDocuments({
+      status: 'pending',
+      createdAt: { $gte: today }
+    });
+    const approvalPendingServiceYesterday = await Service.countDocuments({
+      status: 'pending',
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const approvalPendingServiceDailyChange = approvalPendingServiceToday - approvalPendingServiceYesterday;
+
+    // Calculate service listing (total services) daily change
+    const serviceListingCount = await Service.countDocuments({});
+    const serviceListingToday = await Service.countDocuments({
+      createdAt: { $gte: today }
+    });
+    const serviceListingYesterday = await Service.countDocuments({
+      createdAt: { $gte: yesterday, $lt: today }
+    });
+    const serviceListingDailyChange = serviceListingToday - serviceListingYesterday;
+
     // All statistics with actual calculations or 0 for unimplemented features
     const statistics = {
       // Column 1 - Orange
@@ -1235,8 +1257,9 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       flagged: flaggedCount || 0,
       flaggedDailyChange: flaggedDailyChange || 0,
       // Services awaiting admin approval (status = 'pending')
-      approvalPendingService: await Service.countDocuments({ status: 'pending', isActive: true }),
-      approvalPendingServiceDailyChange: 0,
+      // Count all pending services regardless of isActive status (admin sees all)
+      approvalPendingService: await Service.countDocuments({ status: 'pending' }),
+      approvalPendingServiceDailyChange: approvalPendingServiceDailyChange || 0,
 
       // Column 2 - Red
       clients: clientsCount || 0,
@@ -1272,8 +1295,8 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       affiliateDailyChange: affiliateDailyChange || 0,
       askToStepIn: 0, // Dispute model not implemented yet
       askToStepInDailyChange: 0,
-      serviceListing: 0, // Service model not implemented yet
-      serviceListingDailyChange: 0,
+      serviceListing: serviceListingCount || 0,
+      serviceListingDailyChange: serviceListingDailyChange || 0,
       customOrders: 0, // CustomOrder model not implemented yet
       customOrdersNew: 0,
       customOrdersDailyChange: 0,

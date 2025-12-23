@@ -236,6 +236,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       deliveryType,
       responseTime,
       experienceYears,
+      availability,
       skills,
       postcode,
       location,
@@ -288,6 +289,9 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
     if (experienceYears !== undefined && experienceYears !== null && experienceYears !== "") {
       draftServiceData.experienceYears = Number(experienceYears);
     }
+    if (availability && typeof availability === 'object') {
+      draftServiceData.availability = availability;
+    }
     if (skills && skills.length > 0) draftServiceData.skills = skills;
     if (postcode || professional.postcode) draftServiceData.postcode = postcode || professional.postcode;
     if (location || professional.address) draftServiceData.location = location || professional.address;
@@ -325,6 +329,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const {
       serviceCategoryId,
       serviceSubCategoryId,
+      serviceSubCategoryPath,
       title,
       description,
       price,
@@ -431,6 +436,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       professional: req.user.id,
       serviceCategory: serviceCategoryId,
       serviceSubCategory: serviceSubCategoryId || null,
+      serviceSubCategoryPath: Array.isArray(serviceSubCategoryPath) ? serviceSubCategoryPath : [],
       title: title.trim(),
       slug: finalSlug,
       description: description.trim(),
@@ -450,6 +456,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       experienceYears: experienceYears !== undefined && experienceYears !== null && experienceYears !== ""
         ? Number(experienceYears)
         : undefined,
+      availability: availability && typeof availability === 'object' ? availability : undefined,
       skills: skills || [],
       postcode: professional.postcode || postcode || undefined,
       location: professional.address || location || undefined,
@@ -553,6 +560,16 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     // Normalize experienceYears to number if provided
     if (updateData.experienceYears !== undefined && updateData.experienceYears !== null && updateData.experienceYears !== "") {
       updateData.experienceYears = Number(updateData.experienceYears);
+    }
+
+    // Ensure serviceSubCategoryPath is always an array when provided
+    if (updateData.serviceSubCategoryPath !== undefined && !Array.isArray(updateData.serviceSubCategoryPath)) {
+      delete updateData.serviceSubCategoryPath;
+    }
+
+    // Ensure availability is an object when provided
+    if (updateData.availability !== undefined && typeof updateData.availability !== 'object') {
+      delete updateData.availability;
     }
 
     // Generate new slug if title is changed (skip for drafts)

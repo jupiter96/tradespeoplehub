@@ -2417,6 +2417,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         draftData.experienceYears = Number(experienceYears);
       }
 
+      if (availability) {
+        draftData.availability = availability;
+      }
+
       const skillsArray = keywords.split(",").map(k => k.trim()).filter(k => k);
       if (skillsArray.length > 0) {
         draftData.skills = skillsArray;
@@ -2830,6 +2834,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         }),
         deliveryType,
         responseTime: responseTime || undefined,
+        availability,
         skills: keywordArray,
         postcode: postcode || userInfo?.postcode || "",
         address: address || userInfo?.address || "",
