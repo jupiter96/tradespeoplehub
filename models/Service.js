@@ -196,20 +196,10 @@ const serviceSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-    // Location data
-    postcode: {
+    // County/Borough/Council
+    county: {
       type: String,
       trim: true,
-    },
-    location: {
-      type: String,
-      trim: true,
-    },
-    latitude: {
-      type: Number,
-    },
-    longitude: {
-      type: Number,
     },
     // Badges
     badges: {

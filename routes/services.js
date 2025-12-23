@@ -238,10 +238,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       experienceYears,
       availability,
       skills,
-      postcode,
-      location,
-      latitude,
-      longitude,
+      county,
       badges,
       metaTitle,
       metaDescription,
@@ -293,18 +290,10 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       draftServiceData.availability = availability;
     }
     if (skills && skills.length > 0) draftServiceData.skills = skills;
-    if (postcode || professional.postcode) draftServiceData.postcode = postcode || professional.postcode;
-    if (location || professional.address) draftServiceData.location = location || professional.address;
-    if (latitude) draftServiceData.latitude = latitude;
-    if (longitude) draftServiceData.longitude = longitude;
+    if (county || professional.county) draftServiceData.county = county || professional.county;
     if (badges && badges.length > 0) draftServiceData.badges = badges;
     if (metaTitle) draftServiceData.metaTitle = metaTitle;
     if (metaDescription) draftServiceData.metaDescription = metaDescription;
-
-    // Add address fields from request body
-    if (req.body.address) draftServiceData.address = req.body.address;
-    if (req.body.townCity) draftServiceData.townCity = req.body.townCity;
-    if (req.body.county) draftServiceData.county = req.body.county;
 
     // Create draft service (minimal validation)
     const service = await Service.create(draftServiceData);
@@ -346,10 +335,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       responseTime,
       experienceYears,
       skills,
-      postcode,
-      location,
-      latitude,
-      longitude,
+      county,
       badges,
       metaTitle,
       metaDescription,
@@ -458,10 +444,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         : undefined,
       availability: availability && typeof availability === 'object' ? availability : undefined,
       skills: skills || [],
-      postcode: professional.postcode || postcode || undefined,
-      location: professional.address || location || undefined,
-      latitude: latitude || undefined,
-      longitude: longitude || undefined,
+      county: professional.county || county || undefined,
       badges: badges || [],
       metaTitle: metaTitle || undefined,
       metaDescription: metaDescription || undefined,

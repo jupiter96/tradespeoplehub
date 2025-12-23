@@ -44,7 +44,6 @@ import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 import type { ServiceCategory, ServiceSubCategory, Sector } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
 import { useAccount } from "./AccountContext";
-import AddressAutocomplete from "./AddressAutocomplete";
 
 interface AddServiceSectionProps {
   onClose: () => void;
@@ -1500,20 +1499,14 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     }
   }, [userSector, defaultSectorId]);
 
-  // Set default address fields from userInfo (only once on mount)
+  // Set default town/city & county fields from userInfo (only once on mount)
   useEffect(() => {
     if (userInfo) {
-      if (userInfo.address) {
-        setAddress(userInfo.address);
-      }
       if (userInfo.townCity) {
         setTownCity(userInfo.townCity);
       }
       if (userInfo.county) {
         setCounty(userInfo.county);
-      }
-      if (userInfo.postcode) {
-        setPostcode(userInfo.postcode);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1590,11 +1583,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
               setDeliveryType(draft.deliveryType || "standard");
               setResponseTime(draft.responseTime || "");
 
-              // Set address fields
-              if (draft.address) setAddress(draft.address);
-              if (draft.townCity) setTownCity(draft.townCity);
+              // Set county field
               if (draft.county) setCounty(draft.county);
-              if (draft.postcode) setPostcode(draft.postcode);
 
               // Set keywords/skills
               if (draft.skills && Array.isArray(draft.skills)) {
@@ -1664,13 +1654,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       if (initialService.experienceYears !== undefined && initialService.experienceYears !== null) {
         setExperienceYears(initialService.experienceYears.toString());
       }
-      
-      // Set address fields
-      if (initialService.address) setAddress(initialService.address);
-      if (initialService.townCity) setTownCity(initialService.townCity);
+
+      // Set county field
       if (initialService.county) setCounty(initialService.county);
-      if (initialService.postcode) setPostcode(initialService.postcode);
-      
+
       // Set keywords/skills
       if (initialService.skills && Array.isArray(initialService.skills)) {
         setKeywords(initialService.skills.join(", "));
@@ -1746,10 +1733,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     }
   }, [initialService, isEditMode]);
   const [serviceTitle, setServiceTitle] = useState("");
-  const [address, setAddress] = useState("");
   const [townCity, setTownCity] = useState("");
   const [county, setCounty] = useState("");
-  const [postcode, setPostcode] = useState("");
   const [keywords, setKeywords] = useState("");
   const [description, setDescription] = useState("");
   const [idealFor, setIdealFor] = useState<string[]>([]);
@@ -2426,18 +2411,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         draftData.skills = skillsArray;
       }
 
-      if (postcode || userInfo?.postcode) {
-        draftData.postcode = postcode || userInfo?.postcode;
-      }
-
-      if (address || userInfo?.address) {
-        draftData.address = address || userInfo?.address;
-      }
-
-      if (townCity || userInfo?.townCity) {
-        draftData.townCity = townCity || userInfo?.townCity;
-      }
-
       if (county || userInfo?.county) {
         draftData.county = county || userInfo?.county;
       }
@@ -2496,9 +2469,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     }
   }, [
     userInfo?.id,
-    userInfo?.postcode,
-    userInfo?.address,
-    userInfo?.townCity,
     userInfo?.county,
     isSavingDraft,
     serviceTitle,
@@ -2517,9 +2487,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     deliveryType,
     responseTime,
     keywords,
-    postcode,
-    address,
-    townCity,
     county,
     packages,
     extraServices,
@@ -2836,9 +2803,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         responseTime: responseTime || undefined,
         availability,
         skills: keywordArray,
-        postcode: postcode || userInfo?.postcode || "",
-        address: address || userInfo?.address || "",
-        townCity: townCity || userInfo?.townCity || "",
         county: county || userInfo?.county || "",
         badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
         status: "pending", // Set to pending when publishing
@@ -3320,31 +3284,29 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   ) : null}
                 </div>
 
-                {/* Address */}
+                {/* Town / City (from My Details) */}
                 <div>
-                  <AddressAutocomplete
-                    postcode={postcode}
-                    onPostcodeChange={setPostcode}
-                    address={address}
-                    onAddressChange={setAddress}
-                    townCity={townCity}
-                    onTownCityChange={setTownCity}
-                    county={county}
-                    onCountyChange={setCounty}
-                    onAddressSelect={(selectedAddress) => {
-                      setPostcode(selectedAddress.postcode);
-                      setAddress(selectedAddress.address);
-                      setTownCity(selectedAddress.townCity);
-                      if (selectedAddress.county) {
-                        setCounty(selectedAddress.county);
-                      }
-                    }}
-                    label="Postcode"
-                    required={false}
-                    showAddressField={true}
-                    showTownCityField={true}
-                    showCountyField={true}
-                    addressLabel="Address"
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Town / City
+                  </Label>
+                  <Input
+                    value={townCity}
+                    onChange={(e) => setTownCity(e.target.value)}
+                    placeholder="Town / City from your details"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                  />
+                </div>
+
+                {/* Borough/Council */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Borough/Council
+                  </Label>
+                  <Input
+                    value={county}
+                    onChange={(e) => setCounty(e.target.value)}
+                    placeholder="Enter Borough/Council (optional)"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
                 </div>
 
