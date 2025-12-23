@@ -264,6 +264,9 @@ export default function ServiceDetailPage() {
             providerImage: typeof s.professional === 'object' 
               ? s.professional.avatar || ""
               : "",
+            aboutMe: s.aboutMe || (typeof s.professional === 'object'
+              ? (s.professional.publicProfile?.bio || s.professional.aboutService || "")
+              : ""),
             description: s.title || "",
             category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
               ? s.serviceCategory.sector.name || ""
@@ -669,11 +672,18 @@ export default function ServiceDetailPage() {
   };
 
   // Price information (use selected package if available, otherwise use service base price)
+  // Note: In service creation, "Your Price" is stored as price, "Sale / Discounted Price" is stored as originalPrice
+  // So: price = original/regular price, originalPrice = discounted/sale price
   const hasPackages = !!(service.packages && service.packages.length > 0);
-  const basePrice = selectedPackage ? parseMoney(selectedPackage.price) : parseMoney(service.price);
-  const originalPrice = selectedPackage && selectedPackage.originalPrice
+  const regularPrice = selectedPackage ? parseMoney(selectedPackage.price) : parseMoney(service.price);
+  const discountedPrice = selectedPackage && selectedPackage.originalPrice
     ? parseMoney(selectedPackage.originalPrice)
     : (service.originalPrice ? parseMoney(service.originalPrice) : null);
+  
+  // Display: if discountedPrice exists, show it as the main price and regularPrice as crossed out
+  // Otherwise, show regularPrice as the main price
+  const basePrice = discountedPrice || regularPrice;
+  const originalPrice = discountedPrice ? regularPrice : null;
   const addonsTotal = calculateAddonsTotal();
   const totalPrice = (basePrice + addonsTotal) * quantity;
 
@@ -694,7 +704,7 @@ export default function ServiceDetailPage() {
       ?.filter(addon => selectedAddons.has(addon.id))
       .map(addon => ({
         id: addon.id,
-        title: addon.title,
+        title: addon.name || addon.title,
         price: addon.price
       })) || [];
     
@@ -981,14 +991,10 @@ export default function ServiceDetailPage() {
   // Generate detailed description for service
   const aboutService = `Discover exceptional ${service.category.toLowerCase()} with ${service.providerName}. With a proven track record of ${service.completedTasks} completed tasks and a ${service.rating} star rating, you can trust in the quality and professionalism of this service. ${service.description} Our commitment to excellence ensures that every client receives personalized attention and outstanding results.`;
 
-  const whatsIncluded = [
-    "Professional and experienced service provider",
-    "High-quality materials and equipment",
-    "Personalized consultation",
-    "Satisfaction guarantee",
-    service.deliveryType === "same-day" ? "Same-day service available" : "Flexible scheduling",
-    "Follow-up support"
-  ];
+  // Use service highlights for What's Included, fallback to generated highlights if not available
+  const whatsIncluded = service.highlights && service.highlights.length > 0 
+    ? service.highlights 
+    : highlights;
 
   // Portfolio images (use uploaded images, fall back to placeholder)
   // NOTE: do NOT use hooks here (this code runs after early returns).
@@ -1164,9 +1170,14 @@ export default function ServiceDetailPage() {
                 {service.tradingName}
               </h3>
               {providerBadge && (
-                <Badge className="bg-[#2c353f] text-white font-['Poppins',sans-serif] text-[11px] px-2 py-0.5">
+                <Badge className="bg-[#2c353f] text-white font-['Poppins',sans-serif] text-[11px] px-2 py-0.5 mb-2">
                   {providerBadge}
                 </Badge>
+              )}
+              {service.aboutMe && service.aboutMe.trim() && (
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed mt-2">
+                  {service.aboutMe.length > 50 ? `${service.aboutMe.substring(0, 50)}...` : service.aboutMe}
+                </p>
               )}
             </div>
           </Link>
@@ -1288,11 +1299,23 @@ export default function ServiceDetailPage() {
                           {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex items-center gap-6 flex-wrap">
-                        <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
-                          {service.tradingName}
-                        </h3>
-                        <div className="flex items-center gap-1.5">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-6 flex-wrap mb-2">
+                          <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
+                            {service.tradingName}
+                          </h3>
+                        </div>
+                        {providerBadge && (
+                          <Badge className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px] px-2 py-0.5 mb-2">
+                            {providerBadge}
+                          </Badge>
+                        )}
+                        {service.aboutMe && service.aboutMe.trim() && (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed mt-2">
+                            {service.aboutMe.length > 50 ? `${service.aboutMe.substring(0, 50)}...` : service.aboutMe}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-2">
                           <MapPin className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
@@ -1956,7 +1979,7 @@ export default function ServiceDetailPage() {
                                       <div className={`font-['Poppins',sans-serif] text-[14px] leading-tight mb-1 ${
                                         isSelected ? 'text-[#2c353f]' : 'text-[#2c353f]'
                                       }`}>
-                                        {addon.title}
+                                        {addon.name || addon.title}
                                       </div>
                                       {addon.description && (
                                         <div className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-relaxed">
@@ -1969,7 +1992,7 @@ export default function ServiceDetailPage() {
                                     <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
                                       isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                     }`}>
-                                      +£{addon.price}
+                                      +£{typeof addon.price === 'number' ? addon.price.toFixed(2) : addon.price}
                                     </span>
                                     {addon.deliveryTime && (
                                       <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
@@ -2302,7 +2325,7 @@ export default function ServiceDetailPage() {
                                         <div className={`font-['Poppins',sans-serif] text-[14px] leading-tight mb-1 ${
                                           isSelected ? 'text-[#2c353f]' : 'text-[#2c353f]'
                                         }`}>
-                                          {addon.title}
+                                          {addon.name || addon.title}
                                         </div>
                                         {addon.description && (
                                           <div className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] leading-relaxed">
@@ -2315,7 +2338,7 @@ export default function ServiceDetailPage() {
                                       <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
                                         isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                       }`}>
-                                        +£{addon.price}
+                                        +£{typeof addon.price === 'number' ? addon.price.toFixed(2) : addon.price}
                                       </span>
                                       {addon.deliveryTime && (
                                         <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">

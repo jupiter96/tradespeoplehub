@@ -5836,124 +5836,124 @@ function ServicesSection() {
       )}
 
       {/* Global Dialogs for ServicesSection */}
-      {/* Modification Reason Dialog */}
+          {/* Modification Reason Dialog */}
       <Dialog
         open={isModificationReasonDialogOpen}
         onOpenChange={(open) => {
-          setIsModificationReasonDialogOpen(open);
-          if (!open) {
-            setSelectedService(null);
-          }
+            setIsModificationReasonDialogOpen(open);
+            if (!open) {
+              setSelectedService(null);
+            }
         }}
       >
-        <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              Modification Required
-            </DialogTitle>
-            <DialogDescription className="text-[14px] text-[#6b6b6b]">
+            <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  Modification Required
+                </DialogTitle>
+                <DialogDescription className="text-[14px] text-[#6b6b6b]">
               Your service "{selectedService?.title || "Unknown"}" requires modifications before it can be approved.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-[14px] text-[#2c353f] font-medium mb-2">Reason:</p>
-            <p className="text-[14px] text-[#6b6b6b] whitespace-pre-wrap">
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-[14px] text-[#2c353f] font-medium mb-2">Reason:</p>
+                <p className="text-[14px] text-[#6b6b6b] whitespace-pre-wrap">
               {selectedService?.modificationReason || "No reason provided."}
-            </p>
-          </div>
-          <div className="flex items-center justify-end gap-3 mt-4">
-            <Button
-              onClick={() => {
-                setIsModificationReasonDialogOpen(false);
-                setSelectedService(null);
-              }}
-              className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
-            >
-              Understood
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <Button
+                  onClick={() => {
+                    setIsModificationReasonDialogOpen(false);
+                    setSelectedService(null);
+                  }}
+                  className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
+                >
+                  Understood
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
-      {/* Delete Service Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="font-['Poppins',sans-serif]">
-          <DialogHeader>
-            <DialogTitle className="text-[18px] text-[#2c353f]">
-              Delete Service
-            </DialogTitle>
-            <DialogDescription className="text-[14px] text-[#6b6b6b]">
-              Are you sure you want to delete this service? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-end gap-3 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsDeleteDialogOpen(false);
-                setServiceToDelete(null);
-              }}
-              className="font-['Poppins',sans-serif]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmDeleteService}
-              className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
-              disabled={refreshing}
-            >
-              {refreshing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          {/* Delete Service Dialog */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="font-['Poppins',sans-serif]">
+              <DialogHeader>
+                <DialogTitle className="text-[18px] text-[#2c353f]">
+                  Delete Service
+                </DialogTitle>
+                <DialogDescription className="text-[14px] text-[#6b6b6b]">
+                  Are you sure you want to delete this service? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsDeleteDialogOpen(false);
+                    setServiceToDelete(null);
+                  }}
+                  className="font-['Poppins',sans-serif]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmDeleteService}
+                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                  disabled={refreshing}
+                >
+                  {refreshing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
-      {/* Toggle Service Disable/Enable Dialog */}
-      <Dialog open={isToggleDisableDialogOpen} onOpenChange={setIsToggleDisableDialogOpen}>
-        <DialogContent className="font-['Poppins',sans-serif]">
-          <DialogHeader>
-            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-orange-500" />
-              {serviceToToggle?.currentStatus ? "Enable Service" : "Disable Service"}
-            </DialogTitle>
-            <DialogDescription className="text-[14px] text-[#6b6b6b]">
-              {serviceToToggle?.currentStatus
-                ? "Are you sure you want to enable this service? It will become visible to clients again."
-                : "Are you sure you want to disable this service? It will be hidden from clients."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsToggleDisableDialogOpen(false);
-                setServiceToToggle(null);
-              }}
-              className="flex-1 font-['Poppins',sans-serif]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmToggleServiceDisable}
-              className={`flex-1 font-['Poppins',sans-serif] ${
-                serviceToToggle?.currentStatus
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-orange-600 hover:bg-orange-700"
-              } text-white`}
-            >
-              {serviceToToggle?.currentStatus ? "Enable" : "Disable"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          {/* Toggle Service Disable/Enable Dialog */}
+          <Dialog open={isToggleDisableDialogOpen} onOpenChange={setIsToggleDisableDialogOpen}>
+            <DialogContent className="font-['Poppins',sans-serif]">
+              <DialogHeader>
+                <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-orange-500" />
+                  {serviceToToggle?.currentStatus ? "Enable Service" : "Disable Service"}
+                </DialogTitle>
+                <DialogDescription className="text-[14px] text-[#6b6b6b]">
+                  {serviceToToggle?.currentStatus
+                    ? "Are you sure you want to enable this service? It will become visible to clients again."
+                    : "Are you sure you want to disable this service? It will be hidden from clients."}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsToggleDisableDialogOpen(false);
+                    setServiceToToggle(null);
+                  }}
+                  className="flex-1 font-['Poppins',sans-serif]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmToggleServiceDisable}
+                  className={`flex-1 font-['Poppins',sans-serif] ${
+                    serviceToToggle?.currentStatus
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-orange-600 hover:bg-orange-700"
+                  } text-white`}
+                >
+                  {serviceToToggle?.currentStatus ? "Enable" : "Disable"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
     </div>
   );
 }

@@ -1512,40 +1512,14 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo?._id]); // Only run when userInfo._id changes (user changes)
 
-  // Load profile data from userInfo (About Me, Qualifications, Certifications)
+  // Load profile data from userInfo (About Me) - only if not in edit mode
   useEffect(() => {
-    if (userInfo) {
-      // Load About Me (bio)
+    if (userInfo && !isEditMode) {
+      // Load About Me (bio) from profile, but only if not editing existing service
       const bio = userInfo.publicProfile?.bio || userInfo.aboutService || "";
       setAboutMe(bio);
-
-      // Load Qualifications
-      const quals = (userInfo.publicProfile as any)?.qualifications;
-      if (quals) {
-        const qualsArray = typeof quals === 'string'
-          ? quals.split('\n').filter((q: string) => q.trim())
-          : Array.isArray(quals)
-          ? quals
-          : [];
-        setProfileQualifications(qualsArray.length > 0 ? qualsArray : [""]);
-      } else {
-        setProfileQualifications([""]);
-      }
-
-      // Load Certifications
-      const certs = (userInfo.publicProfile as any)?.certifications;
-      if (certs) {
-        const certsArray = typeof certs === 'string'
-          ? certs.split('\n').filter((c: string) => c.trim())
-          : Array.isArray(certs)
-          ? certs
-          : [];
-        setProfileCertifications(certsArray.length > 0 ? certsArray : [""]);
-      } else {
-        setProfileCertifications([""]);
-      }
     }
-  }, [userInfo]);
+  }, [userInfo, isEditMode]);
 
   // Load latest draft when component mounts (only if not in edit mode)
   useEffect(() => {
@@ -1581,7 +1555,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
               setOriginalPrice(draft.originalPrice?.toString() || "");
               setPriceUnit(draft.priceUnit || "fixed");
               setDeliveryType(draft.deliveryType || "standard");
-              setResponseTime(draft.responseTime || "");
 
               // Set county field
               if (draft.county) setCounty(draft.county);
@@ -1620,10 +1593,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                 setSelectedSubCategoryPath(draft.serviceSubCategoryPath);
               }
 
-              // Load years of experience if stored on the draft
-              if (typeof draft.experienceYears === "number" || typeof draft.experienceYears === "string") {
-                setExperienceYears(draft.experienceYears.toString());
-              }
 
               setLastSaved(new Date(draft.updatedAt));
             }
@@ -1646,14 +1615,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       // Set basic fields
       setServiceTitle(initialService.title || "");
       setDescription(initialService.description || "");
+      setAboutMe(initialService.aboutMe || "");
       setBasePrice(initialService.price?.toString() || "");
       setOriginalPrice(initialService.originalPrice?.toString() || "");
       setPriceUnit(initialService.priceUnit || "fixed");
       setDeliveryType(initialService.deliveryType || "standard");
-      setResponseTime(initialService.responseTime || "");
-      if (initialService.experienceYears !== undefined && initialService.experienceYears !== null) {
-        setExperienceYears(initialService.experienceYears.toString());
-      }
 
       // Set county field
       if (initialService.county) setCounty(initialService.county);
@@ -1975,11 +1941,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   };
 
   // Profile/Settings Tab
-  const [responseTime, setResponseTime] = useState("within 1 hour");
-  const [experienceYears, setExperienceYears] = useState("");
   const [aboutMe, setAboutMe] = useState(""); // Bio from profile
-  const [profileQualifications, setProfileQualifications] = useState<string[]>([""]); // Array of qualifications from profile
-  const [profileCertifications, setProfileCertifications] = useState<string[]>([""]); // Array of certifications from profile
   
   const handleKeywordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -2342,6 +2304,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         draftData.description = description.trim();
       }
 
+      if (aboutMe && aboutMe.trim()) {
+        draftData.aboutMe = aboutMe.trim();
+      }
+
       if (basePrice) {
         draftData.price = parseFloat(basePrice);
       }
@@ -2395,13 +2361,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         draftData.deliveryType = deliveryType;
       }
 
-      if (responseTime) {
-        draftData.responseTime = responseTime;
-      }
-
-      if (experienceYears) {
-        draftData.experienceYears = Number(experienceYears);
-      }
 
       if (availability) {
         draftData.availability = availability;
@@ -2486,7 +2445,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     idealFor,
     dynamicServiceIdealFor,
     deliveryType,
-    responseTime,
     keywords,
     county,
     packages,
@@ -2737,13 +2695,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
     setLoading(true);
     try {
-      // First, update profile with About Me, Qualifications, and Certifications
+      // First, update profile with About Me
       try {
         const profileUpdateData = {
           publicProfile: {
             bio: aboutMe.trim(),
-            qualifications: profileQualifications.filter(q => q.trim()).join('\n'),
-            certifications: profileCertifications.filter(c => c.trim()).join('\n'),
           }
         };
 
@@ -2771,6 +2727,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         serviceSubCategoryPath: selectedSubCategoryPath,
         title: serviceTitle.trim(),
         description: description.trim(),
+        aboutMe: aboutMe.trim(),
         price: parseFloat(basePrice),
         originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
         originalPriceValidUntil: saleValidUntil || undefined,
@@ -2801,7 +2758,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           return dynamicServiceIdealFor[index] || id;
         }),
         deliveryType,
-        responseTime: responseTime || undefined,
         availability,
         skills: keywordArray,
         county: county || userInfo?.county || "",
@@ -4113,141 +4069,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   )}
                 </div>
 
-                {/* Qualifications */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Qualifications
-                  </Label>
-                  <div className="space-y-3">
-                    {profileQualifications.map((qual, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <Input
-                          value={qual}
-                          onChange={(e) => {
-                            const newQualifications = [...profileQualifications];
-                            newQualifications[index] = e.target.value;
-                            setProfileQualifications(newQualifications);
-                          }}
-                          placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
-                          className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                        />
-                        {profileQualifications.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              const newQualifications = profileQualifications.filter((_, i) => i !== index);
-                              setProfileQualifications(newQualifications.length > 0 ? newQualifications : [""]);
-                            }}
-                            className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setProfileQualifications([...profileQualifications, ""]);
-                      }}
-                      className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] font-['Poppins',sans-serif] text-[14px]"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Another Qualification
-                    </Button>
-                  </div>
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
-                    Include registration numbers, dates obtained, or issuing bodies.
-                  </p>
-                </div>
-
-                {/* Certifications */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Certifications
-                  </Label>
-                  <div className="space-y-3">
-                    {profileCertifications.map((cert, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <Input
-                          value={cert}
-                          onChange={(e) => {
-                            const newCertifications = [...profileCertifications];
-                            newCertifications[index] = e.target.value;
-                            setProfileCertifications(newCertifications);
-                          }}
-                          placeholder="e.g., Gas Safe Registered (ID: 123456)"
-                          className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                        />
-                        {profileCertifications.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              const newCertifications = profileCertifications.filter((_, i) => i !== index);
-                              setProfileCertifications(newCertifications.length > 0 ? newCertifications : [""]);
-                            }}
-                            className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setProfileCertifications([...profileCertifications, ""]);
-                      }}
-                      className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] font-['Poppins',sans-serif] text-[14px]"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Another Certification
-                    </Button>
-                  </div>
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
-                    Include any professional certifications, trade memberships, or insurance details.
-                  </p>
-                </div>
-
-                {/* Typical Response Time */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Typical Response Time
-                  </Label>
-                  <Select value={responseTime} onValueChange={setResponseTime}>
-                    <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="within 15 minutes">Within 15 minutes</SelectItem>
-                      <SelectItem value="within 1 hour">Within 1 hour</SelectItem>
-                      <SelectItem value="within 3 hours">Within 3 hours</SelectItem>
-                      <SelectItem value="within 24 hours">Within 24 hours</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Years of Experience */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Years of Experience
-                  </Label>
-                  <Input
-                    type="number"
-                    value={experienceYears}
-                    onChange={(e) => setExperienceYears(e.target.value)}
-                    placeholder="e.g., 5"
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                  />
-                </div>
               </div>
             </TabsContent>
           </ScrollArea>

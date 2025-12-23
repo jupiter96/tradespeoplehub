@@ -43,6 +43,11 @@ const serviceSchema = new mongoose.Schema(
       required: false, // Optional for drafts
       trim: true,
     },
+    // About Me section for the service
+    aboutMe: {
+      type: String,
+      trim: true,
+    },
     price: {
       type: Number,
       required: false, // Optional for drafts

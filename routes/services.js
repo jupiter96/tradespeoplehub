@@ -222,6 +222,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       serviceSubCategoryPath,
       title,
       description,
+      aboutMe,
       price,
       originalPrice,
       originalPriceValidUntil,
@@ -268,6 +269,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
     if (serviceSubCategoryId) draftServiceData.serviceSubCategory = serviceSubCategoryId;
     if (serviceSubCategoryPath && serviceSubCategoryPath.length > 0) draftServiceData.serviceSubCategoryPath = serviceSubCategoryPath;
     if (description?.trim()) draftServiceData.description = description.trim();
+    if (aboutMe?.trim()) draftServiceData.aboutMe = aboutMe.trim();
     if (price !== undefined && price !== null) draftServiceData.price = parseFloat(price);
     if (originalPrice) draftServiceData.originalPrice = parseFloat(originalPrice);
     if (originalPriceValidUntil) {
@@ -321,6 +323,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       serviceSubCategoryPath,
       title,
       description,
+      aboutMe,
       price,
       originalPrice,
       originalPriceValidUntil,
@@ -426,6 +429,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       title: title.trim(),
       slug: finalSlug,
       description: description.trim(),
+      aboutMe: aboutMe?.trim() || undefined,
       price: parseFloat(price),
       originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
       originalPriceValidUntil: originalPriceValidUntil ? new Date(originalPriceValidUntil) : undefined,
@@ -526,6 +530,7 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     // Clean up update data
     if (updateData.title) updateData.title = updateData.title.trim();
     if (updateData.description) updateData.description = updateData.description.trim();
+    if (updateData.aboutMe !== undefined) updateData.aboutMe = updateData.aboutMe?.trim() || undefined;
     if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
     if (updateData.originalPrice !== undefined) {
       updateData.originalPrice = updateData.originalPrice ? parseFloat(updateData.originalPrice) : undefined;
