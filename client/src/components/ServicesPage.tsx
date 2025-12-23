@@ -210,7 +210,10 @@ export default function ServicesPage() {
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
             price: `£${s.price?.toFixed(2) || '0.00'}`,
-            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            // Only use originalPrice if discount is still valid
+            originalPrice: (s.originalPrice && (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date()))
+              ? `£${s.originalPrice.toFixed(2)}`
+              : undefined,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",

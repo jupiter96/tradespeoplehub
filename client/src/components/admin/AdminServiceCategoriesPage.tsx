@@ -3242,7 +3242,7 @@ export default function AdminServiceCategoriesPage() {
                             ...prev.pricePerUnit,
                             units: [
                               ...(prev.pricePerUnit?.units || []),
-                              { name: "", price: 0, order: (prev.pricePerUnit?.units || []).length + 1 },
+                              { name: "", order: (prev.pricePerUnit?.units || []).length + 1 },
                             ],
                           },
                         }));
@@ -3260,8 +3260,8 @@ export default function AdminServiceCategoriesPage() {
                   ) : (
                     (formData.pricePerUnit?.units || []).map((unit, index) => (
                       <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
                             <Label className="text-black dark:text-white text-sm">Unit Name</Label>
                             <Input
                               value={unit.name || ""}
@@ -3282,47 +3282,24 @@ export default function AdminServiceCategoriesPage() {
                               className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                             />
                           </div>
-                          <div>
-                            <Label className="text-black dark:text-white text-sm">Price</Label>
-                            <div className="flex gap-2">
-                              <Input
-                                type="number"
-                                value={unit.price || 0}
-                                onChange={(e) => {
-                                  setFormData((prev) => {
-                                    const updated = [...prev.pricePerUnit.units];
-                                    updated[index] = { ...updated[index], price: parseFloat(e.target.value) || 0 };
-                                    return {
-                                      ...prev,
-                                      pricePerUnit: {
-                                        ...prev.pricePerUnit,
-                                        units: updated,
-                                      },
-                                    };
-                                  });
-                                }}
-                                placeholder="0.00"
-                                className="flex-1 mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    pricePerUnit: {
-                                      ...prev.pricePerUnit,
-                                      units: prev.pricePerUnit.units.filter((_, i) => i !== index),
-                                    },
-                                  }));
-                                }}
-                                className="h-10 w-10 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-1"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                pricePerUnit: {
+                                  ...prev.pricePerUnit,
+                                  units: prev.pricePerUnit.units.filter((_, i) => i !== index),
+                                },
+                              }));
+                            }}
+                            className="h-10 w-10 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-1"
+                            title="Remove unit"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     ))

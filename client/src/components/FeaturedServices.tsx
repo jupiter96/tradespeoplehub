@@ -743,7 +743,10 @@ export default function FeaturedServices() {
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
             price: `£${s.price?.toFixed(2) || '0.00'}`,
-            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            // Only treat originalPrice as active discount if it is set and still within its valid-until date
+            originalPrice: (s.originalPrice && (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date()))
+              ? `£${s.originalPrice.toFixed(2)}`
+              : undefined,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",

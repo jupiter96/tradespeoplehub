@@ -256,7 +256,8 @@ export interface ServiceCategory {
     enabled: boolean;
     units: Array<{
       name: string;
-      price: number;
+      // price is deprecated and optional – unit name + order are used for UI
+      price?: number;
       order: number;
     }>;
   };

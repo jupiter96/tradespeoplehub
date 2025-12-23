@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -1420,8 +1420,22 @@ function SubCategoryLevelDisplay({
 
 export default function AddServiceSection({ onClose, onSave, initialService }: AddServiceSectionProps) {
   const { userInfo } = useAccount();
+
+  // Check if user is a professional
+  useEffect(() => {
+    if (userInfo && userInfo.role !== 'professional') {
+      toast.error('Only professionals can create services');
+      onClose();
+    }
+  }, [userInfo, onClose]);
+
   const [activeTab, setActiveTab] = useState("service-details");
   const [loading, setLoading] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(initialService?._id || null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const isEditMode = !!initialService;
   
   // Fetch sectors and service categories
@@ -1445,6 +1459,39 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [loadingSubCategories, setLoadingSubCategories] = useState<Record<string, boolean>>({});
   const [selectedSubCategoryTitles, setSelectedSubCategoryTitles] = useState<string[]>([]); // Titles for the selected subcategory
   const [loadingTitles, setLoadingTitles] = useState<boolean>(false);
+  
+  // Resolve currently selected service category (for dynamic price unit options)
+  const currentServiceCategory = useMemo(() => {
+    if (!selectedSectorId || !selectedCategoryId) return null;
+    const categoriesForSector = serviceCategoriesBySector[selectedSectorId] || [];
+    return categoriesForSector.find((c) => c._id === selectedCategoryId) || null;
+  }, [serviceCategoriesBySector, selectedSectorId, selectedCategoryId]);
+
+  const priceUnitOptions = useMemo(() => {
+    // Only use units explicitly configured on the selected service category.
+    if (
+      !currentServiceCategory ||
+      !currentServiceCategory.pricePerUnit?.enabled ||
+      !Array.isArray(currentServiceCategory.pricePerUnit.units)
+    ) {
+      return [] as { value: string; label: string }[];
+    }
+
+    const units = [...currentServiceCategory.pricePerUnit.units].sort(
+      (a, b) => (a.order || 0) - (b.order || 0)
+    );
+
+    const options: { value: string; label: string }[] = [];
+    for (const unit of units) {
+      if (!unit.name) continue;
+      const value = unit.name;
+      if (!options.some((o) => o.value === value)) {
+        options.push({ value, label: unit.name });
+      }
+    }
+
+    return options;
+  }, [currentServiceCategory]);
   
   // Set default sector when sectors are loaded (only if user has a registered sector)
   useEffect(() => {
@@ -1506,6 +1553,97 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
     }
   }, [userInfo]);
+
+  // Load latest draft when component mounts (only if not in edit mode)
+  useEffect(() => {
+    const loadLatestDraft = async () => {
+      if (isEditMode || !userInfo?.id || draftLoaded) return;
+
+      setLoadingDraft(true);
+      try {
+        const { resolveApiUrl } = await import("../config/api");
+        const response = await fetch(
+          resolveApiUrl("/api/services?status=draft&limit=1&sort=-updatedAt"),
+          {
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.services && data.services.length > 0) {
+            const draft = data.services[0];
+
+            // Ask user if they want to continue with the draft
+            const shouldContinue = window.confirm(
+              `You have an unfinished service draft "${draft.title || 'Untitled Draft'}". Would you like to continue editing it?`
+            );
+
+            if (shouldContinue) {
+              // Load draft data into form
+              setDraftId(draft._id);
+              setServiceTitle(draft.title || "");
+              setDescription(draft.description || "");
+              setBasePrice(draft.price?.toString() || "");
+              setOriginalPrice(draft.originalPrice?.toString() || "");
+              setPriceUnit(draft.priceUnit || "fixed");
+              setDeliveryType(draft.deliveryType || "standard");
+              setResponseTime(draft.responseTime || "");
+
+              // Set address fields
+              if (draft.address) setAddress(draft.address);
+              if (draft.townCity) setTownCity(draft.townCity);
+              if (draft.county) setCounty(draft.county);
+              if (draft.postcode) setPostcode(draft.postcode);
+
+              // Set keywords/skills
+              if (draft.skills && Array.isArray(draft.skills)) {
+                setKeywords(draft.skills.join(", "));
+              }
+
+              // Set gallery images
+              if (draft.images && Array.isArray(draft.images)) {
+                setGalleryImages(draft.images);
+              }
+
+              // Set packages
+              if (draft.packages && Array.isArray(draft.packages)) {
+                setPackages(draft.packages);
+              }
+
+              // Set extra services (addons)
+              if (draft.addons && Array.isArray(draft.addons)) {
+                const mappedExtras = draft.addons.map((addon: any) => ({
+                  id: addon.id || crypto.randomUUID(),
+                  title: addon.name || "",
+                  description: addon.description || "",
+                  price: addon.price?.toString() || "",
+                }));
+                setExtraServices(mappedExtras);
+              }
+
+              // Set category and subcategory
+              if (draft.serviceCategoryId) {
+                setSelectedCategoryId(draft.serviceCategoryId);
+              }
+              if (draft.serviceSubCategoryPath && Array.isArray(draft.serviceSubCategoryPath)) {
+                setSelectedSubCategoryPath(draft.serviceSubCategoryPath);
+              }
+
+              setLastSaved(new Date(draft.updatedAt));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading draft:", error);
+      } finally {
+        setLoadingDraft(false);
+        setDraftLoaded(true);
+      }
+    };
+
+    loadLatestDraft();
+  }, [userInfo?.id, isEditMode, draftLoaded]);
 
   // Initialize form with existing service data when editing
   useEffect(() => {
@@ -1732,10 +1870,30 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }).filter(Boolean);
       setServiceHighlights(highlightIds);
     }
+
+    // Load base price, sale price, and valid-until when editing an existing service
+    if (isEditMode && initialService) {
+      if (typeof initialService.price === "number") {
+        setBasePrice(initialService.price.toString());
+      }
+      if (typeof initialService.originalPrice === "number") {
+        setOriginalPrice(initialService.originalPrice.toString());
+      }
+      if (initialService.originalPriceValidUntil) {
+        const d = new Date(initialService.originalPriceValidUntil);
+        if (!Number.isNaN(d.getTime())) {
+          setSaleValidUntil(d.toISOString().split("T")[0]);
+        }
+      }
+    }
   }, [dynamicServiceAttributes, isEditMode, initialService]);
   const [basePrice, setBasePrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
-  const [priceUnit, setPriceUnit] = useState("fixed");
+  const [saleValidUntil, setSaleValidUntil] = useState("");
+  const [showSaleValidUntilPicker, setShowSaleValidUntilPicker] = useState(false);
+  // NOTE: Do not preselect any price unit for new services.
+  // It will be chosen explicitly by the user once a category is selected.
+  const [priceUnit, setPriceUnit] = useState("");
   
   // Packages Tab
   const [packages, setPackages] = useState<ServicePackage[]>([]);
@@ -2130,8 +2288,213 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     }
   };
 
+  // Auto-save draft function
+  const saveDraft = useCallback(async () => {
+    if (!userInfo?.id || isSavingDraft) return;
+
+    // Only professionals can save drafts
+    if (userInfo?.role !== 'professional') {
+      console.log('Draft save skipped: User is not a professional');
+      return;
+    }
+
+    // Only save if there's some content
+    if (!serviceTitle && !description && !selectedCategoryId) return;
+
+    setIsSavingDraft(true);
+    try {
+      const { resolveApiUrl } = await import("../config/api");
+
+      // Build draft data - only include fields with actual values
+      const draftData: any = {
+        status: 'draft',
+      };
+
+      // Add fields only if they have values
+      if (selectedCategoryId) {
+        draftData.serviceCategoryId = selectedCategoryId;
+      }
+
+      const finalSubCategoryId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1] || selectedSubCategoryId;
+      if (finalSubCategoryId) {
+        draftData.serviceSubCategoryId = finalSubCategoryId;
+      }
+
+      if (selectedSubCategoryPath && selectedSubCategoryPath.length > 0) {
+        draftData.serviceSubCategoryPath = selectedSubCategoryPath;
+      }
+
+      if (serviceTitle && serviceTitle.trim()) {
+        draftData.title = serviceTitle.trim();
+      }
+
+      if (description && description.trim()) {
+        draftData.description = description.trim();
+      }
+
+      if (basePrice) {
+        draftData.price = parseFloat(basePrice);
+      }
+
+      if (originalPrice) {
+        draftData.originalPrice = parseFloat(originalPrice);
+      }
+
+      if (saleValidUntil) {
+        draftData.originalPriceValidUntil = saleValidUntil;
+      }
+
+      if (priceUnit) {
+        draftData.priceUnit = priceUnit;
+      }
+
+      if (galleryImages && galleryImages.length > 0) {
+        draftData.images = galleryImages;
+        draftData.portfolioImages = galleryImages;
+      }
+
+      if (serviceHighlights && serviceHighlights.length > 0) {
+        draftData.highlights = serviceHighlights.map(id => {
+          if (id.startsWith('dynamic-attr-')) {
+            const index = parseInt(id.replace('dynamic-attr-', ''));
+            return dynamicServiceAttributes[index] || id;
+          }
+          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.id === id);
+          return option ? option.label : id;
+        });
+      }
+
+      if (idealFor && idealFor.length > 0) {
+        draftData.idealFor = idealFor.map(id => {
+          const index = parseInt(id.replace('ideal-', ''));
+          return dynamicServiceIdealFor[index] || id;
+        });
+      }
+
+      if (deliveryType) {
+        draftData.deliveryType = deliveryType;
+      }
+
+      if (responseTime) {
+        draftData.responseTime = responseTime;
+      }
+
+      const skillsArray = keywords.split(",").map(k => k.trim()).filter(k => k);
+      if (skillsArray.length > 0) {
+        draftData.skills = skillsArray;
+      }
+
+      if (postcode || userInfo?.postcode) {
+        draftData.postcode = postcode || userInfo?.postcode;
+      }
+
+      if (address || userInfo?.address) {
+        draftData.address = address || userInfo?.address;
+      }
+
+      if (townCity || userInfo?.townCity) {
+        draftData.townCity = townCity || userInfo?.townCity;
+      }
+
+      if (county || userInfo?.county) {
+        draftData.county = county || userInfo?.county;
+      }
+
+      if (packages && packages.length > 0) {
+        draftData.packages = packages;
+      }
+
+      const addonsArray = extraServices
+        .filter(e => e.title && e.price)
+        .map((e, index) => ({
+          id: e.id,
+          name: e.title,
+          description: e.description || "",
+          price: parseFloat(e.price),
+          order: index,
+        }));
+
+      if (addonsArray.length > 0) {
+        draftData.addons = addonsArray;
+      }
+
+      const url = draftId
+        ? resolveApiUrl(`/api/services/${draftId}`)
+        : resolveApiUrl("/api/services/draft");
+
+      const method = draftId ? "PUT" : "POST";
+
+      console.log(`Saving draft (${method}):`, url);
+      console.log('Draft data:', draftData);
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(draftData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Draft saved successfully:', data);
+        if (!draftId && data.service?._id) {
+          setDraftId(data.service._id);
+        }
+        setLastSaved(new Date());
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to save draft:', response.status, errorData);
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [
+    userInfo?.id,
+    userInfo?.postcode,
+    userInfo?.address,
+    userInfo?.townCity,
+    userInfo?.county,
+    isSavingDraft,
+    serviceTitle,
+    description,
+    selectedCategoryId,
+    selectedSubCategoryPath,
+    selectedSubCategoryId,
+    basePrice,
+    originalPrice,
+    priceUnit,
+    galleryImages,
+    serviceHighlights,
+    dynamicServiceAttributes,
+    idealFor,
+    dynamicServiceIdealFor,
+    deliveryType,
+    responseTime,
+    keywords,
+    postcode,
+    address,
+    townCity,
+    county,
+    packages,
+    extraServices,
+    draftId
+  ]);
+
+  // Auto-save draft every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      saveDraft();
+    }, 5000); // 5 seconds
+
+    return () => clearInterval(interval);
+  }, [saveDraft]);
+
   // Get available service categories for selected sector
-  const availableCategories = (selectedSectorId 
+  const availableCategories = (selectedSectorId
     ? (serviceCategoriesBySector[selectedSectorId] || [])
     : []
   ).filter((cat) => cat?._id && cat._id.trim() !== ""); // Filter out invalid categories
@@ -2400,6 +2763,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         description: description.trim(),
         price: parseFloat(basePrice),
         originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+        originalPriceValidUntil: saleValidUntil || undefined,
         priceUnit: priceUnit || "fixed",
         images: galleryImages,
         portfolioImages: galleryImages,
@@ -2434,15 +2798,18 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         townCity: townCity || userInfo?.townCity || "",
         county: county || userInfo?.county || "",
         badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
-        status: "active",
+        status: "pending", // Set to pending when publishing
       };
 
       // Call API to create or update service
-      const url = isEditMode && initialService?._id 
+      // If we have a draftId, update the draft; otherwise create new
+      const url = draftId
+        ? resolveApiUrl(`/api/services/${draftId}`)
+        : isEditMode && initialService?._id
         ? resolveApiUrl(`/api/services/${initialService._id}`)
         : resolveApiUrl("/api/services");
-      
-      const method = isEditMode ? "PUT" : "POST";
+
+      const method = (draftId || isEditMode) ? "PUT" : "POST";
       
       const response = await fetch(url, {
         method,
@@ -2460,6 +2827,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
       const result = await response.json();
       toast.success(`Service ${isEditMode ? 'updated' : 'published'} successfully!`);
+
+      // Clear draft state after successful publish
+      setDraftId(null);
+      setLastSaved(null);
+
       onSave(result.service || result);
       onClose();
     } catch (error: any) {
@@ -2482,16 +2854,81 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to My Services
         </Button>
-        <h2 className="font-['Poppins',sans-serif] text-[22px] sm:text-[24px] md:text-[28px] text-[#2c353f] mb-2">
-          {isEditMode ? "Edit Service" : "Add Service"}
-        </h2>
-        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
-          {isEditMode ? "Update your service offering details" : "Create a new service offering with all the details"}
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="font-['Poppins',sans-serif] text-[22px] sm:text-[24px] md:text-[28px] text-[#2c353f] mb-2">
+              {isEditMode ? "Edit Service" : "Add Service"}
+            </h2>
+            <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
+              {isEditMode ? "Update your service offering details" : "Create a new service offering with all the details"}
+            </p>
+          </div>
+          {/* Auto-save indicator and Discard Draft button */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-[12px] text-gray-500">
+              {isSavingDraft ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-[#FE8A0F] border-t-transparent rounded-full animate-spin" />
+                  <span>Saving draft...</span>
+                </>
+              ) : lastSaved ? (
+                <>
+                  <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Draft saved {new Date(lastSaved).toLocaleTimeString()}</span>
+                </>
+              ) : null}
+            </div>
+            {draftId && !isEditMode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to discard this draft? This action cannot be undone.")) {
+                    try {
+                      const { resolveApiUrl } = await import("../config/api");
+                      const response = await fetch(resolveApiUrl(`/api/services/${draftId}`), {
+                        method: "DELETE",
+                        credentials: "include",
+                      });
+
+                      if (response.ok) {
+                        toast.success("Draft discarded successfully");
+                        setDraftId(null);
+                        setLastSaved(null);
+                        onClose();
+                      } else {
+                        toast.error("Failed to discard draft");
+                      }
+                    } catch (error) {
+                      console.error("Error discarding draft:", error);
+                      toast.error("Failed to discard draft");
+                    }
+                  }
+                }}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-[12px]"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                Discard Draft
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <Card className="border-2 border-gray-200 shadow-lg">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      {loadingDraft ? (
+        <Card className="border-2 border-gray-200 shadow-lg p-12">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-8 h-8 text-[#FE8A0F] animate-spin" />
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Loading draft...
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <Card className="border-2 border-gray-200 shadow-lg">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="px-6 pt-6 pb-4 border-b border-gray-200">
             {/* Progress Indicator */}
             <div className="mb-6">
@@ -2627,6 +3064,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                             setSelectedSectorId(value);
                             setSelectedCategoryId("");
                             setSelectedSubCategoryId("");
+                            setSelectedSubCategoryPath([]);
+                            setSelectedAttributes({});
+                            setPriceUnit("");
                           }
                         }}
                         disabled={!!userSector}
@@ -2678,6 +3118,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                               setSelectedSubCategoryId("");
                               setSelectedSubCategoryPath([]);
                               setSelectedAttributes({});
+                              // Clear previously selected price unit when category changes
+                              setPriceUnit("");
                             }
                           }}
                         >
@@ -3065,11 +3507,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   </div>
                 </div>
 
-                {/* Base Price */}
+                {/* Pricing */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Base Price (£) <span className="text-red-500">*</span>
+                      Your Price (£) <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="number"
@@ -3081,9 +3523,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                       className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                     />
                   </div>
-                  <div>
+                  <div className="relative">
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Original Price (£) (Optional)
+                      Sale / Discounted Price (£) (Optional)
                     </Label>
                     <Input
                       type="number"
@@ -3091,28 +3533,48 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                       min="0"
                       value={originalPrice}
                       onChange={(e) => setOriginalPrice(e.target.value)}
+                      onFocus={() => setShowSaleValidUntilPicker(true)}
                       placeholder="0.00"
                       className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                     />
+                    {showSaleValidUntilPicker && (
+                      <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
+                          Valid until (optional)
+                        </Label>
+                        <Input
+                          type="date"
+                          value={saleValidUntil}
+                          onChange={(e) => setSaleValidUntil(e.target.value)}
+                          onBlur={() => {
+                            // 조금 늦게 숨겨서 클릭/탭 전환 시 깜빡임 방지
+                            setTimeout(() => setShowSaleValidUntilPicker(false), 150);
+                          }}
+                          className="font-['Poppins',sans-serif] text-[13px] border-gray-300"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Price Unit
-                  </Label>
-                  <Select value={priceUnit} onValueChange={setPriceUnit}>
-                    <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fixed">Fixed Price</SelectItem>
-                      <SelectItem value="per hour">Per Hour</SelectItem>
-                      <SelectItem value="per day">Per Day</SelectItem>
-                      <SelectItem value="per project">Per Project</SelectItem>
-                      <SelectItem value="per item">Per Item</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {currentServiceCategory && priceUnitOptions.length > 0 && (
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Price Unit
+                    </Label>
+                    <Select value={priceUnit} onValueChange={setPriceUnit}>
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
+                        <SelectValue placeholder="Select price unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priceUnitOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* About Your Service */}
                 <div>
@@ -3822,6 +4284,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           </div>
         </Tabs>
       </Card>
+      )}
     </div>
   );
 }

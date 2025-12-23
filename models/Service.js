@@ -21,7 +21,7 @@ const serviceSchema = new mongoose.Schema(
     },
     title: {
       type: String,
-      required: true,
+      required: false, // Optional for drafts
       trim: true,
     },
     slug: {
@@ -34,17 +34,21 @@ const serviceSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: true,
+      required: false, // Optional for drafts
       trim: true,
     },
     price: {
       type: Number,
-      required: true,
+      required: false, // Optional for drafts
       min: 0,
     },
     originalPrice: {
       type: Number,
       min: 0,
+    },
+    // Optional: discount/sale valid-until date for the main price
+    originalPriceValidUntil: {
+      type: Date,
     },
     priceUnit: {
       type: String,
@@ -61,8 +65,8 @@ const serviceSchema = new mongoose.Schema(
     status: {
       type: String,
       // Unified service lifecycle status (admin + professional)
-      enum: ['pending', 'required_modification', 'denied', 'paused', 'approved', 'inactive'],
-      default: 'pending',
+      enum: ['draft', 'pending', 'required_modification', 'denied', 'paused', 'approved', 'inactive'],
+      default: 'draft',
       index: true,
     },
     // Service packages for tiered pricing

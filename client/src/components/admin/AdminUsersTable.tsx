@@ -92,6 +92,10 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+  const [userToBlock, setUserToBlock] = useState<User | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Check if this is the deleted accounts page
   const isDeletedAccountsPage = useMemo(() => {
@@ -260,17 +264,20 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     }
   };
 
-  const handleDelete = async (user: User) => {
+  const handleDelete = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+
     // If this is the deleted accounts page, use permanent delete
     if (isDeletedAccountsPage) {
-      if (!confirm(`Are you sure you want to permanently delete ${user.name}? This action cannot be undone and the user will be able to register again.`)) {
-        return;
-      }
-
       try {
-        const endpoint = `/api/admin/users/${user.id}/permanent`;
+        const endpoint = `/api/admin/users/${userToDelete.id}/permanent`;
         const fullUrl = `${API_BASE_URL}${endpoint}`;
-        
+
         const response = await fetch(fullUrl, {
           method: "DELETE",
           credentials: "include",
@@ -289,74 +296,47 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
 
         toast.success("User permanently deleted successfully");
         fetchUsers();
-        onDelete?.(user);
+        onDelete?.(userToDelete);
       } catch (error) {
         // console.error("[handleDelete] ERROR:", error);
         toast.error(error instanceof Error ? error.message : "Failed to permanently delete user");
+      } finally {
+        setIsDeleteDialogOpen(false);
+        setUserToDelete(null);
       }
       return;
     }
 
     // Regular soft delete for non-deleted accounts page
-    // console.log("[handleDelete] TRIGGERED - User:", user);
-    // console.log("[handleDelete] User ID:", user.id);
-    // console.log("[handleDelete] User Role:", user.role);
-    // console.log("[handleDelete] Component Role:", role);
-    
-    if (!confirm(`Are you sure you want to delete ${user.name}?`)) {
-      // console.log("[handleDelete] User cancelled deletion");
-      return;
-    }
-
-    // console.log("[handleDelete] User confirmed deletion, proceeding...");
-
     try {
-      const endpoint = role === "subadmin" ? `/api/admin/admins/${user.id}` : `/api/admin/users/${user.id}`;
+      const endpoint = role === "subadmin" ? `/api/admin/admins/${userToDelete.id}` : `/api/admin/users/${userToDelete.id}`;
       const fullUrl = `${API_BASE_URL}${endpoint}`;
-      
-      // console.log("[handleDelete] DELETE Request URL:", fullUrl);
-      // console.log("[handleDelete] API_BASE_URL:", API_BASE_URL);
-      // console.log("[handleDelete] Endpoint:", endpoint);
-      
+
       const response = await fetch(fullUrl, {
         method: "DELETE",
         credentials: "include",
       });
 
-      // console.log("[handleDelete] Response Status:", response.status);
-      // console.log("[handleDelete] Response OK:", response.ok);
-      // console.log("[handleDelete] Response Headers:", response.headers);
-
       if (!response.ok) {
         const errorText = await response.text();
-        // console.error("[handleDelete] Response not OK - Status:", response.status);
-        // console.error("[handleDelete] Response Error Text:", errorText);
-        
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-          // console.error("[handleDelete] Response Error Data:", errorData);
         } catch (e) {
-          // console.error("[handleDelete] Could not parse error response as JSON");
+          // Ignore parse error
         }
-        
         throw new Error(`Failed to delete user: ${response.status} - ${errorData?.error || errorText}`);
       }
 
-      const responseData = await response.json();
-      // console.log("[handleDelete] SUCCESS - Response Data:", responseData);
-
+      await response.json();
       toast.success("User deleted successfully");
-      // console.log("[handleDelete] Calling fetchUsers() to refresh list");
       fetchUsers();
-      // console.log("[handleDelete] Calling onDelete callback");
-      onDelete?.(user);
+      onDelete?.(userToDelete);
     } catch (error) {
-      // console.error("[handleDelete] ERROR CAUGHT:", error);
-      // console.error("[handleDelete] Error Type:", error instanceof Error ? error.constructor.name : typeof error);
-      // console.error("[handleDelete] Error Message:", error instanceof Error ? error.message : String(error));
-      // console.error("[handleDelete] Error Stack:", error instanceof Error ? error.stack : "No stack trace");
       toast.error("Failed to delete user");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
     }
   };
 
@@ -375,14 +355,18 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     }
   };
 
-  const handleBlock = async (user: User) => {
-    const isCurrentlyBlocked = user.isBlocked || false;
-    if (!confirm(`Are you sure you want to ${isCurrentlyBlocked ? 'unblock' : 'block'} ${user.name}?`)) {
-      return;
-    }
+  const handleBlock = (user: User) => {
+    setUserToBlock(user);
+    setIsBlockDialogOpen(true);
+  };
+
+  const confirmBlock = async () => {
+    if (!userToBlock) return;
+
+    const isCurrentlyBlocked = userToBlock.isBlocked || false;
 
     try {
-      const endpoint = `/api/admin/users/${user.id}/block`;
+      const endpoint = `/api/admin/users/${userToBlock.id}/block`;
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "PUT",
         credentials: "include",
@@ -404,6 +388,9 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
     } catch (error) {
       // console.error("Error blocking user:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update block status");
+    } finally {
+      setIsBlockDialogOpen(false);
+      setUserToBlock(null);
     }
   };
 
@@ -1140,6 +1127,98 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
           </div>
         )}
       </div>
+
+      {/* Block/Unblock Confirmation Dialog */}
+      <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
+        <DialogContent className="font-['Poppins',sans-serif]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+              {userToBlock?.isBlocked ? "Unblock User" : "Block User"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-[14px] text-[#6b6b6b]">
+              Are you sure you want to {userToBlock?.isBlocked ? "unblock" : "block"} <strong>{userToBlock?.name}</strong>?
+            </p>
+            {!userToBlock?.isBlocked && (
+              <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-[13px] text-orange-700">
+                  <strong>Warning:</strong> Blocking this user will prevent them from accessing their account and using the platform.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsBlockDialogOpen(false);
+                setUserToBlock(null);
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBlock}
+              className={`font-['Poppins',sans-serif] ${
+                userToBlock?.isBlocked
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-orange-600 hover:bg-orange-700"
+              } text-white`}
+            >
+              {userToBlock?.isBlocked ? "Unblock" : "Block"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="font-['Poppins',sans-serif]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              {isDeletedAccountsPage ? "Permanently Delete User" : "Delete User"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-[14px] text-[#6b6b6b] mb-4">
+              Are you sure you want to {isDeletedAccountsPage ? "permanently delete" : "delete"} <strong>{userToDelete?.name}</strong>?
+            </p>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-[13px] text-red-700 mb-2">
+                <strong>Warning:</strong> This action cannot be undone.
+              </p>
+              {isDeletedAccountsPage && (
+                <p className="text-[13px] text-red-600">
+                  The user will be permanently removed from the database and will be able to register again with the same email.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setUserToDelete(null);
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
+            >
+              {isDeletedAccountsPage ? "Permanently Delete" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

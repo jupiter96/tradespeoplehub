@@ -4834,6 +4834,10 @@ function ServicesSection() {
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
   const [isCreatePackageOpen, setIsCreatePackageOpen] = useState(false);
   const [isModificationReasonDialogOpen, setIsModificationReasonDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+  const [isToggleDisableDialogOpen, setIsToggleDisableDialogOpen] = useState(false);
+  const [serviceToToggle, setServiceToToggle] = useState<{ id: string; currentStatus: boolean } | null>(null);
   const [myServices, setMyServices] = useState<any[]>([]);
   const [myPackages, setMyPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4857,13 +4861,14 @@ function ServicesSection() {
         if (response.ok) {
           const data = await response.json();
           const services = data.services || [];
-          // Debug: Check if modificationReason is included
+          // Debug: Check services including draft status
           console.log('Fetched services:', services.map((s: any) => ({
             _id: s._id,
             title: s.title,
             status: s.status,
             modificationReason: s.modificationReason
           })));
+          console.log('Draft services count:', services.filter((s: any) => s.status === 'draft').length);
           setMyServices(services);
         } else {
           console.error("Failed to fetch services");
@@ -4996,18 +5001,25 @@ function ServicesSection() {
     }
   };
 
-  const handleToggleServiceDisable = async (serviceId: string, currentStatus: boolean) => {
+  const handleToggleServiceDisable = (serviceId: string, currentStatus: boolean) => {
+    setServiceToToggle({ id: serviceId, currentStatus });
+    setIsToggleDisableDialogOpen(true);
+  };
+
+  const confirmToggleServiceDisable = async () => {
+    if (!serviceToToggle) return;
+
     try {
       const { resolveApiUrl } = await import("../config/api");
       const response = await fetch(
-        resolveApiUrl(`/api/services/${serviceId}/toggle-disable`),
+        resolveApiUrl(`/api/services/${serviceToToggle.id}/toggle-disable`),
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ isUserDisabled: !currentStatus }),
+          body: JSON.stringify({ isUserDisabled: !serviceToToggle.currentStatus }),
         }
       );
 
@@ -5016,7 +5028,7 @@ function ServicesSection() {
         // Update the service in the local state
         setMyServices(prevServices =>
           prevServices.map(service =>
-            service._id === serviceId
+            service._id === serviceToToggle.id
               ? { ...service, isUserDisabled: data.service.isUserDisabled }
               : service
           )
@@ -5026,6 +5038,8 @@ function ServicesSection() {
             ? "Service disabled successfully"
             : "Service enabled successfully"
         );
+        setIsToggleDisableDialogOpen(false);
+        setServiceToToggle(null);
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to toggle service status");
@@ -5056,11 +5070,11 @@ function ServicesSection() {
       );
 
       if (response.ok) {
-        // Remove from local state
-        setMyServices(myServices.filter(s => s._id !== serviceToDelete));
+        // Remove from local state (use functional update to avoid stale closure)
+        setMyServices((prevServices) =>
+          prevServices.filter((s) => s._id !== serviceToDelete)
+        );
         toast.success("Service deleted successfully!");
-        setIsDeleteDialogOpen(false);
-        setServiceToDelete(null);
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to delete service");
@@ -5070,6 +5084,8 @@ function ServicesSection() {
       toast.error("Failed to delete service. Please try again.");
     } finally {
       setRefreshing(false);
+      setIsDeleteDialogOpen(false);
+      setServiceToDelete(null);
     }
   };
 
@@ -5084,6 +5100,7 @@ function ServicesSection() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
+      "draft": "bg-purple-100 text-purple-700 border-purple-200",
       "pending": "bg-yellow-100 text-yellow-700 border-yellow-200",
       "required_modification": "bg-orange-100 text-orange-700 border-orange-200",
       "denied": "bg-red-100 text-red-700 border-red-200",
@@ -5095,12 +5112,14 @@ function ServicesSection() {
       "Paused": "bg-blue-100 text-blue-700 border-blue-200",
       "Inactive": "bg-gray-100 text-gray-700 border-gray-200",
       "Pending": "bg-yellow-100 text-yellow-700 border-yellow-200",
+      "Draft": "bg-purple-100 text-purple-700 border-purple-200",
     };
     return styles[status.toLowerCase()] || styles[status] || "bg-gray-100 text-gray-700 border-gray-200";
   };
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
+      "draft": "Draft",
       "pending": "Pending",
       "required_modification": "Required Modification",
       "denied": "Denied",
@@ -5198,6 +5217,7 @@ function ServicesSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="required_modification">Required Modification</SelectItem>
                 <SelectItem value="denied">Denied</SelectItem>
@@ -5301,35 +5321,68 @@ function ServicesSection() {
                       </p>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  myServices
-                    .filter((service) => {
-                      const matchesSearch = !searchQuery || 
-                        service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        service.description?.toLowerCase().includes(searchQuery.toLowerCase());
-                      const matchesStatus = filterStatus === "all" || 
-                        service.status?.toLowerCase() === filterStatus.toLowerCase();
-                      return matchesSearch && matchesStatus;
-                    })
-                    .sort((a, b) => {
-                      let aValue: any = a[sortField];
-                      let bValue: any = b[sortField];
-                      
-                      if (sortField === "date") {
-                        aValue = new Date(a.createdAt || 0).getTime();
-                        bValue = new Date(b.createdAt || 0).getTime();
-                      } else if (sortField === "price") {
-                        aValue = a.price || 0;
-                        bValue = b.price || 0;
-                      }
-                      
-                      if (sortDirection === "asc") {
-                        return aValue > bValue ? 1 : -1;
-                      } else {
-                        return aValue < bValue ? 1 : -1;
-                      }
-                    })
-                    .map((service) => {
+                ) : (() => {
+                  // Filter services
+                  const filteredServices = myServices.filter((service) => {
+                    const matchesSearch = !searchQuery ||
+                      service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      service.description?.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchesStatus = filterStatus === "all" ||
+                      service.status?.toLowerCase() === filterStatus.toLowerCase();
+
+                    // Debug logging for draft services
+                    if (service.status === 'draft') {
+                      console.log('Draft service found:', {
+                        title: service.title,
+                        status: service.status,
+                        filterStatus: filterStatus,
+                        matchesStatus: matchesStatus,
+                        willShow: matchesSearch && matchesStatus
+                      });
+                    }
+
+                    return matchesSearch && matchesStatus;
+                  });
+
+                  // Sort services
+                  const sortedServices = filteredServices.sort((a, b) => {
+                    let aValue: any = a[sortField];
+                    let bValue: any = b[sortField];
+
+                    if (sortField === "date") {
+                      aValue = new Date(a.createdAt || 0).getTime();
+                      bValue = new Date(b.createdAt || 0).getTime();
+                    } else if (sortField === "price") {
+                      aValue = a.price || 0;
+                      bValue = b.price || 0;
+                    }
+
+                    if (sortDirection === "asc") {
+                      return aValue > bValue ? 1 : -1;
+                    } else {
+                      return aValue < bValue ? 1 : -1;
+                    }
+                  });
+
+                  // Apply pagination
+                  const startIndex = (currentPage - 1) * parseInt(entriesPerPage);
+                  const endIndex = startIndex + parseInt(entriesPerPage);
+                  const paginatedServices = sortedServices.slice(startIndex, endIndex);
+
+                  // Check if filtered results are empty
+                  if (filteredServices.length === 0) {
+                    return (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            No services found matching your filters.
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  return paginatedServices.map((service) => {
                       const categoryName = typeof service.serviceCategory === 'object' 
                         ? service.serviceCategory?.name 
                         : 'N/A';
@@ -5383,72 +5436,110 @@ function ServicesSection() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {service.status === 'required_modification' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    console.log('Alert icon clicked, service:', {
-                                      _id: service._id,
-                                      title: service.title,
-                                      status: service.status,
-                                      modificationReason: service.modificationReason
-                                    });
-                                    setSelectedService(service);
-                                    setIsModificationReasonDialogOpen(true);
-                                    console.log('Dialog state set to true, isModificationReasonDialogOpen should be true');
-                                  }}
-                                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                                  title={service.modificationReason ? "View Modification Reason" : "No modification reason available"}
-                                >
-                                  <AlertCircle className="w-4 h-4 text-red-600" />
-                                </Button>
+                              {service.status === 'draft' ? (
+                                // Draft service - show "Continue Editing" and "Delete" buttons
+                                <>
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditService(service);
+                                    }}
+                                    className="bg-[#FE8A0F] hover:bg-[#E67A00] text-white font-['Poppins',sans-serif] text-[12px]"
+                                  >
+                                    <Pencil className="w-3 h-3 mr-1" />
+                                    Continue Editing
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteService(service._id);
+                                    }}
+                                    className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                    title="Delete Draft"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  {service.status === 'required_modification' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        console.log('Alert icon clicked, service:', {
+                                          _id: service._id,
+                                          title: service.title,
+                                          status: service.status,
+                                          modificationReason: service.modificationReason
+                                        });
+                                        setSelectedService(service);
+                                        setIsModificationReasonDialogOpen(true);
+                                        console.log('Dialog state set to true, isModificationReasonDialogOpen should be true');
+                                      }}
+                                      className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                      title={service.modificationReason ? "View Modification Reason" : "No modification reason available"}
+                                    >
+                                      <AlertCircle className="w-4 h-4 text-red-600" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      // Only allow viewing approved services
+                                      if (service.status === 'approved') {
+                                        const serviceIdentifier = service.slug || service._id;
+                                        if (serviceIdentifier) {
+                                          window.open(`/service/${serviceIdentifier}`, '_blank');
+                                        }
+                                      } else {
+                                        toast.error(`This service is ${getStatusLabel(service.status || 'pending').toLowerCase()} and cannot be viewed. Only approved services can be viewed.`);
+                                      }
+                                    }}
+                                    className="h-8 w-8 p-0 hover:bg-[#EFF6FF] hover:text-[#3B82F6]"
+                                    title="View Service Details"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditService(service);
+                                    }}
+                                    className="h-8 w-8 p-0 hover:bg-[#FFF5EB] hover:text-[#FE8A0F]"
+                                    title="Edit Service"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteService(service._id);
+                                    }}
+                                    className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                    title="Delete Service"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  // Only allow viewing approved services
-                                  if (service.status === 'approved') {
-                                    const serviceIdentifier = service.slug || service._id;
-                                    if (serviceIdentifier) {
-                                      window.open(`/service/${serviceIdentifier}`, '_blank');
-                                    }
-                                  } else {
-                                    toast.error(`This service is ${getStatusLabel(service.status || 'pending').toLowerCase()} and cannot be viewed. Only approved services can be viewed.`);
-                                  }
-                                }}
-                                className="h-8 w-8 p-0 hover:bg-[#EFF6FF] hover:text-[#3B82F6]"
-                                title="View Service Details"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditService(service)}
-                                className="h-8 w-8 p-0 hover:bg-[#FFF5EB] hover:text-[#FE8A0F]"
-                                title="Edit Service"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteService(service._id)}
-                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                                title="Delete Service"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
                       );
-                    })
-                )}
+                    });
+                  })()}
               </TableBody>
             </Table>
           </div>
@@ -5481,6 +5572,79 @@ function ServicesSection() {
               </p>
             </div>
           </div>
+
+          {/* Pagination Controls */}
+          {(() => {
+            const filteredServices = myServices.filter((service) => {
+              const matchesSearch = !searchQuery ||
+                service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                service.description?.toLowerCase().includes(searchQuery.toLowerCase());
+              const matchesStatus = filterStatus === "all" ||
+                service.status?.toLowerCase() === filterStatus.toLowerCase();
+              return matchesSearch && matchesStatus;
+            });
+
+            const totalPages = Math.ceil(filteredServices.length / parseInt(entriesPerPage));
+
+            if (totalPages <= 1) return null;
+
+            return (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  Showing {((currentPage - 1) * parseInt(entriesPerPage)) + 1} to {Math.min(currentPage * parseInt(entriesPerPage), filteredServices.length)} of {filteredServices.length} entries
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="font-['Poppins',sans-serif] text-[14px]"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-9 h-9 p-0 font-['Poppins',sans-serif] text-[14px] ${
+                              currentPage === page ? "bg-[#FE8A0F] hover:bg-[#FFB347]" : ""
+                            }`}
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return <span key={page} className="px-2">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="font-['Poppins',sans-serif] text-[14px]"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
             </>
           )}
         </div>
@@ -5646,83 +5810,6 @@ function ServicesSection() {
               }}
             />
           )}
-
-          {/* Modification Reason Dialog */}
-          <Dialog open={isModificationReasonDialogOpen} onOpenChange={(open) => {
-            setIsModificationReasonDialogOpen(open);
-            if (!open) {
-              setSelectedService(null);
-            }
-          }}>
-            <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                  Modification Required
-                </DialogTitle>
-                <DialogDescription className="text-[14px] text-[#6b6b6b]">
-                  Your service "{selectedService?.title || 'Unknown'}" requires modifications before it can be approved.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-[14px] text-[#2c353f] font-medium mb-2">Reason:</p>
-                <p className="text-[14px] text-[#6b6b6b] whitespace-pre-wrap">
-                  {selectedService?.modificationReason || 'No reason provided.'}
-                </p>
-              </div>
-              <div className="flex items-center justify-end gap-3 mt-4">
-                <Button
-                  onClick={() => {
-                    setIsModificationReasonDialogOpen(false);
-                    setSelectedService(null);
-                  }}
-                  className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
-                >
-                  Understood
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Delete Service Dialog */}
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DialogContent className="font-['Poppins',sans-serif]">
-              <DialogHeader>
-                <DialogTitle className="text-[18px] text-[#2c353f]">
-                  Delete Service
-                </DialogTitle>
-                <DialogDescription className="text-[14px] text-[#6b6b6b]">
-                  Are you sure you want to delete this service? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex items-center justify-end gap-3 mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDeleteDialogOpen(false);
-                    setServiceToDelete(null);
-                  }}
-                  className="font-['Poppins',sans-serif]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={confirmDeleteService}
-                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
-                  disabled={refreshing}
-                >
-                  {refreshing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    "Delete"
-                  )}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       )}
 
@@ -5745,6 +5832,126 @@ function ServicesSection() {
           </p>
         </div>
       )}
+
+      {/* Global Dialogs for ServicesSection */}
+      {/* Modification Reason Dialog */}
+      <Dialog
+        open={isModificationReasonDialogOpen}
+        onOpenChange={(open) => {
+          setIsModificationReasonDialogOpen(open);
+          if (!open) {
+            setSelectedService(null);
+          }
+        }}
+      >
+        <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Modification Required
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#6b6b6b]">
+              Your service "{selectedService?.title || "Unknown"}" requires modifications before it can be approved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-[14px] text-[#2c353f] font-medium mb-2">Reason:</p>
+            <p className="text-[14px] text-[#6b6b6b] whitespace-pre-wrap">
+              {selectedService?.modificationReason || "No reason provided."}
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3 mt-4">
+            <Button
+              onClick={() => {
+                setIsModificationReasonDialogOpen(false);
+                setSelectedService(null);
+              }}
+              className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
+            >
+              Understood
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Service Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="font-['Poppins',sans-serif]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f]">
+              Delete Service
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#6b6b6b]">
+              Are you sure you want to delete this service? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-end gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setServiceToDelete(null);
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteService}
+              className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toggle Service Disable/Enable Dialog */}
+      <Dialog open={isToggleDisableDialogOpen} onOpenChange={setIsToggleDisableDialogOpen}>
+        <DialogContent className="font-['Poppins',sans-serif]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+              {serviceToToggle?.currentStatus ? "Enable Service" : "Disable Service"}
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#6b6b6b]">
+              {serviceToToggle?.currentStatus
+                ? "Are you sure you want to enable this service? It will become visible to clients again."
+                : "Are you sure you want to disable this service? It will be hidden from clients."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsToggleDisableDialogOpen(false);
+                setServiceToToggle(null);
+              }}
+              className="flex-1 font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmToggleServiceDisable}
+              className={`flex-1 font-['Poppins',sans-serif] ${
+                serviceToToggle?.currentStatus
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-orange-600 hover:bg-orange-700"
+              } text-white`}
+            >
+              {serviceToToggle?.currentStatus ? "Enable" : "Disable"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

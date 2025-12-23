@@ -116,9 +116,15 @@ const serviceCategorySchema = new mongoose.Schema(
             required: true,
             trim: true,
           },
+          // NOTE:
+          // Previously we stored a price per unit here.
+          // Business logic has changed so we now only need the unit name
+          // (e.g. "Per hour", "Per m²") and an order value.
+          // Keep the price field optional for backward compatibility so
+          // older documents with a price continue to validate.
           price: {
             type: Number,
-            required: true,
+            required: false,
             min: 0,
           },
           order: {

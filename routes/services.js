@@ -213,6 +213,106 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Create/Update draft service (Professional only)
+router.post('/draft', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const {
+      serviceCategoryId,
+      serviceSubCategoryId,
+      serviceSubCategoryPath,
+      title,
+      description,
+      price,
+      originalPrice,
+      originalPriceValidUntil,
+      priceUnit,
+      images,
+      portfolioImages,
+      packages,
+      addons,
+      highlights,
+      idealFor,
+      deliveryType,
+      responseTime,
+      skills,
+      postcode,
+      location,
+      latitude,
+      longitude,
+      badges,
+      metaTitle,
+      metaDescription,
+    } = req.body;
+
+    // Get professional info
+    const professional = await User.findById(req.user.id);
+    if (!professional || professional.role !== 'professional') {
+      return res.status(403).json({ error: 'Only professionals can create services' });
+    }
+
+    // Check if user is blocked
+    if (professional.isBlocked) {
+      return res.status(403).json({ error: 'Your account has been blocked. You cannot create services.' });
+    }
+
+    // Build draft service data (only include fields with values)
+    const draftServiceData = {
+      professional: req.user.id,
+      title: title?.trim() || 'Untitled Draft',
+      status: 'draft',
+      isActive: false,
+    };
+
+    // Add optional fields only if they have values
+    if (serviceCategoryId) draftServiceData.serviceCategory = serviceCategoryId;
+    if (serviceSubCategoryId) draftServiceData.serviceSubCategory = serviceSubCategoryId;
+    if (serviceSubCategoryPath && serviceSubCategoryPath.length > 0) draftServiceData.serviceSubCategoryPath = serviceSubCategoryPath;
+    if (description?.trim()) draftServiceData.description = description.trim();
+    if (price !== undefined && price !== null) draftServiceData.price = parseFloat(price);
+    if (originalPrice) draftServiceData.originalPrice = parseFloat(originalPrice);
+    if (originalPriceValidUntil) {
+      draftServiceData.originalPriceValidUntil = new Date(originalPriceValidUntil);
+    }
+    if (priceUnit) draftServiceData.priceUnit = priceUnit;
+    if (images && images.length > 0) draftServiceData.images = images;
+    if (portfolioImages && portfolioImages.length > 0) draftServiceData.portfolioImages = portfolioImages;
+    if (packages && packages.length > 0) draftServiceData.packages = packages;
+    if (addons && addons.length > 0) draftServiceData.addons = addons;
+    if (highlights && highlights.length > 0) draftServiceData.highlights = highlights;
+    if (idealFor && idealFor.length > 0) draftServiceData.idealFor = idealFor;
+    if (deliveryType) draftServiceData.deliveryType = deliveryType;
+    if (responseTime) draftServiceData.responseTime = responseTime;
+    if (skills && skills.length > 0) draftServiceData.skills = skills;
+    if (postcode || professional.postcode) draftServiceData.postcode = postcode || professional.postcode;
+    if (location || professional.address) draftServiceData.location = location || professional.address;
+    if (latitude) draftServiceData.latitude = latitude;
+    if (longitude) draftServiceData.longitude = longitude;
+    if (badges && badges.length > 0) draftServiceData.badges = badges;
+    if (metaTitle) draftServiceData.metaTitle = metaTitle;
+    if (metaDescription) draftServiceData.metaDescription = metaDescription;
+
+    // Add address fields from request body
+    if (req.body.address) draftServiceData.address = req.body.address;
+    if (req.body.townCity) draftServiceData.townCity = req.body.townCity;
+    if (req.body.county) draftServiceData.county = req.body.county;
+
+    // Create draft service (minimal validation)
+    const service = await Service.create(draftServiceData);
+
+    // Populate references
+    await service.populate([
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
+      { path: 'serviceSubCategory', select: 'name slug icon' },
+    ]);
+
+    return res.status(201).json({ service });
+  } catch (error) {
+    // console.error('Create draft error', error);
+    return res.status(500).json({ error: error.message || 'Failed to create draft' });
+  }
+});
+
 // Create new service (Professional only)
 router.post('/', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
@@ -223,6 +323,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       description,
       price,
       originalPrice,
+      originalPriceValidUntil,
       priceUnit,
       images,
       portfolioImages,
@@ -328,6 +429,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       description: description.trim(),
       price: parseFloat(price),
       originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+      originalPriceValidUntil: originalPriceValidUntil ? new Date(originalPriceValidUntil) : undefined,
       priceUnit: priceUnit || 'fixed',
       images: images || [],
       portfolioImages: portfolioImages || [],
@@ -387,26 +489,36 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
       return res.status(403).json({ error: 'Your account has been blocked. You cannot update services.' });
     }
 
+    // For draft updates, skip strict validation
+    const isDraftUpdate = service.status === 'draft' || updateData.status === 'draft';
+
     // Validate service category if provided
     if (updateData.serviceCategoryId) {
       const serviceCategory = await ServiceCategory.findById(updateData.serviceCategoryId);
-      if (!serviceCategory) {
+      if (!serviceCategory && !isDraftUpdate) {
         return res.status(404).json({ error: 'Service category not found' });
       }
-      updateData.serviceCategory = updateData.serviceCategoryId;
+      if (serviceCategory) {
+        updateData.serviceCategory = updateData.serviceCategoryId;
+      }
       delete updateData.serviceCategoryId;
     }
 
     // Validate service subcategory if provided
     if (updateData.serviceSubCategoryId) {
       const serviceSubCategory = await ServiceSubCategory.findById(updateData.serviceSubCategoryId);
-      if (!serviceSubCategory) {
+      if (!serviceSubCategory && !isDraftUpdate) {
         return res.status(404).json({ error: 'Service subcategory not found' });
       }
-      if (updateData.serviceCategory && serviceSubCategory.serviceCategory.toString() !== updateData.serviceCategory) {
-        return res.status(400).json({ error: 'Service subcategory does not belong to the selected category' });
+      if (serviceSubCategory) {
+        // Only validate category match if both exist and not a draft
+        if (updateData.serviceCategory && serviceSubCategory.serviceCategory && !isDraftUpdate) {
+          if (serviceSubCategory.serviceCategory.toString() !== updateData.serviceCategory.toString()) {
+            return res.status(400).json({ error: 'Service subcategory does not belong to the selected category' });
+          }
+        }
+        updateData.serviceSubCategory = updateData.serviceSubCategoryId;
       }
-      updateData.serviceSubCategory = updateData.serviceSubCategoryId;
       delete updateData.serviceSubCategoryId;
     }
 
@@ -417,9 +529,14 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     if (updateData.originalPrice !== undefined) {
       updateData.originalPrice = updateData.originalPrice ? parseFloat(updateData.originalPrice) : undefined;
     }
+    if (updateData.originalPriceValidUntil !== undefined) {
+      updateData.originalPriceValidUntil = updateData.originalPriceValidUntil
+        ? new Date(updateData.originalPriceValidUntil)
+        : undefined;
+    }
 
-    // Generate new slug if title is changed
-    if (updateData.title && updateData.title !== service.title) {
+    // Generate new slug if title is changed (skip for drafts)
+    if (updateData.title && updateData.title !== service.title && !isDraftUpdate) {
       // Keep existing random suffix if present; otherwise create a new one
       const existing = typeof service.slug === 'string' ? service.slug : '';
       const existingSuffixMatch = existing.match(/-([a-z0-9]{4,})$/);
@@ -438,9 +555,16 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     if (updateData.isUserDisabled !== undefined) {
       delete updateData.isUserDisabled;
     }
-    // Don't allow professionals to directly set unified status via PUT
+
+    // Allow status update only for draft -> pending transition or draft -> draft
     if (updateData.status !== undefined) {
-      delete updateData.status;
+      if (service.status === 'draft' && (updateData.status === 'pending' || updateData.status === 'draft')) {
+        // Allow draft to pending transition (publishing) or keeping draft status
+        // Keep the status update
+      } else {
+        // Don't allow other status changes via PUT
+        delete updateData.status;
+      }
     }
 
     // Update service
