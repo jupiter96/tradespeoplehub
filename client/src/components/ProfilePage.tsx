@@ -156,7 +156,7 @@ export default function ProfilePage() {
           setHomeServiceCards([]);
         }
       } catch (error) {
-        console.error("Error fetching services:", error);
+        // console.error("Error fetching services:", error);
         setHomeServiceCards([]);
       } finally {
         setServicesLoading(false);
@@ -196,7 +196,7 @@ export default function ProfilePage() {
         const data = await response.json();
         setProfile(data?.profile ?? null);
       } catch (e) {
-        console.error("[ProfilePage] fetchProfile error:", e);
+        // console.error("[ProfilePage] fetchProfile error:", e);
         setError("Failed to load profile");
       } finally {
         setLoading(false);

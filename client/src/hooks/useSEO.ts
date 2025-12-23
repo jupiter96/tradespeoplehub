@@ -36,7 +36,7 @@ export function useSEO(type: "homepage" | "blog" | "cost-guide") {
         });
 
         if (!response.ok) {
-          console.warn(`SEO content not found for type: ${type}`);
+          // console.warn(`SEO content not found for type: ${type}`);
           return; // Silently fail if not found
         }
 
@@ -187,9 +187,9 @@ export function useSEO(type: "homepage" | "blog" | "cost-guide") {
         // Only log if it's not a network error (server might be down)
         if (error instanceof TypeError && error.message === "Failed to fetch") {
           // Network error - server might not be running or CORS issue
-          console.warn(`Could not fetch SEO content for ${type}. Server may not be running or CORS issue.`);
+          // console.warn(`Could not fetch SEO content for ${type}. Server may not be running or CORS issue.`);
         } else {
-          console.error("Error applying SEO:", error);
+          // console.error("Error applying SEO:", error);
         }
       }
     };

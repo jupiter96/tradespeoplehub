@@ -95,7 +95,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
         const data = await response.json();
         setVerificationData(data.verification);
       } catch (error) {
-        console.error("Error fetching verification status:", error);
+        // console.error("Error fetching verification status:", error);
         toast.error("Failed to load verification status");
       } finally {
         setLoadingVerification(false);
@@ -292,7 +292,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       setIsDialogOpen(false);
       setVerificationStep("input");
     } catch (error) {
-      console.error("Upload error:", error);
+      // console.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload document");
     } finally {
       setUploadingFile(false);
@@ -365,7 +365,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       setSentCode("");
       setCodeSent(false);
     } catch (error) {
-      console.error("Verification error:", error);
+      // console.error("Verification error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to verify");
     }
   };
@@ -487,7 +487,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
         bankStatementDate: "",
       }));
     } catch (error) {
-      console.error("Payment method verification error:", error);
+      // console.error("Payment method verification error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to submit payment method verification");
     } finally {
       setUploadingFile(false);
@@ -525,7 +525,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
 
       toast.success("Document removed");
     } catch (error) {
-      console.error("Delete error:", error);
+      // console.error("Delete error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to delete document");
     }
   };

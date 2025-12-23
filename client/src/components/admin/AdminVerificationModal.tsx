@@ -93,7 +93,7 @@ export default function AdminVerificationModal({
         throw new Error('Failed to mark documents as viewed');
       }
     } catch (error) {
-      console.error('Error marking documents as viewed:', error);
+      // console.error('Error marking documents as viewed:', error);
       // Don't show error toast to user, as this is a background operation
     }
   };
@@ -112,7 +112,7 @@ export default function AdminVerificationModal({
       const data = await response.json();
       setVerificationData(data.verification || {});
     } catch (error) {
-      console.error("Error fetching verification:", error);
+      // console.error("Error fetching verification:", error);
       toast.error("Failed to load verification data");
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ export default function AdminVerificationModal({
         return updated;
       });
     } catch (error) {
-      console.error("Error updating verification:", error);
+      // console.error("Error updating verification:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update verification status");
     } finally {
       setLoading(false);

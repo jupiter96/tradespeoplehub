@@ -13,49 +13,49 @@ router.get('/search', async (req, res) => {
   try {
     const { postcode } = req.query;
 
-    console.log('🔍 Address search request received:', {
-      postcode: postcode,
-    });
+    // console.log('🔍 Address search request received:', {
+    //   postcode: postcode,
+    // });
 
     if (!postcode) {
-      console.log('❌ Missing postcode in request');
+      // console.log('❌ Missing postcode in request');
       return res.status(400).json({ error: 'Postcode is required' });
     }
 
     if (!ADDRESSY_API_KEY) {
-      console.log('❌ Addressy API key not configured');
+      // console.log('❌ Addressy API key not configured');
       return res.status(500).json({ error: 'Addressy API key not configured' });
     }
 
     // Clean postcode (remove spaces, uppercase)
     const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
-    console.log('🧹 Cleaned postcode:', {
-      original: postcode,
-      cleaned: cleanPostcode,
-    });
+    // console.log('🧹 Cleaned postcode:', {
+    //   original: postcode,
+    //   cleaned: cleanPostcode,
+    // });
 
     // Call Addressy API
     const apiUrl = `${ADDRESSY_BASE_URL}?Key=${encodeURIComponent(ADDRESSY_API_KEY)}&Text=${encodeURIComponent(cleanPostcode)}&Countries=GB&Language=en&Limit=100`;
     
-    console.log('📡 Calling Addressy API:', {
-      url: apiUrl.replace(ADDRESSY_API_KEY, '***'),
-      postcode: cleanPostcode,
-    });
+    // console.log('📡 Calling Addressy API:', {
+    //   url: apiUrl.replace(ADDRESSY_API_KEY, '***'),
+    //   postcode: cleanPostcode,
+    // });
     
     const response = await fetch(apiUrl);
 
-    console.log('📥 Addressy API response:', {
-      status: response.status,
-      statusText: response.statusText,
-    });
+    // console.log('📥 Addressy API response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    // });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Addressy API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-      });
+      // console.error('❌ Addressy API error:', {
+      //   status: response.status,
+      //   statusText: response.statusText,
+      //   error: errorText,
+      // });
       return res.status(response.status).json({ 
         error: 'Failed to fetch addresses from Addressy API',
         details: errorText 
@@ -63,19 +63,19 @@ router.get('/search', async (req, res) => {
     }
 
     const data = await response.json();
-    console.log('📦 Addressy API raw response:', {
-      hasItems: !!data.Items,
-      itemCount: data.Items?.length || 0,
-      firstItem: data.Items?.[0] || 'none',
-    });
+    // console.log('📦 Addressy API raw response:', {
+    //   hasItems: !!data.Items,
+    //   itemCount: data.Items?.length || 0,
+    //   firstItem: data.Items?.[0] || 'none',
+    // });
 
     // Map Addressy API response to our format
     const items = data.Items || [];
     
-    console.log('🗺️ Processing address items:', {
-      count: items.length,
-      types: items.map(item => item.Type),
-    });
+    // console.log('🗺️ Processing address items:', {
+    //   count: items.length,
+    //   types: items.map(item => item.Type),
+    // });
     
     // First, find the postcode item to get its Container ID
     const postcodeItem = items.find(item => item.Type === 'Postcode');
@@ -83,51 +83,51 @@ router.get('/search', async (req, res) => {
     
     // If we found a postcode item, fetch all addresses using Container parameter
     if (postcodeItem && postcodeItem.Id) {
-      console.log('📦 Found postcode item, fetching all addresses with Container:', {
-        postcodeId: postcodeItem.Id,
-        postcodeText: postcodeItem.Text,
-      });
+      // console.log('📦 Found postcode item, fetching all addresses with Container:', {
+      //   postcodeId: postcodeItem.Id,
+      //   postcodeText: postcodeItem.Text,
+      // });
       
       try {
         const containerUrl = `${ADDRESSY_BASE_URL}?Key=${encodeURIComponent(ADDRESSY_API_KEY)}&Text=${encodeURIComponent(cleanPostcode)}&Countries=GB&Language=en&Limit=100&Container=${encodeURIComponent(postcodeItem.Id)}`;
         
-        console.log('📡 Calling Addressy API with Container:', {
-          url: containerUrl.replace(ADDRESSY_API_KEY, '***'),
-          container: postcodeItem.Id,
-        });
+        // console.log('📡 Calling Addressy API with Container:', {
+        //   url: containerUrl.replace(ADDRESSY_API_KEY, '***'),
+        //   container: postcodeItem.Id,
+        // });
         
         const containerResponse = await fetch(containerUrl);
         
         if (containerResponse.ok) {
           const containerData = await containerResponse.json();
-          console.log('📦 Container API response:', {
-            hasItems: !!containerData.Items,
-            itemCount: containerData.Items?.length || 0,
-          });
+          // console.log('📦 Container API response:', {
+          //   hasItems: !!containerData.Items,
+          //   itemCount: containerData.Items?.length || 0,
+          // });
           
           // Get all addresses from container response
           const containerAddresses = (containerData.Items || []).filter(item => item.Type === 'Address');
           if (containerAddresses.length > 0) {
             allAddresses = containerAddresses;
-            console.log('✅ Using container addresses:', {
-              count: allAddresses.length,
-            });
+            // console.log('✅ Using container addresses:', {
+            //   count: allAddresses.length,
+            // });
           }
         } else {
-          console.log('⚠️ Container API failed, using initial addresses');
+          // console.log('⚠️ Container API failed, using initial addresses');
         }
       } catch (containerError) {
-        console.error('⚠️ Error fetching container addresses:', containerError.message);
+        // console.error('⚠️ Error fetching container addresses:', containerError.message);
         // Continue with initial addresses
       }
     }
     
     const addresses = allAddresses.map((item, index) => {
-        console.log(`📍 Processing address ${index + 1}:`, {
-          id: item.Id,
-          text: item.Text,
-          description: item.Description,
-        });
+        // console.log(`📍 Processing address ${index + 1}:`, {
+        //   id: item.Id,
+        //   text: item.Text,
+        //   description: item.Description,
+        // });
         
         // Parse description to extract postcode and city
         // Format: "City, POSTCODE" or "City - X Addresses"
@@ -170,7 +170,7 @@ router.get('/search', async (req, res) => {
           addressyDescription: item.Description,
         };
 
-        console.log(`  Mapped address ${index + 1}:`, JSON.stringify(mappedAddress, null, 2));
+        // console.log(`  Mapped address ${index + 1}:`, JSON.stringify(mappedAddress, null, 2));
 
         return mappedAddress;
       });
@@ -195,28 +195,28 @@ router.get('/search', async (req, res) => {
       return (a.line_1 || "").localeCompare(b.line_1 || "");
     });
     
-    console.log('✅ Final mapped addresses:', {
-      count: addresses.length,
-      addresses: JSON.stringify(addresses, null, 2),
-    });
+    // console.log('✅ Final mapped addresses:', {
+    //   count: addresses.length,
+    //   addresses: JSON.stringify(addresses, null, 2),
+    // });
 
     const responseData = {
       status: 200,
       result: addresses,
     };
     
-    console.log('📤 Sending response to client:', {
-      status: responseData.status,
-      addressCount: responseData.result.length,
-    });
+    // console.log('📤 Sending response to client:', {
+    //   status: responseData.status,
+    //   addressCount: responseData.result.length,
+    // });
 
     res.json(responseData);
   } catch (error) {
-    console.error('❌ Error fetching addresses:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    });
+    // console.error('❌ Error fetching addresses:', {
+    //   message: error.message,
+    //   stack: error.stack,
+    //   name: error.name,
+    // });
     res.status(500).json({ 
       error: 'Failed to fetch addresses',
       message: error.message 

@@ -71,7 +71,7 @@ export const useSectors = (includeCategories = false, includeSubCategories = fal
         setSectors(sectorsData);
         setError(null);
       } catch (err) {
-        console.error('Error fetching sectors:', err);
+        // console.error('Error fetching sectors:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch sectors');
         setSectors([]);
       } finally {
@@ -116,7 +116,7 @@ export const useCategories = (sectorId?: string, sectorSlug?: string, includeSub
         setCategories(data.categories || []);
         setError(null);
       } catch (err) {
-        console.error('Error fetching categories:', err);
+        // console.error('Error fetching categories:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch categories');
         setCategories([]);
       } finally {
@@ -158,7 +158,7 @@ export const useSubCategories = (categoryId?: string, categorySlug?: string) => 
         setSubCategories(data.subCategories || []);
         setError(null);
       } catch (err) {
-        console.error('Error fetching subcategories:', err);
+        // console.error('Error fetching subcategories:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch subcategories');
         setSubCategories([]);
       } finally {
@@ -203,7 +203,7 @@ export const useSector = (identifier: string, includeCategories = false) => {
         setSector(data.sector || null);
         setError(null);
       } catch (err) {
-        console.error('Error fetching sector:', err);
+        // console.error('Error fetching sector:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch sector');
         setSector(null);
       } finally {
@@ -311,7 +311,7 @@ export const useServiceCategories = (sectorId?: string, sectorSlug?: string, inc
         setServiceCategories(data.serviceCategories || []);
         setError(null);
       } catch (err) {
-        console.error('Error fetching service categories:', err);
+        // console.error('Error fetching service categories:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch service categories');
         setServiceCategories([]);
       } finally {
@@ -352,7 +352,7 @@ export const useServiceCategory = (identifier: string, includeSubCategories = fa
         setServiceCategory(data.serviceCategory || null);
         setError(null);
       } catch (err) {
-        console.error('Error fetching service category:', err);
+        // console.error('Error fetching service category:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch service category');
         setServiceCategory(null);
       } finally {

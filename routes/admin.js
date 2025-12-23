@@ -93,7 +93,7 @@ const requireAdmin = async (req, res, next) => {
     req.adminUser = admin;
     next();
   } catch (error) {
-    console.error('Admin auth error', error);
+    // console.error('Admin auth error', error);
     return res.status(500).json({ error: 'Authentication failed' });
   }
 };
@@ -118,7 +118,7 @@ const requirePermission = (permission) => {
 
       next();
     } catch (error) {
-      console.error('Permission check error', error);
+      // console.error('Permission check error', error);
       return res.status(500).json({ error: 'Permission check failed' });
     }
   };
@@ -153,7 +153,7 @@ router.post('/login', async (req, res) => {
       user: admin.toSafeObject(),
     });
   } catch (error) {
-    console.error('Admin login error', error);
+    // console.error('Admin login error', error);
     return res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -162,7 +162,7 @@ router.post('/login', async (req, res) => {
 router.post('/logout', requireAdmin, (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      console.error('Logout error', err);
+      // console.error('Logout error', err);
       return res.status(500).json({ error: 'Logout failed' });
     }
     return res.json({ message: 'Logout successful' });
@@ -178,7 +178,7 @@ router.get('/me', requireAdmin, async (req, res) => {
     }
     return res.json({ user: admin.toSafeObject() });
   } catch (error) {
-    console.error('Get admin user error', error);
+    // console.error('Get admin user error', error);
     return res.status(500).json({ error: 'Failed to get user' });
   }
 });
@@ -220,7 +220,7 @@ router.put('/profile', requireAdmin, async (req, res) => {
       user: admin.toSafeObject() 
     });
   } catch (error) {
-    console.error('Update admin profile error', error);
+    // console.error('Update admin profile error', error);
     return res.status(500).json({ error: error.message || 'Failed to update profile' });
   }
 });
@@ -262,7 +262,7 @@ router.post(
           try {
             await cloudinary.uploader.destroy(oldPublicId);
           } catch (error) {
-            console.warn('Failed to delete old avatar from Cloudinary:', error);
+            // console.warn('Failed to delete old avatar from Cloudinary:', error);
           }
         }
       }
@@ -299,7 +299,7 @@ router.post(
 
       return res.json({ user: updatedAdmin.toSafeObject() });
     } catch (error) {
-      console.error('Avatar upload error', error);
+      // console.error('Avatar upload error', error);
       return res.status(500).json({ 
         error: error.message || 'Failed to upload avatar' 
       });
@@ -329,7 +329,7 @@ router.delete('/profile/avatar', requireAdmin, async (req, res) => {
         try {
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
-          console.warn('Failed to delete avatar from Cloudinary:', error);
+          // console.warn('Failed to delete avatar from Cloudinary:', error);
         }
       }
 
@@ -349,7 +349,7 @@ router.delete('/profile/avatar', requireAdmin, async (req, res) => {
       return res.json({ user: admin.toSafeObject() });
     }
   } catch (error) {
-    console.error('Avatar removal error', error);
+    // console.error('Avatar removal error', error);
     return res.status(500).json({ error: 'Failed to remove avatar' });
   }
 });
@@ -453,7 +453,7 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
         try {
           await cloudinary.uploader.destroy(oldPublicId);
         } catch (error) {
-          console.warn(`Failed to delete old ${type} from Cloudinary:`, error);
+          // console.warn(`Failed to delete old ${type} from Cloudinary:`, error);
         }
       }
     }
@@ -490,7 +490,7 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
       [type]: uploadResult.secure_url
     });
   } catch (error) {
-    console.error('Image upload error', error);
+    // console.error('Image upload error', error);
     return res.status(500).json({ 
       error: error.message || 'Failed to upload image' 
     });
@@ -604,7 +604,7 @@ router.get('/users', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get users error', error);
+    // console.error('Get users error', error);
     return res.status(500).json({ error: 'Failed to get users' });
   }
 });
@@ -624,7 +624,7 @@ router.get('/users/:id', requireAdmin, async (req, res) => {
 
     return res.json({ user: userObj });
   } catch (error) {
-    console.error('Get user error', error);
+    // console.error('Get user error', error);
     return res.status(500).json({ error: 'Failed to get user' });
   }
 });
@@ -675,7 +675,7 @@ router.post('/users', requireAdmin, async (req, res) => {
 
     return res.status(201).json({ user: user.toSafeObject() });
   } catch (error) {
-    console.error('Create user error', error);
+    // console.error('Create user error', error);
     return res.status(500).json({ error: error.message || 'Failed to create user' });
   }
 });
@@ -712,7 +712,7 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
 
     return res.json({ user: user.toSafeObject() });
   } catch (error) {
-    console.error('Update user error', error);
+    // console.error('Update user error', error);
     return res.status(500).json({ error: error.message || 'Failed to update user' });
   }
 });
@@ -744,7 +744,7 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
 
     return res.json({ message: 'User moved to deleted accounts successfully', user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Delete user error', error);
+    // console.error('Delete user error', error);
     return res.status(500).json({ error: 'Failed to delete user' });
   }
 });
@@ -770,7 +770,7 @@ router.post('/users/:id/restore', requireAdmin, async (req, res) => {
 
     return res.json({ message: 'User restored successfully', user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Restore user error', error);
+    // console.error('Restore user error', error);
     return res.status(500).json({ error: 'Failed to restore user' });
   }
 });
@@ -805,7 +805,7 @@ router.delete('/users/:id/permanent', requireAdmin, async (req, res) => {
 
     return res.json({ message: 'User permanently deleted successfully' });
   } catch (error) {
-    console.error('Permanent delete user error', error);
+    // console.error('Permanent delete user error', error);
     return res.status(500).json({ error: 'Failed to permanently delete user' });
   }
 });
@@ -1288,7 +1288,7 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
 
     return res.json({ statistics });
   } catch (error) {
-    console.error('Get dashboard statistics error', error);
+    // console.error('Get dashboard statistics error', error);
     return res.status(500).json({ error: 'Failed to get dashboard statistics' });
   }
 });
@@ -1316,7 +1316,7 @@ router.post('/dashboard/card-viewed', requireAdmin, async (req, res) => {
 
     return res.json({ success: true });
   } catch (error) {
-    console.error('Mark card as viewed error', error);
+    // console.error('Mark card as viewed error', error);
     return res.status(500).json({ error: 'Failed to mark card as viewed' });
   }
 });
@@ -1355,7 +1355,7 @@ router.put('/change-password', requireAdmin, async (req, res) => {
 
     return res.json({ message: 'Password changed successfully' });
   } catch (error) {
-    console.error('Change password error', error);
+    // console.error('Change password error', error);
     return res.status(500).json({ error: 'Failed to change password' });
   }
 });
@@ -1424,7 +1424,7 @@ router.get('/admins', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get admins error', error);
+    // console.error('Get admins error', error);
     return res.status(500).json({ error: 'Failed to get admins' });
   }
 });
@@ -1474,7 +1474,7 @@ router.post('/admins', requireAdmin, async (req, res) => {
 
     return res.status(201).json({ admin: admin.toSafeObject() });
   } catch (error) {
-    console.error('Create admin error', error);
+    // console.error('Create admin error', error);
     return res.status(500).json({ error: error.message || 'Failed to create admin' });
   }
 });
@@ -1517,7 +1517,7 @@ router.put('/admins/:id', requireAdmin, async (req, res) => {
 
     return res.json({ admin: admin.toSafeObject() });
   } catch (error) {
-    console.error('Update admin error', error);
+    // console.error('Update admin error', error);
     return res.status(500).json({ error: error.message || 'Failed to update admin' });
   }
 });
@@ -1545,7 +1545,7 @@ router.delete('/admins/:id', requireAdmin, async (req, res) => {
 
     return res.json({ message: 'Admin deleted successfully' });
   } catch (error) {
-    console.error('Delete admin error', error);
+    // console.error('Delete admin error', error);
     return res.status(500).json({ error: 'Failed to delete admin' });
   }
 });
@@ -1629,7 +1629,7 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
             },
             'verification' // Category: verification -> Uses SMTP_USER_VERIFICATION
           );
-          console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
+          // console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
         } else if (status === 'rejected') {
           // Send rejection email (category: verification -> SMTP_USER_VERIFICATION)
           await sendTemplatedEmail(
@@ -1643,10 +1643,10 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
             },
             'verification' // Category: verification -> Uses SMTP_USER_VERIFICATION
           );
-          console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
+          // console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
         }
       } catch (emailError) {
-        console.error('[Admin] Failed to send verification step email:', emailError);
+        // console.error('[Admin] Failed to send verification step email:', emailError);
         // Don't fail the request if email fails
       }
     }
@@ -1668,9 +1668,9 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
           await sendTemplatedEmail(user.email, 'fully-verified', {
             firstName: user.firstName,
           }, 'verification'); // Category: verification -> Uses SMTP_USER_VERIFICATION
-          console.log('[Admin] Fully verified email sent to:', user.email, '(category: verification)');
+          // console.log('[Admin] Fully verified email sent to:', user.email, '(category: verification)');
         } catch (emailError) {
-          console.error('[Admin] Failed to send fully verified email:', emailError);
+          // console.error('[Admin] Failed to send fully verified email:', emailError);
           // Don't fail the request if email fails
         }
       }
@@ -1681,7 +1681,7 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
       message: `Verification status updated to ${status}`
     });
   } catch (error) {
-    console.error('Update verification status error', error);
+    // console.error('Update verification status error', error);
     return res.status(500).json({ error: 'Failed to update verification status' });
   }
 });
@@ -1703,7 +1703,7 @@ router.get('/users/:id/verification', requireAdmin, async (req, res) => {
 
     return res.json({ verification: user.verification });
   } catch (error) {
-    console.error('Get verification error', error);
+    // console.error('Get verification error', error);
     return res.status(500).json({ error: 'Failed to get verification details' });
   }
 });
@@ -1746,7 +1746,7 @@ router.post('/users/:id/verification/mark-viewed', requireAdmin, async (req, res
       markedCount 
     });
   } catch (error) {
-    console.error('Mark verification as viewed error', error);
+    // console.error('Mark verification as viewed error', error);
     return res.status(500).json({ error: 'Failed to mark verification documents as viewed' });
   }
 });
@@ -1784,7 +1784,7 @@ router.put('/users/:id/block', requireAdmin, async (req, res) => {
       message: `User ${isBlocked ? 'blocked' : 'unblocked'} successfully`
     });
   } catch (error) {
-    console.error('Block user error', error);
+    // console.error('Block user error', error);
     return res.status(500).json({ error: 'Failed to update block status' });
   }
 });
@@ -1812,7 +1812,7 @@ router.put('/users/:id/block-review-invitation', requireAdmin, async (req, res) 
       message: `Review invitation ${blockReviewInvitation ? 'blocked' : 'allowed'} successfully`
     });
   } catch (error) {
-    console.error('Block review invitation error', error);
+    // console.error('Block review invitation error', error);
     return res.status(500).json({ error: 'Failed to update review invitation block status' });
   }
 });
@@ -1839,7 +1839,7 @@ router.put('/users/:id/viewed', requireAdmin, async (req, res) => {
       message: 'User marked as viewed'
     });
   } catch (error) {
-    console.error('Mark user as viewed error', error);
+    // console.error('Mark user as viewed error', error);
     return res.status(500).json({ error: 'Failed to mark user as viewed' });
   }
 });
@@ -1863,7 +1863,7 @@ router.put('/users/:id/note', requireAdmin, async (req, res) => {
       message: 'Note updated successfully'
     });
   } catch (error) {
-    console.error('Update note error', error);
+    // console.error('Update note error', error);
     return res.status(500).json({ error: 'Failed to update note' });
   }
 });
@@ -1893,7 +1893,7 @@ router.get('/seo-content/:type', requireAdmin, async (req, res) => {
 
     return res.json(seoContent);
   } catch (error) {
-    console.error('Get SEO content error', error);
+    // console.error('Get SEO content error', error);
     return res.status(500).json({ error: 'Failed to get SEO content' });
   }
 });
@@ -1971,7 +1971,7 @@ router.put('/seo-content/:type', requireAdmin, async (req, res) => {
 
     return res.json({ message: 'SEO content updated successfully', data: seoContent });
   } catch (error) {
-    console.error('Update SEO content error', error);
+    // console.error('Update SEO content error', error);
     return res.status(500).json({ error: 'Failed to update SEO content' });
   }
 });
@@ -1984,7 +1984,7 @@ router.get('/email-templates', requireAdmin, async (req, res) => {
     const templates = await EmailTemplate.find(query).sort({ category: 1, type: 1 });
     return res.json({ templates });
   } catch (error) {
-    console.error('Get email templates error', error);
+    // console.error('Get email templates error', error);
     return res.status(500).json({ error: 'Failed to fetch email templates' });
   }
 });
@@ -2000,7 +2000,7 @@ router.get('/email-templates/:category/:type', requireAdmin, async (req, res) =>
     
     return res.json({ template });
   } catch (error) {
-    console.error('Get email template error', error);
+    // console.error('Get email template error', error);
     return res.status(500).json({ error: 'Failed to fetch email template' });
   }
 });
@@ -2036,7 +2036,7 @@ router.post('/email-templates', requireAdmin, async (req, res) => {
 
     return res.status(201).json({ message: 'Email template created successfully', template });
   } catch (error) {
-    console.error('Create email template error', error);
+    // console.error('Create email template error', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Template with this category and type already exists' });
     }
@@ -2070,7 +2070,7 @@ router.put('/email-templates/:category/:type', requireAdmin, async (req, res) =>
 
     return res.json({ message: 'Email template updated successfully', template: updated });
   } catch (error) {
-    console.error('Update email template error', error);
+    // console.error('Update email template error', error);
     return res.status(500).json({ error: 'Failed to update email template' });
   }
 });
@@ -2086,7 +2086,7 @@ router.delete('/email-templates/:category/:type', requireAdmin, async (req, res)
 
     return res.json({ message: 'Email template deleted successfully' });
   } catch (error) {
-    console.error('Delete email template error', error);
+    // console.error('Delete email template error', error);
     return res.status(500).json({ error: 'Failed to delete email template' });
   }
 });
@@ -2115,7 +2115,7 @@ router.post('/email-templates/migrate-welcome', requireAdmin, async (req, res) =
           // If no-reply version exists, delete the old one
           await EmailTemplate.deleteOne({ _id: template._id });
           deletedCount++;
-          console.log(`Deleted duplicate welcome template with category ${oldCategory}`);
+          // console.log(`Deleted duplicate welcome template with category ${oldCategory}`);
         } else {
           // Update category to 'no-reply'
           // Need to delete and recreate to avoid unique index conflict
@@ -2130,7 +2130,7 @@ router.post('/email-templates/migrate-welcome', requireAdmin, async (req, res) =
             category: 'no-reply'
           });
           updatedCount++;
-          console.log(`Migrated welcome template from category ${oldCategory} to 'no-reply'`);
+          // console.log(`Migrated welcome template from category ${oldCategory} to 'no-reply'`);
         }
       }
     }
@@ -2142,7 +2142,7 @@ router.post('/email-templates/migrate-welcome', requireAdmin, async (req, res) =
       total: welcomeTemplates.length 
     });
   } catch (error) {
-    console.error('Migrate welcome template error', error);
+    // console.error('Migrate welcome template error', error);
     return res.status(500).json({ error: 'Failed to migrate welcome template' });
   }
 });
@@ -2160,12 +2160,12 @@ router.get('/smtp-config', requireAdmin, async (req, res) => {
         smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
         smtpPass: process.env.SMTP_PASS || '', // Return actual value from env, not masked
       };
-      console.log('Returning SMTP config from environment variables:', {
-        hasHost: !!envConfig.smtpHost,
-        hasPort: !!envConfig.smtpPort,
-        hasPass: !!envConfig.smtpPass,
-        passLength: envConfig.smtpPass ? envConfig.smtpPass.length : 0
-      });
+      // console.log('Returning SMTP config from environment variables:', {
+      //   hasHost: !!envConfig.smtpHost,
+      //   hasPort: !!envConfig.smtpPort,
+      //   hasPass: !!envConfig.smtpPass,
+      //   passLength: envConfig.smtpPass ? envConfig.smtpPass.length : 0
+      // });
       return res.json({
         smtpConfig: envConfig,
       });
@@ -2180,7 +2180,7 @@ router.get('/smtp-config', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get SMTP config error', error);
+    // console.error('Get SMTP config error', error);
     return res.status(500).json({ error: 'Failed to fetch SMTP configuration' });
   }
 });
@@ -2205,7 +2205,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
           category: 'no-reply',
           smtpUser: oldTeamSmtp.smtpUser,
         });
-        console.log(`Migrated 'team' to 'no-reply' SMTP user`);
+        // console.log(`Migrated 'team' to 'no-reply' SMTP user`);
       }
     }
     
@@ -2220,7 +2220,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
             category,
             smtpUser: envValue,
           });
-          console.log(`Initialized ${category} SMTP user from SMTP_USER`);
+          // console.log(`Initialized ${category} SMTP user from SMTP_USER`);
         }
       } else if (category === 'no-reply') {
         // No-reply category uses SMTP_USER_NO_REPLY
@@ -2230,7 +2230,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
             category,
             smtpUser: envValue,
           });
-          console.log(`Initialized ${category} SMTP user from SMTP_USER_NO_REPLY`);
+          // console.log(`Initialized ${category} SMTP user from SMTP_USER_NO_REPLY`);
         } else {
           // Fallback to default SMTP_USER if SMTP_USER_NO_REPLY is not available
           const defaultUser = process.env.SMTP_USER;
@@ -2239,7 +2239,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
               category,
               smtpUser: defaultUser,
             });
-            console.log(`Initialized ${category} SMTP user from default SMTP_USER (fallback)`);
+            // console.log(`Initialized ${category} SMTP user from default SMTP_USER (fallback)`);
           }
         }
       } else {
@@ -2252,7 +2252,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
             category,
             smtpUser: envValue,
           });
-          console.log(`Initialized ${category} SMTP user from environment variable ${envVarName}`);
+          // console.log(`Initialized ${category} SMTP user from environment variable ${envVarName}`);
         }
       }
       
@@ -2268,7 +2268,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get email category SMTP error', error);
+    // console.error('Get email category SMTP error', error);
     return res.status(500).json({ error: 'Failed to fetch SMTP settings' });
   }
 });
@@ -2302,7 +2302,7 @@ router.put('/email-category-smtp/:category', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Save email category SMTP error', error);
+    // console.error('Save email category SMTP error', error);
     return res.status(500).json({ error: 'Failed to save SMTP settings' });
   }
 });
@@ -2344,10 +2344,10 @@ router.put('/smtp-config', requireAdmin, async (req, res) => {
       const { reloadSmtpConfig } = await import('../services/notifier.js');
       if (reloadSmtpConfig) {
         await reloadSmtpConfig();
-        console.log('SMTP configuration reloaded successfully');
+        // console.log('SMTP configuration reloaded successfully');
       }
     } catch (reloadError) {
-      console.warn('Failed to reload notifier service:', reloadError);
+      // console.warn('Failed to reload notifier service:', reloadError);
       // Continue anyway - settings are saved and will be used on next server restart
     }
     
@@ -2360,7 +2360,7 @@ router.put('/smtp-config', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Save SMTP config error', error);
+    // console.error('Save SMTP config error', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'SMTP configuration already exists. Use PUT to update.' });
     }
@@ -2375,7 +2375,7 @@ router.post('/verification-reminders/trigger', requireAdmin, async (req, res) =>
     await triggerVerificationReminders();
     return res.json({ message: 'Verification reminders processed successfully' });
   } catch (error) {
-    console.error('Trigger verification reminders error', error);
+    // console.error('Trigger verification reminders error', error);
     return res.status(500).json({ error: 'Failed to trigger verification reminders' });
   }
 });

@@ -574,7 +574,7 @@ export default function AdminServiceCategoriesPage() {
         setLevel1SubCategories(data.serviceSubCategories || []);
       }
     } catch (error) {
-      console.error("Error fetching parent subcategories:", error);
+      // console.error("Error fetching parent subcategories:", error);
     }
   }, [selectedServiceCategory, selectedAttributeType]);
 
@@ -670,7 +670,7 @@ export default function AdminServiceCategoriesPage() {
         toast.error(error.error || "Failed to fetch service child categories");
       }
     } catch (error) {
-      console.error("Error fetching service subcategories:", error);
+      // console.error("Error fetching service subcategories:", error);
       toast.error("Failed to fetch service child categories");
     } finally {
       setLoading(false);
@@ -744,7 +744,7 @@ export default function AdminServiceCategoriesPage() {
         }
       }
     } catch (error) {
-      console.error("Error fetching sectors:", error);
+      // console.error("Error fetching sectors:", error);
       toast.error("Failed to fetch sectors");
     } finally {
       setLoading(false);
@@ -775,8 +775,8 @@ export default function AdminServiceCategoriesPage() {
         const data = await response.json();
         // Debug: Log first category to check bannerImage field
         if (data.serviceCategories && data.serviceCategories.length > 0) {
-          console.log("First service category bannerImage:", data.serviceCategories[0].bannerImage);
-          console.log("First service category full data:", data.serviceCategories[0]);
+          // console.log("First service category bannerImage:", data.serviceCategories[0].bannerImage);
+          // console.log("First service category full data:", data.serviceCategories[0]);
         }
         setServiceCategories(data.serviceCategories || []);
         setTotalPages(data.pagination?.totalPages || 1);
@@ -785,7 +785,7 @@ export default function AdminServiceCategoriesPage() {
         toast.error("Failed to fetch service categories");
       }
     } catch (error) {
-      console.error("Error fetching service categories:", error);
+      // console.error("Error fetching service categories:", error);
       toast.error("Failed to fetch service categories");
     } finally {
       setLoading(false);
@@ -894,7 +894,7 @@ export default function AdminServiceCategoriesPage() {
         }
       }
     } catch (error) {
-      console.error(`Error uploading ${type}:`, error);
+      // console.error(`Error uploading ${type}:`, error);
       toast.error(`Failed to upload ${type}`);
       if (type === "icon") {
         setSubCategoryIconPreview(subCategoryFormData.icon || null);
@@ -965,7 +965,7 @@ export default function AdminServiceCategoriesPage() {
         }
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       } catch (error) {
-        console.error("Error uploading image:", error);
+        // console.error("Error uploading image:", error);
         toast.error(error instanceof Error ? error.message : "Failed to upload image");
         // Revert preview on error
         if (type === "icon") {
@@ -1010,7 +1010,7 @@ export default function AdminServiceCategoriesPage() {
         }
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       } catch (error) {
-        console.error("Error uploading image:", error);
+        // console.error("Error uploading image:", error);
         toast.error(error instanceof Error ? error.message : "Failed to upload image");
         // Revert preview on error
         if (type === "icon") {
@@ -1121,7 +1121,7 @@ export default function AdminServiceCategoriesPage() {
         setSubCategoryTitles(prev => ({ ...prev, ...titlesMap }));
       }
     } catch (error) {
-      console.error('Error fetching subcategories for titles:', error);
+      // console.error('Error fetching subcategories for titles:', error);
       toast.error('Failed to fetch subcategories');
     } finally {
       setLoadingSubCategories(prev => ({ ...prev, [level]: false }));
@@ -1150,7 +1150,7 @@ export default function AdminServiceCategoriesPage() {
         setTitlesForSelectedPath(suggestions);
       }
     } catch (error) {
-      console.error('Error loading service title suggestions for path:', error);
+      // console.error('Error loading service title suggestions for path:', error);
       setTitlesForSelectedPath([]);
     }
   };
@@ -1295,7 +1295,7 @@ export default function AdminServiceCategoriesPage() {
         } else {
           // If no mapping found, try to infer from parent's attributeType
           // This shouldn't happen in normal flow, but handle gracefully
-          console.warn(`No categoryLevelMapping found for level ${targetLevel}`);
+          // console.warn(`No categoryLevelMapping found for level ${targetLevel}`);
         }
       } else if (targetLevel === 2) {
         // Level 2: no attributeType
@@ -1569,7 +1569,7 @@ export default function AdminServiceCategoriesPage() {
         toast.error(error.error || "Failed to save child category");
       }
     } catch (error) {
-      console.error("Error saving sub category:", error);
+      // console.error("Error saving sub category:", error);
       toast.error("Failed to save child category");
     } finally {
       setIsSaving(false);
@@ -1632,7 +1632,7 @@ export default function AdminServiceCategoriesPage() {
             toast.error(error.error || `Failed to ${action} service category`);
           }
         } catch (error) {
-          console.error(`Error ${action}ing service category:`, error);
+          // console.error(`Error ${action}ing service category:`, error);
           toast.error(`Failed to ${action} service category`);
         }
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -1666,7 +1666,7 @@ export default function AdminServiceCategoriesPage() {
             toast.error(error.error || "Failed to delete service category");
           }
         } catch (error) {
-          console.error("Error deleting service category:", error);
+          // console.error("Error deleting service category:", error);
           toast.error("Failed to delete service category");
         }
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -1718,7 +1718,7 @@ export default function AdminServiceCategoriesPage() {
         pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
 
-      console.log("Creating service category with payload:", serviceCategoryPayload);
+      // console.log("Creating service category with payload:", serviceCategoryPayload);
 
       const serviceCategoryResponse = await fetch(serviceCategoryUrl, {
         method: serviceCategoryMethod,
@@ -1737,7 +1737,7 @@ export default function AdminServiceCategoriesPage() {
         } catch (e) {
           error = { error: errorText || "Failed to save service category" };
         }
-        console.error("Service category creation error:", error);
+        // console.error("Service category creation error:", error);
         throw new Error(error.error || error.message || "Failed to save service category");
       }
 
@@ -1771,7 +1771,7 @@ export default function AdminServiceCategoriesPage() {
             setPendingIconFile(null);
           }
         } catch (error) {
-          console.error("Error uploading icon:", error);
+          // console.error("Error uploading icon:", error);
           // Don't fail the whole save operation if image upload fails
         }
       }
@@ -1792,7 +1792,7 @@ export default function AdminServiceCategoriesPage() {
 
           if (imageResponse.ok) {
             const imageData = await imageResponse.json();
-            console.log("Banner image upload response:", imageData);
+            // console.log("Banner image upload response:", imageData);
             // The bannerImage is already saved by the upload endpoint, but we'll update it to be sure
             if (imageData.imageUrl) {
               const updateResponse = await fetch(resolveApiUrl(`/api/service-categories/${savedServiceCategory._id}`), {
@@ -1803,20 +1803,20 @@ export default function AdminServiceCategoriesPage() {
               });
               if (updateResponse.ok) {
                 const updatedData = await updateResponse.json();
-                console.log("Updated service category with banner:", updatedData.serviceCategory);
+                // console.log("Updated service category with banner:", updatedData.serviceCategory);
                 // Update the saved category reference
                 savedServiceCategory.bannerImage = imageData.imageUrl;
               } else {
-                console.error("Failed to update service category with banner URL");
+                // console.error("Failed to update service category with banner URL");
               }
             }
             setPendingBannerFile(null);
           } else {
             const errorData = await imageResponse.json();
-            console.error("Banner image upload failed:", errorData);
+            // console.error("Banner image upload failed:", errorData);
           }
         } catch (error) {
-          console.error("Error uploading banner:", error);
+          // console.error("Error uploading banner:", error);
           // Don't fail the whole save operation if image upload fails
         }
       }
@@ -1886,7 +1886,7 @@ export default function AdminServiceCategoriesPage() {
         }
       }
     } catch (error: any) {
-      console.error("Error saving service category:", error);
+      // console.error("Error saving service category:", error);
       toast.error(error.message || "Failed to save service category");
     } finally {
       setIsSaving(false);
@@ -4155,7 +4155,7 @@ export default function AdminServiceCategoriesPage() {
                     setSubCategoryTitles({});
                   }
                 } catch (error) {
-                  console.error("Error saving service title suggestions:", error);
+                  // console.error("Error saving service title suggestions:", error);
                   toast.error("Failed to save service title suggestions");
                 } finally {
                   setIsSaving(false);

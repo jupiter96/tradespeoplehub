@@ -156,7 +156,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
               return { userId: user.id, verification: verData.verification };
             }
           } catch (error) {
-            console.error(`Error fetching verification for user ${user.id}:`, error);
+            // console.error(`Error fetching verification for user ${user.id}:`, error);
           }
           return { userId: user.id, verification: null };
         });
@@ -169,7 +169,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         setVerificationStatuses(statusMap);
       }
     } catch (error) {
-      console.error("Error fetching users:", error);
+      // console.error("Error fetching users:", error);
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -255,7 +255,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       fetchUsers();
       onDelete?.(user);
     } catch (error) {
-      console.error("[handleRestore] ERROR:", error);
+      // console.error("[handleRestore] ERROR:", error);
       toast.error(error instanceof Error ? error.message : "Failed to restore user");
     }
   };
@@ -291,71 +291,71 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         fetchUsers();
         onDelete?.(user);
       } catch (error) {
-        console.error("[handleDelete] ERROR:", error);
+        // console.error("[handleDelete] ERROR:", error);
         toast.error(error instanceof Error ? error.message : "Failed to permanently delete user");
       }
       return;
     }
 
     // Regular soft delete for non-deleted accounts page
-    console.log("[handleDelete] TRIGGERED - User:", user);
-    console.log("[handleDelete] User ID:", user.id);
-    console.log("[handleDelete] User Role:", user.role);
-    console.log("[handleDelete] Component Role:", role);
+    // console.log("[handleDelete] TRIGGERED - User:", user);
+    // console.log("[handleDelete] User ID:", user.id);
+    // console.log("[handleDelete] User Role:", user.role);
+    // console.log("[handleDelete] Component Role:", role);
     
     if (!confirm(`Are you sure you want to delete ${user.name}?`)) {
-      console.log("[handleDelete] User cancelled deletion");
+      // console.log("[handleDelete] User cancelled deletion");
       return;
     }
 
-    console.log("[handleDelete] User confirmed deletion, proceeding...");
+    // console.log("[handleDelete] User confirmed deletion, proceeding...");
 
     try {
       const endpoint = role === "subadmin" ? `/api/admin/admins/${user.id}` : `/api/admin/users/${user.id}`;
       const fullUrl = `${API_BASE_URL}${endpoint}`;
       
-      console.log("[handleDelete] DELETE Request URL:", fullUrl);
-      console.log("[handleDelete] API_BASE_URL:", API_BASE_URL);
-      console.log("[handleDelete] Endpoint:", endpoint);
+      // console.log("[handleDelete] DELETE Request URL:", fullUrl);
+      // console.log("[handleDelete] API_BASE_URL:", API_BASE_URL);
+      // console.log("[handleDelete] Endpoint:", endpoint);
       
       const response = await fetch(fullUrl, {
         method: "DELETE",
         credentials: "include",
       });
 
-      console.log("[handleDelete] Response Status:", response.status);
-      console.log("[handleDelete] Response OK:", response.ok);
-      console.log("[handleDelete] Response Headers:", response.headers);
+      // console.log("[handleDelete] Response Status:", response.status);
+      // console.log("[handleDelete] Response OK:", response.ok);
+      // console.log("[handleDelete] Response Headers:", response.headers);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[handleDelete] Response not OK - Status:", response.status);
-        console.error("[handleDelete] Response Error Text:", errorText);
+        // console.error("[handleDelete] Response not OK - Status:", response.status);
+        // console.error("[handleDelete] Response Error Text:", errorText);
         
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-          console.error("[handleDelete] Response Error Data:", errorData);
+          // console.error("[handleDelete] Response Error Data:", errorData);
         } catch (e) {
-          console.error("[handleDelete] Could not parse error response as JSON");
+          // console.error("[handleDelete] Could not parse error response as JSON");
         }
         
         throw new Error(`Failed to delete user: ${response.status} - ${errorData?.error || errorText}`);
       }
 
       const responseData = await response.json();
-      console.log("[handleDelete] SUCCESS - Response Data:", responseData);
+      // console.log("[handleDelete] SUCCESS - Response Data:", responseData);
 
       toast.success("User deleted successfully");
-      console.log("[handleDelete] Calling fetchUsers() to refresh list");
+      // console.log("[handleDelete] Calling fetchUsers() to refresh list");
       fetchUsers();
-      console.log("[handleDelete] Calling onDelete callback");
+      // console.log("[handleDelete] Calling onDelete callback");
       onDelete?.(user);
     } catch (error) {
-      console.error("[handleDelete] ERROR CAUGHT:", error);
-      console.error("[handleDelete] Error Type:", error instanceof Error ? error.constructor.name : typeof error);
-      console.error("[handleDelete] Error Message:", error instanceof Error ? error.message : String(error));
-      console.error("[handleDelete] Error Stack:", error instanceof Error ? error.stack : "No stack trace");
+      // console.error("[handleDelete] ERROR CAUGHT:", error);
+      // console.error("[handleDelete] Error Type:", error instanceof Error ? error.constructor.name : typeof error);
+      // console.error("[handleDelete] Error Message:", error instanceof Error ? error.message : String(error));
+      // console.error("[handleDelete] Error Stack:", error instanceof Error ? error.stack : "No stack trace");
       toast.error("Failed to delete user");
     }
   };
@@ -370,7 +370,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       });
       toast.success(`Opening conversation with ${user.name || `${user.firstName} ${user.lastName}`.trim()}`);
     } catch (error) {
-      console.error("Error starting conversation:", error);
+      // console.error("Error starting conversation:", error);
       toast.error("Failed to open conversation");
     }
   };
@@ -402,7 +402,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       toast.success(`User ${isCurrentlyBlocked ? 'unblocked' : 'blocked'} successfully`);
       fetchUsers();
     } catch (error) {
-      console.error("Error blocking user:", error);
+      // console.error("Error blocking user:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update block status");
     }
   };
@@ -434,7 +434,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       toast.success(`Review invitation ${isCurrentlyBlocked ? 'allowed' : 'blocked'} successfully`);
       fetchUsers();
     } catch (error) {
-      console.error("Error blocking review invitation:", error);
+      // console.error("Error blocking review invitation:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update review invitation block status");
     }
   };
@@ -454,7 +454,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       setNoteText(data.user.adminNotes || "");
       setSelectedUserForNote(user);
     } catch (error) {
-      console.error("Error fetching user note:", error);
+      // console.error("Error fetching user note:", error);
       toast.error("Failed to fetch user note");
     }
   };
@@ -484,7 +484,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       setNoteText("");
       fetchUsers();
     } catch (error) {
-      console.error("Error saving note:", error);
+      // console.error("Error saving note:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save note");
     }
   };
@@ -511,7 +511,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         )
       );
     } catch (error: any) {
-      console.error("Error marking user as viewed:", error);
+      // console.error("Error marking user as viewed:", error);
       toast.error(error.message || "Failed to mark user as viewed");
     }
   };

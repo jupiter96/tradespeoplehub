@@ -1350,25 +1350,25 @@ const seedSectorsAndCategories = async () => {
   try {
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    // console.log('✅ Connected to MongoDB');
 
     // Clear existing data (optional - comment out if you want to keep existing data)
     // await Sector.deleteMany({});
     // await Category.deleteMany({});
     // await SubCategory.deleteMany({});
-    // console.log('✅ Cleared existing sectors, categories, and subcategories');
+    // // console.log('✅ Cleared existing sectors, categories, and subcategories');
 
     // Create sectors
     const createdSectors = {};
     for (const sectorData of sectorsData) {
       const existingSector = await Sector.findOne({ slug: sectorData.slug });
       if (existingSector) {
-        console.log(`⚠️  Sector "${sectorData.name}" already exists, skipping...`);
+        // console.log(`⚠️  Sector "${sectorData.name}" already exists, skipping...`);
         createdSectors[sectorData.slug] = existingSector;
       } else {
         const sector = await Sector.create(sectorData);
         createdSectors[sectorData.slug] = sector;
-        console.log(`✅ Created sector: ${sector.name}`);
+        // console.log(`✅ Created sector: ${sector.name}`);
       }
     }
 
@@ -1378,7 +1378,7 @@ const seedSectorsAndCategories = async () => {
     for (const [sectorSlug, categories] of Object.entries(categoriesData)) {
       const sector = createdSectors[sectorSlug];
       if (!sector) {
-        console.log(`⚠️  Sector "${sectorSlug}" not found, skipping categories...`);
+        // console.log(`⚠️  Sector "${sectorSlug}" not found, skipping categories...`);
         continue;
       }
 
@@ -1392,14 +1392,14 @@ const seedSectorsAndCategories = async () => {
         });
         
         if (existingCategory) {
-          console.log(`⚠️  Category "${categoryData.name}" already exists in sector "${sector.name}", using existing...`);
+          // console.log(`⚠️  Category "${categoryData.name}" already exists in sector "${sector.name}", using existing...`);
           category = existingCategory;
         } else {
           category = await Category.create({
             sector: sector._id,
             ...categoryFields,
           });
-          console.log(`✅ Created category: ${categoryData.name} in ${sector.name}`);
+          // console.log(`✅ Created category: ${categoryData.name} in ${sector.name}`);
         }
         
         // Store category for subcategory creation
@@ -1423,8 +1423,8 @@ const seedSectorsAndCategories = async () => {
           
           for (let i = 0; i < selectedSubCategories.length; i++) {
             if (totalSubCategoriesCreated >= MAX_TOTAL_SUBCATEGORIES) {
-              console.log(`🛑 Reached max total subcategories (${MAX_TOTAL_SUBCATEGORIES}). Stopping further subcategory seeding.`);
-              console.log('✅ Seeding completed!');
+              // console.log(`🛑 Reached max total subcategories (${MAX_TOTAL_SUBCATEGORIES}). Stopping further subcategory seeding.`);
+              // console.log('✅ Seeding completed!');
               process.exit(0);
             }
 
@@ -1435,7 +1435,7 @@ const seedSectorsAndCategories = async () => {
             });
             
             if (existingSubCategory) {
-              console.log(`  ⚠️  Subcategory "${subCategoryName}" already exists, skipping...`);
+              // console.log(`  ⚠️  Subcategory "${subCategoryName}" already exists, skipping...`);
             } else {
               await SubCategory.create({
                 category: category._id,
@@ -1443,17 +1443,17 @@ const seedSectorsAndCategories = async () => {
                 order: i + 1,
               });
               totalSubCategoriesCreated++;
-              console.log(`  ✅ Created subcategory: ${subCategoryName} in ${categoryData.name}`);
+              // console.log(`  ✅ Created subcategory: ${subCategoryName} in ${categoryData.name}`);
             }
           }
         }
       }
     }
 
-    console.log('✅ Seeding completed!');
+    // console.log('✅ Seeding completed!');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seeding error:', error);
+    // console.error('❌ Seeding error:', error);
     process.exit(1);
   }
 };

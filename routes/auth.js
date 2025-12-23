@@ -82,8 +82,8 @@ const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 
 if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-  console.warn('⚠️ Cloudinary credentials not found in environment variables.');
-  console.warn('   Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.');
+  // console.warn('⚠️ Cloudinary credentials not found in environment variables.');
+  // console.warn('   Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.');
 }
 
 cloudinary.config({
@@ -126,12 +126,12 @@ const verificationUploadMiddleware = verificationUpload.single('document');
 
 const generateCode = () => {
   const code = Math.floor(10 ** (CODE_LENGTH - 1) + Math.random() * 9 * 10 ** (CODE_LENGTH - 1)).toString();
-  console.log('[Code Generation] Generated verification code:', {
-    code: code,
-    codeLength: code.length,
-    expectedLength: CODE_LENGTH,
-    timestamp: new Date().toISOString()
-  });
+  // console.log('[Code Generation] Generated verification code:', {
+  //   code: code,
+  //   codeLength: code.length,
+  //   expectedLength: CODE_LENGTH,
+  //   timestamp: new Date().toISOString()
+  // });
   return code;
 };
 const codeExpiryDate = () => new Date(Date.now() + CODE_EXPIRATION_MINUTES * 60 * 1000);
@@ -150,7 +150,7 @@ const requireAuth = async (req, res, next) => {
       return res.status(403).json({ error: 'Admin users cannot access regular user features' });
     }
   } catch (error) {
-    console.error('Error checking user role in requireAuth', error);
+    // console.error('Error checking user role in requireAuth', error);
   }
   
   return next();
@@ -179,7 +179,7 @@ const saveSession = (req) => {
   return new Promise((resolve, reject) => {
     req.session.save((err) => {
       if (err) {
-        console.error('[Session] Failed to save session:', err);
+        // console.error('[Session] Failed to save session:', err);
         reject(err);
       } else {
         resolve();
@@ -193,28 +193,28 @@ const clearPendingRegistrationSession = (req) => {
 };
 
 const loadPendingRegistration = async (req, email = null) => {
-  console.log('[loadPendingRegistration] Starting load:', {
-    hasSession: !!req.session,
-    sessionId: req.session?.id,
-    registrationId: req.session?.[registrationSessionKey],
-    providedEmail: email,
-  });
+  // console.log('[loadPendingRegistration] Starting load:', {
+  //   hasSession: !!req.session,
+  //   sessionId: req.session?.id,
+  //   registrationId: req.session?.[registrationSessionKey],
+  //   providedEmail: email,
+  // });
 
   // First try to load from session
   const registrationId = req.session?.[registrationSessionKey];
   if (registrationId) {
     try {
-      console.log('[loadPendingRegistration] Trying to load by session ID:', registrationId);
+      // console.log('[loadPendingRegistration] Trying to load by session ID:', registrationId);
     const pending = await PendingRegistration.findById(registrationId);
       if (pending) {
-        console.log('[loadPendingRegistration] Found by session ID:', pending._id);
+        // console.log('[loadPendingRegistration] Found by session ID:', pending._id);
         return pending;
       }
       // If not found, clear session
-      console.log('[loadPendingRegistration] Not found by session ID, clearing session');
+      // console.log('[loadPendingRegistration] Not found by session ID, clearing session');
       clearPendingRegistrationSession(req);
     } catch (error) {
-      console.error('[loadPendingRegistration] Failed to load pending registration by ID', error);
+      // console.error('[loadPendingRegistration] Failed to load pending registration by ID', error);
     }
   }
 
@@ -222,23 +222,23 @@ const loadPendingRegistration = async (req, email = null) => {
   if (email) {
     try {
       const normalizedEmail = normalizeEmail(email);
-      console.log('[loadPendingRegistration] Trying to load by email:', normalizedEmail);
+      // console.log('[loadPendingRegistration] Trying to load by email:', normalizedEmail);
       const pending = await PendingRegistration.findOne({ email: normalizedEmail });
       if (pending) {
-        console.log('[loadPendingRegistration] Found by email, updating session:', pending._id);
+        // console.log('[loadPendingRegistration] Found by email, updating session:', pending._id);
         // Update session with found registration
         setPendingRegistrationSession(req, pending.id);
         await saveSession(req);
     return pending;
       } else {
-        console.log('[loadPendingRegistration] Not found by email:', normalizedEmail);
+        // console.log('[loadPendingRegistration] Not found by email:', normalizedEmail);
       }
   } catch (error) {
-      console.error('[loadPendingRegistration] Failed to load pending registration by email', error);
+      // console.error('[loadPendingRegistration] Failed to load pending registration by email', error);
   }
   }
 
-  console.log('[loadPendingRegistration] No pending registration found');
+  // console.log('[loadPendingRegistration] No pending registration found');
   return null;
 };
 
@@ -292,18 +292,18 @@ const saveSocialAuthError = async (provider, errorType, errorMessage, req, addit
     };
 
     await SocialAuthError.create(errorData);
-    console.log(`✅ Social auth error saved to database: ${provider} - ${errorType}`);
+    // console.log(`✅ Social auth error saved to database: ${provider} - ${errorType}`);
   } catch (saveError) {
     // Don't throw error if saving fails - just log it
-    console.error('Failed to save social auth error to database:', saveError);
+    // console.error('Failed to save social auth error to database:', saveError);
   }
 };
 
 const handleSocialCallback = (provider) => (req, res, next) => {
   passport.authenticate(provider, async (err, result, info) => {
     if (err) {
-      console.error(`${provider} auth error:`, err);
-      console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      // console.error(`${provider} auth error:`, err);
+      // console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
       
       // Save error to database
       await saveSocialAuthError(
@@ -326,7 +326,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
 
     // Handle case where user is rejected (e.g., deleted account, blocked, etc.)
     if (info && info.message) {
-      console.error(`${provider} auth info:`, info.message);
+      // console.error(`${provider} auth info:`, info.message);
       
       // Determine error type based on message
       let errorType = 'user_rejected';
@@ -354,7 +354,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
     }
 
     if (!result) {
-      console.error(`${provider} auth failed: No result returned`);
+      // console.error(`${provider} auth failed: No result returned`);
       
       // Save error to database
       await saveSocialAuthError(
@@ -439,7 +439,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
 
     req.logIn(result, async (loginErr) => {
       if (loginErr) {
-        console.error(`${provider} login error`, loginErr);
+        // console.error(`${provider} login error`, loginErr);
         
         // Save error to database
         await saveSocialAuthError(
@@ -466,7 +466,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
       // Save session before redirecting to ensure session is persisted
       req.session.save(async (saveErr) => {
         if (saveErr) {
-          console.error(`${provider} session save error`, saveErr);
+          // console.error(`${provider} session save error`, saveErr);
           
           // Save error to database
           await saveSocialAuthError(
@@ -486,7 +486,7 @@ const handleSocialCallback = (provider) => (req, res, next) => {
           return res.redirect(SOCIAL_FAILURE_REDIRECT);
         }
         
-        console.log(`${provider} login successful for user:`, result.email || result._id || result.id);
+        // console.log(`${provider} login successful for user:`, result.email || result._id || result.id);
       return res.redirect(SOCIAL_SUCCESS_REDIRECT);
       });
     });
@@ -618,20 +618,20 @@ router.post('/register/initiate', async (req, res) => {
       travelDistance,
     } = req.body;
 
-    console.log('[Registration] Received registration data:', {
-      userType,
-      tradingName: tradingName || '(empty)',
-      address: address || '(empty)',
-      townCity: townCity || '(empty)',
-      county: county || '(empty)',
-      travelDistance: travelDistance || '(empty)',
-      hasTradingName: tradingName !== undefined && tradingName !== null,
-      hasAddress: address !== undefined && address !== null,
-      hasTownCity: townCity !== undefined && townCity !== null,
-      hasCounty: county !== undefined && county !== null,
-      tradingNameType: typeof tradingName,
-      addressType: typeof address,
-    });
+    // console.log('[Registration] Received registration data:', {
+    //   userType,
+    //   tradingName: tradingName || '(empty)',
+    //   address: address || '(empty)',
+    //   townCity: townCity || '(empty)',
+    //   county: county || '(empty)',
+    //   travelDistance: travelDistance || '(empty)',
+    //   hasTradingName: tradingName !== undefined && tradingName !== null,
+    //   hasAddress: address !== undefined && address !== null,
+    //   hasTownCity: townCity !== undefined && townCity !== null,
+    //   hasCounty: county !== undefined && county !== null,
+    //   tradingNameType: typeof tradingName,
+    //   addressType: typeof address,
+    // });
 
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
@@ -663,11 +663,11 @@ router.post('/register/initiate', async (req, res) => {
       _id: { $ne: existingUser?._id } // Exclude current user if checking during update
     });
     if (existingPhoneUser) {
-      console.log('[Registration] Phone number already in use:', {
-        phone: normalizedPhone,
-        existingUserId: existingPhoneUser._id,
-        existingUserEmail: existingPhoneUser.email
-      });
+      // console.log('[Registration] Phone number already in use:', {
+      //   phone: normalizedPhone,
+      //   existingUserId: existingPhoneUser._id,
+      //   existingUserEmail: existingPhoneUser.email
+      // });
       return res.status(409).json({ error: 'This phone number is already registered to another account' });
     }
 
@@ -682,12 +682,12 @@ router.post('/register/initiate', async (req, res) => {
       
       // If expired, delete it and create a new one
       if (isExpired || (emailCodeExpired && !existingPending.emailVerified)) {
-        console.log('[Registration] Existing pending registration expired, creating new one');
+        // console.log('[Registration] Existing pending registration expired, creating new one');
         await existingPending.deleteOne();
         existingPending = null;
       } else {
         // If not expired and not fully verified, update it with new data
-        console.log('[Registration] Found existing pending registration, updating with new data');
+        // console.log('[Registration] Found existing pending registration, updating with new data');
         existingPending.firstName = firstName;
         existingPending.lastName = lastName;
         existingPending.phone = phone;
@@ -733,23 +733,23 @@ router.post('/register/initiate', async (req, res) => {
         
         // Generate new email code if not already verified
         if (!existingPending.emailVerified) {
-          console.log('[Registration] Generating new email code for existing pending registration:', {
-            email: normalizedEmail,
-            pendingId: existingPending._id
-          });
+          // console.log('[Registration] Generating new email code for existing pending registration:', {
+          //   email: normalizedEmail,
+          //   pendingId: existingPending._id
+          // });
           
     const emailCode = generateCode();
-          console.log('[Registration] Email code generated:', {
-            code: emailCode,
-            codeLength: emailCode.length,
-            timestamp: new Date().toISOString()
-          });
+          // console.log('[Registration] Email code generated:', {
+          //   code: emailCode,
+          //   codeLength: emailCode.length,
+          //   timestamp: new Date().toISOString()
+          // });
           
     const emailCodeHash = await bcrypt.hash(emailCode, 10);
-          console.log('[Registration] Email code hash created:', {
-            hasHash: !!emailCodeHash,
-            hashLength: emailCodeHash?.length || 0
-          });
+          // console.log('[Registration] Email code hash created:', {
+          //   hasHash: !!emailCodeHash,
+          //   hashLength: emailCodeHash?.length || 0
+          // });
           
           existingPending.emailCodeHash = emailCodeHash;
           existingPending.emailCodeExpiresAt = codeExpiryDate();
@@ -762,45 +762,45 @@ router.post('/register/initiate', async (req, res) => {
           // Reset expiration
           existingPending.expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
           
-          console.log('[Registration] Saving updated pending registration:', {
-            email: normalizedEmail,
-            hasEmailCodeHash: !!existingPending.emailCodeHash,
-            emailCodeExpiresAt: existingPending.emailCodeExpiresAt,
-            expiresAt: existingPending.expiresAt
-          });
+          // console.log('[Registration] Saving updated pending registration:', {
+          //   email: normalizedEmail,
+          //   hasEmailCodeHash: !!existingPending.emailCodeHash,
+          //   emailCodeExpiresAt: existingPending.emailCodeExpiresAt,
+          //   expiresAt: existingPending.expiresAt
+          // });
           
           await existingPending.save();
-          console.log('[Registration] Pending registration saved successfully');
+          // console.log('[Registration] Pending registration saved successfully');
           
-          console.log('[Registration] Calling sendEmailVerificationCode:', {
-            email: normalizedEmail,
-            code: emailCode,
-            timestamp: new Date().toISOString()
-          });
+          // console.log('[Registration] Calling sendEmailVerificationCode:', {
+          //   email: normalizedEmail,
+          //   code: emailCode,
+          //   timestamp: new Date().toISOString()
+          // });
           
           try {
             const emailResult = await sendEmailVerificationCode(normalizedEmail, emailCode, existingPending.firstName || 'User');
-            console.log('[Registration] Email verification code sent successfully:', {
-              email: normalizedEmail,
-              result: emailResult ? {
-                messageId: emailResult.messageId,
-                response: emailResult.response
-              } : 'no result',
-              timestamp: new Date().toISOString()
-            });
+            // console.log('[Registration] Email verification code sent successfully:', {
+            //   email: normalizedEmail,
+            //   result: emailResult ? {
+            //     messageId: emailResult.messageId,
+            //     response: emailResult.response
+            //   } : 'no result',
+            //   timestamp: new Date().toISOString()
+            // });
           } catch (notificationError) {
-            console.error('[Registration] Failed to send verification email:', {
-              error: notificationError.message,
-              code: notificationError.code,
-              command: notificationError.command,
-              response: notificationError.response,
-              responseCode: notificationError.responseCode,
-              stack: notificationError.stack,
-              email: normalizedEmail,
-              timestamp: new Date().toISOString()
-            });
+            // console.error('[Registration] Failed to send verification email:', {
+            //   error: notificationError.message,
+            //   code: notificationError.code,
+            //   command: notificationError.command,
+            //   response: notificationError.response,
+            //   responseCode: notificationError.responseCode,
+            //   stack: notificationError.stack,
+            //   email: normalizedEmail,
+            //   timestamp: new Date().toISOString()
+            // });
             if (isProduction) {
-              console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
+              // console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
             } else {
               return res.status(502).json({ error: 'Failed to send verification email' });
             }
@@ -825,33 +825,33 @@ router.post('/register/initiate', async (req, res) => {
             await existingPending.save();
             
             try {
-              console.log('[Phone Code] Backend - Existing Registration - Step 1: Preparing to send SMS');
-              console.log('[Phone Code] Backend - Existing Registration - Step 1.1: Phone number:', existingPending.phone);
-              console.log('[Phone Code] Backend - Existing Registration - Step 1.2: SMS code generated:', smsCode);
-              console.log('[Phone Code] Backend - Existing Registration - Step 2: Calling sendSmsVerificationCode');
+              // console.log('[Phone Code] Backend - Existing Registration - Step 1: Preparing to send SMS');
+              // console.log('[Phone Code] Backend - Existing Registration - Step 1.1: Phone number:', existingPending.phone);
+              // console.log('[Phone Code] Backend - Existing Registration - Step 1.2: SMS code generated:', smsCode);
+              // console.log('[Phone Code] Backend - Existing Registration - Step 2: Calling sendSmsVerificationCode');
               await sendSmsVerificationCode(existingPending.phone, smsCode);
-              console.log('[Phone Code] Backend - Existing Registration - Step 3: SMS sent successfully');
+              // console.log('[Phone Code] Backend - Existing Registration - Step 3: SMS sent successfully');
             } catch (notificationError) {
-              console.error('[Phone Code] Backend - Existing Registration - ERROR: Failed to send SMS code');
-              console.error('[Phone Code] Backend - Existing Registration - ERROR.1: Error object:', notificationError);
-              console.error('[Phone Code] Backend - Existing Registration - ERROR.2: Error message:', notificationError.message);
-              console.error('[Phone Code] Backend - Existing Registration - ERROR.3: Twilio error code:', notificationError.code);
-              console.error('[Phone Code] Backend - Existing Registration - ERROR.4: Twilio error status:', notificationError.status);
-              console.error('[Phone Code] Backend - Existing Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
-              console.error('[Phone Code] Backend - Existing Registration - ERROR.6: Full error details:', {
-                message: notificationError.message,
-                code: notificationError.code,
-                status: notificationError.status,
-                moreInfo: notificationError.moreInfo,
-                twilioErrorCode: notificationError.twilioErrorCode,
-                twilioErrorMessage: notificationError.twilioErrorMessage,
-                twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
-                userMessage: notificationError.userMessage,
-                stack: notificationError.stack
-              });
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR: Failed to send SMS code');
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR.1: Error object:', notificationError);
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR.2: Error message:', notificationError.message);
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR.3: Twilio error code:', notificationError.code);
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR.4: Twilio error status:', notificationError.status);
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+              // console.error('[Phone Code] Backend - Existing Registration - ERROR.6: Full error details:', {
+              //   message: notificationError.message,
+              //   code: notificationError.code,
+              //   status: notificationError.status,
+              //   moreInfo: notificationError.moreInfo,
+              //   twilioErrorCode: notificationError.twilioErrorCode,
+              //   twilioErrorMessage: notificationError.twilioErrorMessage,
+              //   twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+              //   userMessage: notificationError.userMessage,
+              //   stack: notificationError.stack
+              // });
               
               if (isProduction) {
-                console.warn('[Phone Code] Backend - Existing Registration - Continuing registration flow despite SMS send failure (production mode)');
+                // console.warn('[Phone Code] Backend - Existing Registration - Continuing registration flow despite SMS send failure (production mode)');
               } else {
                 // Return detailed error message to user
                 const errorMessage = notificationError.userMessage || 
@@ -887,30 +887,30 @@ router.post('/register/initiate', async (req, res) => {
     }
 
     // Create new pending registration
-    console.log('[Registration] Creating new pending registration:', {
-      email: normalizedEmail,
-      userType: userType,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('[Registration] Creating new pending registration:', {
+    //   email: normalizedEmail,
+    //   userType: userType,
+    //   timestamp: new Date().toISOString()
+    // });
     
     const passwordHash = await bcrypt.hash(password, 12);
-    console.log('[Registration] Password hash created:', {
-      hasHash: !!passwordHash,
-      hashLength: passwordHash?.length || 0
-    });
+    // console.log('[Registration] Password hash created:', {
+    //   hasHash: !!passwordHash,
+    //   hashLength: passwordHash?.length || 0
+    // });
     
     const emailCode = generateCode();
-    console.log('[Registration] Email code generated:', {
-      code: emailCode,
-      codeLength: emailCode.length,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('[Registration] Email code generated:', {
+    //   code: emailCode,
+    //   codeLength: emailCode.length,
+    //   timestamp: new Date().toISOString()
+    // });
     
     const emailCodeHash = await bcrypt.hash(emailCode, 10);
-    console.log('[Registration] Email code hash created:', {
-      hasHash: !!emailCodeHash,
-      hashLength: emailCodeHash?.length || 0
-    });
+    // console.log('[Registration] Email code hash created:', {
+    //   hasHash: !!emailCodeHash,
+    //   hashLength: emailCodeHash?.length || 0
+    // });
 
     const pendingRegistrationData = {
       firstName,
@@ -963,84 +963,84 @@ router.post('/register/initiate', async (req, res) => {
       }
     }
 
-    console.log('[Registration] Creating pending registration with data:', {
-      email: normalizedEmail,
-      role: userType,
-      tradingName: pendingRegistrationData.tradingName,
-      address: pendingRegistrationData.address,
-      townCity: pendingRegistrationData.townCity,
-      county: pendingRegistrationData.county,
-      travelDistance: pendingRegistrationData.travelDistance,
-      hasPasswordHash: !!pendingRegistrationData.passwordHash,
-      hasEmailCodeHash: !!pendingRegistrationData.emailCodeHash,
-    });
+    // console.log('[Registration] Creating pending registration with data:', {
+    //   email: normalizedEmail,
+    //   role: userType,
+    //   tradingName: pendingRegistrationData.tradingName,
+    //   address: pendingRegistrationData.address,
+    //   townCity: pendingRegistrationData.townCity,
+    //   county: pendingRegistrationData.county,
+    //   travelDistance: pendingRegistrationData.travelDistance,
+    //   hasPasswordHash: !!pendingRegistrationData.passwordHash,
+    //   hasEmailCodeHash: !!pendingRegistrationData.emailCodeHash,
+    // });
 
     // Verify MongoDB connection before creating
     if (mongoose.connection.readyState !== 1) {
-      console.error('[Registration] MongoDB not connected. Connection state:', mongoose.connection.readyState);
+      // console.error('[Registration] MongoDB not connected. Connection state:', mongoose.connection.readyState);
       return res.status(500).json({ error: 'Database connection error. Please try again.' });
     }
 
     let pendingRegistration;
     try {
       pendingRegistration = await PendingRegistration.create(pendingRegistrationData);
-      console.log('[Registration] Pending registration created successfully:', {
-        id: pendingRegistration._id,
-        email: pendingRegistration.email,
-        tradingName: pendingRegistration.tradingName,
-        address: pendingRegistration.address,
-        townCity: pendingRegistration.townCity,
-      });
+      // console.log('[Registration] Pending registration created successfully:', {
+      //   id: pendingRegistration._id,
+      //   email: pendingRegistration.email,
+      //   tradingName: pendingRegistration.tradingName,
+      //   address: pendingRegistration.address,
+      //   townCity: pendingRegistration.townCity,
+      // });
     } catch (createError) {
-      console.error('[Registration] Failed to create pending registration:', {
-        error: createError.message,
-        stack: createError.stack,
-        code: createError.code,
-        name: createError.name,
-        pendingRegistrationData: {
-          email: pendingRegistrationData.email,
-          role: pendingRegistrationData.role,
-          hasPasswordHash: !!pendingRegistrationData.passwordHash,
-        }
-      });
+      // console.error('[Registration] Failed to create pending registration:', {
+      //   error: createError.message,
+      //   stack: createError.stack,
+      //   code: createError.code,
+      //   name: createError.name,
+      //   pendingRegistrationData: {
+      //     email: pendingRegistrationData.email,
+      //     role: pendingRegistrationData.role,
+      //     hasPasswordHash: !!pendingRegistrationData.passwordHash,
+      //   }
+      // });
       throw createError;
     }
 
-    console.log('[Registration] Calling sendEmailVerificationCode for new registration:', {
-      email: normalizedEmail,
-      code: emailCode,
-      pendingRegistrationId: pendingRegistration._id,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('[Registration] Calling sendEmailVerificationCode for new registration:', {
+    //   email: normalizedEmail,
+    //   code: emailCode,
+    //   pendingRegistrationId: pendingRegistration._id,
+    //   timestamp: new Date().toISOString()
+    // });
     
     try {
       const emailResult = await sendEmailVerificationCode(normalizedEmail, emailCode, firstName || 'User');
-      console.log('[Registration] Email verification code sent successfully:', {
-        email: normalizedEmail,
-        result: emailResult ? {
-          messageId: emailResult.messageId,
-          response: emailResult.response,
-          accepted: emailResult.accepted,
-          rejected: emailResult.rejected
-        } : 'no result',
-        timestamp: new Date().toISOString()
-      });
+      // console.log('[Registration] Email verification code sent successfully:', {
+      //   email: normalizedEmail,
+      //   result: emailResult ? {
+      //     messageId: emailResult.messageId,
+      //     response: emailResult.response,
+      //     accepted: emailResult.accepted,
+      //     rejected: emailResult.rejected
+      //   } : 'no result',
+      //   timestamp: new Date().toISOString()
+      // });
     } catch (notificationError) {
-      console.error('[Registration] Failed to send verification email:', {
-        error: notificationError.message,
-        code: notificationError.code,
-        command: notificationError.command,
-        response: notificationError.response,
-        responseCode: notificationError.responseCode,
-        stack: notificationError.stack,
-        email: normalizedEmail,
-        timestamp: new Date().toISOString()
-      });
+      // console.error('[Registration] Failed to send verification email:', {
+      //   error: notificationError.message,
+      //   code: notificationError.code,
+      //   command: notificationError.command,
+      //   response: notificationError.response,
+      //   responseCode: notificationError.responseCode,
+      //   stack: notificationError.stack,
+      //   email: normalizedEmail,
+      //   timestamp: new Date().toISOString()
+      // });
       // In production, continue even if email sending fails (SMTP may not be configured yet)
       if (isProduction) {
-        console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
+        // console.warn('[Registration] Continuing registration flow despite email send failure (production mode)');
       } else {
-        console.error('[Registration] Deleting pending registration due to email send failure');
+        // console.error('[Registration] Deleting pending registration due to email send failure');
       await pendingRegistration.deleteOne();
       return res.status(502).json({ error: 'Failed to send verification email' });
       }
@@ -1048,10 +1048,10 @@ router.post('/register/initiate', async (req, res) => {
 
     setPendingRegistrationSession(req, pendingRegistration.id);
     await saveSession(req);
-    console.log('[Registration] Session saved successfully:', {
-      sessionId: req.session.id,
-      registrationId: req.session[registrationSessionKey],
-    });
+    // console.log('[Registration] Session saved successfully:', {
+    //   sessionId: req.session.id,
+    //   registrationId: req.session[registrationSessionKey],
+    // });
 
     // Include code in response for testing
     return res.status(200).json({ 
@@ -1059,13 +1059,13 @@ router.post('/register/initiate', async (req, res) => {
       emailCode: emailCode
     });
   } catch (error) {
-    console.error('[Registration] Register initiate error:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      name: error.name,
-      errors: error.errors,
-    });
+    // console.error('[Registration] Register initiate error:', {
+    //   message: error.message,
+    //   stack: error.stack,
+    //   code: error.code,
+    //   name: error.name,
+    //   errors: error.errors,
+    // });
     
     // Provide more specific error messages
     if (error.name === 'ValidationError') {
@@ -1088,13 +1088,13 @@ router.post('/register/initiate', async (req, res) => {
 router.post('/register/verify-email', async (req, res) => {
   try {
     const { code, email } = req.body || {};
-    console.log('[Email Verification] Received request:', {
-      hasCode: !!code,
-      email: email,
-      normalizedEmail: email ? normalizeEmail(email) : null,
-      sessionId: req.session?.id,
-      sessionRegistrationId: req.session?.[registrationSessionKey],
-    });
+    // console.log('[Email Verification] Received request:', {
+    //   hasCode: !!code,
+    //   email: email,
+    //   normalizedEmail: email ? normalizeEmail(email) : null,
+    //   sessionId: req.session?.id,
+    //   sessionRegistrationId: req.session?.[registrationSessionKey],
+    // });
     
     if (!isValidCode(code)) {
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
@@ -1102,40 +1102,40 @@ router.post('/register/verify-email', async (req, res) => {
 
     // Ensure email is provided for fallback lookup
     if (!email) {
-      console.error('[Email Verification] No email provided in request');
+      // console.error('[Email Verification] No email provided in request');
     }
 
     const pendingRegistration = await loadPendingRegistration(req, email);
-    console.log('[Email Verification] Loaded pending registration:', {
-      found: !!pendingRegistration,
-      email: pendingRegistration?.email,
-      id: pendingRegistration?._id,
-      emailVerified: pendingRegistration?.emailVerified,
-    });
+    // console.log('[Email Verification] Loaded pending registration:', {
+    //   found: !!pendingRegistration,
+    //   email: pendingRegistration?.email,
+    //   id: pendingRegistration?._id,
+    //   emailVerified: pendingRegistration?.emailVerified,
+    // });
     
     if (!pendingRegistration) {
       // Try to find any pending registrations for debugging
       if (email) {
         const normalizedEmail = normalizeEmail(email);
         const allPending = await PendingRegistration.find({ email: normalizedEmail }).limit(5);
-        console.error('[Email Verification] No pending registration found. Debug info:', {
-          sessionId: req.session?.id,
-          sessionRegistrationId: req.session?.[registrationSessionKey],
-          providedEmail: email,
-          normalizedEmail: normalizedEmail,
-          foundPendingCount: allPending.length,
-          pendingRegistrations: allPending.map(p => ({
-            id: p._id,
-            email: p.email,
-            expiresAt: p.expiresAt,
-            emailVerified: p.emailVerified,
-          })),
-        });
+        // console.error('[Email Verification] No pending registration found. Debug info:', {
+        //   sessionId: req.session?.id,
+        //   sessionRegistrationId: req.session?.[registrationSessionKey],
+        //   providedEmail: email,
+        //   normalizedEmail: normalizedEmail,
+        //   foundPendingCount: allPending.length,
+        //   pendingRegistrations: allPending.map(p => ({
+        //     id: p._id,
+        //     email: p.email,
+        //     expiresAt: p.expiresAt,
+        //     emailVerified: p.emailVerified,
+        //   })),
+        // });
       } else {
-        console.error('[Email Verification] No pending registration found. No email provided:', {
-          sessionId: req.session?.id,
-          sessionRegistrationId: req.session?.[registrationSessionKey],
-        });
+        // console.error('[Email Verification] No pending registration found. No email provided:', {
+        //   sessionId: req.session?.id,
+        //   sessionRegistrationId: req.session?.[registrationSessionKey],
+        // });
       }
       return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
@@ -1159,47 +1159,47 @@ router.post('/register/verify-email', async (req, res) => {
     }
 
     const smsCode = generateCode();
-    console.log('[Phone Code] Backend - Regular Registration - Generated SMS code:', smsCode);
+    // console.log('[Phone Code] Backend - Regular Registration - Generated SMS code:', smsCode);
     const smsCodeHash = await bcrypt.hash(smsCode, 10);
-    console.log('[Phone Code] Backend - Regular Registration - Code hash created');
+    // console.log('[Phone Code] Backend - Regular Registration - Code hash created');
 
     try {
-      console.log('[Phone Code] Backend - Regular Registration - Step 1: Preparing to send SMS');
-      console.log('[Phone Code] Backend - Regular Registration - Step 1.1: Phone number:', pendingRegistration.phone);
-      console.log('[Phone Code] Backend - Regular Registration - Step 1.2: SMS code generated:', smsCode);
-      console.log('[Phone Code] Backend - Regular Registration - Step 2: Calling sendSmsVerificationCode');
+      // console.log('[Phone Code] Backend - Regular Registration - Step 1: Preparing to send SMS');
+      // console.log('[Phone Code] Backend - Regular Registration - Step 1.1: Phone number:', pendingRegistration.phone);
+      // console.log('[Phone Code] Backend - Regular Registration - Step 1.2: SMS code generated:', smsCode);
+      // console.log('[Phone Code] Backend - Regular Registration - Step 2: Calling sendSmsVerificationCode');
       const smsResult = await sendSmsVerificationCode(pendingRegistration.phone, smsCode);
-      console.log('[Phone Code] Backend - Regular Registration - Step 3: SMS function returned');
+      // console.log('[Phone Code] Backend - Regular Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
-        console.log('[Phone Code] Backend - Regular Registration - Step 3.1: SMS sent successfully:', {
-          messageSid: smsResult.messageSid,
-          phone: pendingRegistration.phone
-        });
+        // console.log('[Phone Code] Backend - Regular Registration - Step 3.1: SMS sent successfully:', {
+        //   messageSid: smsResult.messageSid,
+        //   phone: pendingRegistration.phone
+        // });
       } else {
-        console.warn('[Phone Code] Backend - Regular Registration - Step 3.2: SMS function returned but success is false');
+        // console.warn('[Phone Code] Backend - Regular Registration - Step 3.2: SMS function returned but success is false');
       }
     } catch (notificationError) {
-      console.error('[Phone Code] Backend - Regular Registration - ERROR: Failed to send SMS code');
-      console.error('[Phone Code] Backend - Regular Registration - ERROR.1: Error object:', notificationError);
-      console.error('[Phone Code] Backend - Regular Registration - ERROR.2: Error message:', notificationError.message);
-      console.error('[Phone Code] Backend - Regular Registration - ERROR.3: Twilio error code:', notificationError.code);
-      console.error('[Phone Code] Backend - Regular Registration - ERROR.4: Twilio error status:', notificationError.status);
-      console.error('[Phone Code] Backend - Regular Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
-      console.error('[Phone Code] Backend - Regular Registration - ERROR.6: Full error details:', {
-        message: notificationError.message,
-        code: notificationError.code,
-        status: notificationError.status,
-        moreInfo: notificationError.moreInfo,
-        twilioErrorCode: notificationError.twilioErrorCode,
-        twilioErrorMessage: notificationError.twilioErrorMessage,
-        twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
-        userMessage: notificationError.userMessage,
-        stack: notificationError.stack
-      });
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR: Failed to send SMS code');
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR.1: Error object:', notificationError);
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR.2: Error message:', notificationError.message);
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR.3: Twilio error code:', notificationError.code);
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR.4: Twilio error status:', notificationError.status);
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+      // console.error('[Phone Code] Backend - Regular Registration - ERROR.6: Full error details:', {
+      //   message: notificationError.message,
+      //   code: notificationError.code,
+      //   status: notificationError.status,
+      //   moreInfo: notificationError.moreInfo,
+      //   twilioErrorCode: notificationError.twilioErrorCode,
+      //   twilioErrorMessage: notificationError.twilioErrorMessage,
+      //   twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+      //   userMessage: notificationError.userMessage,
+      //   stack: notificationError.stack
+      // });
       
       // In production, continue even if SMS sending fails (Twilio may not be configured yet)
       if (isProduction) {
-        console.warn('[Phone Code] Backend - Regular Registration - Continuing despite SMS send failure (production mode)');
+        // console.warn('[Phone Code] Backend - Regular Registration - Continuing despite SMS send failure (production mode)');
       } else {
         // Return detailed error message to user
         const errorMessage = notificationError.userMessage || 
@@ -1221,16 +1221,16 @@ router.post('/register/verify-email', async (req, res) => {
     pendingRegistration.phoneCodeHash = smsCodeHash;
     pendingRegistration.phoneCodeExpiresAt = codeExpiryDate();
     await pendingRegistration.save();
-    console.log('[Phone Code] Backend - Regular Registration - Code hash saved to database');
+    // console.log('[Phone Code] Backend - Regular Registration - Code hash saved to database');
 
     // Include code in response for testing
-    console.log('[Phone Code] Backend - Regular Registration - Returning success response with code:', smsCode);
+    // console.log('[Phone Code] Backend - Regular Registration - Returning success response with code:', smsCode);
     return res.json({ 
       message: 'Email verified. SMS code sent',
       phoneCode: smsCode
     });
   } catch (err) {
-    console.error('Email verification error', err);
+    // console.error('Email verification error', err);
     return res.status(500).json({ error: 'Failed to verify email' });
   }
 });
@@ -1238,33 +1238,33 @@ router.post('/register/verify-email', async (req, res) => {
 router.post('/register/verify-phone', async (req, res) => {
   try {
     const { code, email } = req.body || {};
-    console.log('[Phone Code] Backend - Regular Registration - Received phone code verification request:', {
-      code: code ? '****' : 'missing',
-      email: email
-    });
+    // console.log('[Phone Code] Backend - Regular Registration - Received phone code verification request:', {
+    //   code: code ? '****' : 'missing',
+    //   email: email
+    // });
     
     if (!isValidCode(code)) {
-      console.log('[Phone Code] Backend - Regular Registration - Invalid code format');
+      // console.log('[Phone Code] Backend - Regular Registration - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
     const pendingRegistration = await loadPendingRegistration(req, email);
     if (!pendingRegistration) {
-      console.log('[Phone Code] Backend - Regular Registration - No pending registration found');
+      // console.log('[Phone Code] Backend - Regular Registration - No pending registration found');
       return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
 
-    console.log('[Phone Code] Backend - Regular Registration - Pending registration found for:', pendingRegistration.email);
-    console.log('[Phone Verification] Registration - Pending registration data:', {
-      tradingName: pendingRegistration.tradingName,
-      address: pendingRegistration.address,
-      townCity: pendingRegistration.townCity,
-      travelDistance: pendingRegistration.travelDistance,
-      role: pendingRegistration.role,
-    });
+    // console.log('[Phone Code] Backend - Regular Registration - Pending registration found for:', pendingRegistration.email);
+    // console.log('[Phone Verification] Registration - Pending registration data:', {
+    //   tradingName: pendingRegistration.tradingName,
+    //   address: pendingRegistration.address,
+    //   townCity: pendingRegistration.townCity,
+    //   travelDistance: pendingRegistration.travelDistance,
+    //   role: pendingRegistration.role,
+    // });
 
     if (!pendingRegistration.emailVerified) {
-      console.log('[Phone Code] Backend - Regular Registration - Email not verified yet');
+      // console.log('[Phone Code] Backend - Regular Registration - Email not verified yet');
       return res.status(400).json({ error: 'Email must be verified first' });
     }
 
@@ -1272,20 +1272,20 @@ router.post('/register/verify-phone', async (req, res) => {
       pendingRegistration.phoneCodeExpiresAt &&
       pendingRegistration.phoneCodeExpiresAt < new Date()
     ) {
-      console.log('[Phone Code] Backend - Regular Registration - Code expired');
+      // console.log('[Phone Code] Backend - Regular Registration - Code expired');
       await pendingRegistration.deleteOne();
       clearPendingRegistrationSession(req);
       return res.status(410).json({ error: 'SMS code expired. Please restart registration.' });
     }
 
-    console.log('[Phone Code] Backend - Regular Registration - Comparing code with hash');
+    // console.log('[Phone Code] Backend - Regular Registration - Comparing code with hash');
     const phoneMatch = await bcrypt.compare(code, pendingRegistration.phoneCodeHash || '');
-    console.log('[Phone Code] Backend - Regular Registration - Code match result:', phoneMatch);
+    // console.log('[Phone Code] Backend - Regular Registration - Code match result:', phoneMatch);
     if (!phoneMatch) {
-      console.log('[Phone Code] Backend - Regular Registration - Invalid verification code');
+      // console.log('[Phone Code] Backend - Regular Registration - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
-    console.log('[Phone Code] Backend - Regular Registration - Phone code verified successfully');
+    // console.log('[Phone Code] Backend - Regular Registration - Phone code verified successfully');
 
     const existingUser = await User.findOne({ email: pendingRegistration.email });
     if (existingUser) {
@@ -1303,11 +1303,11 @@ router.post('/register/verify-phone', async (req, res) => {
         isDeleted: { $ne: true }
       });
       if (existingPhoneUser) {
-        console.log('[Phone Code] Backend - Regular Registration - Phone number already in use:', {
-          phone: normalizedPhone,
-          existingUserId: existingPhoneUser._id,
-          existingUserEmail: existingPhoneUser.email
-        });
+        // console.log('[Phone Code] Backend - Regular Registration - Phone number already in use:', {
+        //   phone: normalizedPhone,
+        //   existingUserId: existingPhoneUser._id,
+        //   existingUserEmail: existingPhoneUser.email
+        // });
         clearPendingRegistrationSession(req);
         await pendingRegistration.deleteOne();
         return res.status(409).json({ error: 'This phone number is already registered to another account' });
@@ -1315,17 +1315,17 @@ router.post('/register/verify-phone', async (req, res) => {
     }
 
     // Debug: Log pendingRegistration data before creating user
-    console.log('[Phone Verification] Registration - PendingRegistration data:', {
-      id: pendingRegistration._id,
-      email: pendingRegistration.email,
-      address: pendingRegistration.address,
-      townCity: pendingRegistration.townCity,
-      county: pendingRegistration.county,
-      townCityType: typeof pendingRegistration.townCity,
-      countyType: typeof pendingRegistration.county,
-      townCityExists: pendingRegistration.townCity !== undefined && pendingRegistration.townCity !== null,
-      countyExists: pendingRegistration.county !== undefined && pendingRegistration.county !== null,
-    });
+    // console.log('[Phone Verification] Registration - PendingRegistration data:', {
+    //   id: pendingRegistration._id,
+    //   email: pendingRegistration.email,
+    //   address: pendingRegistration.address,
+    //   townCity: pendingRegistration.townCity,
+    //   county: pendingRegistration.county,
+    //   townCityType: typeof pendingRegistration.townCity,
+    //   countyType: typeof pendingRegistration.county,
+    //   townCityExists: pendingRegistration.townCity !== undefined && pendingRegistration.townCity !== null,
+    //   countyExists: pendingRegistration.county !== undefined && pendingRegistration.county !== null,
+    // });
 
     // Initialize verification object with email and phone as verified
     const verification = {
@@ -1384,13 +1384,13 @@ router.post('/register/verify-phone', async (req, res) => {
     // Convert pendingRegistration to plain object to ensure all fields are accessible
     const pendingData = pendingRegistration.toObject ? pendingRegistration.toObject() : pendingRegistration;
     
-    console.log('[Phone Verification] Registration - PendingRegistration raw data:', {
-      hasToObject: typeof pendingRegistration.toObject === 'function',
-      townCity: pendingData.townCity,
-      county: pendingData.county,
-      townCityType: typeof pendingData.townCity,
-      countyType: typeof pendingData.county,
-    });
+    // console.log('[Phone Verification] Registration - PendingRegistration raw data:', {
+    //   hasToObject: typeof pendingRegistration.toObject === 'function',
+    //   townCity: pendingData.townCity,
+    //   county: pendingData.county,
+    //   townCityType: typeof pendingData.townCity,
+    //   countyType: typeof pendingData.county,
+    // });
     
     // Always set address if it exists (even if empty string, it will be trimmed)
     if (pendingData.address !== undefined && pendingData.address !== null) {
@@ -1403,103 +1403,103 @@ router.post('/register/verify-phone', async (req, res) => {
     // Set townCity - check if it exists and is not empty
     if (pendingData.townCity !== undefined && pendingData.townCity !== null) {
       const trimmedTownCity = String(pendingData.townCity).trim();
-      console.log('[Phone Verification] Registration - Processing townCity:', {
-        original: pendingData.townCity,
-        trimmed: trimmedTownCity,
-        isEmpty: !trimmedTownCity,
-      });
+      // console.log('[Phone Verification] Registration - Processing townCity:', {
+      //   original: pendingData.townCity,
+      //   trimmed: trimmedTownCity,
+      //   isEmpty: !trimmedTownCity,
+      // });
       if (trimmedTownCity) {
         userData.townCity = trimmedTownCity;
-        console.log('[Phone Verification] Registration - townCity added to userData:', userData.townCity);
+        // console.log('[Phone Verification] Registration - townCity added to userData:', userData.townCity);
       } else {
-        console.log('[Phone Verification] Registration - townCity is empty after trim, skipping');
+        // console.log('[Phone Verification] Registration - townCity is empty after trim, skipping');
       }
     } else {
-      console.log('[Phone Verification] Registration - townCity is undefined or null in pendingRegistration');
+      // console.log('[Phone Verification] Registration - townCity is undefined or null in pendingRegistration');
     }
     
     // Set county - check if it exists and is not empty
     if (pendingData.county !== undefined && pendingData.county !== null) {
       const trimmedCounty = String(pendingData.county).trim();
-      console.log('[Phone Verification] Registration - Processing county:', {
-        original: pendingData.county,
-        trimmed: trimmedCounty,
-        isEmpty: !trimmedCounty,
-      });
+      // console.log('[Phone Verification] Registration - Processing county:', {
+      //   original: pendingData.county,
+      //   trimmed: trimmedCounty,
+      //   isEmpty: !trimmedCounty,
+      // });
       if (trimmedCounty) {
         userData.county = trimmedCounty;
-        console.log('[Phone Verification] Registration - county added to userData:', userData.county);
+        // console.log('[Phone Verification] Registration - county added to userData:', userData.county);
       } else {
-        console.log('[Phone Verification] Registration - county is empty after trim, skipping');
+        // console.log('[Phone Verification] Registration - county is empty after trim, skipping');
       }
     } else {
-      console.log('[Phone Verification] Registration - county is undefined or null in pendingRegistration');
+      // console.log('[Phone Verification] Registration - county is undefined or null in pendingRegistration');
     }
 
-    console.log('[Phone Verification] Registration - Creating user with data:', {
-      role: userData.role,
-      tradingName: userData.tradingName,
-      address: userData.address,
-      townCity: userData.townCity,
-      county: userData.county,
-      travelDistance: userData.travelDistance,
-    });
+    // console.log('[Phone Verification] Registration - Creating user with data:', {
+    //   role: userData.role,
+    //   tradingName: userData.tradingName,
+    //   address: userData.address,
+    //   townCity: userData.townCity,
+    //   county: userData.county,
+    //   travelDistance: userData.travelDistance,
+    // });
 
     // Create user instance and explicitly save to ensure all fields are persisted
     const user = new User(userData);
     await user.save();
 
-    console.log('[Phone Verification] Registration - User created and saved:', {
-      id: user._id,
-      tradingName: user.tradingName,
-      address: user.address,
-      townCity: user.townCity,
-      county: user.county,
-      travelDistance: user.travelDistance,
-    });
+    // console.log('[Phone Verification] Registration - User created and saved:', {
+    //   id: user._id,
+    //   tradingName: user.tradingName,
+    //   address: user.address,
+    //   townCity: user.townCity,
+    //   county: user.county,
+    //   travelDistance: user.travelDistance,
+    // });
 
     // Send welcome email using no-reply category (SMTP_USER_NO_REPLY)
     try {
-      console.log('[Welcome Email] Sending welcome email to:', user.email);
+      // console.log('[Welcome Email] Sending welcome email to:', user.email);
       await sendTemplatedEmail(user.email, 'welcome', {
         firstName: user.firstName,
       }, 'no-reply'); // Category: no-reply -> Uses SMTP_USER_NO_REPLY
-      console.log('[Welcome Email] Welcome email sent successfully (category: no-reply)');
+      // console.log('[Welcome Email] Welcome email sent successfully (category: no-reply)');
     } catch (welcomeEmailError) {
-      console.error('[Welcome Email] Failed to send welcome email:', welcomeEmailError);
+      // console.error('[Welcome Email] Failed to send welcome email:', welcomeEmailError);
       // Don't fail registration if welcome email fails
     }
 
     // Verify the saved data by fetching from database
     const savedUser = await User.findById(user._id);
-    console.log('[Phone Verification] Registration - Verified saved user data:', {
-      id: savedUser._id,
-      tradingName: savedUser.tradingName,
-      address: savedUser.address,
-      townCity: savedUser.townCity,
-      county: savedUser.county,
-      travelDistance: savedUser.travelDistance,
-      townCityExists: savedUser.townCity !== undefined && savedUser.townCity !== null,
-      countyExists: savedUser.county !== undefined && savedUser.county !== null,
-    });
+    // console.log('[Phone Verification] Registration - Verified saved user data:', {
+    //   id: savedUser._id,
+    //   tradingName: savedUser.tradingName,
+    //   address: savedUser.address,
+    //   townCity: savedUser.townCity,
+    //   county: savedUser.county,
+    //   travelDistance: savedUser.travelDistance,
+    //   townCityExists: savedUser.townCity !== undefined && savedUser.townCity !== null,
+    //   countyExists: savedUser.county !== undefined && savedUser.county !== null,
+    // });
 
-    console.log('[Phone Verification] Registration - User created successfully:', {
-      userId: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      phoneVerificationStatus: user.verification.phone.status
-    });
+    // console.log('[Phone Verification] Registration - User created successfully:', {
+    //   userId: user.id,
+    //   email: user.email,
+    //   phone: user.phone,
+    //   role: user.role,
+    //   phoneVerificationStatus: user.verification.phone.status
+    // });
 
     req.session.userId = user.id;
     req.session.role = user.role;
     await pendingRegistration.deleteOne();
     clearPendingRegistrationSession(req);
 
-    console.log('[Phone Verification] Registration - Verification completed successfully');
+    // console.log('[Phone Verification] Registration - Verification completed successfully');
     return res.status(201).json({ user: sanitizeUser(user) });
   } catch (err) {
-    console.error('[Phone Verification] Registration - Error:', err);
+    // console.error('[Phone Verification] Registration - Error:', err);
     return res.status(500).json({ error: 'Failed to verify phone' });
   }
 });
@@ -1523,29 +1523,29 @@ router.get('/social/pending', (req, res) => {
 // Send phone verification code for social registration
 router.post('/social/send-phone-code', async (req, res) => {
   try {
-    console.log('[Phone Code] Backend - Social Registration - Received request to send phone code');
+    // console.log('[Phone Code] Backend - Social Registration - Received request to send phone code');
     const pending = getPendingSocialProfile(req);
     if (!pending) {
-      console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
+      // console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
       return res.status(400).json({ error: 'No pending social registration' });
     }
-    console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
-      provider: pending.provider,
-      email: pending.email
-    });
+    // console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
+    //   provider: pending.provider,
+    //   email: pending.email
+    // });
 
     const { phone } = req.body;
     if (!phone || !phone.trim()) {
-      console.log('[Phone Code] Backend - Social Registration - Phone number missing');
+      // console.log('[Phone Code] Backend - Social Registration - Phone number missing');
       return res.status(400).json({ error: 'Phone number is required' });
     }
-    console.log('[Phone Code] Backend - Social Registration - Phone number received:', phone.trim());
+    // console.log('[Phone Code] Backend - Social Registration - Phone number received:', phone.trim());
 
     const smsCode = generateCode();
-    console.log('[Phone Code] Backend - Social Registration - Generated SMS code:', smsCode);
+    // console.log('[Phone Code] Backend - Social Registration - Generated SMS code:', smsCode);
     const smsCodeHash = await bcrypt.hash(smsCode, 10);
     const expiresAt = codeExpiryDate();
-    console.log('[Phone Code] Backend - Social Registration - Code hash created, expires at:', expiresAt);
+    // console.log('[Phone Code] Backend - Social Registration - Code hash created, expires at:', expiresAt);
 
     // Store phone code in session
     if (!req.session[socialSessionKey]) {
@@ -1560,44 +1560,44 @@ router.post('/social/send-phone-code', async (req, res) => {
         else resolve(undefined);
       });
     });
-    console.log('[Phone Code] Backend - Social Registration - Code stored in session');
+    // console.log('[Phone Code] Backend - Social Registration - Code stored in session');
 
     try {
-      console.log('[Phone Code] Backend - Social Registration - Step 1: Preparing to send SMS');
-      console.log('[Phone Code] Backend - Social Registration - Step 1.1: Phone number:', phone.trim());
-      console.log('[Phone Code] Backend - Social Registration - Step 1.2: SMS code generated:', smsCode);
-      console.log('[Phone Code] Backend - Social Registration - Step 2: Calling sendSmsVerificationCode');
+      // console.log('[Phone Code] Backend - Social Registration - Step 1: Preparing to send SMS');
+      // console.log('[Phone Code] Backend - Social Registration - Step 1.1: Phone number:', phone.trim());
+      // console.log('[Phone Code] Backend - Social Registration - Step 1.2: SMS code generated:', smsCode);
+      // console.log('[Phone Code] Backend - Social Registration - Step 2: Calling sendSmsVerificationCode');
       const smsResult = await sendSmsVerificationCode(phone.trim(), smsCode);
-      console.log('[Phone Code] Backend - Social Registration - Step 3: SMS function returned');
+      // console.log('[Phone Code] Backend - Social Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
-        console.log('[Phone Code] Backend - Social Registration - Step 3.1: SMS sent successfully:', {
-          messageSid: smsResult.messageSid,
-          phone: phone.trim()
-        });
+        // console.log('[Phone Code] Backend - Social Registration - Step 3.1: SMS sent successfully:', {
+        //   messageSid: smsResult.messageSid,
+        //   phone: phone.trim()
+        // });
       } else {
-        console.warn('[Phone Code] Backend - Social Registration - Step 3.2: SMS function returned but success is false');
+        // console.warn('[Phone Code] Backend - Social Registration - Step 3.2: SMS function returned but success is false');
       }
     } catch (notificationError) {
-      console.error('[Phone Code] Backend - Social Registration - ERROR: Failed to send SMS code');
-      console.error('[Phone Code] Backend - Social Registration - ERROR.1: Error object:', notificationError);
-      console.error('[Phone Code] Backend - Social Registration - ERROR.2: Error message:', notificationError.message);
-      console.error('[Phone Code] Backend - Social Registration - ERROR.3: Twilio error code:', notificationError.code);
-      console.error('[Phone Code] Backend - Social Registration - ERROR.4: Twilio error status:', notificationError.status);
-      console.error('[Phone Code] Backend - Social Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
-      console.error('[Phone Code] Backend - Social Registration - ERROR.6: Full error details:', {
-        message: notificationError.message,
-        code: notificationError.code,
-        status: notificationError.status,
-        moreInfo: notificationError.moreInfo,
-        twilioErrorCode: notificationError.twilioErrorCode,
-        twilioErrorMessage: notificationError.twilioErrorMessage,
-        twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
-        userMessage: notificationError.userMessage,
-        stack: notificationError.stack
-      });
+      // console.error('[Phone Code] Backend - Social Registration - ERROR: Failed to send SMS code');
+      // console.error('[Phone Code] Backend - Social Registration - ERROR.1: Error object:', notificationError);
+      // console.error('[Phone Code] Backend - Social Registration - ERROR.2: Error message:', notificationError.message);
+      // console.error('[Phone Code] Backend - Social Registration - ERROR.3: Twilio error code:', notificationError.code);
+      // console.error('[Phone Code] Backend - Social Registration - ERROR.4: Twilio error status:', notificationError.status);
+      // console.error('[Phone Code] Backend - Social Registration - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+      // console.error('[Phone Code] Backend - Social Registration - ERROR.6: Full error details:', {
+      //   message: notificationError.message,
+      //   code: notificationError.code,
+      //   status: notificationError.status,
+      //   moreInfo: notificationError.moreInfo,
+      //   twilioErrorCode: notificationError.twilioErrorCode,
+      //   twilioErrorMessage: notificationError.twilioErrorMessage,
+      //   twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+      //   userMessage: notificationError.userMessage,
+      //   stack: notificationError.stack
+      // });
       
       if (isProduction) {
-        console.warn('[Phone Code] Backend - Social Registration - Continuing despite SMS send failure (production mode)');
+        // console.warn('[Phone Code] Backend - Social Registration - Continuing despite SMS send failure (production mode)');
       } else {
         // Return detailed error message to user
         const errorMessage = notificationError.userMessage || 
@@ -1613,13 +1613,13 @@ router.post('/social/send-phone-code', async (req, res) => {
       }
     }
 
-    console.log('[Phone Code] Backend - Social Registration - Returning success response with code:', smsCode);
+    // console.log('[Phone Code] Backend - Social Registration - Returning success response with code:', smsCode);
     return res.json({
       message: 'Phone verification code sent',
       phoneCode: smsCode, // Include in response for development/testing
     });
   } catch (error) {
-    console.error('[Phone Code] Backend - Social Registration - Error:', error);
+    // console.error('[Phone Code] Backend - Social Registration - Error:', error);
     return res.status(500).json({ error: 'Failed to send phone verification code' });
   }
 });
@@ -1627,46 +1627,46 @@ router.post('/social/send-phone-code', async (req, res) => {
 // Verify phone code and complete social registration
 router.post('/social/verify-phone', async (req, res) => {
   try {
-    console.log('[Phone Code] Backend - Social Registration - Received phone code verification request');
+    // console.log('[Phone Code] Backend - Social Registration - Received phone code verification request');
     const pending = getPendingSocialProfile(req);
     if (!pending) {
-      console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
+      // console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
       return res.status(400).json({ error: 'No pending social registration' });
     }
-    console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
-      provider: pending.provider,
-      email: pending.email
-    });
+    // console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
+    //   provider: pending.provider,
+    //   email: pending.email
+    // });
 
     const { code, ...registrationData } = req.body;
-    console.log('[Phone Code] Backend - Social Registration - Code received:', code ? '****' : 'missing');
+    // console.log('[Phone Code] Backend - Social Registration - Code received:', code ? '****' : 'missing');
 
     if (!code || !isValidCode(code)) {
-      console.log('[Phone Code] Backend - Social Registration - Invalid code format');
+      // console.log('[Phone Code] Backend - Social Registration - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
     // Check phone code from session
     const sessionData = req.session[socialSessionKey];
     if (!sessionData || !sessionData.phoneCodeHash) {
-      console.log('[Phone Code] Backend - Social Registration - No phone code hash in session');
+      // console.log('[Phone Code] Backend - Social Registration - No phone code hash in session');
       return res.status(400).json({ error: 'No phone verification code found. Please request a new code.' });
     }
 
     if (sessionData.phoneCodeExpiresAt && new Date(sessionData.phoneCodeExpiresAt) < new Date()) {
-      console.log('[Phone Code] Backend - Social Registration - Code expired');
+      // console.log('[Phone Code] Backend - Social Registration - Code expired');
       delete req.session[socialSessionKey];
       return res.status(410).json({ error: 'Phone verification code expired. Please request a new code.' });
     }
 
-    console.log('[Phone Code] Backend - Social Registration - Comparing code with hash');
+    // console.log('[Phone Code] Backend - Social Registration - Comparing code with hash');
     const phoneMatch = await bcrypt.compare(code, sessionData.phoneCodeHash);
-    console.log('[Phone Code] Backend - Social Registration - Code match result:', phoneMatch);
+    // console.log('[Phone Code] Backend - Social Registration - Code match result:', phoneMatch);
     if (!phoneMatch) {
-      console.log('[Phone Code] Backend - Social Registration - Invalid verification code');
+      // console.log('[Phone Code] Backend - Social Registration - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
-    console.log('[Phone Code] Backend - Social Registration - Phone code verified successfully');
+    // console.log('[Phone Code] Backend - Social Registration - Phone code verified successfully');
 
     // Phone verified, now complete registration
     const mergedPayload = {
@@ -1796,7 +1796,7 @@ router.post('/social/verify-phone', async (req, res) => {
 
     return res.status(201).json({ user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Social phone verification error', error);
+    // console.error('Social phone verification error', error);
     return res.status(500).json({ error: 'Failed to verify phone and complete registration' });
   }
 });
@@ -1909,7 +1909,7 @@ router.post('/social/complete', async (req, res) => {
 
     return res.status(201).json({ user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Social completion error', error);
+    // console.error('Social completion error', error);
     return res.status(500).json({ error: 'Failed to complete social registration' });
   }
 });
@@ -1943,15 +1943,15 @@ router.post('/password/forgot', async (req, res) => {
     const resetLink = `${PASSWORD_RESET_URL}${
       PASSWORD_RESET_URL.includes('?') ? '&' : '?'
     }token=${token}`;
-    console.log(`[PASSWORD-RESET] Reset link for ${user.email}: ${resetLink}`);
+    // console.log(`[PASSWORD-RESET] Reset link for ${user.email}: ${resetLink}`);
     
     try {
     await sendPasswordResetEmail(user.email, resetLink);
     } catch (notificationError) {
-      console.error('Failed to send password reset email', notificationError);
+      // console.error('Failed to send password reset email', notificationError);
       // In production, continue even if email sending fails (SMTP may not be configured yet)
       if (isProduction) {
-        console.warn('Continuing despite email send failure (production mode)');
+        // console.warn('Continuing despite email send failure (production mode)');
       }
     }
 
@@ -1961,7 +1961,7 @@ router.post('/password/forgot', async (req, res) => {
       resetLink: resetLink
     });
   } catch (error) {
-    console.error('Forgot password error', error);
+    // console.error('Forgot password error', error);
     return res.status(500).json({ error: 'Failed to send password reset link' });
   }
 });
@@ -2001,7 +2001,7 @@ router.post('/password/reset', async (req, res) => {
 
     return res.json({ message: 'Password updated successfully. Please login again.' });
   } catch (error) {
-    console.error('Reset password error', error);
+    // console.error('Reset password error', error);
     return res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -2032,24 +2032,24 @@ router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
       return res.status(409).json({ error: 'Email is already in use' });
     }
 
-    console.log('[Email Change] Generating OTP code for email change:', {
-      currentEmail: user.email,
-      newEmail: normalizedEmail,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('[Email Change] Generating OTP code for email change:', {
+    //   currentEmail: user.email,
+    //   newEmail: normalizedEmail,
+    //   timestamp: new Date().toISOString()
+    // });
     
     const otpCode = generateCode();
-    console.log('[Email Change] OTP code generated:', {
-      code: otpCode,
-      codeLength: otpCode.length,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('[Email Change] OTP code generated:', {
+    //   code: otpCode,
+    //   codeLength: otpCode.length,
+    //   timestamp: new Date().toISOString()
+    // });
     
     const otpHash = await bcrypt.hash(otpCode, 10);
-    console.log('[Email Change] OTP hash created:', {
-      hasHash: !!otpHash,
-      hashLength: otpHash?.length || 0
-    });
+    // console.log('[Email Change] OTP hash created:', {
+    //   hasHash: !!otpHash,
+    //   hashLength: otpHash?.length || 0
+    // });
     
     req.session[emailChangeOTPKey] = {
       email: normalizedEmail,
@@ -2057,42 +2057,42 @@ router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
       expiresAt: codeExpiryDate(),
     };
     
-    console.log('[Email Change] Session updated with OTP:', {
-      email: normalizedEmail,
-      expiresAt: req.session[emailChangeOTPKey].expiresAt
-    });
+    // console.log('[Email Change] Session updated with OTP:', {
+    //   email: normalizedEmail,
+    //   expiresAt: req.session[emailChangeOTPKey].expiresAt
+    // });
 
-    console.log('[Email Change] Calling sendEmailVerificationCode:', {
-      email: normalizedEmail,
-      code: otpCode,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('[Email Change] Calling sendEmailVerificationCode:', {
+    //   email: normalizedEmail,
+    //   code: otpCode,
+    //   timestamp: new Date().toISOString()
+    // });
     
     try {
       const emailResult = await sendEmailVerificationCode(normalizedEmail, otpCode, user.firstName || 'User');
-      console.log('[Email Change] Email verification code sent successfully:', {
-        email: normalizedEmail,
-        result: emailResult ? {
-          messageId: emailResult.messageId,
-          response: emailResult.response,
-          accepted: emailResult.accepted,
-          rejected: emailResult.rejected
-        } : 'no result',
-        timestamp: new Date().toISOString()
-      });
+      // console.log('[Email Change] Email verification code sent successfully:', {
+      //   email: normalizedEmail,
+      //   result: emailResult ? {
+      //     messageId: emailResult.messageId,
+      //     response: emailResult.response,
+      //     accepted: emailResult.accepted,
+      //     rejected: emailResult.rejected
+      //   } : 'no result',
+      //   timestamp: new Date().toISOString()
+      // });
     } catch (notificationError) {
-      console.error('[Email Change] Failed to send email OTP:', {
-        error: notificationError.message,
-        code: notificationError.code,
-        command: notificationError.command,
-        response: notificationError.response,
-        responseCode: notificationError.responseCode,
-        stack: notificationError.stack,
-        email: normalizedEmail,
-        timestamp: new Date().toISOString()
-      });
+      // console.error('[Email Change] Failed to send email OTP:', {
+      //   error: notificationError.message,
+      //   code: notificationError.code,
+      //   command: notificationError.command,
+      //   response: notificationError.response,
+      //   responseCode: notificationError.responseCode,
+      //   stack: notificationError.stack,
+      //   email: normalizedEmail,
+      //   timestamp: new Date().toISOString()
+      // });
       if (isProduction) {
-        console.warn('[Email Change] Continuing despite email send failure (production mode)');
+        // console.warn('[Email Change] Continuing despite email send failure (production mode)');
       } else {
         delete req.session[emailChangeOTPKey];
         return res.status(502).json({ error: 'Failed to send verification email' });
@@ -2104,7 +2104,7 @@ router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
       emailCode: otpCode
     });
   } catch (error) {
-    console.error('Email change OTP error', error);
+    // console.error('Email change OTP error', error);
     return res.status(500).json({ error: 'Failed to send verification code' });
   }
 });
@@ -2112,16 +2112,16 @@ router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
 router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
   try {
     const { phone } = req.body || {};
-    console.log('[Phone Verification] Profile Change - Request received for phone:', phone);
+    // console.log('[Phone Verification] Profile Change - Request received for phone:', phone);
     
     if (!phone) {
-      console.log('[Phone Verification] Profile Change - Phone missing');
+      // console.log('[Phone Verification] Profile Change - Phone missing');
       return res.status(400).json({ error: 'Phone is required' });
     }
 
     const user = await User.findById(req.session.userId);
     if (!user) {
-      console.log('[Phone Verification] Profile Change - User not found in session');
+      // console.log('[Phone Verification] Profile Change - User not found in session');
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
@@ -2131,10 +2131,10 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Phone number is required' });
     }
     
-    console.log('[Phone Verification] Profile Change - Current phone:', user.phone, 'New phone:', normalizedPhone);
+    // console.log('[Phone Verification] Profile Change - Current phone:', user.phone, 'New phone:', normalizedPhone);
     
     if (normalizedPhone === user.phone) {
-      console.log('[Phone Verification] Profile Change - New phone same as current phone');
+      // console.log('[Phone Verification] Profile Change - New phone same as current phone');
       return res.status(400).json({ error: 'New phone must be different from current phone' });
     }
 
@@ -2147,11 +2147,11 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       _id: { $ne: user._id } // Exclude current user
     });
     if (existingPhoneUser) {
-      console.log('[Phone Verification] Profile Change - Phone number already in use:', {
-        phone: normalizedPhone,
-        existingUserId: existingPhoneUser._id,
-        existingUserEmail: existingPhoneUser.email
-      });
+      // console.log('[Phone Verification] Profile Change - Phone number already in use:', {
+      //   phone: normalizedPhone,
+      //   existingUserId: existingPhoneUser._id,
+      //   existingUserEmail: existingPhoneUser.email
+      // });
       return res.status(409).json({ error: 'This phone number is already registered to another account' });
     }
 
@@ -2161,36 +2161,36 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       expiresAt: codeExpiryDate(),
     };
 
-    console.log('[Phone Verification] Profile Change - OTP generated and stored in session');
+    // console.log('[Phone Verification] Profile Change - OTP generated and stored in session');
 
     try {
-      console.log('[Phone Verification] Profile Change - Step 1: Preparing to send SMS OTP');
-      console.log('[Phone Verification] Profile Change - Step 1.1: Phone number:', normalizedPhone);
-      console.log('[Phone Verification] Profile Change - Step 1.2: OTP code generated:', otpCode);
-      console.log('[Phone Verification] Profile Change - Step 2: Calling sendSmsVerificationCode');
+      // console.log('[Phone Verification] Profile Change - Step 1: Preparing to send SMS OTP');
+      // console.log('[Phone Verification] Profile Change - Step 1.1: Phone number:', normalizedPhone);
+      // console.log('[Phone Verification] Profile Change - Step 1.2: OTP code generated:', otpCode);
+      // console.log('[Phone Verification] Profile Change - Step 2: Calling sendSmsVerificationCode');
       await sendSmsVerificationCode(normalizedPhone, otpCode);
-      console.log('[Phone Verification] Profile Change - Step 3: SMS sent successfully to:', normalizedPhone);
+      // console.log('[Phone Verification] Profile Change - Step 3: SMS sent successfully to:', normalizedPhone);
     } catch (notificationError) {
-      console.error('[Phone Verification] Profile Change - ERROR: Failed to send SMS OTP');
-      console.error('[Phone Verification] Profile Change - ERROR.1: Error object:', notificationError);
-      console.error('[Phone Verification] Profile Change - ERROR.2: Error message:', notificationError.message);
-      console.error('[Phone Verification] Profile Change - ERROR.3: Twilio error code:', notificationError.code);
-      console.error('[Phone Verification] Profile Change - ERROR.4: Twilio error status:', notificationError.status);
-      console.error('[Phone Verification] Profile Change - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
-      console.error('[Phone Verification] Profile Change - ERROR.6: Full error details:', {
-        message: notificationError.message,
-        code: notificationError.code,
-        status: notificationError.status,
-        moreInfo: notificationError.moreInfo,
-        twilioErrorCode: notificationError.twilioErrorCode,
-        twilioErrorMessage: notificationError.twilioErrorMessage,
-        twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
-        userMessage: notificationError.userMessage,
-        stack: notificationError.stack
-      });
+      // console.error('[Phone Verification] Profile Change - ERROR: Failed to send SMS OTP');
+      // console.error('[Phone Verification] Profile Change - ERROR.1: Error object:', notificationError);
+      // console.error('[Phone Verification] Profile Change - ERROR.2: Error message:', notificationError.message);
+      // console.error('[Phone Verification] Profile Change - ERROR.3: Twilio error code:', notificationError.code);
+      // console.error('[Phone Verification] Profile Change - ERROR.4: Twilio error status:', notificationError.status);
+      // console.error('[Phone Verification] Profile Change - ERROR.5: Twilio error moreInfo:', notificationError.moreInfo);
+      // console.error('[Phone Verification] Profile Change - ERROR.6: Full error details:', {
+      //   message: notificationError.message,
+      //   code: notificationError.code,
+      //   status: notificationError.status,
+      //   moreInfo: notificationError.moreInfo,
+      //   twilioErrorCode: notificationError.twilioErrorCode,
+      //   twilioErrorMessage: notificationError.twilioErrorMessage,
+      //   twilioErrorMoreInfo: notificationError.twilioErrorMoreInfo,
+      //   userMessage: notificationError.userMessage,
+      //   stack: notificationError.stack
+      // });
       
       if (isProduction) {
-        console.warn('[Phone Verification] Profile Change - Continuing despite SMS send failure (production mode)');
+        // console.warn('[Phone Verification] Profile Change - Continuing despite SMS send failure (production mode)');
       } else {
         delete req.session[phoneChangeOTPKey];
         // Return detailed error message to user
@@ -2207,13 +2207,13 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       }
     }
 
-    console.log('[Phone Verification] Profile Change - OTP request completed successfully');
+    // console.log('[Phone Verification] Profile Change - OTP request completed successfully');
     return res.json({ 
       message: 'Verification code sent to new phone',
       phoneCode: otpCode
     });
   } catch (error) {
-    console.error('[Phone Verification] Profile Change - Error:', error);
+    // console.error('[Phone Verification] Profile Change - Error:', error);
     return res.status(500).json({ error: 'Failed to send verification code' });
   }
 });
@@ -2221,15 +2221,15 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
 router.post('/profile/verify-otp', requireAuth, async (req, res) => {
   try {
     const { code, type } = req.body || {}; // type: 'email' or 'phone'
-    console.log('[Phone Verification] Profile OTP Verify - Received:', { type, code: code ? '****' : 'missing' });
+    // console.log('[Phone Verification] Profile OTP Verify - Received:', { type, code: code ? '****' : 'missing' });
     
     if (!code || !type) {
-      console.log('[Phone Verification] Profile OTP Verify - Missing code or type');
+      // console.log('[Phone Verification] Profile OTP Verify - Missing code or type');
       return res.status(400).json({ error: 'Code and type are required' });
     }
 
     if (!isValidCode(code)) {
-      console.log('[Phone Verification] Profile OTP Verify - Invalid code format');
+      // console.log('[Phone Verification] Profile OTP Verify - Invalid code format');
       return res.status(400).json({ error: 'A valid 4-digit code is required' });
     }
 
@@ -2237,23 +2237,23 @@ router.post('/profile/verify-otp', requireAuth, async (req, res) => {
     const otpData = req.session[sessionKey];
 
     if (!otpData) {
-      console.log('[Phone Verification] Profile OTP Verify - No pending verification found for type:', type);
+      // console.log('[Phone Verification] Profile OTP Verify - No pending verification found for type:', type);
       return res.status(400).json({ error: 'No pending verification found' });
     }
 
-    console.log('[Phone Verification] Profile OTP Verify - OTP data found, phone:', otpData.phone);
+    // console.log('[Phone Verification] Profile OTP Verify - OTP data found, phone:', otpData.phone);
 
     if (otpData.expiresAt && otpData.expiresAt < new Date()) {
-      console.log('[Phone Verification] Profile OTP Verify - Code expired');
+      // console.log('[Phone Verification] Profile OTP Verify - Code expired');
       delete req.session[sessionKey];
       return res.status(410).json({ error: 'Verification code expired' });
     }
 
     const match = await bcrypt.compare(code, otpData.otpHash);
-    console.log('[Phone Verification] Profile OTP Verify - Code match result:', match);
+    // console.log('[Phone Verification] Profile OTP Verify - Code match result:', match);
     
     if (!match) {
-      console.log('[Phone Verification] Profile OTP Verify - Invalid verification code');
+      // console.log('[Phone Verification] Profile OTP Verify - Invalid verification code');
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 
@@ -2261,10 +2261,10 @@ router.post('/profile/verify-otp', requireAuth, async (req, res) => {
     otpData.verified = true;
     req.session[sessionKey] = otpData;
 
-    console.log('[Phone Verification] Profile OTP Verify - Verification successful for phone:', otpData.phone);
+    // console.log('[Phone Verification] Profile OTP Verify - Verification successful for phone:', otpData.phone);
     return res.json({ message: 'Verification successful' });
   } catch (error) {
-    console.error('[Phone Verification] Profile OTP Verify - Error:', error);
+    // console.error('[Phone Verification] Profile OTP Verify - Error:', error);
     return res.status(500).json({ error: 'Failed to verify code' });
   }
 });
@@ -2350,11 +2350,11 @@ router.put('/profile', requireAuth, async (req, res) => {
         _id: { $ne: user._id } // Exclude current user
       });
       if (existingPhoneUser) {
-        console.log('[Profile Update] Phone number already in use:', {
-          phone: normalizedPhone,
-          existingUserId: existingPhoneUser._id,
-          existingUserEmail: existingPhoneUser.email
-        });
+        // console.log('[Profile Update] Phone number already in use:', {
+        //   phone: normalizedPhone,
+        //   existingUserId: existingPhoneUser._id,
+        //   existingUserEmail: existingPhoneUser.email
+        // });
         return res.status(409).json({ error: 'This phone number is already registered to another account' });
       }
       const phoneOTP = req.session[phoneChangeOTPKey];
@@ -2428,7 +2428,7 @@ router.put('/profile', requireAuth, async (req, res) => {
 
     // Update phone verification status if phone was changed and verified
     if (normalizedPhone !== user.phone) {
-      console.log('[Phone Verification] Profile Update - Phone changed, updating verification status');
+      // console.log('[Phone Verification] Profile Update - Phone changed, updating verification status');
       // Phone was changed and verified via OTP
       if (!user.verification.phone) {
         user.verification.phone = { status: 'verified', verifiedAt: new Date() };
@@ -2436,9 +2436,9 @@ router.put('/profile', requireAuth, async (req, res) => {
         user.verification.phone.status = 'verified';
         user.verification.phone.verifiedAt = new Date();
       }
-      console.log('[Phone Verification] Profile Update - Phone verification status updated:', user.verification.phone);
+      // console.log('[Phone Verification] Profile Update - Phone verification status updated:', user.verification.phone);
     } else if (user.phone && (!user.verification.phone || user.verification.phone.status === 'not-started')) {
-      console.log('[Phone Verification] Profile Update - Phone exists but not verified, marking as verified');
+      // console.log('[Phone Verification] Profile Update - Phone exists but not verified, marking as verified');
       // Phone exists but not verified in verification object, mark as verified
       if (!user.verification.phone) {
         user.verification.phone = { status: 'verified', verifiedAt: new Date() };
@@ -2448,7 +2448,7 @@ router.put('/profile', requireAuth, async (req, res) => {
           user.verification.phone.verifiedAt = new Date();
         }
       }
-      console.log('[Phone Verification] Profile Update - Phone verification status initialized:', user.verification.phone);
+      // console.log('[Phone Verification] Profile Update - Phone verification status initialized:', user.verification.phone);
     }
 
     if (user.role === 'professional') {
@@ -2582,7 +2582,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     await user.save();
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Profile update error', error);
+    // console.error('Profile update error', error);
     return res.status(500).json({ error: 'Failed to update profile' });
   }
 });
@@ -2623,7 +2623,7 @@ router.post(
           try {
             await cloudinary.uploader.destroy(oldPublicId);
           } catch (error) {
-            console.warn('Failed to delete old avatar from Cloudinary:', error);
+            // console.warn('Failed to delete old avatar from Cloudinary:', error);
       }
         }
       }
@@ -2654,7 +2654,7 @@ router.post(
 
       return res.json({ user: sanitizeUser(user) });
     } catch (error) {
-      console.error('Avatar upload error', error);
+      // console.error('Avatar upload error', error);
       return res.status(500).json({ 
         error: error.message || 'Failed to upload avatar' 
       });
@@ -2690,7 +2690,7 @@ router.put('/profile/password', requireAuth, async (req, res) => {
 
     return res.json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Change password error', error);
+    // console.error('Change password error', error);
     return res.status(500).json({ error: error.message || 'Failed to change password' });
   }
 });
@@ -2727,7 +2727,7 @@ router.delete('/profile', async (req, res) => {
           await cloudinary.uploader.destroy(publicId);
         }
       } catch (cloudinaryError) {
-        console.warn('Failed to delete avatar from Cloudinary:', cloudinaryError);
+        // console.warn('Failed to delete avatar from Cloudinary:', cloudinaryError);
       }
     }
 
@@ -2737,13 +2737,13 @@ router.delete('/profile', async (req, res) => {
     // Destroy session
     req.session.destroy((err) => {
       if (err) {
-        console.error('Session destroy error:', err);
+        // console.error('Session destroy error:', err);
     }
     });
 
     return res.json({ message: 'Account deleted successfully' });
   } catch (error) {
-    console.error('Delete account error', error);
+    // console.error('Delete account error', error);
     return res.status(500).json({ error: error.message || 'Failed to delete account' });
   }
 });
@@ -2795,7 +2795,7 @@ router.post('/profile/portfolio/upload', requireAuth, multer({ storage: multer.m
 
     return res.json({ imageUrl: uploadResult.secure_url });
   } catch (error) {
-    console.error('Portfolio image upload error', error);
+    // console.error('Portfolio image upload error', error);
     return res.status(500).json({ error: 'Failed to upload portfolio image' });
   }
 });
@@ -2821,7 +2821,7 @@ router.delete('/profile/avatar', requireAuth, async (req, res) => {
         try {
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
-          console.warn('Failed to delete avatar from Cloudinary:', error);
+          // console.warn('Failed to delete avatar from Cloudinary:', error);
         }
       }
 
@@ -2831,7 +2831,7 @@ router.delete('/profile/avatar', requireAuth, async (req, res) => {
 
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Avatar removal error', error);
+    // console.error('Avatar removal error', error);
     return res.status(500).json({ error: 'Failed to remove avatar' });
   }
 });
@@ -2879,7 +2879,7 @@ router.post('/login', async (req, res) => {
 
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Login error', error);
+    // console.error('Login error', error);
     return res.status(500).json({ error: 'Failed to login' });
   }
 });
@@ -2891,7 +2891,7 @@ router.post('/logout', (req, res) => {
 
   req.session.destroy((err) => {
     if (err) {
-      console.error('Logout error', err);
+      // console.error('Logout error', err);
       return res.status(500).json({ error: 'Failed to logout' });
     }
 
@@ -2953,7 +2953,7 @@ router.get('/verification', requireAuth, async (req, res) => {
 
     return res.json({ verification: user.verification });
   } catch (error) {
-    console.error('Verification status error', error);
+    // console.error('Verification status error', error);
     return res.status(500).json({ error: 'Failed to get verification status' });
   }
 });
@@ -3010,7 +3010,7 @@ router.post(
           try {
             await cloudinary.uploader.destroy(oldPublicId);
           } catch (error) {
-            console.warn('Failed to delete old document from Cloudinary:', error);
+            // console.warn('Failed to delete old document from Cloudinary:', error);
           }
         }
       }
@@ -3101,7 +3101,7 @@ router.post(
         message: 'Document uploaded successfully. Under review...'
       });
     } catch (error) {
-      console.error('Verification upload error', error);
+      // console.error('Verification upload error', error);
       return res.status(500).json({ 
         error: error.message || 'Failed to upload document' 
       });
@@ -3143,7 +3143,7 @@ router.put('/verification/:type', requireAuth, async (req, res) => {
       message: 'Verification updated successfully'
     });
   } catch (error) {
-    console.error('Verification update error', error);
+    // console.error('Verification update error', error);
     return res.status(500).json({ error: 'Failed to update verification' });
   }
 });
@@ -3174,7 +3174,7 @@ router.delete('/verification/:type', requireAuth, async (req, res) => {
         try {
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
-          console.warn('Failed to delete document from Cloudinary:', error);
+          // console.warn('Failed to delete document from Cloudinary:', error);
         }
       }
     }
@@ -3188,7 +3188,7 @@ router.delete('/verification/:type', requireAuth, async (req, res) => {
 
     return res.json({ message: 'Verification document deleted successfully' });
   } catch (error) {
-    console.error('Verification delete error', error);
+    // console.error('Verification delete error', error);
     return res.status(500).json({ error: 'Failed to delete verification document' });
   }
 });
@@ -3213,7 +3213,7 @@ router.get('/me', async (req, res) => {
 
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {
-    console.error('Session lookup error', error);
+    // console.error('Session lookup error', error);
     return res.status(500).json({ error: 'Failed to fetch user session' });
   }
 });
@@ -3222,11 +3222,11 @@ router.get('/me', async (req, res) => {
 router.get('/profile/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
-    console.log('[Profile API] Requested identifier:', identifier);
+    // console.log('[Profile API] Requested identifier:', identifier);
     
     // Find user by ID only (identifier must be user ID)
     if (!mongoose.Types.ObjectId.isValid(identifier)) {
-      console.log('[Profile API] Invalid user ID format:', identifier);
+      // console.log('[Profile API] Invalid user ID format:', identifier);
       return res.status(404).json({ error: 'Profile not found' });
     }
 
@@ -3244,10 +3244,10 @@ router.get('/profile/:identifier', async (req, res) => {
       ]
     });
 
-    console.log('[Profile API] Found user:', user ? user._id.toString() : 'none');
+    // console.log('[Profile API] Found user:', user ? user._id.toString() : 'none');
 
     if (!user) {
-      console.log('[Profile API] User not found for ID:', identifier);
+      // console.log('[Profile API] User not found for ID:', identifier);
       return res.status(404).json({ error: 'Profile not found' });
     }
 
@@ -3255,7 +3255,7 @@ router.get('/profile/:identifier', async (req, res) => {
     const userId = user._id.toString();
     
     if (userId !== identifier) {
-      console.error('[Profile API] ID mismatch! Requested:', identifier, 'Got:', userId);
+      // console.error('[Profile API] ID mismatch! Requested:', identifier, 'Got:', userId);
       return res.status(404).json({ error: 'Profile not found' });
     }
 
@@ -3264,7 +3264,7 @@ router.get('/profile/:identifier', async (req, res) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    console.log('[Profile API] Returning profile for user:', userId);
+    // console.log('[Profile API] Returning profile for user:', userId);
 
     // Return sanitized public profile data
     const reviews = await Review.find({
@@ -3318,7 +3318,7 @@ router.get('/profile/:identifier', async (req, res) => {
 
     return res.json({ profile: profileData });
   } catch (error) {
-    console.error('Get public profile error', error);
+    // console.error('Get public profile error', error);
     return res.status(500).json({ error: 'Failed to get profile' });
   }
 });
@@ -3362,7 +3362,7 @@ router.get('/seo-content/:type', async (req, res) => {
 
     return res.json(seoContent);
   } catch (error) {
-    console.error('Get public SEO content error', error);
+    // console.error('Get public SEO content error', error);
     return res.status(500).json({ error: 'Failed to get SEO content' });
   }
 });

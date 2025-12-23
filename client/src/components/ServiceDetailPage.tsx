@@ -323,11 +323,11 @@ export default function ServiceDetailPage() {
             setServiceStatus(s.status);
           }
         } else {
-          console.error("Service not found");
+          // console.error("Service not found");
           setService(null);
         }
       } catch (error) {
-        console.error("Error fetching service:", error);
+        // console.error("Error fetching service:", error);
         setService(null);
       } finally {
         setLoading(false);

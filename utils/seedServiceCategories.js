@@ -281,7 +281,7 @@ const createSubCategoriesForLevel = async (serviceCategory, parentSubCategories,
       });
 
       if (existing) {
-        console.log(`    ⚠️  Subcategory "${name}" (Level ${targetLevel}) already exists under parent "${parentSubCategory.name}", skipping...`);
+        // console.log(`    ⚠️  Subcategory "${name}" (Level ${targetLevel}) already exists under parent "${parentSubCategory.name}", skipping...`);
         continue;
       }
 
@@ -300,7 +300,7 @@ const createSubCategoriesForLevel = async (serviceCategory, parentSubCategories,
 
       const subCategory = await ServiceSubCategory.create(subCategoryData);
       created.push(subCategory);
-      console.log(`    ✅ Created subcategory: ${name} (Level ${targetLevel}, Parent: ${parentSubCategory.name}, Order: ${order})`);
+      // console.log(`    ✅ Created subcategory: ${name} (Level ${targetLevel}, Parent: ${parentSubCategory.name}, Order: ${order})`);
     }
   }
 
@@ -329,7 +329,7 @@ const generateLevel2SubCategoryNames = (serviceCategoryName) => {
 
 // Create Level 2 Sub Categories (first tab - Sub Category tab)
 const createLevel2SubCategories = async (serviceCategory) => {
-  console.log(`    📑 Creating Level 2 Sub Categories (first tab - Sub Category)...`);
+  // console.log(`    📑 Creating Level 2 Sub Categories (first tab - Sub Category)...`);
   
   const serviceCategoryName = serviceCategory.name;
   const serviceCategoryId = serviceCategory._id;
@@ -367,7 +367,7 @@ const createLevel2SubCategories = async (serviceCategory) => {
     });
     
     if (existing) {
-      console.log(`    ⚠️  Sub Category "${name}" (Level 2) already exists, skipping...`);
+      // console.log(`    ⚠️  Sub Category "${name}" (Level 2) already exists, skipping...`);
       continue;
     }
 
@@ -386,7 +386,7 @@ const createLevel2SubCategories = async (serviceCategory) => {
 
     const subCategory = await ServiceSubCategory.create(subCategoryData);
     created.push(subCategory);
-    console.log(`    ✅ Created Level 2 Sub Category: ${name} (Order: ${order})`);
+    // console.log(`    ✅ Created Level 2 Sub Category: ${name} (Order: ${order})`);
   }
 
   return created;
@@ -394,18 +394,18 @@ const createLevel2SubCategories = async (serviceCategory) => {
 
 // Create all subcategories for a service category (new hierarchical structure)
 const createServiceSubCategories = async (serviceCategory) => {
-  console.log(`  📁 Creating subcategories for: ${serviceCategory.name}`);
+  // console.log(`  📁 Creating subcategories for: ${serviceCategory.name}`);
 
   let totalCreated = 0;
 
   // Step 1: Create Level 2 Sub Categories (first tab - Sub Category tab)
   // Parent: ServiceCategory, Level: 2, CategoryLevel: 2
-  console.log(`    📑 Step 1: Creating Level 2 Sub Categories (Sub Category tab)...`);
+  // console.log(`    📑 Step 1: Creating Level 2 Sub Categories (Sub Category tab)...`);
   const level2SubCategories = await createLevel2SubCategories(serviceCategory);
   totalCreated += level2SubCategories.length;
-  console.log(`    ✅ Created ${level2SubCategories.length} Level 2 subcategories`);
+  // console.log(`    ✅ Created ${level2SubCategories.length} Level 2 subcategories`);
 
-  console.log(`    ✅ Created ${totalCreated} total subcategories`);
+  // console.log(`    ✅ Created ${totalCreated} total subcategories`);
   return totalCreated;
 };
 
@@ -413,14 +413,14 @@ const seedServiceCategories = async () => {
   try {
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    // console.log('✅ Connected to MongoDB');
 
     // Get all sectors
     const sectors = await Sector.find({ isActive: true }).sort({ order: 1 });
-    console.log(`📋 Found ${sectors.length} sectors`);
+    // console.log(`📋 Found ${sectors.length} sectors`);
 
     if (sectors.length === 0) {
-      console.log('⚠️  No sectors found. Please run seedSectorsAndCategories.js first.');
+      // console.log('⚠️  No sectors found. Please run seedSectorsAndCategories.js first.');
       process.exit(1);
     }
 
@@ -430,13 +430,13 @@ const seedServiceCategories = async () => {
 
     // For each sector, create 5-6 service categories
     for (const sector of sectors) {
-      console.log(`\n📦 Processing sector: ${sector.name}`);
+      // console.log(`\n📦 Processing sector: ${sector.name}`);
       
       // Get existing categories for this sector
       const categories = await getCategoriesBySector(sector._id);
       
       if (categories.length === 0) {
-        console.log(`  ⚠️  No categories found for sector "${sector.name}", skipping...`);
+        // console.log(`  ⚠️  No categories found for sector "${sector.name}", skipping...`);
         continue;
       }
 
@@ -445,7 +445,7 @@ const seedServiceCategories = async () => {
         ? categories 
         : getRandomItems(categories, Math.floor(Math.random() * 2) + 5); // 5-6
 
-      console.log(`  📝 Creating ${selectedCategories.length} service categories...`);
+      // console.log(`  📝 Creating ${selectedCategories.length} service categories...`);
 
       // Get the maximum order value for existing service categories in this sector
       const maxOrderResult = await ServiceCategory.findOne({ sector: sector._id })
@@ -465,7 +465,7 @@ const seedServiceCategories = async () => {
         });
 
         if (existingServiceCategory) {
-          console.log(`  ⚠️  Service category "${category.name}" already exists in sector "${sector.name}", skipping...`);
+          // console.log(`  ⚠️  Service category "${category.name}" already exists in sector "${sector.name}", skipping...`);
           totalSkipped++;
           continue;
         }
@@ -480,12 +480,12 @@ const seedServiceCategories = async () => {
 
         // Create service category
         const serviceCategory = await ServiceCategory.create(serviceCategoryData);
-        console.log(`  ✅ Created service category: ${category.name} (Level: ${serviceCategoryData.level}, Order: ${serviceCategoryData.order})`);
+        // console.log(`  ✅ Created service category: ${category.name} (Level: ${serviceCategoryData.level}, Order: ${serviceCategoryData.order})`);
         totalCreated++;
 
         // Create subcategories for this service category
         if (totalServiceSubCatsCreated >= MAX_TOTAL_SERVICE_SUBCATEGORIES) {
-          console.log(`🛑 Reached max total service subcategories (${MAX_TOTAL_SERVICE_SUBCATEGORIES}). Stopping further service subcategory seeding.`);
+          // console.log(`🛑 Reached max total service subcategories (${MAX_TOTAL_SERVICE_SUBCATEGORIES}). Stopping further service subcategory seeding.`);
           break;
         }
         const createdForThis = await createServiceSubCategories(serviceCategory);
@@ -493,11 +493,11 @@ const seedServiceCategories = async () => {
       }
     }
 
-    console.log('\n✅ Seeding completed!');
-    console.log(`📊 Summary: ${totalCreated} created, ${totalSkipped} skipped`);
+    // console.log('\n✅ Seeding completed!');
+    // console.log(`📊 Summary: ${totalCreated} created, ${totalSkipped} skipped`);
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seeding error:', error);
+    // console.error('❌ Seeding error:', error);
     process.exit(1);
   }
 };

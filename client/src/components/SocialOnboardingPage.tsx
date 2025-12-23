@@ -81,7 +81,7 @@ export default function SocialOnboardingPage() {
         setLastName(profile.lastName || "");
         setEmail(profile.email || "");
       } catch (err) {
-        console.error("Error loading social profile:", err);
+        // console.error("Error loading social profile:", err);
         navigate("/login?social=failed", { replace: true });
       } finally {
         setLoading(false);
@@ -161,24 +161,24 @@ export default function SocialOnboardingPage() {
     setRegistrationData(data);
 
     // Send phone verification code
-    console.log('[Phone Code] Frontend - Social Onboarding - Requesting phone code for:', phone.trim());
+    // console.log('[Phone Code] Frontend - Social Onboarding - Requesting phone code for:', phone.trim());
     setIsSendingPhoneCode(true);
     try {
       const response = await sendSocialPhoneCode(phone.trim());
-      console.log('[Phone Code] Frontend - Social Onboarding - Phone code response:', {
-        message: response?.message,
-        hasPhoneCode: !!response?.phoneCode,
-        phoneCode: response?.phoneCode || 'not provided'
-      });
+      // console.log('[Phone Code] Frontend - Social Onboarding - Phone code response:', {
+      //   message: response?.message,
+      //   hasPhoneCode: !!response?.phoneCode,
+      //   phoneCode: response?.phoneCode || 'not provided'
+      // });
       setPhoneCodeHint(response?.phoneCode || null);
       setShowPhoneVerification(true);
     } catch (err: any) {
-      console.error('[Phone Code] Frontend - Social Onboarding - Failed to send phone code');
-      console.error('[Phone Code] Frontend - Social Onboarding - Error object:', err);
-      console.error('[Phone Code] Frontend - Social Onboarding - Error message:', err?.message);
-      console.error('[Phone Code] Frontend - Social Onboarding - Twilio error code:', err?.twilioErrorCode);
-      console.error('[Phone Code] Frontend - Social Onboarding - Twilio error message:', err?.twilioErrorMessage);
-      console.error('[Phone Code] Frontend - Social Onboarding - Twilio error moreInfo:', err?.twilioErrorMoreInfo);
+      // console.error('[Phone Code] Frontend - Social Onboarding - Failed to send phone code');
+      // console.error('[Phone Code] Frontend - Social Onboarding - Error object:', err);
+      // console.error('[Phone Code] Frontend - Social Onboarding - Error message:', err?.message);
+      // console.error('[Phone Code] Frontend - Social Onboarding - Twilio error code:', err?.twilioErrorCode);
+      // console.error('[Phone Code] Frontend - Social Onboarding - Twilio error message:', err?.twilioErrorMessage);
+      // console.error('[Phone Code] Frontend - Social Onboarding - Twilio error moreInfo:', err?.twilioErrorMoreInfo);
       
       // Extract detailed error message from response
       let errorMessage = "Failed to send verification code";
@@ -204,12 +204,12 @@ export default function SocialOnboardingPage() {
 
   const handleVerifyPhoneCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[Phone Code] Frontend - Social Onboarding - Verifying phone code:', {
-      codeLength: phoneCode.length,
-      code: phoneCode ? '****' : 'missing'
-    });
+    // console.log('[Phone Code] Frontend - Social Onboarding - Verifying phone code:', {
+    //   codeLength: phoneCode.length,
+    //   code: phoneCode ? '****' : 'missing'
+    // });
     if (phoneCode.length !== 4) {
-      console.log('[Phone Code] Frontend - Social Onboarding - Invalid code length');
+      // console.log('[Phone Code] Frontend - Social Onboarding - Invalid code length');
       setError("Please enter a 4-digit code");
       return;
     }
@@ -218,10 +218,10 @@ export default function SocialOnboardingPage() {
     setIsVerifyingPhone(true);
     try {
       const user = await verifySocialPhone(phoneCode, registrationData);
-      console.log('[Phone Code] Frontend - Social Onboarding - Phone verified, user created:', {
-        userId: user?.id,
-        email: user?.email
-      });
+      // console.log('[Phone Code] Frontend - Social Onboarding - Phone verified, user created:', {
+      //   userId: user?.id,
+      //   email: user?.email
+      // });
 
       // Navigate based on user role
       if (user.role === "professional") {

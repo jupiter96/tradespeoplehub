@@ -46,7 +46,7 @@ export default function AllCategoriesPage() {
                 categoriesMap[sector._id] = data.serviceCategories || [];
               }
             } catch (error) {
-              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+              // console.error(`Error fetching service categories for sector ${sector._id}:`, error);
             }
           });
           
@@ -54,7 +54,7 @@ export default function AllCategoriesPage() {
           setServiceCategoriesBySector(categoriesMap);
         }
       } catch (error) {
-        console.error('Error fetching service categories:', error);
+        // console.error('Error fetching service categories:', error);
         setError('Failed to load service categories');
       } finally {
         setLoading(false);

@@ -42,7 +42,7 @@ export function useAdminPermissions() {
           setIsSuperAdmin(false);
         }
       } catch (error) {
-        console.error("Error fetching admin user:", error);
+        // console.error("Error fetching admin user:", error);
         setAdminUser(null);
         setPermissions([]);
         setIsSuperAdmin(false);

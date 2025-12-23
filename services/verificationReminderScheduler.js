@@ -142,10 +142,10 @@ async function sendVerificationReminder(user) {
     user.verificationReminder = reminder;
     await user.save();
     
-    console.log(`[Verification Reminder] Sent to ${user.email} (${user.firstName} ${user.lastName})`);
+    // console.log(`[Verification Reminder] Sent to ${user.email} (${user.firstName} ${user.lastName})`);
     return true;
   } catch (error) {
-    console.error(`[Verification Reminder] Failed to send to ${user.email}:`, error);
+    // console.error(`[Verification Reminder] Failed to send to ${user.email}:`, error);
     return false;
   }
 }
@@ -156,7 +156,7 @@ async function sendVerificationReminder(user) {
  */
 async function processVerificationReminders() {
   try {
-    console.log('[Verification Reminder] Starting reminder processing...');
+    // console.log('[Verification Reminder] Starting reminder processing...');
     
     // Find all professional users
     const professionals = await User.find({
@@ -180,9 +180,9 @@ async function processVerificationReminders() {
       }
     }
 
-    console.log(`[Verification Reminder] Processed ${professionals.length} professionals. Sent: ${sentCount}, Skipped: ${skippedCount}`);
+    // console.log(`[Verification Reminder] Processed ${professionals.length} professionals. Sent: ${sentCount}, Skipped: ${skippedCount}`);
   } catch (error) {
-    console.error('[Verification Reminder] Error processing reminders:', error);
+    // console.error('[Verification Reminder] Error processing reminders:', error);
   }
 }
 
@@ -195,7 +195,7 @@ export function startVerificationReminderScheduler() {
   // Cron format: minute hour day-of-month month day-of-week
   // '0 9 * * 1' = 9:00 AM every Monday
   cron.schedule('0 9 * * 1', async () => {
-    console.log('[Verification Reminder] Weekly cron job triggered');
+    // console.log('[Verification Reminder] Weekly cron job triggered');
     await processVerificationReminders();
   }, {
     scheduled: true,
@@ -204,16 +204,16 @@ export function startVerificationReminderScheduler() {
 
   // Also run on the 1st of every month at 9:00 AM for monthly reminders
   cron.schedule('0 9 1 * *', async () => {
-    console.log('[Verification Reminder] Monthly cron job triggered');
+    // console.log('[Verification Reminder] Monthly cron job triggered');
     await processVerificationReminders();
   }, {
     scheduled: true,
     timezone: 'UTC',
   });
 
-  console.log('[Verification Reminder] Scheduler started');
-  console.log('[Verification Reminder] Weekly reminders: Every Monday at 9:00 AM UTC');
-  console.log('[Verification Reminder] Monthly reminders: 1st of every month at 9:00 AM UTC');
+  // console.log('[Verification Reminder] Scheduler started');
+  // console.log('[Verification Reminder] Weekly reminders: Every Monday at 9:00 AM UTC');
+  // console.log('[Verification Reminder] Monthly reminders: 1st of every month at 9:00 AM UTC');
 }
 
 /**

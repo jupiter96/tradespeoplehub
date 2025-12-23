@@ -50,6 +50,8 @@ const serviceSubCategorySchema = new mongoose.Schema(
     slug: {
       type: String,
       trim: true,
+      index: true,
+      unique: true,
       lowercase: true,
       // Auto-generate slug from name if not provided
       set: function(value) {
@@ -134,7 +136,7 @@ serviceSubCategorySchema.index({ parentSubCategory: 1, order: 1 });
 // Ensure unique subcategory name within a category or parent subcategory
 serviceSubCategorySchema.index({ serviceCategory: 1, name: 1 }, { unique: true, partialFilterExpression: { parentSubCategory: null } });
 serviceSubCategorySchema.index({ parentSubCategory: 1, name: 1 }, { unique: true, partialFilterExpression: { parentSubCategory: { $ne: null } } });
-serviceSubCategorySchema.index({ slug: 1 });
+// serviceSubCategorySchema.index({ slug: 1 });
 serviceSubCategorySchema.index({ isActive: 1 });
 serviceSubCategorySchema.index({ level: 1 });
 

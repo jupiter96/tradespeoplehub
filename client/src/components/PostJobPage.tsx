@@ -241,7 +241,7 @@ export default function PostJobPage() {
             }));
           }
         } catch (error) {
-          console.error(`Error loading categories for sector ${sector.slug}:`, error);
+          // console.error(`Error loading categories for sector ${sector.slug}:`, error);
         }
       }
       
@@ -358,7 +358,7 @@ export default function PostJobPage() {
   const handleSubmit = () => {
     if (!isLoggedIn) {
       // Handle account creation first
-      console.log("Creating account and posting job...");
+      // console.log("Creating account and posting job...");
     }
     
     // Get budget amount from selected budget range

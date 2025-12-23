@@ -9,12 +9,12 @@ export default function AdminDeleteAccountPage() {
 
   const handleEdit = (user: any) => {
     // Edit functionality can be added if needed
-    console.log("Edit user:", user);
+    // console.log("Edit user:", user);
   };
 
   const handleDelete = (user: any) => {
     // Delete functionality - this would permanently delete
-    console.log("Delete user:", user);
+    // console.log("Delete user:", user);
   };
 
   const handleSuccess = () => {

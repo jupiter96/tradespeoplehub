@@ -179,7 +179,7 @@ export default function AdminSubAdminModal({
       onSuccess?.();
       onClose();
     } catch (error: any) {
-      console.error("Error saving sub-admin:", error);
+      // console.error("Error saving sub-admin:", error);
       toast.error(error.message || "Failed to save sub-admin");
     } finally {
       setLoading(false);

@@ -14,6 +14,8 @@ const categorySchema = new mongoose.Schema(
     },
     slug: {
       type: String,
+      index: true,
+      unique: true,
       trim: true,
       lowercase: true,
       // Auto-generate slug from name if not provided
@@ -64,7 +66,7 @@ const categorySchema = new mongoose.Schema(
 categorySchema.index({ sector: 1, order: 1 }, { unique: true });
 // Ensure unique category name within a sector (this also creates the index)
 categorySchema.index({ sector: 1, name: 1 }, { unique: true });
-categorySchema.index({ slug: 1 });
+// categorySchema.index({ slug: 1 });
 categorySchema.index({ isActive: 1 });
 
 const Category =

@@ -274,7 +274,7 @@ router.get('/', async (req, res) => {
     };
     return res.json(payload);
   } catch (error) {
-    console.error('Get service categories error', error);
+    // console.error('Get service categories error', error);
     return res.status(500).json({ error: 'Failed to fetch service categories' });
   }
 });
@@ -309,8 +309,8 @@ router.get('/:identifier', async (req, res) => {
     
     const serviceCategoryData = serviceCategory.toObject();
 
-    console.log('GET service category - serviceIdealFor:', serviceCategoryData.serviceIdealFor);
-    console.log('GET service category - extraServices:', serviceCategoryData.extraServices);
+    // console.log('GET service category - serviceIdealFor:', serviceCategoryData.serviceIdealFor);
+    // console.log('GET service category - extraServices:', serviceCategoryData.extraServices);
 
     // Include subcategories if requested
     if (includeSubCategories === 'true') {
@@ -325,7 +325,7 @@ router.get('/:identifier', async (req, res) => {
     
     return res.json({ serviceCategory: serviceCategoryData });
   } catch (error) {
-    console.error('Get service category error', error);
+    // console.error('Get service category error', error);
     return res.status(500).json({ error: 'Failed to fetch service category' });
   }
 });
@@ -333,7 +333,7 @@ router.get('/:identifier', async (req, res) => {
 // Create new service category (Admin only)
 router.post('/', async (req, res) => {
   try {
-    console.log('POST /api/service-categories - Request body:', JSON.stringify(req.body, null, 2));
+    // console.log('POST /api/service-categories - Request body:', JSON.stringify(req.body, null, 2));
     
     const {
       sector,
@@ -356,12 +356,12 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     if (!sector) {
-      console.log('Error: Sector is required');
+      // console.log('Error: Sector is required');
       return res.status(400).json({ error: 'Sector is required' });
     }
     
     if (!name) {
-      console.log('Error: Service category name is required');
+      // console.log('Error: Service category name is required');
       return res.status(400).json({ error: 'Service category name is required' });
     }
     
@@ -374,7 +374,7 @@ router.post('/', async (req, res) => {
     }
     
     if (!sectorDoc) {
-      console.log('Error: Sector not found:', sector);
+      // console.log('Error: Sector not found:', sector);
       return res.status(404).json({ error: 'Sector not found' });
     }
     
@@ -390,7 +390,7 @@ router.post('/', async (req, res) => {
       name: name.trim() 
     });
     if (existingServiceCategory) {
-      console.log('Error: Service category with this name already exists');
+      // console.log('Error: Service category with this name already exists');
       return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
     }
     
@@ -454,19 +454,19 @@ router.post('/', async (req, res) => {
       pricePerUnit: pricePerUnit || { enabled: false, units: [] },
     };
 
-    console.log('Creating service category with data:', JSON.stringify(createData, null, 2));
-    console.log('serviceIdealFor from request:', serviceIdealFor);
+    // console.log('Creating service category with data:', JSON.stringify(createData, null, 2));
+    // console.log('serviceIdealFor from request:', serviceIdealFor);
     
     const serviceCategory = await ServiceCategory.create(createData);
     
     // Populate sector for response
     await serviceCategory.populate('sector', 'name slug icon');
     
-    console.log('Service category created successfully:', serviceCategory._id);
+    // console.log('Service category created successfully:', serviceCategory._id);
     return res.status(201).json({ serviceCategory });
   } catch (error) {
-    console.error('Create service category error:', error);
-    console.error('Error stack:', error.stack);
+    // console.error('Create service category error:', error);
+    // console.error('Error stack:', error.stack);
     if (error.code === 11000) {
       if (error.keyPattern?.['sector,order']) {
         return res.status(409).json({ error: `Service category with order ${order} already exists in this sector. Order must be unique within a sector.` });
@@ -510,7 +510,7 @@ router.put('/:id', async (req, res) => {
       }
       
     if (!sectorDoc) {
-      console.log('Error: Sector not found:', sector);
+      // console.log('Error: Sector not found:', sector);
       return res.status(404).json({ error: 'Sector not found' });
     }
       
@@ -525,7 +525,7 @@ router.put('/:id', async (req, res) => {
         _id: { $ne: id }
       });
     if (existingServiceCategory) {
-      console.log('Error: Service category with this name already exists');
+      // console.log('Error: Service category with this name already exists');
       return res.status(409).json({ error: 'Service category with this name already exists in this sector' });
     }
     }
@@ -583,7 +583,7 @@ router.put('/:id', async (req, res) => {
       try {
         await cascadeTitlesAndAttributesToSubCategories(serviceCategory._id, serviceCategory);
       } catch (cascadeError) {
-        console.error('Error cascading titles and attributes to subcategories:', cascadeError);
+        // console.error('Error cascading titles and attributes to subcategories:', cascadeError);
         // Don't fail the main update if cascading fails
       }
     }
@@ -593,7 +593,7 @@ router.put('/:id', async (req, res) => {
     
     return res.json({ serviceCategory });
   } catch (error) {
-    console.error('Update service category error', error);
+    // console.error('Update service category error', error);
     if (error.code === 11000) {
       if (error.keyPattern?.['sector,order']) {
         return res.status(409).json({ error: `Service category with order ${order} already exists in this sector. Order must be unique within a sector.` });
@@ -625,7 +625,7 @@ router.delete('/:id', async (req, res) => {
       return res.json({ message: 'Service category deactivated', serviceCategory });
     }
   } catch (error) {
-    console.error('Delete service category error', error);
+    // console.error('Delete service category error', error);
     return res.status(500).json({ error: 'Failed to delete service category' });
   }
 });
@@ -633,17 +633,17 @@ router.delete('/:id', async (req, res) => {
 // Bulk update service category order
 router.put('/bulk/order', async (req, res) => {
   try {
-    console.log('=== Bulk Update Service Category Order Request ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    // console.log('=== Bulk Update Service Category Order Request ===');
+    // console.log('Request body:', JSON.stringify(req.body, null, 2));
     
     const { serviceCategories } = req.body; // Array of { id, order }
     
     if (!Array.isArray(serviceCategories)) {
-      console.error('Error: serviceCategories is not an array. Received:', typeof serviceCategories, serviceCategories);
+      // console.error('Error: serviceCategories is not an array. Received:', typeof serviceCategories, serviceCategories);
       return res.status(400).json({ error: 'Service categories must be an array' });
     }
     
-    console.log(`Processing ${serviceCategories.length} service category order updates`);
+    // console.log(`Processing ${serviceCategories.length} service category order updates`);
     
     // Validate each service category update and fetch category info to get sector
     const validatedUpdates = [];
@@ -653,25 +653,25 @@ router.put('/bulk/order', async (req, res) => {
       const { id, order } = serviceCategories[i];
       
       if (!id) {
-        console.error(`Error at index ${i}: Missing id`, serviceCategories[i]);
+        // console.error(`Error at index ${i}: Missing id`, serviceCategories[i]);
         return res.status(400).json({ error: `Service category at index ${i} is missing id` });
       }
       
       if (typeof order !== 'number' || isNaN(order)) {
-        console.error(`Error at index ${i}: Invalid order`, serviceCategories[i]);
+        // console.error(`Error at index ${i}: Invalid order`, serviceCategories[i]);
         return res.status(400).json({ error: `Service category at index ${i} has invalid order value` });
       }
       
       // Fetch service category to get its sector
       const serviceCategory = await ServiceCategory.findById(id).select('sector order').lean();
       if (!serviceCategory) {
-        console.error(`Error at index ${i}: Service category not found`, id);
+        // console.error(`Error at index ${i}: Service category not found`, id);
         return res.status(404).json({ error: `Service category with id ${id} not found` });
       }
       
       validatedUpdates.push({ id, order, sector: serviceCategory.sector });
       categoryInfoMap.set(id, { sector: serviceCategory.sector, oldOrder: serviceCategory.order });
-      console.log(`  - Service category ${id} (sector: ${serviceCategory.sector}): order = ${order}`);
+      // console.log(`  - Service category ${id} (sector: ${serviceCategory.sector}): order = ${order}`);
     }
     
     // Group updates by sector to find max order per sector
@@ -681,7 +681,7 @@ router.put('/bulk/order', async (req, res) => {
         const maxOrderResult = await ServiceCategory.findOne({ sector }).sort({ order: -1 }).select('order').lean();
         const maxOrder = maxOrderResult?.order || 0;
         sectorMaxOrders.set(sector.toString(), maxOrder);
-        console.log(`Max order for sector ${sector}: ${maxOrder}`);
+        // console.log(`Max order for sector ${sector}: ${maxOrder}`);
       }
     }
     
@@ -690,25 +690,25 @@ router.put('/bulk/order', async (req, res) => {
     const globalMaxOrder = globalMaxOrderResult?.order || 0;
     const tempOffset = Math.max(globalMaxOrder + 1000, 10000); // Use values well above current max
     
-    console.log(`Global max order: ${globalMaxOrder}, using temp offset: ${tempOffset}`);
+    // console.log(`Global max order: ${globalMaxOrder}, using temp offset: ${tempOffset}`);
     
     // First pass: Set all orders to temporary values (above max) to free up order slots
-    console.log('Step 1: Setting temporary orders...');
+    // console.log('Step 1: Setting temporary orders...');
     for (const { id, order, sector } of validatedUpdates) {
       try {
         // Use a unique temporary order value for each service category
         // Add a multiplier based on order to ensure uniqueness
         const tempOrder = tempOffset + (order * 1000) + parseInt(id.slice(-4), 16) % 1000;
         await ServiceCategory.findByIdAndUpdate(id, { order: tempOrder }, { runValidators: false });
-        console.log(`  ✓ Set temporary order for service category ${id}: ${tempOrder}`);
+        // console.log(`  ✓ Set temporary order for service category ${id}: ${tempOrder}`);
       } catch (err) {
-        console.error(`Error setting temporary order for service category ${id}:`, err);
+        // console.error(`Error setting temporary order for service category ${id}:`, err);
         throw err;
       }
     }
     
     // Second pass: Set final order values
-    console.log('Step 2: Setting final orders...');
+    // console.log('Step 2: Setting final orders...');
     const results = [];
     for (const { id, order } of validatedUpdates) {
       try {
@@ -719,30 +719,30 @@ router.put('/bulk/order', async (req, res) => {
         );
         
         if (!updated) {
-          console.error(`Warning: Service category with id ${id} not found`);
+          // console.error(`Warning: Service category with id ${id} not found`);
           throw new Error(`Service category with id ${id} not found`);
         }
         
-        console.log(`  ✓ Updated service category ${id} to order ${order}`);
+        // console.log(`  ✓ Updated service category ${id} to order ${order}`);
         results.push(updated);
       } catch (err) {
-        console.error(`Error updating service category ${id} to order ${order}:`, err);
+        // console.error(`Error updating service category ${id} to order ${order}:`, err);
         throw err;
       }
     }
     
-    console.log(`Successfully updated ${results.length} service categories`);
-    console.log('=== Bulk Update Complete ===');
+    // console.log(`Successfully updated ${results.length} service categories`);
+    // console.log('=== Bulk Update Complete ===');
     
     return res.json({ 
       message: 'Service category orders updated',
       updatedCount: results.length
     });
   } catch (error) {
-    console.error('=== Bulk update service category order error ===');
-    console.error('Error details:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    // console.error('=== Bulk update service category order error ===');
+    // console.error('Error details:', error);
+    // console.error('Error stack:', error.stack);
+    // console.error('Request body was:', JSON.stringify(req.body, null, 2));
     return res.status(500).json({ 
       error: 'Failed to update service category orders',
       details: error.message 

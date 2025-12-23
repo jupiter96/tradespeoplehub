@@ -15,6 +15,8 @@ const subCategorySchema = new mongoose.Schema(
     slug: {
       type: String,
       trim: true,
+      index: true,
+      unique: true,
       lowercase: true,
       // Auto-generate slug from name if not provided
       set: function(value) {
@@ -52,7 +54,7 @@ const subCategorySchema = new mongoose.Schema(
 subCategorySchema.index({ category: 1, order: 1 });
 // Ensure unique subcategory name within a category
 subCategorySchema.index({ category: 1, name: 1 }, { unique: true });
-subCategorySchema.index({ slug: 1 });
+// subCategorySchema.index({ slug: 1 });
 subCategorySchema.index({ isActive: 1 });
 
 const SubCategory =

@@ -158,7 +158,7 @@ router.get('/', async (req, res) => {
     }
     return res.json(payload);
   } catch (error) {
-    console.error('Get sectors error', error);
+    // console.error('Get sectors error', error);
     return res.status(500).json({ error: 'Failed to fetch sectors' });
   }
 });
@@ -258,7 +258,7 @@ router.get('/:identifier', async (req, res) => {
     
     return res.json({ sector: sectorData });
   } catch (error) {
-    console.error('Get sector error', error);
+    // console.error('Get sector error', error);
     return res.status(500).json({ error: 'Failed to fetch sector' });
   }
 });
@@ -341,7 +341,7 @@ router.post('/', async (req, res) => {
     
     return res.status(201).json({ sector });
   } catch (error) {
-    console.error('Create sector error', error);
+    // console.error('Create sector error', error);
     if (error.code === 11000) {
       if (error.keyPattern?.order) {
         return res.status(409).json({ error: `Sector with order ${order} already exists. Order must be unique.` });
@@ -412,7 +412,7 @@ router.put('/:id', async (req, res) => {
     
     return res.json({ sector });
   } catch (error) {
-    console.error('Update sector error', error);
+    // console.error('Update sector error', error);
     if (error.code === 11000) {
       if (error.keyPattern?.order) {
         return res.status(409).json({ error: `Sector with order ${order} already exists. Order must be unique.` });
@@ -426,17 +426,17 @@ router.put('/:id', async (req, res) => {
 // Bulk update sector order
 router.put('/bulk/order', async (req, res) => {
   try {
-    console.log('=== Bulk Update Sector Order Request ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    // console.log('=== Bulk Update Sector Order Request ===');
+    // console.log('Request body:', JSON.stringify(req.body, null, 2));
     
     const { sectors } = req.body; // Array of { id, order }
     
     if (!Array.isArray(sectors)) {
-      console.error('Error: sectors is not an array. Received:', typeof sectors, sectors);
+      // console.error('Error: sectors is not an array. Received:', typeof sectors, sectors);
       return res.status(400).json({ error: 'Sectors must be an array' });
     }
     
-    console.log(`Processing ${sectors.length} sector order updates`);
+    // console.log(`Processing ${sectors.length} sector order updates`);
     
     // Validate each sector update
     const validatedUpdates = [];
@@ -444,17 +444,17 @@ router.put('/bulk/order', async (req, res) => {
       const { id, order } = sectors[i];
       
       if (!id) {
-        console.error(`Error at index ${i}: Missing id`, sectors[i]);
+        // console.error(`Error at index ${i}: Missing id`, sectors[i]);
         return res.status(400).json({ error: `Sector at index ${i} is missing id` });
       }
       
       if (typeof order !== 'number' || isNaN(order)) {
-        console.error(`Error at index ${i}: Invalid order`, sectors[i]);
+        // console.error(`Error at index ${i}: Invalid order`, sectors[i]);
         return res.status(400).json({ error: `Sector at index ${i} has invalid order value` });
       }
       
       validatedUpdates.push({ id, order });
-      console.log(`  - Sector ${id}: order = ${order}`);
+      // console.log(`  - Sector ${id}: order = ${order}`);
     }
     
     // Update sectors using a transaction-like approach to avoid unique constraint conflicts
@@ -466,23 +466,23 @@ router.put('/bulk/order', async (req, res) => {
     const maxOrder = maxOrderResult?.order || 0;
     const tempOffset = Math.max(maxOrder + 1000, 10000); // Use values well above current max
     
-    console.log(`Max order in database: ${maxOrder}, using temp offset: ${tempOffset}`);
+    // console.log(`Max order in database: ${maxOrder}, using temp offset: ${tempOffset}`);
     
     // First pass: Set all orders to temporary values (above max) to free up order slots
-    console.log('Step 1: Setting temporary orders...');
+    // console.log('Step 1: Setting temporary orders...');
     for (const { id, order } of validatedUpdates) {
       try {
         const tempOrder = tempOffset + order; // Use values above max as temporary
         await Sector.findByIdAndUpdate(id, { order: tempOrder }, { runValidators: false });
-        console.log(`  ✓ Set temporary order for sector ${id}: ${tempOrder}`);
+        // console.log(`  ✓ Set temporary order for sector ${id}: ${tempOrder}`);
       } catch (err) {
-        console.error(`Error setting temporary order for sector ${id}:`, err);
+        // console.error(`Error setting temporary order for sector ${id}:`, err);
         throw err;
       }
     }
     
     // Second pass: Set final order values
-    console.log('Step 2: Setting final orders...');
+    // console.log('Step 2: Setting final orders...');
     for (const { id, order } of validatedUpdates) {
       try {
         const updated = await Sector.findByIdAndUpdate(
@@ -492,30 +492,30 @@ router.put('/bulk/order', async (req, res) => {
         );
         
         if (!updated) {
-          console.error(`Warning: Sector with id ${id} not found`);
+          // console.error(`Warning: Sector with id ${id} not found`);
           throw new Error(`Sector with id ${id} not found`);
         }
         
-        console.log(`  ✓ Updated sector ${id} to order ${order}`);
+        // console.log(`  ✓ Updated sector ${id} to order ${order}`);
         results.push(updated);
       } catch (err) {
-        console.error(`Error updating sector ${id} to order ${order}:`, err);
+        // console.error(`Error updating sector ${id} to order ${order}:`, err);
         throw err;
       }
     }
     
-    console.log(`Successfully updated ${results.length} sectors`);
-    console.log('=== Bulk Update Complete ===');
+    // console.log(`Successfully updated ${results.length} sectors`);
+    // console.log('=== Bulk Update Complete ===');
     
     return res.json({ 
       message: 'Sector orders updated',
       updatedCount: results.length
     });
   } catch (error) {
-    console.error('=== Bulk update sector order error ===');
-    console.error('Error details:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    // console.error('=== Bulk update sector order error ===');
+    // console.error('Error details:', error);
+    // console.error('Error stack:', error.stack);
+    // console.error('Request body was:', JSON.stringify(req.body, null, 2));
     return res.status(500).json({ 
       error: 'Failed to update sector orders',
       details: error.message 
@@ -550,7 +550,7 @@ router.delete('/:id', async (req, res) => {
       return res.json({ message: 'Sector deactivated', sector });
     }
   } catch (error) {
-    console.error('Delete sector error', error);
+    // console.error('Delete sector error', error);
     return res.status(500).json({ error: 'Failed to delete sector' });
   }
 });

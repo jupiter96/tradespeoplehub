@@ -119,20 +119,20 @@ export default function AdminDashboardPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Statistics data received:", data);
+        // console.log("Statistics data received:", data);
         if (data.statistics) {
           setStatistics(data.statistics);
-          console.log("Statistics set:", data.statistics);
+          // console.log("Statistics set:", data.statistics);
         } else {
-          console.error("No statistics in response:", data);
+          // console.error("No statistics in response:", data);
         }
       } else {
-        console.error("Failed to fetch statistics:", response.status, response.statusText);
+        // console.error("Failed to fetch statistics:", response.status, response.statusText);
         const errorData = await response.json().catch(() => ({}));
-        console.error("Error data:", errorData);
+        // console.error("Error data:", errorData);
       }
     } catch (error) {
-      console.error("Error fetching statistics:", error);
+      // console.error("Error fetching statistics:", error);
     } finally {
       if (showLoading || isInitialLoadRef.current) {
         setLoadingStats(false);

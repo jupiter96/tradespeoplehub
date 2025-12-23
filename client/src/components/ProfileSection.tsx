@@ -72,7 +72,7 @@ export default function ProfileSection() {
   // Additional fields
   const [skills, setSkills] = useState<string[]>([]);
   const [qualifications, setQualifications] = useState<string[]>([]);
-  const [certifications, setCertifications] = useState<string>("");
+  const [certifications, setCertifications] = useState<string[]>([""]);
   const [companyDetails, setCompanyDetails] = useState<string>("");
   const [insuranceExpiryDate, setInsuranceExpiryDate] = useState<string>("");
   const [professionalIndemnityAmount, setProfessionalIndemnityAmount] = useState<number | null>(null);
@@ -225,7 +225,7 @@ export default function ProfileSection() {
 
         setAllJobCategories(uniqueAllowed.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (error) {
-        console.error('Error building registered subcategories:', error);
+        // console.error('Error building registered subcategories:', error);
         setAllJobCategories([]);
       } finally {
         setIsLoadingCategories(false);
@@ -420,7 +420,20 @@ export default function ProfileSection() {
       } else {
         setQualifications([""]);
       }
-      setCertifications((userInfo.publicProfile as any)?.certifications || "");
+
+      // Load Certifications
+      const certs = (userInfo.publicProfile as any)?.certifications;
+      if (certs) {
+        const certsArray = typeof certs === 'string'
+          ? certs.split('\n').filter((c: string) => c.trim())
+          : Array.isArray(certs)
+          ? certs
+          : [];
+        setCertifications(certsArray.length > 0 ? certsArray : [""]);
+      } else {
+        setCertifications([""]);
+      }
+
       setCompanyDetails((userInfo.publicProfile as any)?.companyDetails || "");
       if (userInfo.insuranceExpiryDate) {
         const date = new Date(userInfo.insuranceExpiryDate);
@@ -495,7 +508,7 @@ export default function ProfileSection() {
           portfolio,
           isPublic,
           qualifications: qualifications.filter(q => q.trim()).join('\n'),
-          certifications,
+          certifications: certifications.filter(c => c.trim()).join('\n'),
           companyDetails,
           coverImage: coverImage || (userInfo?.publicProfile as any)?.coverImage || undefined,
         },
@@ -505,7 +518,7 @@ export default function ProfileSection() {
       setIsEditing(false);
       toast.success("Profile updated successfully");
     } catch (error) {
-      console.error("Error updating profile:", error);
+      // console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
     }
   };
@@ -543,7 +556,7 @@ export default function ProfileSection() {
       await uploadAvatar(file);
       toast.success("Avatar updated successfully");
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      // console.error("Error uploading avatar:", error);
       toast.error("Failed to upload avatar");
       setAvatarPreview(userInfo?.avatar || null);
     } finally {
@@ -587,7 +600,7 @@ export default function ProfileSection() {
       const data = await response.json();
       return data.imageUrl;
     } catch (error) {
-      console.error("Upload error:", error);
+      // console.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload image");
       return null;
     } finally {
@@ -772,7 +785,20 @@ export default function ProfileSection() {
                   } else {
                     setQualifications([""]);
                   }
-                  setCertifications((userInfo?.publicProfile as any)?.certifications || "");
+
+                  // Load Certifications
+                  const certs = (userInfo?.publicProfile as any)?.certifications;
+                  if (certs) {
+                    const certsArray = typeof certs === 'string'
+                      ? certs.split('\n').filter((c: string) => c.trim())
+                      : Array.isArray(certs)
+                      ? certs
+                      : [];
+                    setCertifications(certsArray.length > 0 ? certsArray : [""]);
+                  } else {
+                    setCertifications([""]);
+                  }
+
                   setCompanyDetails((userInfo?.publicProfile as any)?.companyDetails || "");
                   setCoverImage((userInfo?.publicProfile as any)?.coverImage || null);
                   if (userInfo?.insuranceExpiryDate) {
@@ -1162,17 +1188,62 @@ export default function ProfileSection() {
       <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Certifications</Label>
         {isEditing ? (
-          <Textarea
-            value={certifications}
-            onChange={(e) => setCertifications(e.target.value)}
-            placeholder="List your certifications (one per line)..."
-            className="mt-2 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px]"
-          />
+          <div className="space-y-3 mt-2">
+            {certifications.map((cert, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <Input
+                  value={cert}
+                  onChange={(e) => {
+                    const newCertifications = [...certifications];
+                    newCertifications[index] = e.target.value;
+                    setCertifications(newCertifications);
+                  }}
+                  placeholder="e.g., Gas Safe Registered (ID: 123456)"
+                  className="flex-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+                />
+                {certifications.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const newCertifications = certifications.filter((_, i) => i !== index);
+                      setCertifications(newCertifications.length > 0 ? newCertifications : [""]);
+                    }}
+                    className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCertifications([...certifications, ""]);
+              }}
+              className="w-full border-2 border-dashed border-[#FE8A0F] hover:border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F] bg-white dark:bg-black hover:bg-orange-50 dark:hover:bg-orange-950"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Another Certification
+            </Button>
+          </div>
         ) : (
           <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            <p className="text-black dark:text-white whitespace-pre-wrap">
-              {certifications || "No certifications added yet. Click 'Edit Profile' to add certifications."}
-            </p>
+            {certifications.filter(c => c.trim()).length > 0 ? (
+              <ul className="space-y-2">
+                {certifications.filter(c => c.trim()).map((cert, index) => (
+                  <li key={index} className="text-black dark:text-white flex items-start">
+                    <span className="text-[#FE8A0F] mr-2">•</span>
+                    <span>{cert}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500 text-sm">No certifications added yet. Click 'Edit Profile' to add certifications.</p>
+            )}
           </div>
         )}
       </div>
@@ -1612,12 +1683,16 @@ export default function ProfileSection() {
                               </div>
                             </div>
                           )}
-                          {certifications && (
+                          {certifications.length > 0 && certifications.some(c => c.trim()) && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Certifications</h5>
-                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
-                                {certifications}
-                              </p>
+                              <div className="space-y-2">
+                                {certifications.filter(c => c.trim()).map((cert, index) => (
+                                  <p key={index} className="text-gray-700 dark:text-gray-300 break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
+                                    {cert.trim()}
+                                  </p>
+                                ))}
+                              </div>
                             </div>
                           )}
                           {companyDetails && (

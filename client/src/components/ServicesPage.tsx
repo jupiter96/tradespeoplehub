@@ -248,11 +248,11 @@ export default function ServicesPage() {
           }));
           setAllServices(transformedServices);
         } else {
-          console.error("Failed to fetch services");
+          // console.error("Failed to fetch services");
           setAllServices([]);
         }
       } catch (error) {
-        console.error("Error fetching services:", error);
+        // console.error("Error fetching services:", error);
         setAllServices([]);
       } finally {
         setServicesLoading(false);
@@ -463,7 +463,7 @@ export default function ServicesPage() {
               }
               return [];
             } catch (error) {
-              console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+              // console.error(`Error fetching service categories for sector ${sector._id}:`, error);
               return [];
             }
           });
@@ -473,7 +473,7 @@ export default function ServicesPage() {
           setAllServiceCategories(flattened);
         }
       } catch (error) {
-        console.error('Error fetching service categories:', error);
+        // console.error('Error fetching service categories:', error);
       } finally {
         setServiceCategoriesLoading(false);
       }

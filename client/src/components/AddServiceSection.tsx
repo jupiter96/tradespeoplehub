@@ -1302,7 +1302,7 @@ function SubCategoryLevelDisplay({
           setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
         }
       } catch (error) {
-        console.error(`Error fetching nested subcategories for ${parentId}:`, error);
+        // console.error(`Error fetching nested subcategories for ${parentId}:`, error);
       } finally {
         setLoadingSubCategories(prev => ({ ...prev, [parentId]: false }));
       }
@@ -1493,7 +1493,17 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
 
       // Load Certifications
-      setProfileCertifications((userInfo.publicProfile as any)?.certifications || "");
+      const certs = (userInfo.publicProfile as any)?.certifications;
+      if (certs) {
+        const certsArray = typeof certs === 'string'
+          ? certs.split('\n').filter((c: string) => c.trim())
+          : Array.isArray(certs)
+          ? certs
+          : [];
+        setProfileCertifications(certsArray.length > 0 ? certsArray : [""]);
+      } else {
+        setProfileCertifications([""]);
+      }
     }
   }, [userInfo]);
 
@@ -1636,7 +1646,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
         setDynamicServiceAttributes(allAttributes);
       } catch (error) {
-        console.error("Error fetching service attributes:", error);
+        // console.error("Error fetching service attributes:", error);
         setDynamicServiceAttributes([]);
       }
     };
@@ -1687,7 +1697,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           }
         }
       } catch (error) {
-        console.error("Error fetching category data:", error);
+        // console.error("Error fetching category data:", error);
         setDynamicServiceIdealFor([]);
         setDynamicExtraServices([]);
       }
@@ -1817,7 +1827,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [experienceYears, setExperienceYears] = useState("");
   const [aboutMe, setAboutMe] = useState(""); // Bio from profile
   const [profileQualifications, setProfileQualifications] = useState<string[]>([""]); // Array of qualifications from profile
-  const [profileCertifications, setProfileCertifications] = useState(""); // Certifications from profile
+  const [profileCertifications, setProfileCertifications] = useState<string[]>([""]); // Array of certifications from profile
   
   const handleKeywordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -1975,7 +1985,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           });
         }, 500);
       } catch (error) {
-        console.error("Upload error:", error);
+        // console.error("Upload error:", error);
         toast.error(error instanceof Error ? error.message : `Failed to upload ${file.name}`);
         setUploadProgress(prev => {
           const newState = { ...prev };
@@ -2161,7 +2171,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
         }
       } catch (error) {
-        console.error(`Error fetching nested subcategories for ${parentId}:`, error);
+        // console.error(`Error fetching nested subcategories for ${parentId}:`, error);
       } finally {
         setLoadingSubCategories(prev => ({ ...prev, [parentId]: false }));
       }
@@ -2258,7 +2268,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           setSelectedSubCategoryTitles([]);
         }
       } catch (error) {
-        console.error('Error fetching subcategory titles:', error);
+        // console.error('Error fetching subcategory titles:', error);
         setSelectedSubCategoryTitles([]);
       } finally {
         setLoadingTitles(false);
@@ -2360,7 +2370,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           publicProfile: {
             bio: aboutMe.trim(),
             qualifications: profileQualifications.filter(q => q.trim()).join('\n'),
-            certifications: profileCertifications.trim(),
+            certifications: profileCertifications.filter(c => c.trim()).join('\n'),
           }
         };
 
@@ -2374,10 +2384,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         });
 
         if (!profileResponse.ok) {
-          console.error("Failed to update profile, but continuing with service creation");
+          // console.error("Failed to update profile, but continuing with service creation");
         }
       } catch (profileError) {
-        console.error("Error updating profile:", profileError);
+        // console.error("Error updating profile:", profileError);
         // Continue with service creation even if profile update fails
       }
 
@@ -2453,7 +2463,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       onSave(result.service || result);
       onClose();
     } catch (error: any) {
-      console.error("Error creating service:", error);
+      // console.error("Error creating service:", error);
       toast.error(error.message || "Failed to create service. Please try again.");
     } finally {
       setLoading(false);
@@ -3680,12 +3690,48 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Certifications
                   </Label>
-                  <Textarea
-                    value={profileCertifications}
-                    onChange={(e) => setProfileCertifications(e.target.value)}
-                    placeholder="List your certifications (one per line)..."
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[100px]"
-                  />
+                  <div className="space-y-3">
+                    {profileCertifications.map((cert, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Input
+                          value={cert}
+                          onChange={(e) => {
+                            const newCertifications = [...profileCertifications];
+                            newCertifications[index] = e.target.value;
+                            setProfileCertifications(newCertifications);
+                          }}
+                          placeholder="e.g., Gas Safe Registered (ID: 123456)"
+                          className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                        />
+                        {profileCertifications.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const newCertifications = profileCertifications.filter((_, i) => i !== index);
+                              setProfileCertifications(newCertifications.length > 0 ? newCertifications : [""]);
+                            }}
+                            className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setProfileCertifications([...profileCertifications, ""]);
+                      }}
+                      className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] font-['Poppins',sans-serif] text-[14px]"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Another Certification
+                    </Button>
+                  </div>
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
                     Include any professional certifications, trade memberships, or insurance details.
                   </p>

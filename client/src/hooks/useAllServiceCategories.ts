@@ -50,7 +50,7 @@ const fetchAllServiceCategories = async (
       }
       return { sectorId: sector._id, categories: [] };
     } catch (error) {
-      console.error(`Error fetching service categories for sector ${sector._id}:`, error);
+      // console.error(`Error fetching service categories for sector ${sector._id}:`, error);
       return { sectorId: sector._id, categories: [] };
     }
   });
@@ -149,7 +149,7 @@ export const useAllServiceCategories = (
           setLoading(false);
         }
       } catch (error) {
-        console.error('Error fetching all service categories:', error);
+        // console.error('Error fetching all service categories:', error);
         const cacheEntry = globalCache.get(cacheKey);
         if (cacheEntry && fetchRef.current === fetchId) {
           cacheEntry.loading = false;

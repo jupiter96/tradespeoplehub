@@ -42,7 +42,7 @@ export const authenticateToken = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Authentication error', error);
+    // console.error('Authentication error', error);
     return res.status(500).json({ error: 'Authentication failed' });
   }
 };
@@ -78,7 +78,7 @@ export const requireRole = (allowedRoles) => {
 
       next();
     } catch (error) {
-      console.error('Role check error', error);
+      // console.error('Role check error', error);
       return res.status(500).json({ error: 'Permission check failed' });
     }
   };

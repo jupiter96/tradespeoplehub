@@ -222,15 +222,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifyRegistrationEmail = useCallback(
     async (code: string, email?: string) => {
-      console.log('[Phone Code] Frontend - AccountContext - Verifying email, will trigger phone code generation');
+      // console.log('[Phone Code] Frontend - AccountContext - Verifying email, will trigger phone code generation');
       const data = await requestJson("/api/auth/register/verify-email", {
         method: "POST",
         body: JSON.stringify({ code, email }),
       });
-      console.log('[Phone Code] Frontend - AccountContext - Email verified, phone code in response:', {
-        hasPhoneCode: !!data?.phoneCode,
-        phoneCode: data?.phoneCode || 'not provided'
-      });
+      // console.log('[Phone Code] Frontend - AccountContext - Email verified, phone code in response:', {
+      //   hasPhoneCode: !!data?.phoneCode,
+      //   phoneCode: data?.phoneCode || 'not provided'
+      // });
       return data;
     },
     [requestJson]
@@ -238,28 +238,28 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const completeRegistration = useCallback(
     async (code: string, email?: string) => {
-      console.log('[Phone Code] Frontend - AccountContext - completeRegistration called with phone code:', {
-        codeLength: code.length,
-        code: code ? '****' : 'missing',
-        email: email
-      });
+      // console.log('[Phone Code] Frontend - AccountContext - completeRegistration called with phone code:', {
+      //   codeLength: code.length,
+      //   code: code ? '****' : 'missing',
+      //   email: email
+      // });
       try {
       const data = await requestJson("/api/auth/register/verify-phone", {
         method: "POST",
           body: JSON.stringify({ code, email }),
         });
 
-        console.log('[Phone Code] Frontend - AccountContext - Registration API response received:', {
-          userId: data.user?.id,
-          email: data.user?.email,
-          phone: data.user?.phone,
-          role: data.user?.role
-      });
+        // console.log('[Phone Code] Frontend - AccountContext - Registration API response received:', {
+      //     userId: data.user?.id,
+      //     email: data.user?.email,
+      //     phone: data.user?.phone,
+      //     role: data.user?.role
+      // });
 
       applyUserSession(data.user);
       return data.user;
       } catch (error) {
-        console.error('[Phone Code] Frontend - AccountContext - completeRegistration error:', error);
+        // console.error('[Phone Code] Frontend - AccountContext - completeRegistration error:', error);
         throw error;
       }
     },
@@ -273,17 +273,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const sendSocialPhoneCode = useCallback(
     async (phone: string) => {
-      console.log('[Phone Code] Frontend - Requesting phone code for:', phone);
-      console.log('[Phone Code] Frontend - API endpoint: /api/auth/social/send-phone-code');
+      // console.log('[Phone Code] Frontend - Requesting phone code for:', phone);
+      // console.log('[Phone Code] Frontend - API endpoint: /api/auth/social/send-phone-code');
       const data = await requestJson("/api/auth/social/send-phone-code", {
         method: "POST",
         body: JSON.stringify({ phone }),
       });
-      console.log('[Phone Code] Frontend - Response received:', {
-        message: data.message,
-        hasPhoneCode: !!data.phoneCode,
-        phoneCode: data.phoneCode || 'not provided'
-      });
+      // console.log('[Phone Code] Frontend - Response received:', {
+      //   message: data.message,
+      //   hasPhoneCode: !!data.phoneCode,
+      //   phoneCode: data.phoneCode || 'not provided'
+      // });
       return data;
     },
     [requestJson]
@@ -291,19 +291,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifySocialPhone = useCallback(
     async (code: string, registrationData: SocialRegistrationPayload) => {
-      console.log('[Phone Code] Frontend - Verifying phone code:', {
-        codeLength: code.length,
-        code: code ? '****' : 'missing',
-        hasRegistrationData: !!registrationData
-      });
+      // console.log('[Phone Code] Frontend - Verifying phone code:', {
+      //   codeLength: code.length,
+      //   code: code ? '****' : 'missing',
+      //   hasRegistrationData: !!registrationData
+      // });
       const data = await requestJson("/api/auth/social/verify-phone", {
         method: "POST",
         body: JSON.stringify({ code, ...registrationData }),
       });
-      console.log('[Phone Code] Frontend - Phone verification response:', {
-        success: !!data.user,
-        userId: data.user?.id
-      });
+      // console.log('[Phone Code] Frontend - Phone verification response:', {
+      //   success: !!data.user,
+      //   userId: data.user?.id
+      // });
       applyUserSession(data.user);
       return data.user;
     },
@@ -347,16 +347,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifyOTP = useCallback(
     async (code: string, type: 'email' | 'phone') => {
-      console.log('[Phone Verification] AccountContext - verifyOTP called:', { type, code: code ? '****' : 'missing' });
+      // console.log('[Phone Verification] AccountContext - verifyOTP called:', { type, code: code ? '****' : 'missing' });
       try {
         const data = await requestJson("/api/auth/profile/verify-otp", {
           method: "POST",
           body: JSON.stringify({ code, type }),
         });
-        console.log('[Phone Verification] AccountContext - verifyOTP response:', data);
+        // console.log('[Phone Verification] AccountContext - verifyOTP response:', data);
         return data;
       } catch (error) {
-        console.error('[Phone Verification] AccountContext - verifyOTP error:', error);
+        // console.error('[Phone Verification] AccountContext - verifyOTP error:', error);
         throw error;
       }
     },
@@ -551,7 +551,7 @@ export function useAccount() {
   // when any account action is attempted.
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.error("useAccount was called without an AccountProvider in the React tree.");
+    // console.error("useAccount was called without an AccountProvider in the React tree.");
   }
 
   const err = () => {

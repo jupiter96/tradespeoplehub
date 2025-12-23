@@ -60,7 +60,7 @@ export default function AdminServiceAttributesPage() {
           toast.error("Failed to fetch service category");
         }
       } catch (error) {
-        console.error("Error fetching service category:", error);
+        // console.error("Error fetching service category:", error);
         toast.error("Failed to fetch service category");
       }
     };
@@ -97,7 +97,7 @@ export default function AdminServiceAttributesPage() {
         setSubCategoryAttributes(prev => ({ ...prev, ...attributesMap }));
       }
     } catch (error) {
-      console.error("Error fetching subcategories:", error);
+      // console.error("Error fetching subcategories:", error);
     } finally {
       setLoadingSubCategories(prev => ({ ...prev, [level]: false }));
     }
@@ -173,7 +173,7 @@ export default function AdminServiceAttributesPage() {
         serviceAttributes: (attributes as string[]).filter((attr: string) => attr.trim() !== '')
       }));
 
-      console.log('Saving attributes:', updates);
+      // console.log('Saving attributes:', updates);
 
       const response = await fetch(
         resolveApiUrl('/api/service-subcategories/bulk-update-attributes'),
@@ -187,15 +187,15 @@ export default function AdminServiceAttributesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Save successful:', result);
+        // console.log('Save successful:', result);
         toast.success('Attributes saved successfully');
       } else {
         const error = await response.json();
-        console.error('Save failed:', error);
+        // console.error('Save failed:', error);
         toast.error(error.error || 'Failed to save attributes');
       }
     } catch (error) {
-      console.error('Error saving attributes:', error);
+      // console.error('Error saving attributes:', error);
       toast.error('Failed to save attributes');
     } finally {
       setIsSaving(false);

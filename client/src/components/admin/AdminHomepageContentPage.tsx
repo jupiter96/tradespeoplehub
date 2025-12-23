@@ -110,7 +110,7 @@ export default function AdminHomepageContentPage() {
         });
       }
     } catch (error) {
-      console.error("Error fetching content:", error);
+      // console.error("Error fetching content:", error);
       toast.error("Failed to load content");
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ export default function AdminHomepageContentPage() {
 
       toast.success("All content updated successfully!");
     } catch (error) {
-      console.error("Error updating content:", error);
+      // console.error("Error updating content:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update content");
     } finally {
       setSaving(false);

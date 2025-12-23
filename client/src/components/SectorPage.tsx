@@ -419,7 +419,7 @@ export default function SectorPage() {
           }
         }
       } catch (error) {
-        console.error("Error fetching services:", error);
+        // console.error("Error fetching services:", error);
         setAllServices([]);
       } finally {
         setServicesLoading(false);
@@ -557,7 +557,7 @@ export default function SectorPage() {
             setCurrentServiceSubCategoryData(null);
           }
         } catch (error) {
-          console.error('Error fetching subcategory chain:', error);
+          // console.error('Error fetching subcategory chain:', error);
           setCurrentServiceSubCategoryData(null);
         } finally {
           setSubCategoryLoading(false);
@@ -618,7 +618,7 @@ export default function SectorPage() {
           setNestedSubCategoriesLoading(false);
           setRetryCount(0);
         } catch (error) {
-          console.error(`Error fetching nested subcategories (attempt ${attempt + 1}/${maxRetries}):`, error);
+          // console.error(`Error fetching nested subcategories (attempt ${attempt + 1}/${maxRetries}):`, error);
           if (attempt < maxRetries - 1) {
             // Retry after delay
             setTimeout(() => {
@@ -626,7 +626,7 @@ export default function SectorPage() {
             }, retryDelay);
           } else {
             // Max retries reached, show error
-            console.error('Failed to fetch nested subcategories after all retries');
+            // console.error('Failed to fetch nested subcategories after all retries');
             setNestedSubCategoriesLoading(false);
             setSubCategoriesWithNested([]);
           }
@@ -659,7 +659,7 @@ export default function SectorPage() {
             setApiCategory(data.category);
           }
         } catch (error) {
-          console.error('Error fetching category:', error);
+          // console.error('Error fetching category:', error);
         } finally {
           setCategoryLoading(false);
         }
@@ -1391,7 +1391,7 @@ export default function SectorPage() {
                           navigate(`/sector/${sectorSlug}/${serviceCategorySlug}/${currentPathSlugs}`);
                         }
                       } catch (error) {
-                        console.error('Error checking subcategory:', error);
+                        // console.error('Error checking subcategory:', error);
                         // Still navigate SEO-friendly on errors.
                         const currentPathSlugs = subCategorySlugs.length > 0
                           ? [...subCategorySlugs, subCategorySlug].join('/')

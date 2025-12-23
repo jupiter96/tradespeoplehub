@@ -781,7 +781,7 @@ export default function FeaturedServices() {
           setAllServices([]);
         }
       } catch (error) {
-        console.error("Error fetching services:", error);
+        // console.error("Error fetching services:", error);
         setAllServices([]);
       } finally {
         setLoading(false);

@@ -174,7 +174,7 @@ export default function AdminServicesPage({
         setServices([]);
       }
     } catch (error) {
-      console.error("Error fetching services:", error);
+      // console.error("Error fetching services:", error);
       toast.error("Error fetching services");
       setServices([]);
     } finally {
@@ -220,7 +220,7 @@ export default function AdminServicesPage({
         toast.error(error.error || "Failed to delete service");
       }
     } catch (error) {
-      console.error("Error deleting service:", error);
+      // console.error("Error deleting service:", error);
       toast.error("Error deleting service");
     } finally {
       setIsDeleteDialogOpen(false);
@@ -322,7 +322,7 @@ export default function AdminServicesPage({
         }
       }
     } catch (error) {
-      console.error("Error updating service status:", error);
+      // console.error("Error updating service status:", error);
       toast.error("Error updating service status");
     } finally {
       setIsStatusDialogOpen(false);
@@ -402,7 +402,7 @@ export default function AdminServicesPage({
         toast.error(error.error || `Failed to ${approvalAction} service`);
       }
     } catch (error) {
-      console.error("Error updating service approval:", error);
+      // console.error("Error updating service approval:", error);
       toast.error("Error updating service approval");
     } finally {
       setIsApprovalDialogOpen(false);
@@ -476,7 +476,7 @@ export default function AdminServicesPage({
 
       return counts;
     } catch (error) {
-      console.error("Error fetching service counts:", error);
+      // console.error("Error fetching service counts:", error);
       return {
         pending: 0,
         required_modification: 0,

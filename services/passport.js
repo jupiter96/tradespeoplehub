@@ -32,16 +32,16 @@ passport.deserializeUser(async (id, done) => {
 
 const handleSocialVerify = (provider) => async (accessToken, refreshToken, profile, done) => {
   try {
-    console.log(`${provider} profile received:`, {
-      id: profile.id,
-      hasEmail: !!profile.emails?.[0]?.value,
-      hasName: !!profile.name,
-      displayName: profile.displayName,
-    });
+    // console.log(`${provider} profile received:`, {
+    //   id: profile.id,
+    //   hasEmail: !!profile.emails?.[0]?.value,
+    //   hasName: !!profile.name,
+    //   displayName: profile.displayName,
+    // });
 
     const providerId = profile.id;
     if (!providerId) {
-      console.error(`${provider} profile missing ID`);
+      // console.error(`${provider} profile missing ID`);
       return done(new Error('Provider profile missing ID'), null);
     }
 
@@ -59,7 +59,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
       (email ? await User.findOne({ email, isDeleted: true }) : null);
     
     if (deletedUser) {
-      console.log(`${provider} login attempt with deleted account:`, providerId);
+      // console.log(`${provider} login attempt with deleted account:`, providerId);
       return done(null, false, { message: 'This account has been deleted and cannot be re-registered' });
     }
     
@@ -71,7 +71,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
     if (user) {
       // Check if user is blocked
       if (user.isBlocked) {
-        console.log(`${provider} login attempt with blocked account:`, providerId);
+        // console.log(`${provider} login attempt with blocked account:`, providerId);
         return done(null, false, { message: 'Your account has been suspended. Please contact support@sortars.com' });
       }
       
@@ -79,12 +79,12 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
         user[providerField] = providerId;
         await user.save();
       }
-      console.log(`${provider} login successful for existing user:`, user.email || user._id);
+      // console.log(`${provider} login successful for existing user:`, user.email || user._id);
       return done(null, user);
     }
 
     // New user - needs profile completion
-    console.log(`${provider} new user needs profile:`, { providerId, email, firstName, lastName });
+    // console.log(`${provider} new user needs profile:`, { providerId, email, firstName, lastName });
     return done(null, {
       needsProfile: true,
       provider,
@@ -94,7 +94,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
       lastName,
     });
   } catch (error) {
-    console.error(`${provider} verification error:`, error);
+    // console.error(`${provider} verification error:`, error);
     
     // Save verification error to database (async, don't wait)
     SocialAuthError.create({
@@ -113,7 +113,7 @@ const handleSocialVerify = (provider) => async (accessToken, refreshToken, profi
         hasName: !!profile?.name,
       },
     }).catch((saveError) => {
-      console.error('Failed to save verification error to database:', saveError);
+      // console.error('Failed to save verification error to database:', saveError);
     });
     
     return done(error, null);
@@ -132,11 +132,11 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
       handleSocialVerify('google')
     )
   );
-  console.log('✅ Google OAuth strategy registered');
+  // console.log('✅ Google OAuth strategy registered');
 } else {
   console.warn('⚠️ Google OAuth not configured. Missing environment variables:');
-  if (!GOOGLE_CLIENT_ID) console.warn('   - GOOGLE_CLIENT_ID');
-  if (!GOOGLE_CLIENT_SECRET) console.warn('   - GOOGLE_CLIENT_SECRET');
+  if (!GOOGLE_CLIENT_ID)  console.warn('   - GOOGLE_CLIENT_ID');
+  if (!GOOGLE_CLIENT_SECRET)  console.warn('   - GOOGLE_CLIENT_SECRET');
   if (!GOOGLE_CALLBACK_URL) console.warn('   - GOOGLE_CALLBACK_URL');
 }
 
@@ -156,12 +156,12 @@ if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET && FACEBOOK_CALLBACK_URL) {
       handleSocialVerify('facebook')
     )
   );
-  console.log('✅ Facebook OAuth strategy registered');
+  // console.log('✅ Facebook OAuth strategy registered');
 } else {
-  console.warn('⚠️ Facebook OAuth not configured. Missing environment variables:');
-  if (!FACEBOOK_CLIENT_ID) console.warn('   - FACEBOOK_CLIENT_ID');
-  if (!FACEBOOK_CLIENT_SECRET) console.warn('   - FACEBOOK_CLIENT_SECRET');
-  if (!FACEBOOK_CALLBACK_URL) console.warn('   - FACEBOOK_CALLBACK_URL');
+  // console.warn('⚠️ Facebook OAuth not configured. Missing environment variables:');
+  if (!FACEBOOK_CLIENT_ID)  console.warn('   - FACEBOOK_CLIENT_ID');
+  if (!FACEBOOK_CLIENT_SECRET)  console.warn('   - FACEBOOK_CLIENT_SECRET');
+  if (!FACEBOOK_CALLBACK_URL)  console.warn('   - FACEBOOK_CALLBACK_URL');
 }
 
 export default passport;

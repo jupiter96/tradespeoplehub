@@ -121,7 +121,7 @@ export default function AdminEmailCampaignPage() {
       }
       setIsEditingSmtp(false);
     } catch (error) {
-      console.error("Error fetching SMTP settings:", error);
+      // console.error("Error fetching SMTP settings:", error);
       setSmtpSettings({
         smtpUser: "",
         smtpPass: "",
@@ -145,10 +145,10 @@ export default function AdminEmailCampaignPage() {
           smtpHost: data.smtpConfig.smtpHost || "",
           smtpPort: data.smtpConfig.smtpPort || 587,
         });
-        console.log('Loaded SMTP config:', {
-          host: data.smtpConfig.smtpHost,
-          port: data.smtpConfig.smtpPort,
-        });
+        // console.log('Loaded SMTP config:', {
+        //   host: data.smtpConfig.smtpHost,
+        //   port: data.smtpConfig.smtpPort,
+        // });
       } else {
         // Fallback to empty values if no config and no env vars
         setGlobalSmtpConfig({
@@ -158,7 +158,7 @@ export default function AdminEmailCampaignPage() {
       }
       setIsEditingGlobalSmtp(false);
     } catch (error) {
-      console.error("Error fetching global SMTP config:", error);
+      // console.error("Error fetching global SMTP config:", error);
       setGlobalSmtpConfig({
         smtpHost: "",
         smtpPort: 587,
@@ -196,7 +196,7 @@ export default function AdminEmailCampaignPage() {
       // Reload settings to get masked password
       fetchSmtpSettings(activeTab);
     } catch (error) {
-      console.error("Error saving SMTP settings:", error);
+      // console.error("Error saving SMTP settings:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save SMTP settings");
     } finally {
       setIsSavingSmtp(false);
@@ -233,7 +233,7 @@ export default function AdminEmailCampaignPage() {
       // Reload settings to get masked password
       fetchGlobalSmtpConfig();
     } catch (error) {
-      console.error("Error saving global SMTP config:", error);
+      // console.error("Error saving global SMTP config:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save global SMTP configuration");
     } finally {
       setIsSavingGlobalSmtp(false);
@@ -254,7 +254,7 @@ export default function AdminEmailCampaignPage() {
       const data = await response.json();
       setTemplates(data.templates || []);
     } catch (error) {
-      console.error("Error fetching templates:", error);
+      // console.error("Error fetching templates:", error);
       toast.error("Failed to load email templates");
     } finally {
       setLoading(false);
@@ -362,7 +362,7 @@ export default function AdminEmailCampaignPage() {
       setSelectedTemplate(null);
       fetchTemplates();
     } catch (error) {
-      console.error("Error saving template:", error);
+      // console.error("Error saving template:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save template");
     } finally {
       setLoading(false);
@@ -394,7 +394,7 @@ export default function AdminEmailCampaignPage() {
       }
       fetchTemplates();
     } catch (error) {
-      console.error("Error deleting template:", error);
+      // console.error("Error deleting template:", error);
       toast.error("Failed to delete template");
     } finally {
       setLoading(false);

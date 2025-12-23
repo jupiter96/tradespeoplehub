@@ -253,7 +253,7 @@ export default function AddressAutocomplete({
         throw new Error(errorData.error || 'Failed to fetch addresses');
       }
     } catch (err) {
-      console.error("Address lookup error:", err);
+      // console.error("Address lookup error:", err);
       setError("Unable to find addresses for this postcode. Please enter manually.");
       setSuggestions([]);
       setShowSuggestions(false);
@@ -336,7 +336,7 @@ export default function AddressAutocomplete({
           }
         }, 100);
       } catch (err) {
-        console.error("Error fetching address suggestions:", err);
+        // console.error("Error fetching address suggestions:", err);
         setAddressSuggestions([]);
         setShowAddressSuggestions(false);
       } finally {

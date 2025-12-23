@@ -404,7 +404,7 @@ router.get('/', async (req, res) => {
     }
     return res.json(payload);
   } catch (error) {
-    console.error('Get service subcategories error', error);
+    // console.error('Get service subcategories error', error);
     return res.status(500).json({ error: 'Failed to fetch service subcategories' });
   }
 });
@@ -439,7 +439,7 @@ router.get('/:identifier', async (req, res) => {
     
     return res.json({ serviceSubCategory });
   } catch (error) {
-    console.error('Get service subcategory error', error);
+    // console.error('Get service subcategory error', error);
     return res.status(500).json({ error: 'Failed to fetch service subcategory' });
   }
 });
@@ -635,7 +635,7 @@ router.post('/', async (req, res) => {
     
     return res.status(201).json({ serviceSubCategory });
   } catch (error) {
-    console.error('Create service subcategory error', error);
+    // console.error('Create service subcategory error', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Service subcategory with this name already exists in this service category' });
     }
@@ -660,7 +660,7 @@ router.put('/bulk/order', async (req, res) => {
 
     return res.json({ message: 'Service subcategory orders updated' });
   } catch (error) {
-    console.error('Bulk update service subcategory order error', error);
+    // console.error('Bulk update service subcategory order error', error);
     return res.status(500).json({ error: 'Failed to update service subcategory orders' });
   }
 });
@@ -670,33 +670,33 @@ router.put('/bulk-update-attributes', async (req, res) => {
   try {
     const { updates } = req.body;
 
-    console.log('Received bulk-update-attributes request:', JSON.stringify(updates, null, 2));
+    // console.log('Received bulk-update-attributes request:', JSON.stringify(updates, null, 2));
 
     if (!updates || !Array.isArray(updates)) {
-      console.error('Invalid updates format:', updates);
+      // console.error('Invalid updates format:', updates);
       return res.status(400).json({ error: 'Invalid updates format' });
     }
 
     const updatePromises = updates.map(async ({ subCategoryId, serviceAttributes }) => {
-      console.log(`Updating subcategory ${subCategoryId} with attributes:`, serviceAttributes);
+      // console.log(`Updating subcategory ${subCategoryId} with attributes:`, serviceAttributes);
       const result = await ServiceSubCategory.findByIdAndUpdate(
         subCategoryId,
         { serviceAttributes },
         { new: true }
       );
-      console.log(`Updated subcategory ${subCategoryId}:`, result?.serviceAttributes);
+      // console.log(`Updated subcategory ${subCategoryId}:`, result?.serviceAttributes);
       return result;
     });
 
     const results = await Promise.all(updatePromises);
-    console.log('All updates completed. Total updated:', results.length);
+    // console.log('All updates completed. Total updated:', results.length);
 
     return res.json({
       message: 'Service attributes updated successfully',
       updatedCount: results.length
     });
   } catch (error) {
-    console.error('Bulk update service attributes error', error);
+    // console.error('Bulk update service attributes error', error);
     return res.status(500).json({ error: 'Failed to update service attributes' });
   }
 });
@@ -802,7 +802,7 @@ router.put('/:id', async (req, res) => {
     
     return res.json({ serviceSubCategory });
   } catch (error) {
-    console.error('Update service subcategory error', error);
+    // console.error('Update service subcategory error', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Service subcategory with this name already exists in this service category' });
     }
@@ -831,7 +831,7 @@ router.delete('/:id', async (req, res) => {
       return res.json({ message: 'Service subcategory deactivated', serviceSubCategory });
     }
   } catch (error) {
-    console.error('Delete service subcategory error', error);
+    // console.error('Delete service subcategory error', error);
     return res.status(500).json({ error: 'Failed to delete service subcategory' });
   }
 });

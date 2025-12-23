@@ -69,7 +69,7 @@ export default function AdminServiceTitlesPage() {
           navigate("/admin/service-category");
         }
       } catch (error) {
-        console.error("Error fetching service category:", error);
+        // console.error("Error fetching service category:", error);
         toast.error("Failed to load service category");
         navigate("/admin/service-category");
       }
@@ -126,7 +126,7 @@ export default function AdminServiceTitlesPage() {
         setSubCategoryTitles(prev => ({ ...prev, ...titlesMap }));
       }
     } catch (error) {
-      console.error('Error fetching subcategories:', error);
+      // console.error('Error fetching subcategories:', error);
       toast.error('Failed to fetch subcategories');
     } finally {
       setLoadingSubCategories(prev => ({ ...prev, [level]: false }));
@@ -222,7 +222,7 @@ export default function AdminServiceTitlesPage() {
         toast.error(`Failed to save ${errorCount} subcategor${errorCount === 1 ? 'y' : 'ies'}`);
       }
     } catch (error) {
-      console.error("Error saving service title suggestions:", error);
+      // console.error("Error saving service title suggestions:", error);
       toast.error("Failed to save service title suggestions");
     } finally {
       setIsSaving(false);

@@ -161,7 +161,7 @@ router.get('/', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get services error', error);
+    // console.error('Get services error', error);
     return res.status(500).json({ error: error.message || 'Failed to fetch services' });
   }
 });
@@ -208,7 +208,7 @@ router.get('/:id', async (req, res) => {
 
     return res.json({ service });
   } catch (error) {
-    console.error('Get service error', error);
+    // console.error('Get service error', error);
     return res.status(500).json({ error: error.message || 'Failed to fetch service' });
   }
 });
@@ -359,7 +359,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
 
     return res.status(201).json({ service });
   } catch (error) {
-    console.error('Create service error', error);
+    // console.error('Create service error', error);
     return res.status(500).json({ error: error.message || 'Failed to create service' });
   }
 });
@@ -464,7 +464,7 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
 
     return res.json({ service });
   } catch (error) {
-    console.error('Update service error', error);
+    // console.error('Update service error', error);
     return res.status(500).json({ error: error.message || 'Failed to update service' });
   }
 });
@@ -522,7 +522,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 
     return res.json({ service });
   } catch (error) {
-    console.error('Update service status error', error);
+    // console.error('Update service status error', error);
     return res.status(500).json({ error: error.message || 'Failed to update service status' });
   }
 });
@@ -557,7 +557,7 @@ router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professiona
 
     return res.json({ service });
   } catch (error) {
-    console.error('Toggle service disable error', error);
+    // console.error('Toggle service disable error', error);
     return res.status(500).json({ error: error.message || 'Failed to toggle service disable status' });
   }
 });
@@ -611,7 +611,7 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
 
     return res.json({ service });
   } catch (error) {
-    console.error('Update service approval error', error);
+    // console.error('Update service approval error', error);
     return res.status(500).json({ error: error.message || 'Failed to update service approval' });
   }
 });
@@ -658,7 +658,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     return res.json({ message: 'Service deleted successfully' });
   } catch (error) {
-    console.error('Delete service error', error);
+    // console.error('Delete service error', error);
     return res.status(500).json({ error: error.message || 'Failed to delete service' });
   }
 });

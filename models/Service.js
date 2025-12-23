@@ -244,7 +244,7 @@ serviceSchema.index({ professional: 1, status: 1 });
 serviceSchema.index({ serviceCategory: 1, status: 1, isActive: 1 });
 serviceSchema.index({ serviceSubCategory: 1, status: 1, isActive: 1 });
 serviceSchema.index({ status: 1, isActive: 1 });
-serviceSchema.index({ slug: 1 }, { unique: true, sparse: true });
+// serviceSchema.index({ slug: 1 }, { unique: true, sparse: true });
 serviceSchema.index({ isUserDisabled: 1, isActive: 1 });
 
 // Auto-populate on find

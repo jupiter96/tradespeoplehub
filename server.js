@@ -33,7 +33,7 @@ const isProduction = NODE_ENV === 'production';
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.error('❌ Missing MONGODB_URI in your environment (.env)');
+  // console.error('❌ Missing MONGODB_URI in your environment (.env)');
   process.exit(1);
 }
 
@@ -70,7 +70,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      console.warn(`❌ CORS blocked request from origin: ${origin}`);
+      // console.warn(`❌ CORS blocked request from origin: ${origin}`);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -126,7 +126,7 @@ const connectMongoDB = async () => {
     console.log('✅ MongoDB connected successfully');
     return conn;
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    // console.error('❌ MongoDB connection error:', error);
     throw error;
   }
 };
@@ -145,7 +145,7 @@ try {
   // After Mongo is connected, load other config/services that depend on DB
   await initNotifier();
 } catch (error) {
-  console.error('❌ Failed to initialize database:', error);
+  // console.error('❌ Failed to initialize database:', error);
   process.exit(1);
 }
 

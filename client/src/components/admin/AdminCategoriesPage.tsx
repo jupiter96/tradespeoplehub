@@ -236,7 +236,7 @@ export default function AdminCategoriesPage() {
         }
       }
     } catch (error) {
-      console.error("Error fetching sectors:", error);
+      // console.error("Error fetching sectors:", error);
       toast.error("Failed to fetch sectors");
     } finally {
       setLoading(false);
@@ -272,7 +272,7 @@ export default function AdminCategoriesPage() {
         toast.error("Failed to fetch categories");
       }
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      // console.error("Error fetching categories:", error);
       toast.error("Failed to fetch categories");
     } finally {
       setLoading(false);
@@ -431,7 +431,7 @@ export default function AdminCategoriesPage() {
             toast.error(errorData.error || `Failed to ${action} category`);
           }
         } catch (error) {
-          console.error(`Error ${action}ing category:`, error);
+          // console.error(`Error ${action}ing category:`, error);
           toast.error(`Failed to ${action} category: ${error instanceof Error ? error.message : "Unknown error"}`);
         } finally {
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -466,7 +466,7 @@ export default function AdminCategoriesPage() {
             toast.error(error.error || "Failed to delete category");
           }
         } catch (error) {
-          console.error("Error deleting category:", error);
+          // console.error("Error deleting category:", error);
           toast.error("Failed to delete category");
         }
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -600,7 +600,7 @@ export default function AdminCategoriesPage() {
         }, 100);
       }
     } catch (error: any) {
-      console.error("Error saving category:", error);
+      // console.error("Error saving category:", error);
       toast.error(error.message || "Failed to save category");
     } finally {
       setIsSaving(false);

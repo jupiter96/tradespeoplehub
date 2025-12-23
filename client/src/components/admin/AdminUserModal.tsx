@@ -124,11 +124,11 @@ export default function AdminUserModal({
       });
       if (!response.ok) {
         // Silently fail - don't show error to user
-        console.error("Failed to mark user as viewed");
+        // console.error("Failed to mark user as viewed");
       }
     } catch (error) {
       // Silently fail - don't show error to user
-      console.error("Error marking user as viewed:", error);
+      // console.error("Error marking user as viewed:", error);
     }
   };
 
@@ -251,7 +251,7 @@ export default function AdminUserModal({
       onSuccess?.();
       onClose();
     } catch (error: any) {
-      console.error("Error saving user:", error);
+      // console.error("Error saving user:", error);
       toast.error(error.message || "Failed to save user");
     } finally {
       setLoading(false);

@@ -1849,12 +1849,12 @@ function DetailsSection() {
   // Update formData when userInfo changes (especially when townCity/county are loaded)
   useEffect(() => {
     if (userInfo) {
-      console.log('[AccountPage] userInfo updated, updating formData:', {
-        townCity: userInfo.townCity,
-        county: userInfo.county,
-        address: userInfo.address,
-        postcode: userInfo.postcode,
-      });
+      // console.log('[AccountPage] userInfo updated, updating formData:', {
+      //   townCity: userInfo.townCity,
+      //   county: userInfo.county,
+      //   address: userInfo.address,
+      //   postcode: userInfo.postcode,
+      // });
     setFormData(buildFormState(initialFormState));
     }
   }, [userInfo, buildFormState, initialFormState]);

@@ -296,11 +296,11 @@ export default function AdminSectorsPage() {
           });
         }
         
-        console.log('=== Fetched Sectors from Database ===');
-        console.log(`Sort: ${sortBy} ${sortOrder}`);
-        console.log(`Total sectors fetched: ${sectorsData.length}`);
+        // console.log('=== Fetched Sectors from Database ===');
+        // console.log(`Sort: ${sortBy} ${sortOrder}`);
+        // console.log(`Total sectors fetched: ${sectorsData.length}`);
         sectorsData.forEach(s => {
-          console.log(`Sector ${s.name} (${s._id}): order = ${s.order} (from database)`);
+          // console.log(`Sector ${s.name} (${s._id}): order = ${s.order} (from database)`);
         });
         
         // Ensure we're using the actual database order values
@@ -310,13 +310,13 @@ export default function AdminSectorsPage() {
           // Temporary values are typically negative or very large (> 10000)
           const isValid = s.order > 0 && s.order < 10000;
           if (!isValid) {
-            console.warn(`Sector ${s.name} has suspicious order value: ${s.order}`);
+            // console.warn(`Sector ${s.name} has suspicious order value: ${s.order}`);
           }
           return isValid;
         });
         
         if (validSectors.length !== sectorsData.length) {
-          console.warn(`Filtered out ${sectorsData.length - validSectors.length} sectors with invalid order values`);
+          // console.warn(`Filtered out ${sectorsData.length - validSectors.length} sectors with invalid order values`);
         }
         
         // Use valid sectors or all sectors if filtering removed too many
@@ -329,7 +329,7 @@ export default function AdminSectorsPage() {
         toast.error("Failed to fetch sectors");
       }
     } catch (error) {
-      console.error("Error fetching sectors:", error);
+      // console.error("Error fetching sectors:", error);
       toast.error("Failed to fetch sectors");
     } finally {
       setLoading(false);
@@ -443,24 +443,24 @@ export default function AdminSectorsPage() {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    console.log('=== Drag End Event ===');
-    console.log('Active:', event.active);
-    console.log('Over:', event.over);
+    // console.log('=== Drag End Event ===');
+    // console.log('Active:', event.active);
+    // console.log('Over:', event.over);
     
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
-      console.log('Drag cancelled: no over target or same position');
+      // console.log('Drag cancelled: no over target or same position');
       return;
     }
 
     const oldIndex = sectors.findIndex((sector) => sector._id === active.id);
     const newIndex = sectors.findIndex((sector) => sector._id === over.id);
 
-    console.log(`Moving sector from index ${oldIndex} to ${newIndex}`);
+    // console.log(`Moving sector from index ${oldIndex} to ${newIndex}`);
 
     if (oldIndex === -1 || newIndex === -1) {
-      console.error('Invalid indices:', { oldIndex, newIndex });
+      // console.error('Invalid indices:', { oldIndex, newIndex });
       return;
     }
 
@@ -473,9 +473,9 @@ export default function AdminSectorsPage() {
     const movedSector = sectors[oldIndex];
     const targetSector = sectors[newIndex];
     
-    console.log('=== Order Update Calculation ===');
-    console.log(`Moving sector "${movedSector.name}" (order ${movedSector.order}) from index ${oldIndex} to index ${newIndex}`);
-    console.log(`Target sector "${targetSector.name}" (order ${targetSector.order})`);
+    // console.log('=== Order Update Calculation ===');
+    // console.log(`Moving sector "${movedSector.name}" (order ${movedSector.order}) from index ${oldIndex} to index ${newIndex}`);
+    // console.log(`Target sector "${targetSector.name}" (order ${targetSector.order})`);
     
     // Calculate new order values by shifting
     // If moving down (oldIndex < newIndex), shift intermediate sectors up
@@ -510,18 +510,18 @@ export default function AdminSectorsPage() {
       });
     }
     
-    console.log('=== Updated Order Values ===');
+    // console.log('=== Updated Order Values ===');
     sectorsToUpdate.forEach(({ id, order }) => {
       const sectorName = sectors.find(s => s._id === id)?.name || 'Unknown';
-      console.log(`Sector ${sectorName} (${id}): order = ${order}`);
+      // console.log(`Sector ${sectorName} (${id}): order = ${order}`);
     });
     
     // Update local state - but don't modify order values here
     // Just reorder the array, order values will come from database after update
     setSectors(newSectors);
 
-    console.log('=== Sectors to Update ===');
-    console.log('Sectors array:', JSON.stringify(sectorsToUpdate, null, 2));
+    // console.log('=== Sectors to Update ===');
+    // console.log('Sectors array:', JSON.stringify(sectorsToUpdate, null, 2));
 
     // Save to backend
     try {
@@ -529,9 +529,9 @@ export default function AdminSectorsPage() {
       const apiUrl = resolveApiUrl('/api/sectors/bulk/order');
       const requestBody = { sectors: sectorsToUpdate };
       
-      console.log('=== Sending Bulk Order Update Request ===');
-      console.log('API URL:', apiUrl);
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      // console.log('=== Sending Bulk Order Update Request ===');
+      // console.log('API URL:', apiUrl);
+      // console.log('Request body:', JSON.stringify(requestBody, null, 2));
       
       const response = await fetch(apiUrl, {
         method: 'PUT',
@@ -542,13 +542,13 @@ export default function AdminSectorsPage() {
         body: JSON.stringify(requestBody),
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      // console.log('Response status:', response.status);
+      // console.log('Response ok:', response.ok);
 
       if (response.ok) {
         const responseData = await response.json();
-        console.log('=== Bulk Order Update Success ===');
-        console.log('Response data:', responseData);
+        // console.log('=== Bulk Order Update Success ===');
+        // console.log('Response data:', responseData);
         toast.success('Sector order updated successfully');
         // Refresh to get updated data from database
         // Ensure we're sorting by order desc to match admin display
@@ -562,17 +562,17 @@ export default function AdminSectorsPage() {
         }, 100);
       } else {
         // Revert on error
-        console.error('=== Bulk Order Update Failed ===');
-        console.error('Response status:', response.status);
+        // console.error('=== Bulk Order Update Failed ===');
+        // console.error('Response status:', response.status);
         const errorText = await response.text();
-        console.error('Response text:', errorText);
+        // console.error('Response text:', errorText);
         
         let error;
         try {
           error = JSON.parse(errorText);
-          console.error('Parsed error:', error);
+          // console.error('Parsed error:', error);
         } catch (e) {
-          console.error('Could not parse error response as JSON');
+          // console.error('Could not parse error response as JSON');
           error = { error: errorText || 'Failed to update sector order' };
         }
         
@@ -581,19 +581,19 @@ export default function AdminSectorsPage() {
       }
     } catch (error) {
       // Revert on error
-      console.error('=== Exception in Bulk Order Update ===');
-      console.error('Error:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      // console.error('=== Exception in Bulk Order Update ===');
+      // console.error('Error:', error);
+      // console.error('Error type:', typeof error);
+      // console.error('Error message:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error) {
-        console.error('Error stack:', error.stack);
+        // console.error('Error stack:', error.stack);
       }
       
       setSectors(sectors);
       toast.error('Failed to update sector order');
     } finally {
       setIsUpdatingOrder(false);
-      console.log('=== Drag End Complete ===');
+      // console.log('=== Drag End Complete ===');
     }
   };
 
@@ -628,7 +628,7 @@ export default function AdminSectorsPage() {
             toast.error(error.error || `Failed to ${action} sector`);
           }
         } catch (error) {
-          console.error(`Error ${action}ing sector:`, error);
+          // console.error(`Error ${action}ing sector:`, error);
           toast.error(`Failed to ${action} sector`);
         }
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -661,7 +661,7 @@ export default function AdminSectorsPage() {
             toast.error(error.error || "Failed to delete sector");
           }
         } catch (error) {
-          console.error("Error deleting sector:", error);
+          // console.error("Error deleting sector:", error);
           toast.error("Failed to delete sector");
         }
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -727,7 +727,7 @@ export default function AdminSectorsPage() {
         toast.error(error.error || "Failed to save sector");
       }
     } catch (error) {
-      console.error("Error saving sector:", error);
+      // console.error("Error saving sector:", error);
       toast.error("Failed to save sector");
     } finally {
       setIsSaving(false);
@@ -817,7 +817,7 @@ export default function AdminSectorsPage() {
         toast.success(`${type === "icon" ? "Icon" : "Banner"} uploaded successfully`);
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
+      // console.error("Error uploading image:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload image");
       // Revert preview on error
       if (type === "icon") {

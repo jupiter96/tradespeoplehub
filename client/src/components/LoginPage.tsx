@@ -307,23 +307,23 @@ export default function LoginPage() {
     setRegisterError(null);
     setIsVerifyingEmail(true);
     try {
-      console.log('[Phone Code] Frontend - Verifying email code, will request phone code next');
+      // console.log('[Phone Code] Frontend - Verifying email code, will request phone code next');
       const response = await verifyRegistrationEmail(emailVerificationCode, registerEmail);
-      console.log('[Phone Code] Frontend - Email verified, phone code received:', {
-        hasPhoneCode: !!response?.phoneCode,
-        phoneCode: response?.phoneCode || 'not provided',
-        message: response?.message
-      });
+      // console.log('[Phone Code] Frontend - Email verified, phone code received:', {
+      //   hasPhoneCode: !!response?.phoneCode,
+      //   phoneCode: response?.phoneCode || 'not provided',
+      //   message: response?.message
+      // });
       setEmailCodeHint(null);
       setVerificationStep(2);
       setEmailVerificationCode("");
     } catch (error: any) {
-      console.error('[Phone Code] Frontend - Email verification failed');
-      console.error('[Phone Code] Frontend - Error object:', error);
-      console.error('[Phone Code] Frontend - Error message:', error?.message);
-      console.error('[Phone Code] Frontend - Twilio error code:', error?.twilioErrorCode);
-      console.error('[Phone Code] Frontend - Twilio error message:', error?.twilioErrorMessage);
-      console.error('[Phone Code] Frontend - Twilio error moreInfo:', error?.twilioErrorMoreInfo);
+      // console.error('[Phone Code] Frontend - Email verification failed');
+      // console.error('[Phone Code] Frontend - Error object:', error);
+      // console.error('[Phone Code] Frontend - Error message:', error?.message);
+      // console.error('[Phone Code] Frontend - Twilio error code:', error?.twilioErrorCode);
+      // console.error('[Phone Code] Frontend - Twilio error message:', error?.twilioErrorMessage);
+      // console.error('[Phone Code] Frontend - Twilio error moreInfo:', error?.twilioErrorMoreInfo);
       
       // Extract detailed error message
       let errorMessage = "Email verification failed";
@@ -347,14 +347,14 @@ export default function LoginPage() {
 
   const handleVerifyPhoneCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[Phone Code] Frontend - Starting phone code verification:', {
-      codeLength: phoneVerificationCode.length,
-      code: phoneVerificationCode ? '****' : 'missing',
-      email: registerEmail
-    });
+    // console.log('[Phone Code] Frontend - Starting phone code verification:', {
+    //   codeLength: phoneVerificationCode.length,
+    //   code: phoneVerificationCode ? '****' : 'missing',
+    //   email: registerEmail
+    // });
     
     if (phoneVerificationCode.length !== 4) {
-      console.log('[Phone Code] Frontend - Invalid code length, expected 4 digits');
+      // console.log('[Phone Code] Frontend - Invalid code length, expected 4 digits');
       alert("Please enter a 4-digit code");
       return;
     }
@@ -362,14 +362,14 @@ export default function LoginPage() {
     setIsRegistering(true);
     setIsCompletingRegistration(true);
     try {
-      console.log('[Phone Code] Frontend - Calling completeRegistration API with phone code');
+      // console.log('[Phone Code] Frontend - Calling completeRegistration API with phone code');
       const user = await completeRegistration(phoneVerificationCode, registerEmail);
-      console.log('[Phone Code] Frontend - Registration completed successfully:', {
-        userId: user.id,
-        email: user.email,
-        phone: user.phone,
-        role: user.role
-      });
+      // console.log('[Phone Code] Frontend - Registration completed successfully:', {
+      //   userId: user.id,
+      //   email: user.email,
+      //   phone: user.phone,
+      //   role: user.role
+      // });
 
       // Close verification modal first
       setShowEmailVerification(false);
@@ -379,16 +379,16 @@ export default function LoginPage() {
 
       // Navigate immediately based on user role
       if (user.role === "professional") {
-        console.log('[Phone Verification] Frontend - Navigating to professional registration steps');
+        // console.log('[Phone Verification] Frontend - Navigating to professional registration steps');
         // Redirect to professional registration steps page
         navigate("/professional-registration-steps", { replace: true });
       } else {
-        console.log('[Phone Verification] Frontend - Navigating to account page');
+        // console.log('[Phone Verification] Frontend - Navigating to account page');
         // Client: go directly to account
         navigate("/account", { replace: true });
       }
     } catch (error) {
-      console.error('[Phone Verification] Frontend - Registration failed:', error);
+      // console.error('[Phone Verification] Frontend - Registration failed:', error);
       setRegisterError(error instanceof Error ? error.message : "Registration failed");
       setIsCompletingRegistration(false);
     } finally {
@@ -543,17 +543,17 @@ export default function LoginPage() {
     setIsRequestingReset(true);
     try {
       const response = await requestPasswordReset(resetEmail);
-      console.log('Password reset response:', response);
+      // console.log('Password reset response:', response);
       const resetLink = response?.resetLink || null;
       const notFound = response?.userNotFound || false;
-      console.log('Reset link hint:', resetLink);
-      console.log('User not found:', notFound);
+      // console.log('Reset link hint:', resetLink);
+      // console.log('User not found:', notFound);
       setResetLinkHint(resetLink);
       setUserNotFound(notFound);
       // Only show modal after we have the response (with or without resetLink)
       setResetRequestSent(true);
     } catch (error) {
-      console.error('Password reset error:', error);
+      // console.error('Password reset error:', error);
       setResetError(error instanceof Error ? error.message : "Unable to send reset link");
     } finally {
       setIsRequestingReset(false);

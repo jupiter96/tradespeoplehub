@@ -331,7 +331,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
       setAvatarPreview(data.user?.avatar || null);
       toast.success("Avatar updated successfully");
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      // console.error("Error uploading avatar:", error);
       toast.error(error instanceof Error ? error.message : "Failed to upload avatar");
       // Revert preview on error
       setAvatarPreview(currentAdmin?.avatar || null);

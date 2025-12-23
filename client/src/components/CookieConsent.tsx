@@ -27,16 +27,16 @@ export default function CookieConsent() {
   useEffect(() => {
     // Check if user has already made a choice
     const consent = localStorage.getItem("cookieConsent");
-    console.log("[CookieConsent] Checking localStorage cookieConsent:", consent);
+    // console.log("[CookieConsent] Checking localStorage cookieConsent:", consent);
     if (!consent) {
       // Show dialog after a short delay
       const timer = setTimeout(() => {
-        console.log("[CookieConsent] Setting isOpen to true");
+        // console.log("[CookieConsent] Setting isOpen to true");
         setIsOpen(true);
       }, 500);
       return () => clearTimeout(timer);
     } else {
-      console.log("[CookieConsent] Consent already exists, not showing banner");
+      // console.log("[CookieConsent] Consent already exists, not showing banner");
     }
   }, []);
 

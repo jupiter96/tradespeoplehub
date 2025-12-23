@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
     
     return res.json({ subCategories });
   } catch (error) {
-    console.error('Get subcategories error', error);
+    // console.error('Get subcategories error', error);
     return res.status(500).json({ error: 'Failed to fetch subcategories' });
   }
 });
@@ -78,7 +78,7 @@ router.get('/:identifier', async (req, res) => {
     
     return res.json({ subCategory });
   } catch (error) {
-    console.error('Get subcategory error', error);
+    // console.error('Get subcategory error', error);
     return res.status(500).json({ error: 'Failed to fetch subcategory' });
   }
 });
@@ -146,7 +146,7 @@ router.post('/', async (req, res) => {
     
     return res.status(201).json({ subCategory });
   } catch (error) {
-    console.error('Create subcategory error', error);
+    // console.error('Create subcategory error', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Subcategory with this name already exists in this category' });
     }
@@ -216,7 +216,7 @@ router.put('/:id', async (req, res) => {
     
     return res.json({ subCategory });
   } catch (error) {
-    console.error('Update subcategory error', error);
+    // console.error('Update subcategory error', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Subcategory with this name already exists in this category' });
     }
@@ -245,7 +245,7 @@ router.delete('/:id', async (req, res) => {
       return res.json({ message: 'Subcategory deactivated', subCategory });
     }
   } catch (error) {
-    console.error('Delete subcategory error', error);
+    // console.error('Delete subcategory error', error);
     return res.status(500).json({ error: 'Failed to delete subcategory' });
   }
 });
@@ -267,7 +267,7 @@ router.put('/bulk/order', async (req, res) => {
     
     return res.json({ message: 'Subcategory orders updated' });
   } catch (error) {
-    console.error('Bulk update subcategory order error', error);
+    // console.error('Bulk update subcategory order error', error);
     return res.status(500).json({ error: 'Failed to update subcategory orders' });
   }
 });
