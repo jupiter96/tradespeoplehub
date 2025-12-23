@@ -1318,7 +1318,7 @@ function SubCategoryLevelDisplay({
 
         if (response.ok) {
           const data = await response.json();
-          const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) =>
+          const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) => 
             sc?._id && sc._id.trim() !== ""
           );
           setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
@@ -1334,36 +1334,6 @@ function SubCategoryLevelDisplay({
       fetchNestedSubCategories(parentSubCategoryId);
     }
   }, [parentSubCategoryId]);
-
-  // Fetch children for selected item at this level
-  useEffect(() => {
-    const selectedAtThisLevel = selectedSubCategoryPath[levelIndex];
-    if (selectedAtThisLevel && !nestedSubCategories[selectedAtThisLevel] && !loadingSubCategories[selectedAtThisLevel]) {
-      const fetchChildren = async () => {
-        try {
-          setLoadingSubCategories(prev => ({ ...prev, [selectedAtThisLevel]: true }));
-          const { resolveApiUrl } = await import("../config/api");
-          const response = await fetch(
-            resolveApiUrl(`/api/service-subcategories?parentSubCategoryId=${selectedAtThisLevel}&activeOnly=true&sortBy=order&sortOrder=asc&limit=1000`),
-            { credentials: 'include' }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            const subCats = (data.serviceSubCategories || []).filter((sc: ServiceSubCategory) =>
-              sc?._id && sc._id.trim() !== ""
-            );
-            setNestedSubCategories(prev => ({ ...prev, [selectedAtThisLevel]: subCats }));
-          }
-        } catch (error) {
-          console.error(`Error fetching children for ${selectedAtThisLevel}:`, error);
-        } finally {
-          setLoadingSubCategories(prev => ({ ...prev, [selectedAtThisLevel]: false }));
-        }
-      };
-      fetchChildren();
-    }
-  }, [selectedSubCategoryPath, levelIndex]);
 
   // Group subcategories by attributeType
   const subCategoriesByAttributeType = currentLevelSubCats.reduce((acc, subCat) => {
@@ -1409,10 +1379,6 @@ function SubCategoryLevelDisplay({
     return null;
   }
 
-  // Get the selected subcategory ID at this level
-  const selectedAtThisLevel = selectedSubCategoryPath[levelIndex];
-  const hasChildrenAtNextLevel = selectedAtThisLevel && nestedSubCategories[selectedAtThisLevel]?.length > 0;
-
   return (
     <div className="space-y-4 mt-4">
       {Object.entries(subCategoriesByAttributeType).map(([attrType, subCats]) => {
@@ -1440,15 +1406,15 @@ function SubCategoryLevelDisplay({
                     htmlFor={`${groupName}_${subCat._id}`}
                     className={`
                       flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                      ${isSelected
-                        ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md'
+                      ${isSelected 
+                        ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
                         : 'border-gray-200 bg-white hover:border-[#FE8A0F]/50 hover:bg-gray-50'
                       }
                     `}
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <RadioGroupItem
-                        value={subCat._id}
+                      <RadioGroupItem 
+                        value={subCat._id} 
                         id={`${groupName}_${subCat._id}`}
                         className={`
                           ${isSelected ? 'border-[#FE8A0F]' : ''} shrink-0
@@ -1470,36 +1436,6 @@ function SubCategoryLevelDisplay({
           </div>
         );
       })}
-
-      {/* Recursively render the next level if a selection has been made at this level */}
-      {selectedAtThisLevel && (
-        <>
-          {/* Show loading state while fetching children */}
-          {loadingSubCategories[selectedAtThisLevel] && (
-            <div className="flex items-center gap-2 py-4">
-              <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
-              <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Loading next level...</span>
-            </div>
-          )}
-
-          {/* Render next level if children exist */}
-          {hasChildrenAtNextLevel && (
-            <SubCategoryLevelDisplay
-              parentSubCategoryId={selectedAtThisLevel}
-              levelIndex={levelIndex + 1}
-              selectedSubCategoryPath={selectedSubCategoryPath}
-              setSelectedSubCategoryPath={setSelectedSubCategoryPath}
-              nestedSubCategories={nestedSubCategories}
-              setNestedSubCategories={setNestedSubCategories}
-              loadingSubCategories={loadingSubCategories}
-              setLoadingSubCategories={setLoadingSubCategories}
-              selectedAttributes={selectedAttributes}
-              setSelectedAttributes={setSelectedAttributes}
-              attributeTypeLabels={attributeTypeLabels}
-            />
-          )}
-        </>
-      )}
     </div>
   );
 }
@@ -1531,8 +1467,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [loadingSubCategories, setLoadingSubCategories] = useState<Record<string, boolean>>({});
   const [selectedSubCategoryTitles, setSelectedSubCategoryTitles] = useState<string[]>([]); // Titles for the selected subcategory
   const [loadingTitles, setLoadingTitles] = useState<boolean>(false);
-  const [selectedSubCategoryAttributes, setSelectedSubCategoryAttributes] = useState<string[]>([]); // Attributes for the selected subcategory
-  const [loadingAttributes, setLoadingAttributes] = useState<boolean>(false);
   
   // Set default sector when sectors are loaded (only if user has a registered sector)
   useEffect(() => {
@@ -1555,27 +1489,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
       if (userInfo.postcode) {
         setPostcode(userInfo.postcode);
-      }
-      // Populate About Me from user profile
-      if (userInfo.aboutService) {
-        setAboutMe(userInfo.aboutService);
-      }
-      // Populate Trade Qualification status
-      if (userInfo.hasTradeQualification) {
-        setHasTradeQualification(
-          userInfo.hasTradeQualification === true || userInfo.hasTradeQualification === "yes" ? "yes" : "no"
-        );
-      }
-      // Populate Qualifications from user profile
-      if (userInfo.publicProfile?.qualifications) {
-        const quals = typeof userInfo.publicProfile.qualifications === 'string'
-          ? userInfo.publicProfile.qualifications.split('\n').filter((q: string) => q.trim())
-          : Array.isArray(userInfo.publicProfile.qualifications)
-          ? userInfo.publicProfile.qualifications
-          : [];
-        setQualifications(quals.length > 0 ? quals : [""]);
-      } else if (userInfo.hasTradeQualification === "yes") {
-        setQualifications([""]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1607,15 +1520,22 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       // Set idealFor
       if (initialService.idealFor && Array.isArray(initialService.idealFor)) {
         const idealForIds = initialService.idealFor.map((label: string) => {
-          const option = idealForOptions.find(opt => opt.label === label);
+          const option = IDEAL_FOR_OPTIONS.find(opt => opt.label === label);
           return option?.id || "";
         }).filter(Boolean);
         setIdealFor(idealForIds);
       }
       
-      // Set service highlights (now stored as attribute strings directly)
+      // Set service highlights
       if (initialService.highlights && Array.isArray(initialService.highlights)) {
-        setServiceHighlights(initialService.highlights);
+        // Wait for dynamic attributes to load, then map highlights
+        // This will be handled by a separate useEffect after dynamicServiceAttributes is loaded
+        // For now, just store the raw labels temporarily
+        const highlightIds = initialService.highlights.map((label: string) => {
+          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.label === label);
+          return option?.id || "";
+        }).filter(Boolean);
+        setServiceHighlights(highlightIds);
       }
       
       // Set gallery images
@@ -1681,7 +1601,59 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [description, setDescription] = useState("");
   const [idealFor, setIdealFor] = useState<string[]>([]);
   const [serviceHighlights, setServiceHighlights] = useState<string[]>([]);
+  const [dynamicServiceAttributes, setDynamicServiceAttributes] = useState<string[]>([]);
   const [deliveryType, setDeliveryType] = useState<"standard" | "same-day">("standard");
+
+  // Fetch service attributes when subcategory path changes
+  useEffect(() => {
+    const fetchServiceAttributes = async () => {
+      if (selectedSubCategoryPath.length === 0) {
+        setDynamicServiceAttributes([]);
+        return;
+      }
+
+      try {
+        // Get the last selected subcategory ID
+        const lastSubCategoryId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+
+        const response = await fetch(
+          resolveApiUrl(`/api/service-subcategories/${lastSubCategoryId}`),
+          { credentials: "include" }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.serviceSubCategory?.serviceAttributes) {
+            setDynamicServiceAttributes(data.serviceSubCategory.serviceAttributes);
+          } else {
+            setDynamicServiceAttributes([]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching service attributes:", error);
+        setDynamicServiceAttributes([]);
+      }
+    };
+
+    fetchServiceAttributes();
+  }, [selectedSubCategoryPath]);
+
+  // Map initialService highlights to dynamic attributes after they're loaded
+  useEffect(() => {
+    if (isEditMode && initialService?.highlights && dynamicServiceAttributes.length > 0) {
+      const highlightIds = initialService.highlights.map((label: string) => {
+        // First check if it's in dynamic attributes
+        const dynamicIndex = dynamicServiceAttributes.indexOf(label);
+        if (dynamicIndex !== -1) {
+          return `dynamic-attr-${dynamicIndex}`;
+        }
+        // Fallback to static options
+        const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.label === label);
+        return option?.id || "";
+      }).filter(Boolean);
+      setServiceHighlights(highlightIds);
+    }
+  }, [dynamicServiceAttributes, isEditMode, initialService]);
   const [basePrice, setBasePrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
   const [priceUnit, setPriceUnit] = useState("fixed");
@@ -1691,17 +1663,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   
   // Extra Services Tab
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-  const [predefinedExtras, setPredefinedExtras] = useState<Array<{
-    id: string;
-    label: string;
-    price: string;
-    days?: number;
-    selected: boolean;
-    placeholder: string;
-  }>>([]);
-
-  // Service Ideal For options (populated from category)
-  const [idealForOptions, setIdealForOptions] = useState<Array<{ id: string; label: string }>>(IDEAL_FOR_OPTIONS);
+  const [predefinedExtras, setPredefinedExtras] = useState([
+    { id: "express-delivery", label: "typefaces", price: "", selected: false, placeholder: "Enter price" },
+    { id: "additional-revision", label: "placeholder text", price: "", selected: false, placeholder: "Enter price" },
+  ]);
   
   // Gallery Tab
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
@@ -1783,11 +1748,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   };
 
   // Profile/Settings Tab
-  const [aboutMe, setAboutMe] = useState("");
   const [responseTime, setResponseTime] = useState("within 1 hour");
   const [experienceYears, setExperienceYears] = useState("");
-  const [hasTradeQualification, setHasTradeQualification] = useState("no");
-  const [qualifications, setQualifications] = useState<string[]>([""]);
+  const [qualifications, setQualifications] = useState("");
   
   const handleKeywordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -2102,53 +2065,15 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   // Get available subcategories for selected category
   const selectedCategory = availableCategories.find(cat => cat._id === selectedCategoryId);
   const availableSubCategories = Array.isArray(selectedCategory?.subCategories)
-    ? selectedCategory.subCategories.filter((subCat) =>
-        subCat &&
-        subCat._id &&
-        typeof subCat._id === 'string' &&
+    ? selectedCategory.subCategories.filter((subCat) => 
+        subCat && 
+        subCat._id && 
+        typeof subCat._id === 'string' && 
         subCat._id.trim() !== "" &&
         subCat.name &&
         subCat.level === 2 // Only show level 2 subcategories initially
       )
     : [];
-
-  // Populate "Service Ideal For" and "Extra Services" from selected category
-  useEffect(() => {
-    if (selectedCategory) {
-      // Populate Service Ideal For options
-      if ((selectedCategory as any).serviceIdealFor && Array.isArray((selectedCategory as any).serviceIdealFor)) {
-        const categoryIdealForOptions = (selectedCategory as any).serviceIdealFor.map((option: any, index: number) => ({
-          id: `ideal-category-${index}`,
-          label: option.name,
-        }));
-        setIdealForOptions(categoryIdealForOptions.length > 0 ? categoryIdealForOptions : IDEAL_FOR_OPTIONS);
-      } else {
-        // Use default options if category doesn't have custom ones
-        setIdealForOptions(IDEAL_FOR_OPTIONS);
-      }
-
-      // Populate Extra Services as predefined options
-      if ((selectedCategory as any).extraServices && Array.isArray((selectedCategory as any).extraServices)) {
-        const categoryExtras = (selectedCategory as any).extraServices.map((service: any, index: number) => ({
-          id: `category-extra-${index}`,
-          label: service.name,
-          price: service.price?.toString() || "",
-          days: service.days || 0,
-          selected: false,
-          placeholder: `£${service.price || 0}`,
-        }));
-        setPredefinedExtras(categoryExtras);
-      } else {
-        // Clear predefined extras if category doesn't have any
-        setPredefinedExtras([]);
-      }
-    } else {
-      // Reset to defaults when no category is selected
-      setIdealForOptions(IDEAL_FOR_OPTIONS);
-      setPredefinedExtras([]);
-    }
-  }, [selectedCategory]);
-
 
   // Fetch nested subcategories when a subcategory is selected
   useEffect(() => {
@@ -2269,61 +2194,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     fetchSubCategoryTitles();
   }, [selectedSubCategoryPath, selectedSubCategoryId]);
 
-  // Fetch attributes for ALL selected subcategories in the path
-  useEffect(() => {
-    const fetchAllSubCategoryAttributes = async () => {
-      // Get all subcategory IDs from the path
-      const subCategoryIds = selectedSubCategoryPath.length > 0
-        ? selectedSubCategoryPath
-        : (selectedSubCategoryId ? [selectedSubCategoryId] : []);
-
-      if (subCategoryIds.length === 0) {
-        setSelectedSubCategoryAttributes([]);
-        return;
-      }
-
-      try {
-        setLoadingAttributes(true);
-        const allAttributes: string[] = [];
-
-        // Fetch attributes from each subcategory in the path
-        for (const subCatId of subCategoryIds) {
-          try {
-            const response = await fetch(
-              resolveApiUrl(`/api/service-subcategories/${subCatId}?includeServiceCategory=false&activeOnly=false`),
-              { credentials: 'include' }
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              const subCategory = data.serviceSubCategory;
-
-              // Extract service attribute suggestions from this subcategory
-              if (subCategory?.serviceAttributeSuggestions && Array.isArray(subCategory.serviceAttributeSuggestions)) {
-                const attributes = subCategory.serviceAttributeSuggestions
-                  .filter((attr: string) => attr && attr.trim() !== "");
-                allAttributes.push(...attributes);
-              }
-            }
-          } catch (error) {
-            console.error(`Error fetching attributes for subcategory ${subCatId}:`, error);
-          }
-        }
-
-        // Remove duplicates and set the combined attributes
-        const uniqueAttributes = Array.from(new Set(allAttributes));
-        setSelectedSubCategoryAttributes(uniqueAttributes);
-      } catch (error) {
-        console.error('Error fetching subcategory attributes:', error);
-        setSelectedSubCategoryAttributes([]);
-      } finally {
-        setLoadingAttributes(false);
-      }
-    };
-
-    fetchAllSubCategoryAttributes();
-  }, [selectedSubCategoryPath, selectedSubCategoryId]);
-
   // Add package
   const addPackage = () => {
     const newPackage: ServicePackage = {
@@ -2399,12 +2269,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       setActiveTab("service-details");
       return;
     }
-    // Validate About Me field in Profile tab
-    if (!aboutMe || aboutMe.trim().length === 0) {
-      toast.error("Please fill in the 'About Me' section in the Profile tab");
-      setActiveTab("profile");
-      return;
-    }
 
     const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
 
@@ -2432,9 +2296,17 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             price: parseFloat(e.price),
             order: index,
           })),
-        highlights: serviceHighlights, // Now stored as attribute strings directly
+        highlights: serviceHighlights.map(id => {
+          // Check if it's a dynamic attribute
+          if (id.startsWith('dynamic-attr-')) {
+            const index = parseInt(id.replace('dynamic-attr-', ''));
+            return dynamicServiceAttributes[index] || id;
+          }
+          const option = SERVICE_HIGHLIGHTS_OPTIONS.find(opt => opt.id === id);
+          return option ? option.label : id;
+        }),
         idealFor: idealFor.map(id => {
-          const option = idealForOptions.find(opt => opt.id === id);
+          const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
           return option ? option.label : id;
         }),
         deliveryType,
@@ -2771,29 +2643,40 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                       </div>
                     )}
 
-                    {/* Display nested subcategory levels recursively */}
-                    {selectedSubCategoryPath.length > 0 && selectedSubCategoryPath[0] && (
-                      <SubCategoryLevelDisplay
-                        parentSubCategoryId={selectedSubCategoryPath[0]}
-                        levelIndex={1}
-                        selectedSubCategoryPath={selectedSubCategoryPath}
-                        setSelectedSubCategoryPath={setSelectedSubCategoryPath}
-                        nestedSubCategories={nestedSubCategories}
-                        setNestedSubCategories={setNestedSubCategories}
-                        loadingSubCategories={loadingSubCategories}
-                        setLoadingSubCategories={setLoadingSubCategories}
-                        selectedAttributes={selectedAttributes}
-                        setSelectedAttributes={setSelectedAttributes}
-                        attributeTypeLabels={{
-                          'serviceType': 'Service Type',
-                          'size': 'Size',
-                          'frequency': 'Frequency',
-                          'make': 'Make',
-                          'model': 'Model',
-                          'brand': 'Brand',
-                        }}
-                      />
-                    )}
+                    {/* Display nested subcategory levels sequentially */}
+                    {selectedSubCategoryPath.length > 0 && selectedSubCategoryPath.map((parentId, levelIndex) => {
+                      // Check if this level has children
+                      const hasChildren = nestedSubCategories[parentId]?.length > 0;
+                      const nextLevelSelected = selectedSubCategoryPath[levelIndex + 1];
+
+                      return (
+                        <div key={`level-${levelIndex}-${parentId}`}>
+                          {/* Display current level's children */}
+                          {hasChildren && (
+                            <SubCategoryLevelDisplay
+                              parentSubCategoryId={parentId}
+                              levelIndex={levelIndex + 1}
+                              selectedSubCategoryPath={selectedSubCategoryPath}
+                              setSelectedSubCategoryPath={setSelectedSubCategoryPath}
+                              nestedSubCategories={nestedSubCategories}
+                              setNestedSubCategories={setNestedSubCategories}
+                              loadingSubCategories={loadingSubCategories}
+                              setLoadingSubCategories={setLoadingSubCategories}
+                              selectedAttributes={selectedAttributes}
+                              setSelectedAttributes={setSelectedAttributes}
+                              attributeTypeLabels={{
+                                'serviceType': 'Service Type',
+                                'size': 'Size',
+                                'frequency': 'Frequency',
+                                'make': 'Make',
+                                'model': 'Model',
+                                'brand': 'Brand',
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </>
                 )}
 
@@ -2892,44 +2775,38 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     What is the service ideal for?
                   </Label>
                   <div className="border border-gray-300 rounded-md p-4 max-h-[300px] overflow-y-auto">
-                    {idealForOptions.length === 0 ? (
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] text-center py-4">
-                        No ideal for options available for this category.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        {idealForOptions.map((option) => (
-                          <div key={option.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={option.id}
-                              checked={idealFor.includes(option.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  if (idealFor.length < 5) {
-                                    setIdealFor([...idealFor, option.id]);
-                                  }
-                                } else {
-                                  setIdealFor(idealFor.filter(id => id !== option.id));
+                    <div className="grid grid-cols-2 gap-3">
+                      {IDEAL_FOR_OPTIONS.map((option) => (
+                        <div key={option.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={option.id}
+                            checked={idealFor.includes(option.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                if (idealFor.length < 5) {
+                                  setIdealFor([...idealFor, option.id]);
                                 }
-                              }}
-                              disabled={idealFor.length >= 5 && !idealFor.includes(option.id)}
-                              className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                            />
-                            <label
-                              htmlFor={option.id}
-                              className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
-                            >
-                              {option.label}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                              } else {
+                                setIdealFor(idealFor.filter(id => id !== option.id));
+                              }
+                            }}
+                            disabled={idealFor.length >= 5 && !idealFor.includes(option.id)}
+                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                          />
+                          <label
+                            htmlFor={option.id}
+                            className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
+                          >
+                            {option.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   {idealFor.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {idealFor.map((id) => {
-                        const option = idealForOptions.find(opt => opt.id === id);
+                        const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
                         return option ? (
                           <Badge key={id} className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[12px]">
                             {option.label}
@@ -2945,75 +2822,77 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                     What's Included
                   </Label>
-                  {loadingAttributes ? (
-                    <div className="border border-gray-300 rounded-md p-4 flex items-center justify-center">
-                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Loading attributes...</span>
-                    </div>
-                  ) : selectedSubCategoryAttributes.length > 0 ? (
-                    <>
-                      <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {selectedSubCategoryAttributes.map((attribute, index) => {
-                            const attributeId = `attr-${index}`;
-                            const isSelected = serviceHighlights.includes(attribute);
-                            const canSelect = serviceHighlights.length < 6 || isSelected;
+                  <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
+                    {dynamicServiceAttributes.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {dynamicServiceAttributes.map((attribute, index) => {
+                          const attributeId = `dynamic-attr-${index}`;
+                          const isSelected = serviceHighlights.includes(attributeId);
+                          const canSelect = serviceHighlights.length < 6 || isSelected;
 
-                            return (
-                              <div
-                                key={attributeId}
-                                className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
-                              >
-                                <Checkbox
-                                  id={attributeId}
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      if (serviceHighlights.length < 6) {
-                                        setServiceHighlights([...serviceHighlights, attribute]);
-                                      }
-                                    } else {
-                                      setServiceHighlights(serviceHighlights.filter(h => h !== attribute));
+                          return (
+                            <div
+                              key={attributeId}
+                              className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
+                            >
+                              <Checkbox
+                                id={attributeId}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    if (serviceHighlights.length < 6) {
+                                      setServiceHighlights([...serviceHighlights, attributeId]);
                                     }
-                                  }}
-                                  disabled={!canSelect}
-                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                                />
-                                <label
-                                  htmlFor={attributeId}
-                                  className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
-                                    isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
-                                  }`}
-                                >
-                                  {attribute}
-                                </label>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                  } else {
+                                    setServiceHighlights(serviceHighlights.filter(id => id !== attributeId));
+                                  }
+                                }}
+                                disabled={!canSelect}
+                                className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                              />
+                              <label
+                                htmlFor={attributeId}
+                                className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
+                                  isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
+                                }`}
+                              >
+                                {attribute}
+                              </label>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {serviceHighlights.length > 0 && (
-                        <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
-                            Selected Highlights:
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                            {serviceHighlights.map((highlight, idx) => (
-                              <div key={idx} className="flex items-start gap-2">
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          No service attributes available for this category. Please select a subcategory or contact admin to add attributes.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {serviceHighlights.length > 0 && (
+                    <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
+                        Selected Highlights:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {serviceHighlights.map((id) => {
+                          // Check if it's a dynamic attribute
+                          if (id.startsWith('dynamic-attr-')) {
+                            const index = parseInt(id.replace('dynamic-attr-', ''));
+                            const attribute = dynamicServiceAttributes[index];
+                            return attribute ? (
+                              <div key={id} className="flex items-start gap-2">
                                 <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
                                 <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
-                                  {highlight}
+                                  {attribute}
                                 </span>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="border border-gray-300 rounded-md p-4">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
-                        No attributes available for this subcategory. Please select a subcategory first.
-                      </p>
+                            ) : null;
+                          }
+                          return null;
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3133,58 +3012,49 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             <TabsContent value="extra-service" className="mt-0 py-6">
               <div className="space-y-6">
                 {/* Predefined Extra Services */}
-                {predefinedExtras.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Choose an additional service
-                    </h3>
-
-                    <div className="space-y-3">
-                      {predefinedExtras.map((extra) => (
-                        <div
-                          key={extra.id}
-                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <Checkbox
-                              id={extra.id}
-                              checked={extra.selected}
-                              onCheckedChange={(checked) => togglePredefinedExtra(extra.id, checked as boolean)}
-                              className="data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                            />
-                            <div className="flex flex-col">
-                              <label
-                                htmlFor={extra.id}
-                                className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
-                              >
-                                {extra.label}
-                              </label>
-                              {extra.days !== undefined && extra.days > 0 && (
-                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                                  Delivery: {extra.days} {extra.days === 1 ? 'day' : 'days'}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col items-end gap-1">
-                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                              Extra Service Price
-                            </Label>
-                            <Input
-                              type="number"
-                              value={extra.price}
-                              onChange={(e) => updatePredefinedExtraPrice(extra.id, e.target.value)}
-                              placeholder={extra.placeholder || "Enter price"}
-                              disabled={!extra.selected}
-                              className="w-[160px] font-['Poppins',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
-                            />
-                          </div>
+                <div className="space-y-4">
+                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    Choose an additional service
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {predefinedExtras.map((extra) => (
+                      <div 
+                        key={extra.id} 
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <Checkbox
+                            id={extra.id}
+                            checked={extra.selected}
+                            onCheckedChange={(checked) => togglePredefinedExtra(extra.id, checked as boolean)}
+                            className="data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                          />
+                          <label
+                            htmlFor={extra.id}
+                            className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                          >
+                            {extra.label}
+                          </label>
                         </div>
-                      ))}
-                    </div>
+                        
+                        <div className="flex flex-col items-end gap-1">
+                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                            Extra Service Price
+                          </Label>
+                          <Input
+                            type="number"
+                            value={extra.price}
+                            onChange={(e) => updatePredefinedExtraPrice(extra.id, e.target.value)}
+                            placeholder={extra.placeholder || "Enter price"}
+                            disabled={!extra.selected}
+                            className="w-[160px] font-['Poppins',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
 
                 {/* Divider */}
                 <div className="relative">
@@ -3594,27 +3464,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   Additional professional information about you and your service.
                 </p>
 
-                {/* About Me Section */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    About Me <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    value={aboutMe}
-                    onChange={(e) => setAboutMe(e.target.value)}
-                    placeholder="Tell customers about your business, experience, and what makes your service special..."
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
-                  />
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
-                    This information is populated from your profile. It's the first thing customers read about you, so make sure it's well written.
-                    {!aboutMe && (
-                      <span className="text-red-500 block mt-1">
-                        ⚠️ This field is required. Please fill it in your profile or update it here.
-                      </span>
-                    )}
-                  </p>
-                </div>
-
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Typical Response Time
@@ -3645,90 +3494,19 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   />
                 </div>
 
-                {/* Trade Qualification */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                    Do you have a trade qualification or accreditation?
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Qualifications & Certifications
                   </Label>
-                  <RadioGroup
-                    value={hasTradeQualification}
-                    onValueChange={(value) => {
-                      setHasTradeQualification(value);
-                      if (value === "no") {
-                        setQualifications([""]);
-                      } else if (qualifications.length === 0 || (qualifications.length === 1 && !qualifications[0])) {
-                        setQualifications([""]);
-                      }
-                    }}
-                    className="flex items-center gap-8"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="trade-yes" className="border-2 border-gray-400 text-[#FE8A0F]" />
-                      <Label htmlFor="trade-yes" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
-                        YES
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="trade-no" className="border-2 border-gray-400 text-[#FE8A0F]" />
-                      <Label htmlFor="trade-no" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer">
-                        NO
-                      </Label>
-                    </div>
-                  </RadioGroup>
-
-                  {/* Qualifications Input - Show when YES is selected */}
-                  {hasTradeQualification === "yes" && (
-                    <div className="mt-6 pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          Please list your qualifications and accreditations (with the relevant registration number) in this section. If you're a time served Professional, leave this section blank.
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        {qualifications.map((qual, index) => (
-                          <div key={index} className="flex items-start gap-2">
-                            <Input
-                              value={qual}
-                              onChange={(e) => {
-                                const newQualifications = [...qualifications];
-                                newQualifications[index] = e.target.value;
-                                setQualifications(newQualifications);
-                              }}
-                              placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
-                              className="flex-1 border-2 border-gray-300 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                            />
-                            {qualifications.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const newQualifications = qualifications.filter((_, i) => i !== index);
-                                  setQualifications(newQualifications.length > 0 ? newQualifications : [""]);
-                                }}
-                                className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setQualifications([...qualifications, ""]);
-                          }}
-                          className="w-full border-2 border-dashed border-gray-300 hover:border-[#3B82F6] text-gray-600 hover:text-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px] h-10"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Another Qualification
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  <Textarea
+                    value={qualifications}
+                    onChange={(e) => setQualifications(e.target.value)}
+                    placeholder="List your qualifications, certifications, trade memberships..."
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
+                  />
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                    Include any relevant trade qualifications, certifications, insurance details, or professional memberships.
+                  </p>
                 </div>
               </div>
             </TabsContent>

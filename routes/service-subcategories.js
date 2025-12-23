@@ -516,11 +516,16 @@ router.post('/', async (req, res) => {
       if (calculatedLevel < 2 || calculatedLevel > 7) {
         return res.status(400).json({ error: 'Level must be between 2 and 7' });
       }
+      
+      // Level 3-7 must have a parentSubCategory
+      if (calculatedLevel >= 3 && calculatedLevel <= 7) {
+        return res.status(400).json({ error: `Level ${calculatedLevel} subcategories must have a parentSubCategory` });
+      }
     }
-
-    // Validation: Level 3-7 must have parentSubCategory
+    
+    // Additional validation: Level 3-7 must have parentSubCategory
     if (calculatedLevel >= 3 && calculatedLevel <= 7 && !parentSubCategoryDoc) {
-      return res.status(400).json({ error: `Level ${calculatedLevel} subcategories require a parentSubCategory. Please select a parent from Level ${calculatedLevel - 1}.` });
+      return res.status(400).json({ error: `Level ${calculatedLevel} subcategories require a parentSubCategory` });
     }
     
     // Generate slug automatically from name (ignore provided slug)
@@ -656,7 +661,6 @@ router.put('/:id', async (req, res) => {
       categoryLevel,
       titles,
       serviceTitleSuggestions,
-      serviceAttributeSuggestions,
     } = req.body;
     
     const serviceSubCategory = await ServiceSubCategory.findById(id);
@@ -720,7 +724,6 @@ router.put('/:id', async (req, res) => {
     if (isActive !== undefined) serviceSubCategory.isActive = isActive;
     if (categoryLevel !== undefined) serviceSubCategory.categoryLevel = parseInt(categoryLevel);
     if (serviceTitleSuggestions !== undefined) serviceSubCategory.serviceTitleSuggestions = serviceTitleSuggestions;
-    if (serviceAttributeSuggestions !== undefined) serviceSubCategory.serviceAttributeSuggestions = serviceAttributeSuggestions;
     if (titles !== undefined) {
       // Update titles - merge with existing titles, replacing those with the same level
       const existingTitles = serviceSubCategory.titles || [];
@@ -794,6 +797,32 @@ router.put('/bulk/order', async (req, res) => {
   } catch (error) {
     console.error('Bulk update service subcategory order error', error);
     return res.status(500).json({ error: 'Failed to update service subcategory orders' });
+  }
+});
+
+// Bulk update service attributes
+router.put('/bulk-update-attributes', async (req, res) => {
+  try {
+    const { updates } = req.body;
+
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({ error: 'Invalid updates format' });
+    }
+
+    const updatePromises = updates.map(({ subCategoryId, serviceAttributes }) =>
+      ServiceSubCategory.findByIdAndUpdate(
+        subCategoryId,
+        { serviceAttributes },
+        { new: true }
+      )
+    );
+
+    await Promise.all(updatePromises);
+
+    return res.json({ message: 'Service attributes updated successfully' });
+  } catch (error) {
+    console.error('Bulk update service attributes error', error);
+    return res.status(500).json({ error: 'Failed to update service attributes' });
   }
 });
 

@@ -6,9 +6,6 @@
   export default defineConfig({
     base: '/',
     plugins: [react()],
-    esbuild: {
-      drop: ['console', 'debugger'],
-    },
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -123,40 +120,28 @@
     build: {
       target: 'esnext',
       outDir: '../build',
-      minify: 'esbuild',
-      sourcemap: false,
       rollupOptions: {
         output: {
-          manualChunks: (id) => {
+          manualChunks: {
             // Vendor chunks
-            if (id.includes('node_modules')) {
-              // React core
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-                return 'react-vendor';
-              }
-              // Radix UI components
-              if (id.includes('@radix-ui')) {
-                return 'ui-vendor';
-              }
-              // Charts
-              if (id.includes('recharts')) {
-                return 'chart-vendor';
-              }
-              // Forms
-              if (id.includes('react-hook-form')) {
-                return 'form-vendor';
-              }
-              // Icons
-              if (id.includes('lucide-react')) {
-                return 'icon-vendor';
-              }
-              // Utils
-              if (id.includes('sonner') || id.includes('class-variance-authority') || id.includes('cmdk')) {
-                return 'utils-vendor';
-              }
-              // Other node_modules
-              return 'vendor';
-            }
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'ui-vendor': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-dropdown-menu',
+              '@radix-ui/react-select',
+              '@radix-ui/react-tabs',
+              '@radix-ui/react-checkbox',
+              '@radix-ui/react-radio-group',
+              '@radix-ui/react-label',
+              '@radix-ui/react-avatar',
+              '@radix-ui/react-popover',
+              '@radix-ui/react-tooltip',
+              '@radix-ui/react-scroll-area',
+            ],
+            'chart-vendor': ['recharts'],
+            'form-vendor': ['react-hook-form'],
+            'icon-vendor': ['lucide-react'],
+            'utils-vendor': ['sonner', 'class-variance-authority', 'cmdk'],
           },
         },
       },

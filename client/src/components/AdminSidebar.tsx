@@ -361,8 +361,8 @@ export default function AdminSidebar({
   const getActiveMenuInfo = useMemo(() => {
     const currentPath = location.pathname;
 
-    // Special case: /admin/service-titles should highlight "Service Category"
-    if (currentPath === "/admin/service-titles") {
+    // Special case: /admin/service-titles and /admin/service-attributes should highlight "Service Category"
+    if (currentPath === "/admin/service-titles" || currentPath === "/admin/service-attributes") {
       return {
         activeMenuKey: "category-manage",
         activeChildKey: "service-category",

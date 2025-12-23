@@ -81,7 +81,6 @@ export function useAdminPermissions() {
       "/admin/categories": "category-management",
       "/admin/service-category": "category-management",
       "/admin/service-titles": "category-management",
-      "/admin/service-attributes": "category-management",
       "/admin/default-content": "category-management",
       "/admin/favourite-categories": "category-management",
       "/admin/packages": "package-management",

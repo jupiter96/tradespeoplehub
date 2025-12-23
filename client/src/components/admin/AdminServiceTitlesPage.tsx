@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Trash2, Loader2, ArrowLeft, Save } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
@@ -230,32 +230,32 @@ export default function AdminServiceTitlesPage() {
   };
 
   // Add title to subcategory
-  const addTitle = useCallback((subCategoryId: string) => {
-    setSubCategoryTitles(prev => ({
-      ...prev,
-      [subCategoryId]: [...(prev[subCategoryId] || []), '']
-    }));
-  }, []);
+  const addTitle = (subCategoryId: string) => {
+    const current = subCategoryTitles[subCategoryId] || [];
+    setSubCategoryTitles({
+      ...subCategoryTitles,
+      [subCategoryId]: [...current, '']
+    });
+  };
 
   // Update title
-  const updateTitle = useCallback((subCategoryId: string, index: number, value: string) => {
-    setSubCategoryTitles(prev => {
-      const updated = [...(prev[subCategoryId] || [])];
-      updated[index] = value;
-      return {
-        ...prev,
-        [subCategoryId]: updated
-      };
+  const updateTitle = (subCategoryId: string, index: number, value: string) => {
+    const updated = [...(subCategoryTitles[subCategoryId] || [])];
+    updated[index] = value;
+    setSubCategoryTitles({
+      ...subCategoryTitles,
+      [subCategoryId]: updated
     });
-  }, []);
+  };
 
   // Remove title
-  const removeTitle = useCallback((subCategoryId: string, index: number) => {
-    setSubCategoryTitles(prev => ({
-      ...prev,
-      [subCategoryId]: (prev[subCategoryId] || []).filter((_, i) => i !== index)
-    }));
-  }, []);
+  const removeTitle = (subCategoryId: string, index: number) => {
+    const updated = (subCategoryTitles[subCategoryId] || []).filter((_, i) => i !== index);
+    setSubCategoryTitles({
+      ...subCategoryTitles,
+      [subCategoryId]: updated
+    });
+  };
 
   if (!categoryId) {
     return (

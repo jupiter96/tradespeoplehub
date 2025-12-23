@@ -33,13 +33,13 @@ const serviceSubCategorySchema = new mongoose.Schema(
       default: null,
       // Only set for level 1 subcategories to indicate which tab/attribute type they belong to
     },
-    // Category level from categoryLevelMapping (2 for Sub Category, 3-7 for other tabs)
+    // Category level from categoryLevelMapping (2 for Sub Category, 3-6 for other tabs)
     categoryLevel: {
       type: Number,
       min: 2,
-      max: 7,
+      max: 6,
       default: null,
-      // Level 2 = Sub Category tab, Level 3-7 = other tabs (Service Type, Size, Frequency, Make, Model, Brand)
+      // Level 2 = Sub Category tab, Level 3-6 = other tabs (Service Type, Size, etc.)
       // Used for sorting and filtering within tabs
     },
     name: {
@@ -116,49 +116,13 @@ const serviceSubCategorySchema = new mongoose.Schema(
       // Array of suggested service titles specific to this subcategory
       // e.g., ['Residential Electrical Installation', 'Commercial Wiring', 'Electrical Repairs']
     },
-    // Service attribute suggestions for this subcategory (for "What's Included" section)
-    serviceAttributeSuggestions: {
+    // Service attributes (What's Included) for this subcategory
+    serviceAttributes: {
       type: [String],
       default: [],
-      // Array of suggested service attributes/highlights specific to this subcategory
-      // e.g., ['Professional service guaranteed', 'Quality materials included', 'Same-day service available']
-    },
-    // Attributes for each level (Level 3-7)
-    attributes: {
-      type: [{
-        level: {
-          type: Number,
-          required: true,
-          min: 3,
-          max: 7,
-        },
-        attributeType: {
-          type: String,
-          enum: ['serviceType', 'size', 'frequency', 'make', 'model', 'brand'],
-          required: true,
-        },
-        values: {
-          type: [{
-            label: {
-              type: String,
-              required: true,
-              trim: true,
-            },
-            value: {
-              type: String,
-              required: true,
-              trim: true,
-            },
-            order: {
-              type: Number,
-              default: 0,
-            },
-          }],
-          default: [],
-        },
-      }],
-      default: [],
-      // Array of attributes: [{ level: 3, attributeType: 'serviceType', values: [{ label: 'Black', value: 'black', order: 1 }, ...] }, ...]
+      // Array of service attributes specific to this subcategory
+      // e.g., ['Licensed and Insured', '24/7 Emergency Service', 'Free Estimates']
+      // These will be displayed in "What's Included" section
     },
   },
   { timestamps: true }

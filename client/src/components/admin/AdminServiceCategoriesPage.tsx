@@ -342,6 +342,7 @@ export default function AdminServiceCategoriesPage() {
   const [viewingSubCategories, setViewingSubCategories] = useState<ServiceCategory | null>(null);
   const [isSubCategoriesModalOpen, setIsSubCategoriesModalOpen] = useState(false);
   const [isTitlesModalOpen, setIsTitlesModalOpen] = useState(false);
+  const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false);
   const [managingServiceCategory, setManagingServiceCategory] = useState<ServiceCategory | null>(null);
   // Titles management state
   const [selectedCategoryLevel, setSelectedCategoryLevel] = useState<string>("");
@@ -451,7 +452,7 @@ export default function AdminServiceCategoriesPage() {
       icon?: string;
       metadata?: Record<string, any>;
     }>;
-    serviceIdealFor: Array<{ name: string; order: number }>;
+    attributes: Array<{ name: string; order: number }>;
     extraServices: Array<{ name: string; price: number; days: number; order: number }>;
     pricePerUnit: {
       enabled: boolean;
@@ -470,7 +471,7 @@ export default function AdminServiceCategoriesPage() {
     isActive: true,
     level: 3,
     categoryLevelMapping: [],
-      serviceIdealFor: [],
+      attributes: [],
       extraServices: [],
       pricePerUnit: {
         enabled: false,
@@ -1040,19 +1041,12 @@ export default function AdminServiceCategoriesPage() {
       slug: "",
       order: getNextAvailableOrder(),
       description: "",
-      metaTitle: "",
-      metaDescription: "",
       icon: "",
       bannerImage: "",
       isActive: true,
       level: 3,
       categoryLevelMapping: [],
-      serviceIdealFor: [],
-      extraServices: [],
-      pricePerUnit: {
-        enabled: false,
-        units: [],
-      },
+      subCategories: [],
     });
     setEditingServiceCategory(null);
     setIconPreview(null);
@@ -1195,7 +1189,7 @@ export default function AdminServiceCategoriesPage() {
   };
 
   const handleManageAttributes = (serviceCategory: ServiceCategory) => {
-    // Navigate to the service attributes page with category ID as query parameter
+    // Navigate to attributes management page (similar to titles)
     navigate(`/admin/service-attributes?categoryId=${serviceCategory._id}`);
   };
 
@@ -1272,7 +1266,7 @@ export default function AdminServiceCategoriesPage() {
     }
   };
 
-  const handleCreateSubCategory = async () => {
+  const handleCreateSubCategory = () => {
     if (!selectedServiceCategory) return;
     
     // If viewing nested subcategories (selectedParentSubCategory exists)
@@ -1369,23 +1363,17 @@ export default function AdminServiceCategoriesPage() {
       return;
     }
     
-    // Fetch parent level subcategories if not first tab (for parent selection)
-    // This must be done BEFORE setting form data so we can set default parent
-    if (!isFirstTabNow && targetLevel >= 3) {
-      await fetchParentSubCategories();
-    }
-
     // For Level 3-7, parentSubCategory is required - set default from selectedParentSubCategory or first available parent
     let defaultParentSubCategory = "";
     if (!isFirstTabNow && targetLevel >= 3) {
       if (selectedParentSubCategory) {
         defaultParentSubCategory = selectedParentSubCategory._id;
-      } else if (level1SubCategories.length > 0) {
-        // Use first available parent subcategory from parent level (level1SubCategories)
-        defaultParentSubCategory = level1SubCategories[0]._id;
+      } else if (serviceSubCategories.length > 0) {
+        // Use first available parent subcategory from current level
+        defaultParentSubCategory = serviceSubCategories[0]._id;
       }
     }
-
+    
     setSubCategoryFormData({
       serviceCategory: selectedServiceCategory._id,
       parentSubCategory: defaultParentSubCategory, // Set default parent for Level 3-7
@@ -1396,8 +1384,8 @@ export default function AdminServiceCategoriesPage() {
       metaDescription: "",
       bannerImage: "",
       icon: "",
-      order: serviceSubCategories.length > 0
-        ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1
+      order: serviceSubCategories.length > 0 
+        ? Math.max(...serviceSubCategories.map(sc => sc.order || 0)) + 1 
         : 1,
       level: targetLevel,
       isActive: true,
@@ -1408,6 +1396,11 @@ export default function AdminServiceCategoriesPage() {
     setSubCategoryIconPreview(null);
     setSubCategoryBannerPreview(null);
     
+    // Fetch parent level subcategories if not first tab (for parent selection)
+    if (!isFirstTabNow) {
+      fetchParentSubCategories();
+    }
+    
     setIsSubCategoryModalOpen(true);
   };
 
@@ -1415,20 +1408,10 @@ export default function AdminServiceCategoriesPage() {
     const parentSubCategoryId = typeof subCategory.parentSubCategory === "string"
       ? subCategory.parentSubCategory
       : (subCategory.parentSubCategory as ServiceSubCategory)?._id || "";
-
-    // Get serviceCategory ID with null check
-    let serviceCategoryId = "";
-    if (typeof subCategory.serviceCategory === "string") {
-      serviceCategoryId = subCategory.serviceCategory;
-    } else if (subCategory.serviceCategory && typeof subCategory.serviceCategory === "object") {
-      serviceCategoryId = (subCategory.serviceCategory as ServiceCategory)._id;
-    } else if (selectedServiceCategory) {
-      // Fallback to currently selected service category
-      serviceCategoryId = selectedServiceCategory._id;
-    }
-
     setSubCategoryFormData({
-      serviceCategory: serviceCategoryId,
+      serviceCategory: typeof subCategory.serviceCategory === "string"
+        ? subCategory.serviceCategory
+        : (subCategory.serviceCategory as ServiceCategory)._id,
       parentSubCategory: parentSubCategoryId,
       name: subCategory.name,
       slug: subCategory.slug || generateSlug(subCategory.name),
@@ -1607,7 +1590,7 @@ export default function AdminServiceCategoriesPage() {
       isActive: serviceCategory.isActive,
       level: serviceCategory.level || 3,
       categoryLevelMapping: serviceCategory.categoryLevelMapping || [],
-      serviceIdealFor: (serviceCategory as any).serviceIdealFor || [],
+      attributes: (serviceCategory as any).attributes || [],
       extraServices: (serviceCategory as any).extraServices || [],
       pricePerUnit: (serviceCategory as any).pricePerUnit || { enabled: false, units: [] },
     });
@@ -1730,7 +1713,7 @@ export default function AdminServiceCategoriesPage() {
         isActive: formData.isActive,
         level: formData.level,
         categoryLevelMapping: formData.categoryLevelMapping || [],
-        serviceIdealFor: formData.serviceIdealFor || [],
+        attributes: formData.attributes || [],
         extraServices: formData.extraServices || [],
         pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
@@ -3057,10 +3040,10 @@ export default function AdminServiceCategoriesPage() {
               </div>
             </div>
 
-            {/* Add Service Ideal For */}
+            {/* Add Attributes */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Service Ideal For</Label>
+                <Label className="text-black dark:text-white">Attributes</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -3068,58 +3051,52 @@ export default function AdminServiceCategoriesPage() {
                   onClick={() => {
                     setFormData((prev) => ({
                       ...prev,
-                      serviceIdealFor: [
-                        ...(prev.serviceIdealFor || []),
-                        { name: "", order: (prev.serviceIdealFor || []).length + 1 },
+                      attributes: [
+                        ...(prev.attributes || []),
+                        { name: "", order: (prev.attributes || []).length + 1 },
                       ],
                     }));
                   }}
                   className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Ideal For Option
+                  Add Attribute
                 </Button>
               </div>
               <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
-                {(!formData.serviceIdealFor || formData.serviceIdealFor.length === 0) ? (
+                {(!formData.attributes || formData.attributes.length === 0) ? (
                   <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
-                    No ideal for options. Click "Add Ideal For Option" to add one.
+                    No attributes. Click "Add Attribute" to add one.
                   </p>
                 ) : (
-                  (formData.serviceIdealFor || []).map((option, index) => (
-                    <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <Label className="text-black dark:text-white text-sm">Name</Label>
-                          <Input
-                            value={option.name || ""}
-                            onChange={(e) => {
-                              setFormData((prev) => {
-                                const updated = [...prev.serviceIdealFor];
-                                updated[index] = { ...updated[index], name: e.target.value };
-                                return { ...prev, serviceIdealFor: updated };
-                              });
-                            }}
-                            placeholder="e.g., Homeowners, Small businesses, etc."
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              serviceIdealFor: prev.serviceIdealFor.filter((_, i) => i !== index),
-                            }));
-                          }}
-                          className="h-8 px-3 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-6"
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
+                  (formData.attributes || []).map((attribute, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                      <Input
+                        value={attribute.name || ""}
+                        onChange={(e) => {
+                          setFormData((prev) => {
+                            const updated = [...prev.attributes];
+                            updated[index] = { ...updated[index], name: e.target.value };
+                            return { ...prev, attributes: updated };
+                          });
+                        }}
+                        placeholder="Attribute name"
+                        className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            attributes: prev.attributes.filter((_, i) => i !== index),
+                          }));
+                        }}
+                        className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))
                 )}
@@ -4202,6 +4179,8 @@ export default function AdminServiceCategoriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
     </>
   );
 }

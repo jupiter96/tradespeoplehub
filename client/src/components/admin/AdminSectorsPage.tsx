@@ -295,7 +295,13 @@ export default function AdminSectorsPage() {
             return (a.name || '').localeCompare(b.name || '');
           });
         }
-
+        
+        console.log('=== Fetched Sectors from Database ===');
+        console.log(`Sort: ${sortBy} ${sortOrder}`);
+        console.log(`Total sectors fetched: ${sectorsData.length}`);
+        sectorsData.forEach(s => {
+          console.log(`Sector ${s.name} (${s._id}): order = ${s.order} (from database)`);
+        });
         
         // Ensure we're using the actual database order values
         // Filter out any temporary values (negative or very large positive)
@@ -304,13 +310,13 @@ export default function AdminSectorsPage() {
           // Temporary values are typically negative or very large (> 10000)
           const isValid = s.order > 0 && s.order < 10000;
           if (!isValid) {
-            // Suspicious order value detected
+            console.warn(`Sector ${s.name} has suspicious order value: ${s.order}`);
           }
           return isValid;
         });
         
         if (validSectors.length !== sectorsData.length) {
-          // Filtered out sectors with invalid order values
+          console.warn(`Filtered out ${sectorsData.length - validSectors.length} sectors with invalid order values`);
         }
         
         // Use valid sectors or all sectors if filtering removed too many
