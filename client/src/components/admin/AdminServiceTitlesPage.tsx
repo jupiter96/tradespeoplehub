@@ -397,13 +397,14 @@ export default function AdminServiceTitlesPage() {
           </div>
         </div>
 
-        {/* Title Management for Selected Subcategory */}
+        {/* Title Management for Selected Subcategory - Only Deepest Level */}
         {(() => {
-          // Find the deepest selected level
+          // Find the deepest selected level (last/most nested level)
           const maxLevel = serviceCategory.level || 7;
           let deepestLevel = 0;
           let selectedSubCategoryId = "";
 
+          // Find the deepest level that has a selection
           for (let level = maxLevel; level >= 2; level--) {
             if (selectedSubCategoryByLevel[level]) {
               deepestLevel = level;
@@ -412,24 +413,59 @@ export default function AdminServiceTitlesPage() {
             }
           }
 
-          if (!deepestLevel || !selectedSubCategoryId) return null;
+          // Check if this is the actual last level
+          // A level is the last level if:
+          // 1. It's the maximum level defined for the category, OR
+          // 2. The next level doesn't exist or has no subcategories
+          const nextLevel = deepestLevel + 1;
+          const hasNextLevel = nextLevel <= maxLevel;
+          const nextLevelSubCategories = hasNextLevel ? (subCategoriesByLevel[nextLevel] || []) : [];
+          const isLastLevel = !hasNextLevel || nextLevelSubCategories.length === 0;
+          
+          // Only show title management if we have a selection and it's the last level
+          if (!deepestLevel || !selectedSubCategoryId || !isLastLevel) {
+            // Don't show anything if not at the last level
+            return null;
+          }
 
           const selectedSubCategory = (subCategoriesByLevel[deepestLevel] || [])
             .find(sc => sc._id === selectedSubCategoryId);
 
           if (!selectedSubCategory) return null;
 
+          const mapping = serviceCategory.categoryLevelMapping?.find(m => m.level === deepestLevel);
+          const levelName = deepestLevel === 2 ? 'Sub Category' : (mapping ? mapping.attributeType : `Level ${deepestLevel}`);
           const titles = subCategoryTitles[selectedSubCategoryId] || [];
 
+          // Build breadcrumb path for context
+          const breadcrumb: string[] = [];
+          for (let l = 2; l <= deepestLevel; l++) {
+            const id = selectedSubCategoryByLevel[l];
+            if (id) {
+              const sc = (subCategoriesByLevel[l] || []).find(s => s._id === id);
+              if (sc) breadcrumb.push(sc.name);
+            }
+          }
+
           return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <Label className="text-sm font-semibold text-[#FE8A0F] block">
-                    Title Suggestions
-                  </Label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Label className="text-sm font-semibold text-[#FE8A0F]">
+                      Title Suggestions - Level {deepestLevel} ({levelName})
+                    </Label>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({titles.length} title{titles.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Managing titles for: <span className="font-medium text-black dark:text-white">{selectedSubCategory.name}</span>
+                    {breadcrumb.length > 1 && (
+                      <span className="ml-2 text-gray-500">
+                        (Path: {breadcrumb.join(' > ')})
+                      </span>
+                    )}
                   </p>
                 </div>
                 <Button

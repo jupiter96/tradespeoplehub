@@ -164,32 +164,45 @@ export default function AdminServiceCategoryFormPage() {
 
   const fetchCategoryData = async () => {
     try {
-      const response = await fetch(resolveApiUrl(`/api/service-categories/${categoryId}`), {
+      const response = await fetch(resolveApiUrl(`/api/service-categories/${categoryId}?includeSector=true&activeOnly=false`), {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch category");
       const data = await response.json();
 
+      // API 응답은 { serviceCategory: ... } 형태
+      const category = data.serviceCategory || data;
+      
+      // sector 처리: populate되어 있으면 객체, 아니면 문자열(ID)
+      let sectorId = "";
+      if (category.sector) {
+        if (typeof category.sector === "string") {
+          sectorId = category.sector;
+        } else if (category.sector._id) {
+          sectorId = category.sector._id;
+        }
+      }
+
       setFormData({
-        sector: typeof data.sector === "string" ? data.sector : data.sector._id,
-        name: data.name,
-        slug: data.slug || generateSlug(data.name),
-        order: data.order,
-        description: data.description || "",
-        metaTitle: data.metaTitle || "",
-        metaDescription: data.metaDescription || "",
-        icon: data.icon || "",
-        bannerImage: data.bannerImage || "",
-        isActive: data.isActive,
-        level: data.level || 3,
-        categoryLevelMapping: data.categoryLevelMapping || [],
-        serviceIdealFor: data.serviceIdealFor || [],
-        extraServices: data.extraServices || [],
-        pricePerUnit: data.pricePerUnit || { enabled: false, units: [] },
+        sector: sectorId,
+        name: category.name || "",
+        slug: category.slug || generateSlug(category.name || ""),
+        order: category.order || 0,
+        description: category.description || "",
+        metaTitle: category.metaTitle || "",
+        metaDescription: category.metaDescription || "",
+        icon: category.icon || "",
+        bannerImage: category.bannerImage || "",
+        isActive: category.isActive !== undefined ? category.isActive : true,
+        level: category.level || 3,
+        categoryLevelMapping: category.categoryLevelMapping || [],
+        serviceIdealFor: category.serviceIdealFor || [],
+        extraServices: category.extraServices || [],
+        pricePerUnit: category.pricePerUnit || { enabled: false, units: [] },
       });
 
-      setIconPreview(data.icon || null);
-      setBannerPreview(data.bannerImage || null);
+      setIconPreview(category.icon || null);
+      setBannerPreview(category.bannerImage || null);
     } catch (error) {
       console.error("Error fetching category:", error);
       toast.error("Failed to load category data");
