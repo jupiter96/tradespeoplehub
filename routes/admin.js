@@ -1234,7 +1234,8 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       professionalsReferralsDailyChange: professionalsReferralsDailyChange || 0,
       flagged: flaggedCount || 0,
       flaggedDailyChange: flaggedDailyChange || 0,
-      approvalPendingService: 0, // Service model not implemented yet
+      // Services awaiting admin approval (status = 'pending')
+      approvalPendingService: await Service.countDocuments({ status: 'pending', isActive: true }),
       approvalPendingServiceDailyChange: 0,
 
       // Column 2 - Red

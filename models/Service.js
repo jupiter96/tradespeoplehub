@@ -146,6 +146,25 @@ const serviceSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // FAQs shown on the service detail page
+    faqs: {
+      type: [
+        {
+          id: {
+            type: String,
+          },
+          question: {
+            type: String,
+            trim: true,
+          },
+          answer: {
+            type: String,
+            trim: true,
+          },
+        },
+      ],
+      default: [],
+    },
     // Delivery type
     deliveryType: {
       type: String,
@@ -155,6 +174,11 @@ const serviceSchema = new mongoose.Schema(
     // Response time
     responseTime: {
       type: String,
+    },
+    // Years of professional experience for this service
+    experienceYears: {
+      type: Number,
+      min: 0,
     },
     // Skills required
     skills: {

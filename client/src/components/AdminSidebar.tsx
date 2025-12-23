@@ -57,6 +57,7 @@ interface MenuChild {
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   path: string; // Direct path for navigation
+  badgeKey?: string; // optional statistics key for badge count
 }
 
 interface MenuItem {
@@ -65,6 +66,7 @@ interface MenuItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   path?: string; // Path for main menu items that are direct links (no children)
   children: MenuChild[];
+  badgeKey?: string; // optional statistics key for aggregated badge
 }
 
 const menuItems: MenuItem[] = [
@@ -251,8 +253,9 @@ const menuItems: MenuItem[] = [
     key: "service",
     label: "Service",
     icon: ShoppingBag,
+    badgeKey: "approvalPendingService",
     children: [
-      { key: "approval-pending-service", label: "Approval Pending Service", icon: FileCheck, path: "/admin/approval-pending-service" },
+      { key: "approval-pending-service", label: "Approval Pending Service", icon: FileCheck, path: "/admin/approval-pending-service", badgeKey: "approvalPendingService" },
       { key: "required-modification-service", label: "Required Modification Service", icon: AlertCircle, path: "/admin/required-modification-service" },
       { key: "approved-service", label: "Approved Service", icon: FileCheck, path: "/admin/approved-service" },
       { key: "all-service", label: "All Service", icon: ShoppingBag, path: "/admin/all-service" },
@@ -542,6 +545,33 @@ export default function AdminSidebar({
   const messageCount = 3;
   const notificationCount = 5;
 
+  // Dashboard statistics for badges (e.g. approval pending services)
+  const [statistics, setStatistics] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/statistics`, {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.statistics) {
+            setStatistics(data.statistics);
+          }
+        }
+      } catch {
+        // silently ignore sidebar statistics errors
+      }
+    };
+
+    fetchStatistics();
+
+    // Refresh periodically to keep badges up to date
+    const interval = setInterval(fetchStatistics, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Logout function
   const handleLogout = async () => {
     try {
@@ -703,6 +733,8 @@ export default function AdminSidebar({
                 const isExpanded = expandedMenus.has(menuToRender.key);
                 const isMainActive = activeMenuKey === menuToRender.key && activeChildKey === null;
                 const hasActiveChild = activeMenuKey === menuToRender.key && activeChildKey !== null;
+                const mainBadgeCount =
+                  menuToRender.badgeKey && statistics ? statistics[menuToRender.badgeKey] || 0 : 0;
 
               return (
                 <div key={menuToRender.key} className="mb-4">
@@ -748,27 +780,36 @@ export default function AdminSidebar({
                         </span>
                       )}
                     </div>
-                    {!isCollapsed && menuToRender.children.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          // Save scroll position before toggling
-                          if (scrollContainerRef.current) {
-                            savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
-                          }
-                          toggleMenu(menuToRender.key);
-                        }}
-                        className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
-                        title={isExpanded ? "Collapse submenu" : "Expand submenu"}
-                      >
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
+                    {!isCollapsed && (
+                      <div className="ml-auto flex items-center gap-2">
+                        {mainBadgeCount > 0 && (
+                          <Badge className="h-5 min-w-[20px] px-1.5 flex items-center justify-center bg-red-500 text-white text-[11px] font-semibold border-0">
+                            {mainBadgeCount > 99 ? "99+" : mainBadgeCount}
+                          </Badge>
+                        )}
+                        {menuToRender.children.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // Save scroll position before toggling
+                              if (scrollContainerRef.current) {
+                                savedScrollPositionRef.current = scrollContainerRef.current.scrollTop;
+                              }
+                              toggleMenu(menuToRender.key);
+                            }}
+                            className="flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
+                            title={isExpanded ? "Collapse submenu" : "Expand submenu"}
+                          >
+                            <ChevronDown
+                              className={`h-4 w-4 transition-transform duration-200 ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -784,6 +825,8 @@ export default function AdminSidebar({
                       {menuToRender.children.map((child) => {
                         const ChildIcon = child.icon;
                         const isChildActive = activeChildKey === child.key;
+                        const childBadgeCount =
+                          child.badgeKey && statistics ? statistics[child.badgeKey] || 0 : 0;
 
                         return (
                           <button
@@ -807,13 +850,20 @@ export default function AdminSidebar({
                               }`}
                             />
                             {!isCollapsed && (
-                              <span
-                                className={`transition-colors duration-200 ${
-                                  isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
-                                }`}
-                              >
-                                {child.label}
-                              </span>
+                              <>
+                                <span
+                                  className={`transition-colors duration-200 ${
+                                    isChildActive ? "text-white" : "group-hover:text-[#3B82F6]"
+                                  }`}
+                                >
+                                  {child.label}
+                                </span>
+                                {childBadgeCount > 0 && (
+                                  <Badge className="ml-auto h-5 min-w-[20px] px-1.5 flex items-center justify-center bg-red-500 text-white text-[11px] font-semibold border-0">
+                                    {childBadgeCount > 99 ? "99+" : childBadgeCount}
+                                  </Badge>
+                                )}
+                              </>
                             )}
                           </button>
                         );

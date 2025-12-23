@@ -317,6 +317,12 @@ export default function ServiceDetailPage() {
             _serviceCategory: s.serviceCategory,
             _serviceSubCategory: s.serviceSubCategory,
             status: s.status, // Store original status for pending check
+            faqs: Array.isArray(s.faqs)
+              ? s.faqs.map((f: any) => ({
+                  question: f.question || "",
+                  answer: f.answer || "",
+                }))
+              : [],
           };
           setService(transformedService);
           
@@ -994,26 +1000,9 @@ export default function ServiceDetailPage() {
   const serviceCategorySlug = service.subcategory ? nameToSlug(service.subcategory) : "";
   const detailedSubCategorySlug = service.detailedSubcategory ? nameToSlug(service.detailedSubcategory) : "";
 
-  const faqs = [
-    {
-      question: "How do I book this service?",
-      answer: "Simply click the 'Add to Cart' or 'Order Now' button to get started. You can review your selection in your cart and proceed to checkout when ready."
-    },
-    {
-      question: "What is included in the price?",
-      answer: `The price of £${service.price} per ${service.priceUnit} includes all the services listed in the 'What's Included' section. Any additional services or materials will be discussed and agreed upon before work begins.`
-    },
-    {
-      question: "How far in advance should I book?",
-      answer: service.deliveryType === "same-day" 
-        ? "We offer same-day service! However, we recommend booking at least 24 hours in advance to ensure your preferred time slot is available."
-        : "We recommend booking at least 2-3 days in advance to secure your preferred date and time."
-    },
-    {
-      question: "What is your cancellation policy?",
-      answer: "We require at least 24 hours notice for cancellations. Cancellations made within 24 hours may incur a fee. Please contact us as soon as possible if you need to reschedule."
-    }
-  ];
+  const faqs = Array.isArray(service.faqs) && service.faqs.length > 0
+    ? service.faqs
+    : [];
 
   // Determine provider level
   const providerLevel = service.rating >= 4.8 ? "Top Rated Seller" : 

@@ -5403,8 +5403,10 @@ function ServicesSection() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                              {service.title}
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={service.title}>
+                              {service.title && service.title.length > 15
+                                ? `${service.title.slice(0, 15)}...`
+                                : service.title}
                             </p>
                           </TableCell>
                           <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">

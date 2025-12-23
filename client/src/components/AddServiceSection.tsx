@@ -1630,6 +1630,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                 setSelectedSubCategoryPath(draft.serviceSubCategoryPath);
               }
 
+              // Load years of experience if stored on the draft
+              if (typeof draft.experienceYears === "number" || typeof draft.experienceYears === "string") {
+                setExperienceYears(draft.experienceYears.toString());
+              }
+
               setLastSaved(new Date(draft.updatedAt));
             }
           }
@@ -1656,6 +1661,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       setPriceUnit(initialService.priceUnit || "fixed");
       setDeliveryType(initialService.deliveryType || "standard");
       setResponseTime(initialService.responseTime || "");
+      if (initialService.experienceYears !== undefined && initialService.experienceYears !== null) {
+        setExperienceYears(initialService.experienceYears.toString());
+      }
       
       // Set address fields
       if (initialService.address) setAddress(initialService.address);
@@ -2050,9 +2058,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       toast.error(`You can only upload ${remainingSlots} more image(s). Maximum 6 images allowed.`);
     }
 
+    // Base index so each uploading file reserves a fixed slot in the grid
+    const startIndex = galleryImages.length;
+
     for (let i = 0; i < filesToUpload.length; i++) {
       const file = filesToUpload[i];
-      const tempIndex = galleryImages.length + i;
+      const tempIndex = startIndex + i;
 
       // Validate file type
       const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
@@ -2066,6 +2077,14 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         toast.error(`${file.name}: Image size must be less than 5MB`);
         continue;
       }
+
+      // Create a temporary preview so the user immediately sees where this image will appear
+      const tempPreviewUrl = URL.createObjectURL(file);
+      setGalleryImages(prev => {
+        const next = [...prev];
+        next[tempIndex] = tempPreviewUrl;
+        return next;
+      });
 
       setUploadingImages(prev => ({ ...prev, [tempIndex]: true }));
       setUploadProgress(prev => ({ ...prev, [tempIndex]: 0 }));
@@ -2131,7 +2150,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         });
 
         const imageUrl = await uploadPromise;
-        setGalleryImages(prev => [...prev, imageUrl]);
+        // Replace the temporary preview with the final Cloudinary URL
+        setGalleryImages(prev => {
+          const next = [...prev];
+          next[tempIndex] = imageUrl;
+          return next;
+        });
         toast.success(`${file.name} uploaded successfully`);
         
         // Clear progress after a short delay
@@ -2371,12 +2395,26 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         });
       }
 
+      if (faqs && faqs.length > 0) {
+        draftData.faqs = faqs
+          .filter((f) => f.question.trim() && f.answer.trim())
+          .map((f, index) => ({
+            id: f.id || `faq-${index}`,
+            question: f.question.trim(),
+            answer: f.answer.trim(),
+          }));
+      }
+
       if (deliveryType) {
         draftData.deliveryType = deliveryType;
       }
 
       if (responseTime) {
         draftData.responseTime = responseTime;
+      }
+
+      if (experienceYears) {
+        draftData.experienceYears = Number(experienceYears);
       }
 
       const skillsArray = keywords.split(",").map(k => k.trim()).filter(k => k);
@@ -2799,6 +2837,13 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         county: county || userInfo?.county || "",
         badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
         status: "pending", // Set to pending when publishing
+        faqs: faqs
+          .filter((f) => f.question.trim() && f.answer.trim())
+          .map((f, index) => ({
+            id: f.id || `faq-${index}`,
+            question: f.question.trim(),
+            answer: f.answer.trim(),
+          })),
       };
 
       // Call API to create or update service

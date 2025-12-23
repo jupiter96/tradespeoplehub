@@ -232,8 +232,10 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       addons,
       highlights,
       idealFor,
+      faqs,
       deliveryType,
       responseTime,
+      experienceYears,
       skills,
       postcode,
       location,
@@ -280,8 +282,12 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
     if (addons && addons.length > 0) draftServiceData.addons = addons;
     if (highlights && highlights.length > 0) draftServiceData.highlights = highlights;
     if (idealFor && idealFor.length > 0) draftServiceData.idealFor = idealFor;
+    if (faqs && Array.isArray(faqs) && faqs.length > 0) draftServiceData.faqs = faqs;
     if (deliveryType) draftServiceData.deliveryType = deliveryType;
     if (responseTime) draftServiceData.responseTime = responseTime;
+    if (experienceYears !== undefined && experienceYears !== null && experienceYears !== "") {
+      draftServiceData.experienceYears = Number(experienceYears);
+    }
     if (skills && skills.length > 0) draftServiceData.skills = skills;
     if (postcode || professional.postcode) draftServiceData.postcode = postcode || professional.postcode;
     if (location || professional.address) draftServiceData.location = location || professional.address;
@@ -333,6 +339,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       idealFor,
       deliveryType,
       responseTime,
+      experienceYears,
       skills,
       postcode,
       location,
@@ -437,8 +444,12 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       addons: addons || [],
       highlights: highlights || [],
       idealFor: idealFor || [],
+      faqs: faqs || [],
       deliveryType: deliveryType || 'standard',
       responseTime: responseTime || undefined,
+      experienceYears: experienceYears !== undefined && experienceYears !== null && experienceYears !== ""
+        ? Number(experienceYears)
+        : undefined,
       skills: skills || [],
       postcode: professional.postcode || postcode || undefined,
       location: professional.address || location || undefined,
@@ -533,6 +544,15 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
       updateData.originalPriceValidUntil = updateData.originalPriceValidUntil
         ? new Date(updateData.originalPriceValidUntil)
         : undefined;
+    }
+    if (updateData.faqs !== undefined && !Array.isArray(updateData.faqs)) {
+      // Normalize to array or clear if invalid
+      delete updateData.faqs;
+    }
+
+    // Normalize experienceYears to number if provided
+    if (updateData.experienceYears !== undefined && updateData.experienceYears !== null && updateData.experienceYears !== "") {
+      updateData.experienceYears = Number(updateData.experienceYears);
     }
 
     // Generate new slug if title is changed (skip for drafts)
