@@ -96,6 +96,11 @@ const serviceCategorySchema = new mongoose.Schema(
           required: true,
           min: 0,
         },
+        description: {
+          type: String,
+          trim: true,
+          default: "",
+        },
         order: {
           type: Number,
           default: 0,

@@ -36,6 +36,7 @@ interface ExtraService {
   name: string;
   price: number;
   days: number;
+  description?: string;
   order: number;
 }
 
@@ -802,7 +803,7 @@ export default function AdminServiceCategoryFormPage() {
                       ...prev,
                       extraServices: [
                         ...(prev.extraServices || []),
-                        { name: "", price: 0, days: 0, order: (prev.extraServices || []).length + 1 },
+                        { name: "", price: 0, days: 0, description: "", order: (prev.extraServices || []).length + 1 },
                       ],
                     }));
                   }}
@@ -868,6 +869,21 @@ export default function AdminServiceCategoryFormPage() {
                             className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
+                      </div>
+                      <div>
+                        <Label className="text-black dark:text-white text-sm">Description</Label>
+                        <Textarea
+                          value={service.description || ""}
+                          onChange={(e) => {
+                            setFormData((prev) => {
+                              const updated = [...prev.extraServices];
+                              updated[index] = { ...updated[index], description: e.target.value };
+                              return { ...prev, extraServices: updated };
+                            });
+                          }}
+                          placeholder="Service description"
+                          className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                        />
                       </div>
                       <div className="flex justify-end">
                         <Button

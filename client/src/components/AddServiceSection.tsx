@@ -1741,7 +1741,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [serviceHighlights, setServiceHighlights] = useState<string[]>([]);
   const [dynamicServiceAttributes, setDynamicServiceAttributes] = useState<string[]>([]);
   const [dynamicServiceIdealFor, setDynamicServiceIdealFor] = useState<string[]>([]);
-  const [dynamicExtraServices, setDynamicExtraServices] = useState<Array<{ name: string; price: number; days: number }>>([]);
+  const [dynamicExtraServices, setDynamicExtraServices] = useState<Array<{ name: string; price: number; days: number; description?: string }>>([]);
   const [deliveryType, setDeliveryType] = useState<"standard" | "same-day">("standard");
 
   // Fetch service attributes from all levels when subcategory path changes
@@ -1820,7 +1820,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
               .map((item: any) => ({
                 name: item.name,
                 price: item.price,
-                days: item.days
+                days: item.days,
+                description: item.description || ""
               }));
             setDynamicExtraServices(extras);
           } else {
@@ -3634,6 +3635,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                                 Suggested Price: £{extra.price} • Delivery: {extra.days} day{extra.days !== 1 ? 's' : ''}
                               </p>
                             </div>
+                            {extra.description && (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-gray-600 mt-2">
+                                {extra.description}
+                              </p>
+                            )}
                             <Button
                               type="button"
                               variant="outline"
@@ -3643,12 +3649,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                                   id: `extra-${Date.now()}`,
                                   title: extra.name,
                                   price: extra.price.toString(),
-                                  description: `Delivery in ${extra.days} day${extra.days !== 1 ? 's' : ''}`
+                                  description: extra.description || `Delivery in ${extra.days} day${extra.days !== 1 ? 's' : ''}`
                                 };
                                 setExtraServices([...extraServices, newExtra]);
                                 toast.success(`Added "${extra.name}" to your extra services`);
                               }}
-                              className="font-['Poppins',sans-serif] text-[12px]"
+                              className="font-['Poppins',sans-serif] text-[12px] mt-2"
                             >
                               <Plus className="w-3 h-3 mr-1" />
                               Add This
