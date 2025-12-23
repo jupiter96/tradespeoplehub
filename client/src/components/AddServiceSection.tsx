@@ -1199,29 +1199,7 @@ const TITLE_SUGGESTIONS: { [key: string]: string[] } = {
   ]
 };
 
-// Admin-defined "Ideal For" options
-const IDEAL_FOR_OPTIONS = [
-  { id: "ideal-1", label: "Clients" },
-  { id: "ideal-2", label: "Renters/Tenants" },
-  { id: "ideal-3", label: "Landlords" },
-  { id: "ideal-4", label: "Small businesses" },
-  { id: "ideal-5", label: "Large enterprises" },
-  { id: "ideal-6", label: "Retail shops" },
-  { id: "ideal-7", label: "Restaurants/Cafes" },
-  { id: "ideal-8", label: "Offices" },
-  { id: "ideal-9", label: "Schools/Educational institutions" },
-  { id: "ideal-10", label: "Healthcare facilities" },
-  { id: "ideal-11", label: "Property managers" },
-  { id: "ideal-12", label: "Estate agents" },
-  { id: "ideal-13", label: "First-time buyers" },
-  { id: "ideal-14", label: "Elderly residents" },
-  { id: "ideal-15", label: "Families with children" },
-  { id: "ideal-16", label: "Students" },
-  { id: "ideal-17", label: "New construction projects" },
-  { id: "ideal-18", label: "Renovation projects" },
-  { id: "ideal-19", label: "Emergency situations" },
-  { id: "ideal-20", label: "Regular maintenance" },
-];
+
 
 // Admin-defined Service Highlights options
 const SERVICE_HIGHLIGHTS_OPTIONS = [
@@ -1494,6 +1472,31 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo?._id]); // Only run when userInfo._id changes (user changes)
 
+  // Load profile data from userInfo (About Me, Qualifications, Certifications)
+  useEffect(() => {
+    if (userInfo) {
+      // Load About Me (bio)
+      const bio = userInfo.publicProfile?.bio || userInfo.aboutService || "";
+      setAboutMe(bio);
+
+      // Load Qualifications
+      const quals = (userInfo.publicProfile as any)?.qualifications;
+      if (quals) {
+        const qualsArray = typeof quals === 'string'
+          ? quals.split('\n').filter((q: string) => q.trim())
+          : Array.isArray(quals)
+          ? quals
+          : [];
+        setProfileQualifications(qualsArray.length > 0 ? qualsArray : [""]);
+      } else {
+        setProfileQualifications([""]);
+      }
+
+      // Load Certifications
+      setProfileCertifications((userInfo.publicProfile as any)?.certifications || "");
+    }
+  }, [userInfo]);
+
   // Initialize form with existing service data when editing
   useEffect(() => {
     if (initialService && isEditMode) {
@@ -1517,14 +1520,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         setKeywords(initialService.skills.join(", "));
       }
       
-      // Set idealFor
-      if (initialService.idealFor && Array.isArray(initialService.idealFor)) {
-        const idealForIds = initialService.idealFor.map((label: string) => {
-          const option = IDEAL_FOR_OPTIONS.find(opt => opt.label === label);
-          return option?.id || "";
-        }).filter(Boolean);
-        setIdealFor(idealForIds);
-      }
+      // Set idealFor - will be mapped after dynamic data loads
+      // This will be handled by a separate useEffect after dynamicServiceIdealFor is loaded
       
       // Set service highlights
       if (initialService.highlights && Array.isArray(initialService.highlights)) {
@@ -1602,9 +1599,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [idealFor, setIdealFor] = useState<string[]>([]);
   const [serviceHighlights, setServiceHighlights] = useState<string[]>([]);
   const [dynamicServiceAttributes, setDynamicServiceAttributes] = useState<string[]>([]);
+  const [dynamicServiceIdealFor, setDynamicServiceIdealFor] = useState<string[]>([]);
+  const [dynamicExtraServices, setDynamicExtraServices] = useState<Array<{ name: string; price: number; days: number }>>([]);
   const [deliveryType, setDeliveryType] = useState<"standard" | "same-day">("standard");
 
-  // Fetch service attributes when subcategory path changes
+  // Fetch service attributes from all levels when subcategory path changes
   useEffect(() => {
     const fetchServiceAttributes = async () => {
       if (selectedSubCategoryPath.length === 0) {
@@ -1613,22 +1612,29 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
 
       try {
-        // Get the last selected subcategory ID
-        const lastSubCategoryId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+        // Fetch attributes from all subcategories in the path
+        const allAttributes: string[] = [];
 
-        const response = await fetch(
-          resolveApiUrl(`/api/service-subcategories/${lastSubCategoryId}`),
-          { credentials: "include" }
-        );
+        for (const subCategoryId of selectedSubCategoryPath) {
+          const response = await fetch(
+            resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
+            { credentials: "include" }
+          );
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.serviceSubCategory?.serviceAttributes) {
-            setDynamicServiceAttributes(data.serviceSubCategory.serviceAttributes);
-          } else {
-            setDynamicServiceAttributes([]);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.serviceSubCategory?.serviceAttributes && Array.isArray(data.serviceSubCategory.serviceAttributes)) {
+              // Add attributes from this level (avoid duplicates)
+              data.serviceSubCategory.serviceAttributes.forEach((attr: string) => {
+                if (attr && !allAttributes.includes(attr)) {
+                  allAttributes.push(attr);
+                }
+              });
+            }
           }
         }
+
+        setDynamicServiceAttributes(allAttributes);
       } catch (error) {
         console.error("Error fetching service attributes:", error);
         setDynamicServiceAttributes([]);
@@ -1637,6 +1643,69 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
     fetchServiceAttributes();
   }, [selectedSubCategoryPath]);
+
+  // Fetch service ideal for and extra services from selected category
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      if (!selectedCategoryId) {
+        setDynamicServiceIdealFor([]);
+        setDynamicExtraServices([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          resolveApiUrl(`/api/service-categories/${selectedCategoryId}`),
+          { credentials: "include" }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Set service ideal for options
+          if (data.serviceCategory?.serviceIdealFor && Array.isArray(data.serviceCategory.serviceIdealFor)) {
+            const idealForOptions = data.serviceCategory.serviceIdealFor
+              .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+              .map((item: any) => item.name);
+            setDynamicServiceIdealFor(idealForOptions);
+          } else {
+            setDynamicServiceIdealFor([]);
+          }
+
+          // Set extra services
+          if (data.serviceCategory?.extraServices && Array.isArray(data.serviceCategory.extraServices)) {
+            const extras = data.serviceCategory.extraServices
+              .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+              .map((item: any) => ({
+                name: item.name,
+                price: item.price,
+                days: item.days
+              }));
+            setDynamicExtraServices(extras);
+          } else {
+            setDynamicExtraServices([]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching category data:", error);
+        setDynamicServiceIdealFor([]);
+        setDynamicExtraServices([]);
+      }
+    };
+
+    fetchCategoryData();
+  }, [selectedCategoryId]);
+
+  // Map initialService idealFor to dynamic data after they're loaded
+  useEffect(() => {
+    if (isEditMode && initialService?.idealFor && dynamicServiceIdealFor.length > 0) {
+      const idealForIds = initialService.idealFor.map((label: string) => {
+        const index = dynamicServiceIdealFor.indexOf(label);
+        return index !== -1 ? `ideal-${index}` : "";
+      }).filter(Boolean);
+      setIdealFor(idealForIds);
+    }
+  }, [dynamicServiceIdealFor, isEditMode, initialService]);
 
   // Map initialService highlights to dynamic attributes after they're loaded
   useEffect(() => {
@@ -1663,10 +1732,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   
   // Extra Services Tab
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
-  const [predefinedExtras, setPredefinedExtras] = useState([
-    { id: "express-delivery", label: "typefaces", price: "", selected: false, placeholder: "Enter price" },
-    { id: "additional-revision", label: "placeholder text", price: "", selected: false, placeholder: "Enter price" },
-  ]);
   
   // Gallery Tab
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
@@ -1750,7 +1815,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   // Profile/Settings Tab
   const [responseTime, setResponseTime] = useState("within 1 hour");
   const [experienceYears, setExperienceYears] = useState("");
-  const [qualifications, setQualifications] = useState("");
+  const [aboutMe, setAboutMe] = useState(""); // Bio from profile
+  const [profileQualifications, setProfileQualifications] = useState<string[]>([""]); // Array of qualifications from profile
+  const [profileCertifications, setProfileCertifications] = useState(""); // Certifications from profile
   
   const handleKeywordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -1782,17 +1849,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     ));
   };
 
-  const togglePredefinedExtra = (id: string, checked: boolean) => {
-    setPredefinedExtras(predefinedExtras.map(extra => 
-      extra.id === id ? { ...extra, selected: checked } : extra
-    ));
-  };
 
-  const updatePredefinedExtraPrice = (id: string, price: string) => {
-    setPredefinedExtras(predefinedExtras.map(extra => 
-      extra.id === id ? { ...extra, price } : extra
-    ));
-  };
 
   const addFAQ = () => {
     const newFAQ: FAQ = {
@@ -2046,6 +2103,13 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         return;
       }
       toast.success("Availability saved!");
+    } else if (activeTab === "profile") {
+      // Validate About Me (mandatory)
+      if (!aboutMe.trim()) {
+        toast.error("Please fill in the 'About Me' section");
+        return;
+      }
+      toast.success("Profile information saved!");
     }
 
     // Move to next tab
@@ -2108,6 +2172,16 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       fetchNestedSubCategories(selectedSubCategoryId);
     }
   }, [selectedSubCategoryId]);
+
+  // Update selectedSubCategoryId when path changes
+  useEffect(() => {
+    if (selectedSubCategoryPath.length > 0) {
+      const lastId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+      if (lastId !== selectedSubCategoryId) {
+        setSelectedSubCategoryId(lastId);
+      }
+    }
+  }, [selectedSubCategoryPath]);
 
   // Get current level subcategories based on selection path
   const getCurrentLevelSubCategories = useCallback((): ServiceSubCategory[] => {
@@ -2269,11 +2343,44 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       setActiveTab("service-details");
       return;
     }
+    // Validate About Me (mandatory)
+    if (!aboutMe.trim()) {
+      toast.error("Please fill in the 'About Me' section in the Profile step");
+      setActiveTab("profile");
+      return;
+    }
 
     const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
 
     setLoading(true);
     try {
+      // First, update profile with About Me, Qualifications, and Certifications
+      try {
+        const profileUpdateData = {
+          publicProfile: {
+            bio: aboutMe.trim(),
+            qualifications: profileQualifications.filter(q => q.trim()).join('\n'),
+            certifications: profileCertifications.trim(),
+          }
+        };
+
+        const profileResponse = await fetch(resolveApiUrl("/api/auth/profile"), {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(profileUpdateData),
+        });
+
+        if (!profileResponse.ok) {
+          console.error("Failed to update profile, but continuing with service creation");
+        }
+      } catch (profileError) {
+        console.error("Error updating profile:", profileError);
+        // Continue with service creation even if profile update fails
+      }
+
       // Prepare service data for API
       const serviceData = {
         serviceCategoryId: selectedCategoryId,
@@ -2306,8 +2413,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           return option ? option.label : id;
         }),
         idealFor: idealFor.map(id => {
-          const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
-          return option ? option.label : id;
+          const index = parseInt(id.replace('ideal-', ''));
+          return dynamicServiceIdealFor[index] || id;
         }),
         deliveryType,
         responseTime: responseTime || undefined,
@@ -2645,35 +2752,30 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
                     {/* Display nested subcategory levels sequentially */}
                     {selectedSubCategoryPath.length > 0 && selectedSubCategoryPath.map((parentId, levelIndex) => {
-                      // Check if this level has children
-                      const hasChildren = nestedSubCategories[parentId]?.length > 0;
-                      const nextLevelSelected = selectedSubCategoryPath[levelIndex + 1];
-
+                      // Always render the next level - let SubCategoryLevelDisplay handle loading/empty states
                       return (
                         <div key={`level-${levelIndex}-${parentId}`}>
                           {/* Display current level's children */}
-                          {hasChildren && (
-                            <SubCategoryLevelDisplay
-                              parentSubCategoryId={parentId}
-                              levelIndex={levelIndex + 1}
-                              selectedSubCategoryPath={selectedSubCategoryPath}
-                              setSelectedSubCategoryPath={setSelectedSubCategoryPath}
-                              nestedSubCategories={nestedSubCategories}
-                              setNestedSubCategories={setNestedSubCategories}
-                              loadingSubCategories={loadingSubCategories}
-                              setLoadingSubCategories={setLoadingSubCategories}
-                              selectedAttributes={selectedAttributes}
-                              setSelectedAttributes={setSelectedAttributes}
-                              attributeTypeLabels={{
-                                'serviceType': 'Service Type',
-                                'size': 'Size',
-                                'frequency': 'Frequency',
-                                'make': 'Make',
-                                'model': 'Model',
-                                'brand': 'Brand',
-                              }}
-                            />
-                          )}
+                          <SubCategoryLevelDisplay
+                            parentSubCategoryId={parentId}
+                            levelIndex={levelIndex + 1}
+                            selectedSubCategoryPath={selectedSubCategoryPath}
+                            setSelectedSubCategoryPath={setSelectedSubCategoryPath}
+                            nestedSubCategories={nestedSubCategories}
+                            setNestedSubCategories={setNestedSubCategories}
+                            loadingSubCategories={loadingSubCategories}
+                            setLoadingSubCategories={setLoadingSubCategories}
+                            selectedAttributes={selectedAttributes}
+                            setSelectedAttributes={setSelectedAttributes}
+                            attributeTypeLabels={{
+                              'serviceType': 'Service Type',
+                              'size': 'Size',
+                              'frequency': 'Frequency',
+                              'make': 'Make',
+                              'model': 'Model',
+                              'brand': 'Brand',
+                            }}
+                          />
                         </div>
                       );
                     })}
@@ -2774,46 +2876,58 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     What is the service ideal for?
                   </Label>
-                  <div className="border border-gray-300 rounded-md p-4 max-h-[300px] overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-3">
-                      {IDEAL_FOR_OPTIONS.map((option) => (
-                        <div key={option.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={option.id}
-                            checked={idealFor.includes(option.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                if (idealFor.length < 5) {
-                                  setIdealFor([...idealFor, option.id]);
-                                }
-                              } else {
-                                setIdealFor(idealFor.filter(id => id !== option.id));
-                              }
-                            }}
-                            disabled={idealFor.length >= 5 && !idealFor.includes(option.id)}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                          />
-                          <label
-                            htmlFor={option.id}
-                            className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
-                          >
-                            {option.label}
-                          </label>
+                  {dynamicServiceIdealFor.length === 0 ? (
+                    <div className="border border-gray-300 rounded-md p-4 text-center text-gray-500">
+                      <p className="text-sm">No options available. Please configure "Service Ideal For" in the category settings.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="border border-gray-300 rounded-md p-4 max-h-[300px] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-3">
+                          {dynamicServiceIdealFor.map((label, index) => {
+                            const optionId = `ideal-${index}`;
+                            return (
+                              <div key={optionId} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={optionId}
+                                  checked={idealFor.includes(optionId)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      if (idealFor.length < 5) {
+                                        setIdealFor([...idealFor, optionId]);
+                                      }
+                                    } else {
+                                      setIdealFor(idealFor.filter(id => id !== optionId));
+                                    }
+                                  }}
+                                  disabled={idealFor.length >= 5 && !idealFor.includes(optionId)}
+                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                                />
+                                <label
+                                  htmlFor={optionId}
+                                  className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer"
+                                >
+                                  {label}
+                                </label>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  {idealFor.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {idealFor.map((id) => {
-                        const option = IDEAL_FOR_OPTIONS.find(opt => opt.id === id);
-                        return option ? (
-                          <Badge key={id} className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[12px]">
-                            {option.label}
-                          </Badge>
-                        ) : null;
-                      })}
-                    </div>
+                      </div>
+                      {idealFor.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {idealFor.map((id) => {
+                            const index = parseInt(id.replace('ideal-', ''));
+                            const label = dynamicServiceIdealFor[index];
+                            return label ? (
+                              <Badge key={id} className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[12px]">
+                                {label}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -3011,84 +3125,99 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             {/* Extra Service Tab */}
             <TabsContent value="extra-service" className="mt-0 py-6">
               <div className="space-y-6">
-                {/* Predefined Extra Services */}
-                <div className="space-y-4">
-                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                    Choose an additional service
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    {predefinedExtras.map((extra) => (
-                      <div 
-                        key={extra.id} 
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <Checkbox
-                            id={extra.id}
-                            checked={extra.selected}
-                            onCheckedChange={(checked) => togglePredefinedExtra(extra.id, checked as boolean)}
-                            className="data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
-                          />
-                          <label
-                            htmlFor={extra.id}
-                            className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
-                          >
-                            {extra.label}
-                          </label>
+                {/* Predefined Extra Services from Category */}
+                {dynamicExtraServices.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Suggested Additional Services
+                    </h3>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500">
+                      These are pre-configured extra services for this category. Click "Add Custom Extra Service" below to add your own.
+                    </p>
+
+                    <div className="space-y-3">
+                      {dynamicExtraServices.map((extra, index) => (
+                        <div
+                          key={`dynamic-extra-${index}`}
+                          className="p-4 border border-gray-200 rounded-lg bg-gray-50"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                                {extra.name}
+                              </p>
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500 mt-1">
+                                Suggested Price: £{extra.price} • Delivery: {extra.days} day{extra.days !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const newExtra: ExtraService = {
+                                  id: `extra-${Date.now()}`,
+                                  title: extra.name,
+                                  price: extra.price.toString(),
+                                  description: `Delivery in ${extra.days} day${extra.days !== 1 ? 's' : ''}`
+                                };
+                                setExtraServices([...extraServices, newExtra]);
+                                toast.success(`Added "${extra.name}" to your extra services`);
+                              }}
+                              className="font-['Poppins',sans-serif] text-[12px]"
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Add This
+                            </Button>
+                          </div>
                         </div>
-                        
-                        <div className="flex flex-col items-end gap-1">
-                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                            Extra Service Price
-                          </Label>
-                          <Input
-                            type="number"
-                            value={extra.price}
-                            onChange={(e) => updatePredefinedExtraPrice(extra.id, e.target.value)}
-                            placeholder={extra.placeholder || "Enter price"}
-                            disabled={!extra.selected}
-                            className="w-[160px] font-['Poppins',sans-serif] text-[14px] border-gray-300 disabled:opacity-50"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
+                {dynamicExtraServices.length > 0 && (
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200"></div>
+                    </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-white px-3 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        Or add custom extra services
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative flex justify-center">
-                    <span className="bg-white px-3 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      Or add custom extra services
-                    </span>
-                  </div>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    Create custom additional services that clients can add to their order.
-                  </p>
-                  <Button
-                    onClick={addExtraService}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Extra Service
-                  </Button>
-                </div>
-
-                {extraServices.length === 0 ? (
-                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
-                      No extra services added yet. Click the button above to add one.
-                    </p>
+                {/* Custom Extra Services */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        Custom Extra Services
+                      </h3>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500 mt-1">
+                        Create custom additional services that clients can add to their order.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={addExtraService}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Custom Extra Service
+                    </Button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
+
+                  {extraServices.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d]">
+                        No custom extra services added yet. Click the button above to add one.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
                     {extraServices.map((extra) => (
                       <div key={extra.id} className="border-2 border-gray-200 rounded-xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
@@ -3143,9 +3272,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                           />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
 
@@ -3460,10 +3590,108 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             {/* Profile Tab */}
             <TabsContent value="profile" className="mt-0 py-6">
               <div className="space-y-6">
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                  Additional professional information about you and your service.
-                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
+                    <strong>Note:</strong> This information is synced with your Profile page. Changes here will update your profile, and vice versa.
+                  </p>
+                </div>
 
+                {/* About Me - MANDATORY */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    About Me <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    value={aboutMe}
+                    onChange={(e) => setAboutMe(e.target.value)}
+                    placeholder="Tell clients about yourself, your experience, and what makes you unique..."
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
+                    maxLength={1000}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                      This will be displayed on your public profile and service listings.
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500">
+                      {aboutMe.length}/1000 characters
+                    </p>
+                  </div>
+                  {!aboutMe.trim() && (
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-500 mt-1">
+                      About Me is required to publish your service.
+                    </p>
+                  )}
+                </div>
+
+                {/* Qualifications */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Qualifications
+                  </Label>
+                  <div className="space-y-3">
+                    {profileQualifications.map((qual, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Input
+                          value={qual}
+                          onChange={(e) => {
+                            const newQualifications = [...profileQualifications];
+                            newQualifications[index] = e.target.value;
+                            setProfileQualifications(newQualifications);
+                          }}
+                          placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
+                          className="flex-1 font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                        />
+                        {profileQualifications.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const newQualifications = profileQualifications.filter((_, i) => i !== index);
+                              setProfileQualifications(newQualifications.length > 0 ? newQualifications : [""]);
+                            }}
+                            className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setProfileQualifications([...profileQualifications, ""]);
+                      }}
+                      className="w-full border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] text-gray-600 hover:text-[#FE8A0F] font-['Poppins',sans-serif] text-[14px]"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Another Qualification
+                    </Button>
+                  </div>
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                    Include registration numbers, dates obtained, or issuing bodies.
+                  </p>
+                </div>
+
+                {/* Certifications */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Certifications
+                  </Label>
+                  <Textarea
+                    value={profileCertifications}
+                    onChange={(e) => setProfileCertifications(e.target.value)}
+                    placeholder="List your certifications (one per line)..."
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[100px]"
+                  />
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                    Include any professional certifications, trade memberships, or insurance details.
+                  </p>
+                </div>
+
+                {/* Typical Response Time */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Typical Response Time
@@ -3481,6 +3709,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   </Select>
                 </div>
 
+                {/* Years of Experience */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Years of Experience
@@ -3492,21 +3721,6 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     placeholder="e.g., 5"
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                   />
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Qualifications & Certifications
-                  </Label>
-                  <Textarea
-                    value={qualifications}
-                    onChange={(e) => setQualifications(e.target.value)}
-                    placeholder="List your qualifications, certifications, trade memberships..."
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
-                  />
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
-                    Include any relevant trade qualifications, certifications, insurance details, or professional memberships.
-                  </p>
                 </div>
               </div>
             </TabsContent>

@@ -308,7 +308,10 @@ router.get('/:identifier', async (req, res) => {
     }
     
     const serviceCategoryData = serviceCategory.toObject();
-    
+
+    console.log('GET service category - serviceIdealFor:', serviceCategoryData.serviceIdealFor);
+    console.log('GET service category - extraServices:', serviceCategoryData.extraServices);
+
     // Include subcategories if requested
     if (includeSubCategories === 'true') {
       const subCategories = await ServiceSubCategory.find({
@@ -347,6 +350,7 @@ router.post('/', async (req, res) => {
       level,
       categoryLevelMapping,
       attributes,
+      serviceIdealFor,
       extraServices,
       pricePerUnit,
     } = req.body;
@@ -445,11 +449,13 @@ router.post('/', async (req, res) => {
       level: level || 3,
       categoryLevelMapping: categoryLevelMapping || [],
       attributes: attributes || [],
+      serviceIdealFor: serviceIdealFor || [],
       extraServices: extraServices || [],
       pricePerUnit: pricePerUnit || { enabled: false, units: [] },
     };
-    
+
     console.log('Creating service category with data:', JSON.stringify(createData, null, 2));
+    console.log('serviceIdealFor from request:', serviceIdealFor);
     
     const serviceCategory = await ServiceCategory.create(createData);
     
@@ -566,6 +572,7 @@ router.put('/:id', async (req, res) => {
     if (level !== undefined) serviceCategory.level = level;
     if (categoryLevelMapping !== undefined) serviceCategory.categoryLevelMapping = categoryLevelMapping;
     if (req.body.attributes !== undefined) serviceCategory.attributes = req.body.attributes;
+    if (req.body.serviceIdealFor !== undefined) serviceCategory.serviceIdealFor = req.body.serviceIdealFor;
     if (req.body.extraServices !== undefined) serviceCategory.extraServices = req.body.extraServices;
     if (req.body.pricePerUnit !== undefined) serviceCategory.pricePerUnit = req.body.pricePerUnit;
     

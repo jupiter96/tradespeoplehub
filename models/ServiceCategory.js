@@ -61,8 +61,8 @@ const serviceCategorySchema = new mongoose.Schema(
       trim: true,
       // URL to banner image for category detail page (Cloudinary URL)
     },
-    // Attributes for this category
-    attributes: {
+    // Service Ideal For options for this category
+    serviceIdealFor: {
       type: [{
         name: {
           type: String,

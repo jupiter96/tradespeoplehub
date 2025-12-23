@@ -242,7 +242,7 @@ export interface ServiceCategory {
     icon?: string;
     metadata?: any;
   }>;
-  attributes?: Array<{
+  serviceIdealFor?: Array<{
     name: string;
     order: number;
   }>;

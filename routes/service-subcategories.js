@@ -643,6 +643,64 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Bulk update service subcategory order (Admin only) - MUST be before /:id route
+router.put('/bulk/order', async (req, res) => {
+  try {
+    const { serviceSubCategories } = req.body; // Array of { id, order }
+
+    if (!Array.isArray(serviceSubCategories)) {
+      return res.status(400).json({ error: 'Service subcategories must be an array' });
+    }
+
+    const updatePromises = serviceSubCategories.map(({ id, order }) =>
+      ServiceSubCategory.findByIdAndUpdate(id, { order }, { new: true })
+    );
+
+    await Promise.all(updatePromises);
+
+    return res.json({ message: 'Service subcategory orders updated' });
+  } catch (error) {
+    console.error('Bulk update service subcategory order error', error);
+    return res.status(500).json({ error: 'Failed to update service subcategory orders' });
+  }
+});
+
+// Bulk update service attributes (Admin only) - MUST be before /:id route
+router.put('/bulk-update-attributes', async (req, res) => {
+  try {
+    const { updates } = req.body;
+
+    console.log('Received bulk-update-attributes request:', JSON.stringify(updates, null, 2));
+
+    if (!updates || !Array.isArray(updates)) {
+      console.error('Invalid updates format:', updates);
+      return res.status(400).json({ error: 'Invalid updates format' });
+    }
+
+    const updatePromises = updates.map(async ({ subCategoryId, serviceAttributes }) => {
+      console.log(`Updating subcategory ${subCategoryId} with attributes:`, serviceAttributes);
+      const result = await ServiceSubCategory.findByIdAndUpdate(
+        subCategoryId,
+        { serviceAttributes },
+        { new: true }
+      );
+      console.log(`Updated subcategory ${subCategoryId}:`, result?.serviceAttributes);
+      return result;
+    });
+
+    const results = await Promise.all(updatePromises);
+    console.log('All updates completed. Total updated:', results.length);
+
+    return res.json({
+      message: 'Service attributes updated successfully',
+      updatedCount: results.length
+    });
+  } catch (error) {
+    console.error('Bulk update service attributes error', error);
+    return res.status(500).json({ error: 'Failed to update service attributes' });
+  }
+});
+
 // Update service subcategory (Admin only)
 router.put('/:id', async (req, res) => {
   try {
@@ -775,54 +833,6 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete service subcategory error', error);
     return res.status(500).json({ error: 'Failed to delete service subcategory' });
-  }
-});
-
-// Bulk update service subcategory order
-router.put('/bulk/order', async (req, res) => {
-  try {
-    const { serviceSubCategories } = req.body; // Array of { id, order }
-    
-    if (!Array.isArray(serviceSubCategories)) {
-      return res.status(400).json({ error: 'Service subcategories must be an array' });
-    }
-    
-    const updatePromises = serviceSubCategories.map(({ id, order }) =>
-      ServiceSubCategory.findByIdAndUpdate(id, { order }, { new: true })
-    );
-    
-    await Promise.all(updatePromises);
-    
-    return res.json({ message: 'Service subcategory orders updated' });
-  } catch (error) {
-    console.error('Bulk update service subcategory order error', error);
-    return res.status(500).json({ error: 'Failed to update service subcategory orders' });
-  }
-});
-
-// Bulk update service attributes
-router.put('/bulk-update-attributes', async (req, res) => {
-  try {
-    const { updates } = req.body;
-
-    if (!updates || !Array.isArray(updates)) {
-      return res.status(400).json({ error: 'Invalid updates format' });
-    }
-
-    const updatePromises = updates.map(({ subCategoryId, serviceAttributes }) =>
-      ServiceSubCategory.findByIdAndUpdate(
-        subCategoryId,
-        { serviceAttributes },
-        { new: true }
-      )
-    );
-
-    await Promise.all(updatePromises);
-
-    return res.json({ message: 'Service attributes updated successfully' });
-  } catch (error) {
-    console.error('Bulk update service attributes error', error);
-    return res.status(500).json({ error: 'Failed to update service attributes' });
   }
 });
 

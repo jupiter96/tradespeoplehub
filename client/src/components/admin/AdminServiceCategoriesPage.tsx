@@ -74,7 +74,7 @@ interface ServiceCategory {
   }>;
   metaTitle?: string;
   metaDescription?: string;
-  attributes?: Array<{
+  serviceIdealFor?: Array<{
     name: string;
     order: number;
   }>;
@@ -452,7 +452,7 @@ export default function AdminServiceCategoriesPage() {
       icon?: string;
       metadata?: Record<string, any>;
     }>;
-    attributes: Array<{ name: string; order: number }>;
+    serviceIdealFor: Array<{ name: string; order: number }>;
     extraServices: Array<{ name: string; price: number; days: number; order: number }>;
     pricePerUnit: {
       enabled: boolean;
@@ -471,7 +471,7 @@ export default function AdminServiceCategoriesPage() {
     isActive: true,
     level: 3,
     categoryLevelMapping: [],
-      attributes: [],
+      serviceIdealFor: [],
       extraServices: [],
       pricePerUnit: {
         enabled: false,
@@ -1590,7 +1590,7 @@ export default function AdminServiceCategoriesPage() {
       isActive: serviceCategory.isActive,
       level: serviceCategory.level || 3,
       categoryLevelMapping: serviceCategory.categoryLevelMapping || [],
-      attributes: (serviceCategory as any).attributes || [],
+      serviceIdealFor: (serviceCategory as any).serviceIdealFor || [],
       extraServices: (serviceCategory as any).extraServices || [],
       pricePerUnit: (serviceCategory as any).pricePerUnit || { enabled: false, units: [] },
     });
@@ -1713,7 +1713,7 @@ export default function AdminServiceCategoriesPage() {
         isActive: formData.isActive,
         level: formData.level,
         categoryLevelMapping: formData.categoryLevelMapping || [],
-        attributes: formData.attributes || [],
+        serviceIdealFor: formData.serviceIdealFor || [],
         extraServices: formData.extraServices || [],
         pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
@@ -3040,10 +3040,10 @@ export default function AdminServiceCategoriesPage() {
               </div>
             </div>
 
-            {/* Add Attributes */}
+            {/* Service Ideal For */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Attributes</Label>
+                <Label className="text-black dark:text-white">Service Ideal For</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -3051,36 +3051,36 @@ export default function AdminServiceCategoriesPage() {
                   onClick={() => {
                     setFormData((prev) => ({
                       ...prev,
-                      attributes: [
-                        ...(prev.attributes || []),
-                        { name: "", order: (prev.attributes || []).length + 1 },
+                      serviceIdealFor: [
+                        ...(prev.serviceIdealFor || []),
+                        { name: "", order: (prev.serviceIdealFor || []).length + 1 },
                       ],
                     }));
                   }}
                   className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Attribute
+                  Add Option
                 </Button>
               </div>
               <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
-                {(!formData.attributes || formData.attributes.length === 0) ? (
+                {(!formData.serviceIdealFor || formData.serviceIdealFor.length === 0) ? (
                   <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
-                    No attributes. Click "Add Attribute" to add one.
+                    No options. Click "Add Option" to add one.
                   </p>
                 ) : (
-                  (formData.attributes || []).map((attribute, index) => (
+                  (formData.serviceIdealFor || []).map((option, index) => (
                     <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
                       <Input
-                        value={attribute.name || ""}
+                        value={option.name || ""}
                         onChange={(e) => {
                           setFormData((prev) => {
-                            const updated = [...prev.attributes];
+                            const updated = [...prev.serviceIdealFor];
                             updated[index] = { ...updated[index], name: e.target.value };
-                            return { ...prev, attributes: updated };
+                            return { ...prev, serviceIdealFor: updated };
                           });
                         }}
-                        placeholder="Attribute name"
+                        placeholder="e.g., Homeowners, Small businesses, Landlords"
                         className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                       />
                       <Button
@@ -3090,7 +3090,7 @@ export default function AdminServiceCategoriesPage() {
                         onClick={() => {
                           setFormData((prev) => ({
                             ...prev,
-                            attributes: prev.attributes.filter((_, i) => i !== index),
+                            serviceIdealFor: prev.serviceIdealFor.filter((_, i) => i !== index),
                           }));
                         }}
                         className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"

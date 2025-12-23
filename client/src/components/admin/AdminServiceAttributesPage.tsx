@@ -173,6 +173,8 @@ export default function AdminServiceAttributesPage() {
         serviceAttributes: (attributes as string[]).filter((attr: string) => attr.trim() !== '')
       }));
 
+      console.log('Saving attributes:', updates);
+
       const response = await fetch(
         resolveApiUrl('/api/service-subcategories/bulk-update-attributes'),
         {
@@ -184,9 +186,12 @@ export default function AdminServiceAttributesPage() {
       );
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('Save successful:', result);
         toast.success('Attributes saved successfully');
       } else {
         const error = await response.json();
+        console.error('Save failed:', error);
         toast.error(error.error || 'Failed to save attributes');
       }
     } catch (error) {
@@ -269,219 +274,155 @@ export default function AdminServiceAttributesPage() {
           </p>
         </div>
 
-        {/* Level Navigation - Only show levels that should be visible */}
-        <div className="space-y-6">
-          {/* Always show Level 2 first */}
-          {(() => {
-            const level = 2;
-            const subCategories = subCategoriesByLevel[level] || [];
-            const selectedId = selectedSubCategoryByLevel[level];
-            const isLoading = loadingSubCategories[level];
-            const mapping = serviceCategory.categoryLevelMapping?.find(m => m.level === 2);
-            const levelTitle = mapping?.title || mapping?.attributeType || "Sub Category";
+        {/* Cascading Level Selection */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+          <Label className="text-sm font-semibold text-[#FE8A0F] mb-4 block">
+            Select Subcategory Path
+          </Label>
 
-            return (
-              <div key={level} className="space-y-3">
-                <Label className="text-lg font-semibold text-[#FE8A0F]">
-                  Level {level} - {levelTitle}
-                </Label>
+          <div className="space-y-4">
+            {/* Render cascading selects for each level */}
+            {(() => {
+              const maxLevel = serviceCategory.level || 7;
+              const levels = [];
 
-                {isLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
-                  </div>
-                ) : subCategories.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500">
-                    No subcategories found for this level
-                  </div>
-                ) : (
-                  <>
-                    <RadioGroup
-                      value={selectedId || ""}
-                      onValueChange={(value) => handleSubCategorySelect(level, value)}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-                    >
-                      {subCategories.map((subCat) => (
-                        <label
-                          key={subCat._id}
-                          htmlFor={`level-${level}-${subCat._id}`}
-                          className={`
-                            flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all
-                            ${selectedId === subCat._id
-                              ? 'border-[#FE8A0F] bg-[#FFF5EB]'
-                              : 'border-gray-200 hover:border-[#FE8A0F]/50'
-                            }
-                          `}
-                        >
-                          <div className="flex items-center space-x-3 flex-1">
-                            <RadioGroupItem
-                              value={subCat._id}
-                              id={`level-${level}-${subCat._id}`}
-                            />
-                            <span className="font-medium">{subCat.name}</span>
-                          </div>
-                        </label>
-                      ))}
-                    </RadioGroup>
+              for (let level = 2; level <= maxLevel; level++) {
+                const mapping = serviceCategory.categoryLevelMapping?.find(m => m.level === level);
+                const levelName = mapping ? (mapping.title || mapping.attributeType) : 'Sub Category';
+                const subCategories = subCategoriesByLevel[level] || [];
+                const selectedId = selectedSubCategoryByLevel[level];
 
-                    {/* Attributes for selected subcategory */}
-                    {selectedId && (
-                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <Label className="text-md font-semibold">
-                            Attributes for {subCategories.find(s => s._id === selectedId)?.name}
-                          </Label>
-                          <Button
-                            onClick={() => addAttribute(selectedId)}
-                            size="sm"
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Attribute
-                          </Button>
-                        </div>
+                // Only show this level if:
+                // 1. It's level 2 (always visible)
+                // 2. Previous level has a selection
+                const shouldShow = level === 2 || selectedSubCategoryByLevel[level - 1];
 
-                        <div className="space-y-2">
-                          {(subCategoryAttributes[selectedId] || []).map((attr: string, index: number) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <Input
-                                value={attr}
-                                onChange={(e) => updateAttribute(selectedId, index, e.target.value)}
-                                placeholder="Enter attribute (e.g., Licensed and Insured)"
-                                className="flex-1"
-                              />
-                              <Button
-                                onClick={() => removeAttribute(selectedId, index)}
-                                size="sm"
-                                variant="destructive"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          {(subCategoryAttributes[selectedId] || []).length === 0 && (
-                            <p className="text-sm text-gray-500 text-center py-2">
-                              No attributes added yet. Click "Add Attribute" to start.
-                            </p>
-                          )}
-                        </div>
+                if (!shouldShow) break;
+
+                levels.push(
+                  <div key={level} className="space-y-3">
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Level {level} - {levelName}
+                    </Label>
+                    {loadingSubCategories[level] ? (
+                      <div className="flex items-center gap-2 p-3 border rounded-lg">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
+                        <span className="text-sm text-gray-500">Loading...</span>
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Show Level 3+ only if previous level is selected */}
-          {serviceCategory.categoryLevelMapping
-            ?.filter(m => {
-              // Show Level 3+ only if previous level is selected
-              if (m.level >= 3 && m.level <= 7) {
-                return selectedSubCategoryByLevel[m.level - 1] !== undefined;
-              }
-              return false;
-            })
-            .sort((a: CategoryLevelMapping, b: CategoryLevelMapping) => a.level - b.level)
-            .map((mapping: CategoryLevelMapping) => {
-              const level = mapping.level;
-              const subCategories = subCategoriesByLevel[level] || [];
-              const selectedId = selectedSubCategoryByLevel[level];
-              const isLoading = loadingSubCategories[level];
-
-              return (
-                <div key={level} className="space-y-3">
-                  <Label className="text-lg font-semibold text-[#FE8A0F]">
-                    Level {level} - {mapping.title || mapping.attributeType}
-                  </Label>
-
-                  {isLoading ? (
-                    <div className="flex justify-center py-4">
-                      <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
-                    </div>
-                  ) : subCategories.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500">
-                      No subcategories found for this level
-                    </div>
-                  ) : (
-                    <>
+                    ) : subCategories.length === 0 ? (
+                      <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                        <span className="text-sm text-gray-500">No subcategories available</span>
+                      </div>
+                    ) : (
                       <RadioGroup
                         value={selectedId || ""}
                         onValueChange={(value) => handleSubCategorySelect(level, value)}
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
                       >
                         {subCategories.map((subCat) => (
-                          <label
+                          <div
                             key={subCat._id}
-                            htmlFor={`level-${level}-${subCat._id}`}
-                            className={`
-                              flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all
-                              ${selectedId === subCat._id
-                                ? 'border-[#FE8A0F] bg-[#FFF5EB]'
-                                : 'border-gray-200 hover:border-[#FE8A0F]/50'
-                              }
-                            `}
+                            className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
+                              selectedId === subCat._id
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB] dark:bg-[#FE8A0F]/10'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-[#FE8A0F]/50'
+                            }`}
+                            onClick={() => handleSubCategorySelect(level, subCat._id)}
                           >
-                            <div className="flex items-center space-x-3 flex-1">
-                              <RadioGroupItem
-                                value={subCat._id}
-                                id={`level-${level}-${subCat._id}`}
-                              />
-                              <span className="font-medium">{subCat.name}</span>
-                            </div>
-                          </label>
+                            <RadioGroupItem value={subCat._id} id={`${level}-${subCat._id}`} />
+                            <Label
+                              htmlFor={`${level}-${subCat._id}`}
+                              className="flex-1 cursor-pointer text-sm font-medium text-black dark:text-white"
+                            >
+                              {subCat.name}
+                            </Label>
+                          </div>
                         ))}
                       </RadioGroup>
+                    )}
+                  </div>
+                );
+              }
 
-                      {/* Attributes for selected subcategory */}
-                      {selectedId && (
-                        <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <div className="flex items-center justify-between mb-3">
-                            <Label className="text-md font-semibold">
-                              Attributes for {subCategories.find(s => s._id === selectedId)?.name}
-                            </Label>
-                            <Button
-                              onClick={() => addAttribute(selectedId)}
-                              size="sm"
-                              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add Attribute
-                            </Button>
-                          </div>
-
-                          <div className="space-y-2">
-                            {(subCategoryAttributes[selectedId] || []).map((attr: string, index: number) => (
-                              <div key={index} className="flex items-center gap-2">
-                                <Input
-                                  value={attr}
-                                  onChange={(e) => updateAttribute(selectedId, index, e.target.value)}
-                                  placeholder="Enter attribute (e.g., Licensed and Insured)"
-                                  className="flex-1"
-                                />
-                                <Button
-                                  onClick={() => removeAttribute(selectedId, index)}
-                                  size="sm"
-                                  variant="destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            {(subCategoryAttributes[selectedId] || []).length === 0 && (
-                              <p className="text-sm text-gray-500 text-center py-2">
-                                No attributes added yet. Click "Add Attribute" to start.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
+              return levels;
+            })()}
+          </div>
         </div>
+
+        {/* Attributes Management for Selected Subcategory */}
+        {(() => {
+          // Find the deepest selected level
+          const maxLevel = serviceCategory.level || 7;
+          let deepestLevel = 0;
+          let selectedSubCategoryId = "";
+
+          for (let level = maxLevel; level >= 2; level--) {
+            if (selectedSubCategoryByLevel[level]) {
+              deepestLevel = level;
+              selectedSubCategoryId = selectedSubCategoryByLevel[level];
+              break;
+            }
+          }
+
+          if (!deepestLevel || !selectedSubCategoryId) return null;
+
+          const selectedSubCategory = (subCategoriesByLevel[deepestLevel] || [])
+            .find(sc => sc._id === selectedSubCategoryId);
+
+          if (!selectedSubCategory) return null;
+
+          const attributes = subCategoryAttributes[selectedSubCategoryId] || [];
+
+          return (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <Label className="text-sm font-semibold text-[#FE8A0F] block">
+                    Service Attributes (What's Included)
+                  </Label>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Managing attributes for: <span className="font-medium text-black dark:text-white">{selectedSubCategory.name}</span>
+                  </p>
+                </div>
+                <Button
+                  onClick={() => addAttribute(selectedSubCategoryId)}
+                  size="sm"
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Attribute
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {attributes.length > 0 ? (
+                  attributes.map((attribute, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        value={attribute}
+                        onChange={(e) => updateAttribute(selectedSubCategoryId, index, e.target.value)}
+                        placeholder="e.g., Licensed and Insured"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => removeAttribute(selectedSubCategoryId, index)}
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                    No attributes yet. Click "Add Attribute" to create one.
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </AdminPageLayout>
   );
