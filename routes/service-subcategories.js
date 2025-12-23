@@ -781,7 +781,16 @@ router.put('/:id', async (req, res) => {
     if (icon !== undefined) serviceSubCategory.icon = icon;
     if (isActive !== undefined) serviceSubCategory.isActive = isActive;
     if (categoryLevel !== undefined) serviceSubCategory.categoryLevel = parseInt(categoryLevel);
-    if (serviceTitleSuggestions !== undefined) serviceSubCategory.serviceTitleSuggestions = serviceTitleSuggestions;
+    if (serviceTitleSuggestions !== undefined) {
+      // Ensure serviceTitleSuggestions is an array of strings
+      if (Array.isArray(serviceTitleSuggestions)) {
+        serviceSubCategory.serviceTitleSuggestions = serviceTitleSuggestions
+          .map(title => typeof title === 'string' ? title.trim() : String(title))
+          .filter(title => title.length > 0);
+      } else {
+        serviceSubCategory.serviceTitleSuggestions = [];
+      }
+    }
     if (titles !== undefined) {
       // Update titles - merge with existing titles, replacing those with the same level
       const existingTitles = serviceSubCategory.titles || [];
@@ -802,11 +811,20 @@ router.put('/:id', async (req, res) => {
     
     return res.json({ serviceSubCategory });
   } catch (error) {
-    // console.error('Update service subcategory error', error);
+    console.error('Update service subcategory error', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      name: error.name
+    });
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Service subcategory with this name already exists in this service category' });
     }
-    return res.status(500).json({ error: 'Failed to update service subcategory' });
+    return res.status(500).json({ 
+      error: 'Failed to update service subcategory',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

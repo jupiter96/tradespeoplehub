@@ -175,9 +175,31 @@ export default function AdminServiceTitlesPage() {
       return;
     }
 
-    // Check if there are any titles to save
-    const hasAnyTitles = Object.values(subCategoryTitles).some(titles => titles.length > 0);
-    if (!hasAnyTitles) {
+    // Find the deepest selected level to get the subcategory ID
+    const maxLevel = serviceCategory.level || 7;
+    let deepestLevel = 0;
+    let selectedSubCategoryId = "";
+
+    for (let level = maxLevel; level >= 2; level--) {
+      if (selectedSubCategoryByLevel[level]) {
+        deepestLevel = level;
+        selectedSubCategoryId = selectedSubCategoryByLevel[level];
+        break;
+      }
+    }
+
+    if (!selectedSubCategoryId) {
+      toast.error("Please select a subcategory");
+      return;
+    }
+
+    // Get titles for the selected subcategory
+    const titles = subCategoryTitles[selectedSubCategoryId] || [];
+    const validTitles = titles
+      .map(title => title.trim())
+      .filter(t => t.length > 0);
+
+    if (validTitles.length === 0) {
       toast.error("Please add at least one title suggestion");
       return;
     }
@@ -187,42 +209,75 @@ export default function AdminServiceTitlesPage() {
       let successCount = 0;
       let errorCount = 0;
 
-      // Update all subcategories that have titles
-      for (const [subCategoryId, titles] of Object.entries(subCategoryTitles)) {
-        if (titles.length > 0) {
-          try {
-            const response = await fetch(
-              resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                  serviceTitleSuggestions: titles
-                    .map(title => title.trim())
-                    .filter(t => t.length > 0)
-                }),
-              }
-            );
-            if (response.ok) {
-              successCount++;
-            } else {
-              errorCount++;
-            }
-          } catch (err) {
-            errorCount++;
+      // Save titles for the selected subcategory
+      const filteredTitles: Record<string, string[]> = {};
+      
+      try {
+        // Ensure validTitles is a proper array of strings
+        const titlesToSave = Array.isArray(validTitles) 
+          ? validTitles.filter(title => typeof title === 'string' && title.trim().length > 0)
+          : [];
+        
+        const response = await fetch(
+          resolveApiUrl(`/api/service-subcategories/${selectedSubCategoryId}`),
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              serviceTitleSuggestions: titlesToSave
+            }),
           }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Update state with saved data (remove empty titles)
+          if (data.serviceSubCategory?.serviceTitleSuggestions) {
+            filteredTitles[selectedSubCategoryId] = data.serviceSubCategory.serviceTitleSuggestions;
+          } else {
+            filteredTitles[selectedSubCategoryId] = titlesToSave;
+          }
+          successCount++;
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`Failed to save titles for ${selectedSubCategoryId}:`, errorData);
+          console.error(`Response status: ${response.status}`);
+          errorCount++;
+        }
+      } catch (err) {
+        console.error(`Error saving titles for ${selectedSubCategoryId}:`, err);
+        errorCount++;
+      }
+      
+      // Update state with saved data (remove empty titles)
+      if (Object.keys(filteredTitles).length > 0) {
+        setSubCategoryTitles(prev => ({
+          ...prev,
+          ...filteredTitles
+        }));
+      }
+
+      // Reload subcategories to get the saved data
+      if (successCount > 0 && serviceCategory) {
+        if (deepestLevel > 0) {
+          // Reload subcategories for the deepest level to get updated titles
+          await fetchSubCategoriesForLevel(
+            serviceCategory._id,
+            deepestLevel,
+            deepestLevel > 2 ? selectedSubCategoryByLevel[deepestLevel - 1] : undefined
+          );
         }
       }
 
       if (successCount > 0) {
-        toast.success(`Successfully saved title suggestions for ${successCount} subcategor${successCount === 1 ? 'y' : 'ies'}`);
+        toast.success(`Successfully saved title suggestions`);
       }
       if (errorCount > 0) {
-        toast.error(`Failed to save ${errorCount} subcategor${errorCount === 1 ? 'y' : 'ies'}`);
+        toast.error(`Failed to save title suggestions`);
       }
     } catch (error) {
-      // console.error("Error saving service title suggestions:", error);
+      console.error("Error saving service title suggestions:", error);
       toast.error("Failed to save service title suggestions");
     } finally {
       setIsSaving(false);
@@ -419,6 +474,12 @@ export default function AdminServiceTitlesPage() {
           // 2. The next level doesn't exist or has no subcategories
           const nextLevel = deepestLevel + 1;
           const hasNextLevel = nextLevel <= maxLevel;
+          
+          // Don't show section if next level is still loading (prevents flickering)
+          if (hasNextLevel && loadingSubCategories[nextLevel]) {
+            return null;
+          }
+          
           const nextLevelSubCategories = hasNextLevel ? (subCategoriesByLevel[nextLevel] || []) : [];
           const isLastLevel = !hasNextLevel || nextLevelSubCategories.length === 0;
           

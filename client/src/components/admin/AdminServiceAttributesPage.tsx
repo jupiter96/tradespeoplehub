@@ -20,6 +20,7 @@ interface ServiceCategory {
   _id: string;
   name: string;
   slug: string;
+  level?: number;
   categoryLevelMapping?: CategoryLevelMapping[];
 }
 
@@ -166,14 +167,46 @@ export default function AdminServiceAttributesPage() {
 
   // Save all changes
   const handleSaveAll = async () => {
+    if (!serviceCategory) {
+      toast.error("Please select a category");
+      return;
+    }
+
+    // Find the deepest selected level to get the subcategory ID
+    const maxLevel = serviceCategory.level || 7;
+    let deepestLevel = 0;
+    let selectedSubCategoryId = "";
+
+    for (let level = maxLevel; level >= 2; level--) {
+      if (selectedSubCategoryByLevel[level]) {
+        deepestLevel = level;
+        selectedSubCategoryId = selectedSubCategoryByLevel[level];
+        break;
+      }
+    }
+
+    if (!selectedSubCategoryId) {
+      toast.error("Please select a subcategory");
+      return;
+    }
+
+    // Get attributes for the selected subcategory
+    const attributes = subCategoryAttributes[selectedSubCategoryId] || [];
+    const validAttributes = attributes
+      .map(attr => attr.trim())
+      .filter(attr => attr.length > 0);
+
+    if (validAttributes.length === 0) {
+      toast.error('Please add at least one attribute to save');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const updates = Object.entries(subCategoryAttributes).map(([subCategoryId, attributes]) => ({
-        subCategoryId,
-        serviceAttributes: (attributes as string[]).filter((attr: string) => attr.trim() !== '')
-      }));
-
-      // console.log('Saving attributes:', updates);
+      const updates = [{
+        subCategoryId: selectedSubCategoryId,
+        serviceAttributes: validAttributes
+      }];
 
       const response = await fetch(
         resolveApiUrl('/api/service-subcategories/bulk-update-attributes'),
@@ -187,15 +220,32 @@ export default function AdminServiceAttributesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        // console.log('Save successful:', result);
+        
+        // Reload the subcategories to get the saved data
+        if (deepestLevel > 0 && serviceCategory) {
+          // Reload subcategories for the deepest level to get updated attributes
+          await fetchSubCategoriesForLevel(
+            serviceCategory._id,
+            deepestLevel,
+            deepestLevel > 2 ? selectedSubCategoryByLevel[deepestLevel - 1] : undefined
+          );
+        }
+        
+        // Update state with saved data (remove empty attributes)
+        const savedAttributes: Record<string, string[]> = {};
+        savedAttributes[selectedSubCategoryId] = validAttributes;
+        setSubCategoryAttributes(prev => ({
+          ...prev,
+          ...savedAttributes
+        }));
+        
         toast.success('Attributes saved successfully');
       } else {
-        const error = await response.json();
-        // console.error('Save failed:', error);
+        const error = await response.json().catch(() => ({ error: 'Failed to save attributes' }));
         toast.error(error.error || 'Failed to save attributes');
       }
     } catch (error) {
-      // console.error('Error saving attributes:', error);
+      console.error('Error saving attributes:', error);
       toast.error('Failed to save attributes');
     } finally {
       setIsSaving(false);
@@ -349,13 +399,14 @@ export default function AdminServiceAttributesPage() {
           </div>
         </div>
 
-        {/* Attributes Management for Selected Subcategory */}
+        {/* Attributes Management for Selected Subcategory - Only Last Level */}
         {(() => {
           // Find the deepest selected level
           const maxLevel = serviceCategory.level || 7;
           let deepestLevel = 0;
           let selectedSubCategoryId = "";
 
+          // Find the deepest level that has a selection
           for (let level = maxLevel; level >= 2; level--) {
             if (selectedSubCategoryByLevel[level]) {
               deepestLevel = level;
@@ -364,24 +415,65 @@ export default function AdminServiceAttributesPage() {
             }
           }
 
-          if (!deepestLevel || !selectedSubCategoryId) return null;
+          // Check if this is the actual last level
+          // A level is the last level if:
+          // 1. It's the maximum level defined for the category, OR
+          // 2. The next level doesn't exist or has no subcategories
+          const nextLevel = deepestLevel + 1;
+          const hasNextLevel = nextLevel <= maxLevel;
+          
+          // Don't show section if next level is still loading (prevents flickering)
+          if (hasNextLevel && loadingSubCategories[nextLevel]) {
+            return null;
+          }
+          
+          const nextLevelSubCategories = hasNextLevel ? (subCategoriesByLevel[nextLevel] || []) : [];
+          const isLastLevel = !hasNextLevel || nextLevelSubCategories.length === 0;
+          
+          // Only show attributes management if we have a selection and it's the last level
+          if (!deepestLevel || !selectedSubCategoryId || !isLastLevel) {
+            // Don't show anything if not at the last level
+            return null;
+          }
 
           const selectedSubCategory = (subCategoriesByLevel[deepestLevel] || [])
             .find(sc => sc._id === selectedSubCategoryId);
 
           if (!selectedSubCategory) return null;
 
+          const mapping = serviceCategory.categoryLevelMapping?.find(m => m.level === deepestLevel);
+          const levelName = deepestLevel === 2 ? 'Sub Category' : (mapping ? (mapping.title || mapping.attributeType) : `Level ${deepestLevel}`);
           const attributes = subCategoryAttributes[selectedSubCategoryId] || [];
 
+          // Build breadcrumb path for context
+          const breadcrumb: string[] = [];
+          for (let l = 2; l <= deepestLevel; l++) {
+            const id = selectedSubCategoryByLevel[l];
+            if (id) {
+              const sc = (subCategoriesByLevel[l] || []).find(s => s._id === id);
+              if (sc) breadcrumb.push(sc.name);
+            }
+          }
+
           return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <Label className="text-sm font-semibold text-[#FE8A0F] block">
-                    Service Attributes (What's Included)
-                  </Label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Label className="text-sm font-semibold text-[#FE8A0F]">
+                      Service Attributes (What's Included) - Level {deepestLevel} ({levelName})
+                    </Label>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({attributes.length} attribute{attributes.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Managing attributes for: <span className="font-medium text-black dark:text-white">{selectedSubCategory.name}</span>
+                    {breadcrumb.length > 1 && (
+                      <span className="ml-2 text-gray-500">
+                        (Path: {breadcrumb.join(' > ')})
+                      </span>
+                    )}
                   </p>
                 </div>
                 <Button
