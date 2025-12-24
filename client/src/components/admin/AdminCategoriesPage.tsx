@@ -409,6 +409,10 @@ export default function AdminCategoriesPage() {
 
           if (response.ok) {
             toast.success(`Category ${action}d successfully`);
+            // Immediately update local state for instant feedback
+            setCategories(prev => prev.map(c => 
+              c._id === category._id ? { ...c, isActive: newStatus } : c
+            ));
             // Always refresh categories list, regardless of selectedSectorId
             if (selectedSectorId) {
               await fetchCategories(selectedSectorId);
@@ -419,11 +423,6 @@ export default function AdminCategoriesPage() {
                 : category.sector?._id;
               if (categorySectorId) {
                 await fetchCategories(categorySectorId);
-              } else {
-                // Fallback: refresh the current list
-                setCategories(prev => prev.map(c => 
-                  c._id === category._id ? { ...c, isActive: newStatus } : c
-                ));
               }
             }
           } else {
@@ -458,8 +457,12 @@ export default function AdminCategoriesPage() {
 
           if (response.ok) {
             toast.success("Category deleted successfully");
+            // Immediately remove from local state for instant feedback
+            setCategories(prev => prev.filter(c => c._id !== category._id));
+            setTotal(prev => Math.max(0, prev - 1));
+            // Then refresh from server to ensure consistency
             if (selectedSectorId) {
-              fetchCategories(selectedSectorId);
+              await fetchCategories(selectedSectorId);
             }
           } else {
             const error = await response.json();
@@ -585,6 +588,7 @@ export default function AdminCategoriesPage() {
         }
       }
 
+      const savedCategory = categoryData.category;
       toast.success(editingCategory ? "Category updated successfully" : "Category created successfully");
       setIsModalOpen(false);
       // Reset to first page and ensure order desc sorting for new items to appear at top
@@ -593,11 +597,15 @@ export default function AdminCategoriesPage() {
         setSortBy("order");
         setSortOrder("desc");
       }
+      // Immediately update local state if editing
+      if (editingCategory && savedCategory) {
+        setCategories(prev => prev.map(c => 
+          c._id === editingCategory._id ? { ...c, ...savedCategory } : c
+        ));
+      }
+      // Refresh from server to ensure consistency
       if (selectedSectorId) {
-        // Small delay to ensure state updates before fetch
-        setTimeout(() => {
-          fetchCategories(selectedSectorId);
-        }, 100);
+        await fetchCategories(selectedSectorId);
       }
     } catch (error: any) {
       // console.error("Error saving category:", error);

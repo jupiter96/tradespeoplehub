@@ -278,8 +278,8 @@ export default function AdminServicesPage({
             setServices(prevServices => prevServices.filter(s => s._id !== selectedService._id));
             setTotalCount(prev => Math.max(0, prev - 1));
           }
-          // Always refresh in background to ensure data consistency
-          setTimeout(() => fetchServices(), 500);
+          // Refresh from server to ensure consistency
+          await fetchServices();
         } else {
           const error = await response.json();
           toast.error(error.error || "Failed to update service status");
@@ -314,8 +314,8 @@ export default function AdminServicesPage({
             setServices(prevServices => prevServices.filter(s => s._id !== selectedService._id));
             setTotalCount(prev => Math.max(0, prev - 1));
           }
-          // Always refresh in background to ensure data consistency
-          setTimeout(() => fetchServices(), 500);
+          // Refresh from server to ensure consistency
+          await fetchServices();
         } else {
           const error = await response.json();
           toast.error(error.error || "Failed to update service status");

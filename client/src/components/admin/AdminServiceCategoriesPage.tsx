@@ -1588,8 +1588,13 @@ export default function AdminServiceCategoriesPage() {
 
           if (response.ok) {
             toast.success(`Service category ${action}d successfully`);
+            // Immediately update local state for instant feedback
+            setServiceCategories(prev => prev.map(sc => 
+              sc._id === serviceCategory._id ? { ...sc, isActive: newStatus } : sc
+            ));
+            // Then refresh from server to ensure consistency
             if (selectedSectorId) {
-              fetchServiceCategories(selectedSectorId);
+              await fetchServiceCategories(selectedSectorId);
             }
           } else {
             const error = await response.json();
@@ -1622,8 +1627,12 @@ export default function AdminServiceCategoriesPage() {
 
           if (response.ok) {
             toast.success("Service category deleted successfully");
+            // Immediately remove from local state for instant feedback
+            setServiceCategories(prev => prev.filter(sc => sc._id !== serviceCategory._id));
+            setTotal(prev => Math.max(0, prev - 1));
+            // Then refresh from server to ensure consistency
             if (selectedSectorId) {
-              fetchServiceCategories(selectedSectorId);
+              await fetchServiceCategories(selectedSectorId);
             }
           } else {
             const error = await response.json();
@@ -1842,11 +1851,15 @@ export default function AdminServiceCategoriesPage() {
       }
       } else {
         // Editing existing category - just refresh the list
-      if (selectedSectorId) {
-        // Small delay to ensure state updates and database is updated
-        setTimeout(() => {
-          fetchServiceCategories(selectedSectorId);
-        }, 100);
+        if (selectedSectorId) {
+          // Immediately update local state if editing
+          if (editingServiceCategory && savedServiceCategory) {
+            setServiceCategories(prev => prev.map(sc => 
+              sc._id === editingServiceCategory._id ? { ...sc, ...savedServiceCategory } : sc
+            ));
+          }
+          // Refresh from server to ensure consistency
+          await fetchServiceCategories(selectedSectorId);
         }
       }
     } catch (error: any) {

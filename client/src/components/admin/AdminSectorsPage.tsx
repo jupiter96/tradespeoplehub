@@ -622,7 +622,12 @@ export default function AdminSectorsPage() {
 
           if (response.ok) {
             toast.success(`Sector ${action}d successfully`);
-            fetchSectors();
+            // Immediately update local state for instant feedback
+            setSectors(prev => prev.map(s => 
+              s._id === id ? { ...s, isActive: newStatus } : s
+            ));
+            // Then refresh from server to ensure consistency
+            await fetchSectors();
           } else {
             const error = await response.json();
             toast.error(error.error || `Failed to ${action} sector`);
@@ -655,7 +660,11 @@ export default function AdminSectorsPage() {
 
           if (response.ok) {
             toast.success("Sector deleted successfully");
-            fetchSectors();
+            // Immediately remove from local state for instant feedback
+            setSectors(prev => prev.filter(s => s._id !== id));
+            setTotal(prev => Math.max(0, prev - 1));
+            // Then refresh from server to ensure consistency
+            await fetchSectors();
           } else {
             const error = await response.json();
             toast.error(error.error || "Failed to delete sector");
@@ -710,6 +719,7 @@ export default function AdminSectorsPage() {
       });
 
       if (response.ok) {
+        const savedSector = await response.json();
         toast.success(editingSector ? "Sector updated successfully" : "Sector created successfully");
         setIsModalOpen(false);
         // Reset to first page and ensure order desc sorting for new items to appear at top
@@ -718,10 +728,14 @@ export default function AdminSectorsPage() {
           setSortBy("order");
           setSortOrder("desc");
         }
-        // Small delay to ensure state updates before fetch
-        setTimeout(() => {
-          fetchSectors();
-        }, 100);
+        // Immediately update local state if editing
+        if (editingSector && savedSector.sector) {
+          setSectors(prev => prev.map(s => 
+            s._id === editingSector._id ? { ...s, ...savedSector.sector } : s
+          ));
+        }
+        // Refresh from server to ensure consistency
+        await fetchSectors();
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to save sector");
