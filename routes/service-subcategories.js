@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import ServiceSubCategory from '../models/ServiceSubCategory.js';
 import ServiceCategory from '../models/ServiceCategory.js';
 
@@ -705,6 +706,12 @@ router.put('/bulk-update-attributes', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Validate that id is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid service subcategory ID' });
+    }
+    
     const {
       serviceCategory,
       name,
