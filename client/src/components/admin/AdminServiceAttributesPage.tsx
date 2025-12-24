@@ -77,10 +77,13 @@ export default function AdminServiceAttributesPage() {
   ) => {
     setLoadingSubCategories(prev => ({ ...prev, [level]: true }));
     try {
-      let url = `/api/service-subcategories?serviceCategoryId=${serviceCategoryId}&level=${level}`;
+      // Always use activeOnly=false for admin pages to bypass cache
+      let url = `/api/service-subcategories?serviceCategoryId=${serviceCategoryId}&level=${level}&activeOnly=false`;
       if (parentSubCategoryId) {
         url += `&parentSubCategoryId=${parentSubCategoryId}`;
       }
+      // Add timestamp to ensure fresh data (cache busting)
+      url += `&_t=${Date.now()}`;
 
       const response = await fetch(resolveApiUrl(url), { credentials: "include" });
       if (response.ok) {

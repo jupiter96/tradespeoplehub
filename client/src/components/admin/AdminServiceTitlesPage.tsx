@@ -108,6 +108,9 @@ export default function AdminServiceTitlesPage() {
         }
       }
 
+      // Add timestamp to ensure fresh data (cache busting)
+      params.append('_t', Date.now().toString());
+
       const response = await fetch(
         resolveApiUrl(`/api/service-subcategories?${params.toString()}`),
         { credentials: "include" }

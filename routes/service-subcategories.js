@@ -26,21 +26,36 @@ const clearCache = (serviceCategoryId = null) => {
   if (serviceCategoryId) {
     // Clear all cache entries that might contain this service category
     const keysToDelete = [];
+    const idStr = serviceCategoryId.toString();
     for (const key of _cache.keys()) {
       // Match various formats of serviceCategoryId in the URL
-      const idStr = serviceCategoryId.toString();
+      // Also match any query that might return subcategories of this category
       if (key.includes(`serviceCategoryId=${idStr}`) || 
           key.includes(`serviceCategoryId=${serviceCategoryId}`) ||
           key.includes(`serviceCategorySlug=`) || // Also clear by slug queries
-          key.includes(`parentSubCategoryId=`)) { // Clear parent queries too
+          key.includes(`parentSubCategoryId=`) || // Clear parent queries too
+          key.includes(`level=`) || // Clear any level-based queries (admin navigation)
+          key.includes(`categoryLevel=`)) { // Clear categoryLevel queries
         keysToDelete.push(key);
       }
     }
     keysToDelete.forEach(key => _cache.delete(key));
     console.log(`Cleared ${keysToDelete.length} cache entries for serviceCategoryId: ${serviceCategoryId}`);
     
-    // Also clear all cache if we're being conservative (any update might affect nested data)
-    if (keysToDelete.length === 0) {
+    // Always clear all cache to be safe - any update might affect nested data
+    // This ensures no stale data is served
+    if (keysToDelete.length > 0) {
+      // Clear remaining cache entries that might be related
+      const remainingKeys = Array.from(_cache.keys());
+      remainingKeys.forEach(key => {
+        // Clear any cache entry that doesn't explicitly exclude admin queries
+        if (!key.includes('activeOnly=false') && !key.includes('_t=')) {
+          _cache.delete(key);
+        }
+      });
+      console.log(`Also cleared related cache entries`);
+    } else {
+      // If no specific matches, clear all cache to be safe
       _cache.clear();
       console.log('No matching cache entries found, cleared all cache to be safe');
     }
@@ -72,6 +87,7 @@ router.get('/', async (req, res) => {
     // Only cache public requests (activeOnly=true, no search, no admin-specific params)
     // Admin pages use activeOnly=false, so they bypass cache automatically
     // Also bypass cache if level, categoryLevel, or parentSubCategoryId is specified (admin navigation)
+    // Also bypass cache if _t (timestamp) parameter is present (cache busting)
     const shouldCache =
       req.method === 'GET' &&
       activeOnly === 'true' &&
@@ -79,7 +95,8 @@ router.get('/', async (req, res) => {
       !req.query.includeServiceCategory && // Admin requests often include this
       !req.query.level && // Admin navigation uses level
       !req.query.categoryLevel && // Admin navigation uses categoryLevel
-      !req.query.parentSubCategoryId; // Admin navigation uses parentSubCategoryId
+      !req.query.parentSubCategoryId && // Admin navigation uses parentSubCategoryId
+      !req.query._t; // Cache busting parameter
     const cacheKey = shouldCache ? req.originalUrl : null;
     if (cacheKey) {
       const cached = getCached(cacheKey);
@@ -435,9 +452,16 @@ router.get('/', async (req, res) => {
       limit: limitNum
     };
 
-    if (cacheKey) {
+    // Only cache if it's a public request (shouldCache was true)
+    // Never cache admin requests (activeOnly=false or with level/parentSubCategoryId)
+    if (cacheKey && shouldCache) {
       setCached(cacheKey, payload);
       res.set('Cache-Control', 'public, max-age=300');
+    } else {
+      // Admin requests - ensure no cache headers
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
     }
     return res.json(payload);
   } catch (error) {
@@ -812,14 +836,15 @@ router.put('/bulk-update-attributes', async (req, res) => {
     }
     
     // Clear cache for affected service categories
-    serviceCategoryIds.forEach(id => clearCache(id));
-    if (serviceCategoryIds.size === 0) {
-      // If no serviceCategory found, clear all cache to be safe
-      console.log('No serviceCategory IDs found, clearing all cache');
-      clearCache();
-    } else {
-      console.log(`Cleared cache for ${serviceCategoryIds.size} service category(ies)`);
-    }
+    // Always clear all cache when attributes are updated to ensure no stale data
+    console.log('Clearing all cache after attribute update to ensure fresh data');
+    clearCache();
+    
+    // Also clear specific service category caches if available
+    serviceCategoryIds.forEach(id => {
+      console.log(`Also clearing cache for serviceCategoryId: ${id}`);
+      clearCache(id);
+    });
     
     console.log('=== BULK UPDATE ATTRIBUTES SUCCESS ===');
 
@@ -1155,12 +1180,15 @@ router.put('/:id', async (req, res) => {
     }
     
     // Clear cache for this service category
+    // Always clear all cache when titles/attributes are updated to ensure no stale data
+    console.log('Clearing all cache after subcategory update to ensure fresh data');
+    clearCache();
+    
+    // Also clear specific service category cache if available
     const categoryIdToClear = updatedSubCategory.serviceCategory || serviceSubCategory.serviceCategory;
     if (categoryIdToClear) {
+      console.log(`Also clearing cache for serviceCategoryId: ${categoryIdToClear.toString()}`);
       clearCache(categoryIdToClear.toString());
-    } else {
-      // If no serviceCategory found, clear all cache to be safe
-      clearCache();
     }
     
     // Populate service category for response
