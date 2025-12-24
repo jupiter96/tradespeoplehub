@@ -7,13 +7,22 @@ import Message from '../models/Message.js';
 let io = null;
 
 export const initializeSocket = (server) => {
+  // Parse CORS origins
+  let corsOrigin = 'http://localhost:5000';
+  if (process.env.CLIENT_ORIGINS) {
+    corsOrigin = process.env.CLIENT_ORIGINS.split(',').map(origin => origin.trim());
+  } else if (process.env.CLIENT_ORIGIN) {
+    corsOrigin = process.env.CLIENT_ORIGIN;
+  }
+
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_ORIGIN || 'http://localhost:5000',
+      origin: corsOrigin,
       credentials: true,
       methods: ['GET', 'POST'],
     },
     transports: ['websocket', 'polling'],
+    allowEIO3: true,
   });
 
   // Store user socket mappings
