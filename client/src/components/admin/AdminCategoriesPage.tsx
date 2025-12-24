@@ -588,7 +588,6 @@ export default function AdminCategoriesPage() {
         }
       }
 
-      const savedCategory = categoryData.category;
       toast.success(editingCategory ? "Category updated successfully" : "Category created successfully");
       setIsModalOpen(false);
       // Reset to first page and ensure order desc sorting for new items to appear at top
