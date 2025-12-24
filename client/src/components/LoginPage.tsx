@@ -1056,13 +1056,13 @@ export default function LoginPage() {
                           }
                         }
                       } else if (fieldErrors.phone) {
-                        setFieldErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.phone;
-                          return newErrors;
-                        });
-                      }
-                    }}
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.phone;
+                              return newErrors;
+                            });
+                          }
+                        }}
                     placeholder="7123 456789"
                     error={fieldErrors.phone}
                         required

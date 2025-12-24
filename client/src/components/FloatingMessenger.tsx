@@ -420,52 +420,52 @@ export default function FloatingMessenger() {
                       </div>
                     ) : (
                       filteredContacts.map((contact) => (
-                        <button
-                          key={contact.id}
+                      <button
+                        key={contact.id}
                           onClick={() => {
                             setSelectedContactId(contact.id);
                             setShowSearchResults(false);
                           }}
-                          className={`w-full p-3 hover:bg-gray-50 transition-colors text-left ${
-                            selectedContactId === contact.id ? "bg-[#FFF5EB] border-l-4 border-[#FE8A0F]" : ""
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <div className="relative flex-shrink-0">
-                              <Avatar className="w-11 h-11">
-                                <AvatarImage src={contact.avatar} />
-                                <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
-                                  {contact.name
-                                    ? contact.name.split(" ").map((n) => n[0]).join("")
-                                    : "U"}
-                                </AvatarFallback>
-                              </Avatar>
-                              {contact.online && (
-                                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                        className={`w-full p-3 hover:bg-gray-50 transition-colors text-left ${
+                          selectedContactId === contact.id ? "bg-[#FFF5EB] border-l-4 border-[#FE8A0F]" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="relative flex-shrink-0">
+                            <Avatar className="w-11 h-11">
+                              <AvatarImage src={contact.avatar} />
+                              <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
+                                {contact.name
+                                  ? contact.name.split(" ").map((n) => n[0]).join("")
+                                  : "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            {contact.online && (
+                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 mb-0.5">
+                              <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] truncate">
+                                {contact.name}
+                              </h4>
+                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
+                                  {formatTimestamp(contact.timestamp)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] truncate flex-1">
+                                {contact.lastMessage}
+                              </p>
+                              {contact.unread > 0 && (
+                                <Badge className="bg-[#FE8A0F] text-white border-0 text-[11px] w-5 h-5 flex items-center justify-center p-0 flex-shrink-0">
+                                  {contact.unread}
+                                </Badge>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-baseline gap-2 mb-0.5">
-                                <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] truncate">
-                                  {contact.name}
-                                </h4>
-                                <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
-                                  {formatTimestamp(contact.timestamp)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] truncate flex-1">
-                                  {contact.lastMessage}
-                                </p>
-                                {contact.unread > 0 && (
-                                  <Badge className="bg-[#FE8A0F] text-white border-0 text-[11px] w-5 h-5 flex items-center justify-center p-0 flex-shrink-0">
-                                    {contact.unread}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
                           </div>
-                        </button>
+                        </div>
+                      </button>
                       ))
                     )}
                   </div>
@@ -582,12 +582,12 @@ export default function FloatingMessenger() {
                                   </Avatar>
                                 )}
                                 
-                                <div
-                                  className={`max-w-[70%] ${
+                          <div
+                            className={`max-w-[70%] ${
                                     isOwnMessage ? "order-2" : "order-1"
-                                  }`}
-                                >
-                                {(message.type === "order" || message.type === "custom_offer") && message.orderDetails ? (
+                            }`}
+                          >
+                            {(message.type === "order" || message.type === "custom_offer") && message.orderDetails ? (
                               <div className="bg-white border-2 border-[#FE8A0F] rounded-lg p-4 shadow-md">
                                 <div className="flex items-start gap-3 mb-3">
                                   <div className="w-10 h-10 rounded-lg bg-[#FE8A0F]/10 flex items-center justify-center flex-shrink-0">
@@ -728,21 +728,21 @@ export default function FloatingMessenger() {
                                 </p>
                               </div>
                             )}
-                                  <div
-                                    className={`flex items-center gap-1 mt-1 ${
+                            <div
+                              className={`flex items-center gap-1 mt-1 ${
                                       isOwnMessage ? "justify-end" : "justify-start"
-                                    }`}
-                                  >
-                                    <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                              }`}
+                            >
+                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                                       {formatTimestamp(message.timestamp)}
-                                    </span>
+                              </span>
                                     {isOwnMessage && (
                                       <div className={message.read ? "text-blue-500" : "text-[#8d8d8d]"}>
-                                        <CheckCheck className="w-3 h-3" />
-                                      </div>
-                                    )}
-                                  </div>
+                                    <CheckCheck className="w-3 h-3" />
                                 </div>
+                              )}
+                            </div>
+                          </div>
                                 
                                 {/* Avatar for sent messages */}
                                 {isOwnMessage && (

@@ -94,7 +94,7 @@ export default function PhoneInput({
         iso: "GB",
       };
     }
-
+    
     // Check if value contains separator "|"
     if (val.includes('|')) {
       const [code, number] = val.split('|');
@@ -119,7 +119,7 @@ export default function PhoneInput({
         };
       }
     }
-
+    
     // If no country code found, treat as phone number only
     return {
       code: "+44",

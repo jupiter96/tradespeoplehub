@@ -5055,7 +5055,6 @@ function ServicesSection() {
       if (response.ok) {
         const data = await response.json();
         setMyServices(data.services || []);
-        toast.success("Service added successfully!");
       }
     } catch (error) {
       console.error("Error refreshing services:", error);
@@ -5096,7 +5095,6 @@ function ServicesSection() {
       if (response.ok) {
         const data = await response.json();
         setMyServices(data.services || []);
-        toast.success("Service updated successfully!");
       }
     } catch (error) {
       console.error("Error refreshing services:", error);

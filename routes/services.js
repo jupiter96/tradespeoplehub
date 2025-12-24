@@ -108,7 +108,7 @@ router.get('/', async (req, res) => {
     // Draft services should only be visible to the professional who created them
     if (activeOnly === 'false' && !professionalId) {
       // If a specific status filter is requested, apply it but exclude draft
-      if (effectiveStatus) {
+    if (effectiveStatus) {
         if (effectiveStatus === 'draft') {
           // If draft is explicitly requested, return empty (admin shouldn't see drafts)
           query.status = { $exists: false }; // This will match nothing

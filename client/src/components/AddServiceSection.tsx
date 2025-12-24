@@ -2664,6 +2664,80 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     }
   };
 
+  // Check for unsaved changes
+  useEffect(() => {
+    const hasChanges = !!(serviceTitle || description || selectedCategoryId);
+    setHasUnsavedChanges(hasChanges);
+  }, [serviceTitle, description, selectedCategoryId]);
+
+  // Handle browser tab close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && !isEditMode) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, isEditMode]);
+
+  // Delete draft function
+  const deleteDraft = async () => {
+    if (!draftId) return;
+    
+    try {
+      const { resolveApiUrl } = await import("../config/api");
+      const response = await fetch(resolveApiUrl(`/api/services/${draftId}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        setDraftId(null);
+        setLastSaved(null);
+      }
+    } catch (error) {
+      console.error("Error deleting draft:", error);
+    }
+  };
+
+  // Handle close with unsaved changes check
+  const handleClose = () => {
+    if (hasUnsavedChanges && !isEditMode) {
+      setShowExitDialog(true);
+    } else {
+      onClose();
+    }
+  };
+
+  // Handle cancel exit
+  const handleCancelExit = () => {
+    setShowExitDialog(false);
+    setPendingNavigation(null);
+  };
+
+  // Handle delete draft and exit
+  const handleDeleteDraftAndExit = async () => {
+    await deleteDraft();
+    setShowExitDialog(false);
+    setPendingNavigation(null);
+    setHasUnsavedChanges(false);
+    onClose();
+  };
+
+  // Handle save draft and exit
+  const handleSaveDraftAndExit = async () => {
+    await saveDraft();
+    setShowExitDialog(false);
+    setPendingNavigation(null);
+    setHasUnsavedChanges(false);
+    onClose();
+  };
+
   const handlePublish = async () => {
     // Validation
     if (!selectedSectorId) {
@@ -2809,7 +2883,13 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
 
       const result = await response.json();
-      toast.success(`Service ${isEditMode ? 'updated' : 'published'} successfully!`);
+      
+      // Show approval message for new service creation or draft update
+      // If it's a draft being published or a new service, show approval message
+      const isDraftUpdate = draftId || initialService?.status === 'draft';
+      if (!isEditMode || isDraftUpdate) {
+        toast.success("Your listing has been submitted to approval and will go live shortly if approved.");
+      }
 
       // Clear draft state after successful publish
       setDraftId(null);
@@ -3877,7 +3957,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                                     <div className="absolute inset-0 bg-white/20 animate-pulse" />
                                   </div>
                                 </div>
-                                <p className="font-['Poppins',sans-serif] text-[12px] text-white text-center font-medium">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-black text-center font-medium bg-white/90 px-2 py-1 rounded">
                                   {uploadProgress[index] || 0}% - Uploading...
                                 </p>
                               </div>

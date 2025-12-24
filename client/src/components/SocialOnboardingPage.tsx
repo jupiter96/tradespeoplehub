@@ -528,7 +528,7 @@ export default function SocialOnboardingPage() {
                     const { validatePhoneNumber } = await import("../utils/phoneValidation");
                     const phoneValidation = validatePhoneNumber(phoneNumber);
                     if (phoneValidation.isValid) {
-                      if (fieldErrors.phone) {
+                  if (fieldErrors.phone) {
                         setFieldErrors(prev => {
                           const newErrors = { ...prev };
                           delete newErrors.phone;
