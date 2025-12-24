@@ -223,6 +223,14 @@ export default function AdminServiceAttributesPage() {
         
         // Reload the subcategories to get the saved data
         if (deepestLevel > 0 && serviceCategory) {
+          // Wait a bit to ensure database write is complete
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Force reload by clearing the level data first
+          setSubCategoriesByLevel(prev => {
+            const updated = { ...prev };
+            delete updated[deepestLevel];
+            return updated;
+          });
           // Reload subcategories for the deepest level to get updated attributes
           await fetchSubCategoriesForLevel(
             serviceCategory._id,

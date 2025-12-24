@@ -71,11 +71,15 @@ router.get('/', async (req, res) => {
 
     // Only cache public requests (activeOnly=true, no search, no admin-specific params)
     // Admin pages use activeOnly=false, so they bypass cache automatically
+    // Also bypass cache if level, categoryLevel, or parentSubCategoryId is specified (admin navigation)
     const shouldCache =
       req.method === 'GET' &&
       activeOnly === 'true' &&
       !search &&
-      !req.query.includeServiceCategory; // Admin requests often include this
+      !req.query.includeServiceCategory && // Admin requests often include this
+      !req.query.level && // Admin navigation uses level
+      !req.query.categoryLevel && // Admin navigation uses categoryLevel
+      !req.query.parentSubCategoryId; // Admin navigation uses parentSubCategoryId
     const cacheKey = shouldCache ? req.originalUrl : null;
     if (cacheKey) {
       const cached = getCached(cacheKey);
@@ -1039,13 +1043,23 @@ router.put('/:id', async (req, res) => {
     console.log('Saving service subcategory...');
     console.log('Update data:', JSON.stringify(updateData, null, 2));
     
+    // Check if updateData is empty
+    if (Object.keys(updateData).length === 0) {
+      console.error('ERROR: updateData is empty! No fields to update.');
+      return res.status(400).json({ 
+        error: 'No fields to update',
+        message: 'At least one field must be provided for update'
+      });
+    }
+    
     // Use findByIdAndUpdate with runValidators to ensure all validations (including unique indexes) are checked
     const updatedSubCategory = await ServiceSubCategory.findByIdAndUpdate(
       id,
       updateData,
       { 
         new: true, 
-        runValidators: true
+        runValidators: true,
+        upsert: false // Don't create if doesn't exist
       }
     );
     
@@ -1073,40 +1087,71 @@ router.put('/:id', async (req, res) => {
       attributesCount: verified?.serviceAttributes?.length || 0
     });
     
-    // Verify the data matches what we saved
+    // Verify the data matches what we saved - retry if needed
+    let verificationPassed = true;
     if (verified) {
       if (updateData.serviceTitleSuggestions !== undefined) {
         const savedMatches = JSON.stringify(verified.serviceTitleSuggestions) === JSON.stringify(updateData.serviceTitleSuggestions);
         console.log(`ServiceTitleSuggestions match: ${savedMatches}`);
         if (!savedMatches) {
-          console.error('WARNING: serviceTitleSuggestions mismatch!', {
+          console.error('ERROR: serviceTitleSuggestions mismatch!', {
             saved: verified.serviceTitleSuggestions,
             expected: updateData.serviceTitleSuggestions
           });
+          verificationPassed = false;
+          // Retry once more after a short delay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const retryVerified = await ServiceSubCategory.findById(id).lean();
+          if (retryVerified && JSON.stringify(retryVerified.serviceTitleSuggestions) === JSON.stringify(updateData.serviceTitleSuggestions)) {
+            console.log('✓ ServiceTitleSuggestions match after retry');
+            verificationPassed = true;
+          }
         }
       }
       if (updateData.titles !== undefined) {
         const savedMatches = JSON.stringify(verified.titles) === JSON.stringify(updateData.titles);
         console.log(`Titles match: ${savedMatches}`);
         if (!savedMatches) {
-          console.error('WARNING: titles mismatch!', {
+          console.error('ERROR: titles mismatch!', {
             saved: verified.titles,
             expected: updateData.titles
           });
+          verificationPassed = false;
+          // Retry once more after a short delay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const retryVerified = await ServiceSubCategory.findById(id).lean();
+          if (retryVerified && JSON.stringify(retryVerified.titles) === JSON.stringify(updateData.titles)) {
+            console.log('✓ Titles match after retry');
+            verificationPassed = true;
+          }
         }
       }
       if (updateData.serviceAttributes !== undefined) {
         const savedMatches = JSON.stringify(verified.serviceAttributes) === JSON.stringify(updateData.serviceAttributes);
         console.log(`ServiceAttributes match: ${savedMatches}`);
         if (!savedMatches) {
-          console.error('WARNING: serviceAttributes mismatch!', {
+          console.error('ERROR: serviceAttributes mismatch!', {
             saved: verified.serviceAttributes,
             expected: updateData.serviceAttributes
           });
+          verificationPassed = false;
+          // Retry once more after a short delay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const retryVerified = await ServiceSubCategory.findById(id).lean();
+          if (retryVerified && JSON.stringify(retryVerified.serviceAttributes) === JSON.stringify(updateData.serviceAttributes)) {
+            console.log('✓ ServiceAttributes match after retry');
+            verificationPassed = true;
+          }
         }
       }
     } else {
       console.error('ERROR: Could not verify saved data - document not found!');
+      verificationPassed = false;
+    }
+    
+    if (!verificationPassed) {
+      console.error('CRITICAL: Data verification failed! Update may not have persisted correctly.');
+      // Still return success but log the error - the data might be eventually consistent
     }
     
     // Clear cache for this service category

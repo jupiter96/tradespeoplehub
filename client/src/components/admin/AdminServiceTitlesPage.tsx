@@ -261,7 +261,15 @@ export default function AdminServiceTitlesPage() {
       // Reload subcategories to get the saved data
       if (successCount > 0 && serviceCategory) {
         if (deepestLevel > 0) {
+          // Wait a bit to ensure database write is complete
+          await new Promise(resolve => setTimeout(resolve, 100));
           // Reload subcategories for the deepest level to get updated titles
+          // Force reload by clearing the level data first
+          setSubCategoriesByLevel(prev => {
+            const updated = { ...prev };
+            delete updated[deepestLevel];
+            return updated;
+          });
           await fetchSubCategoriesForLevel(
             serviceCategory._id,
             deepestLevel,
