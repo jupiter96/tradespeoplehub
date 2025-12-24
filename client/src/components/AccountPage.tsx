@@ -87,6 +87,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import API_BASE_URL from "../config/api";
+import { validateUKPhone, normalizePhoneForBackend } from "../utils/phoneValidation";
 import {
   Dialog,
   DialogContent,
@@ -1766,6 +1767,7 @@ function DetailsSection() {
   );
 
   const [formData, setFormData] = useState(() => buildFormState(initialFormState));
+  const [phoneError, setPhoneError] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -1888,6 +1890,14 @@ function DetailsSection() {
       return;
     }
 
+    // Validate phone number
+    const phoneValidation = validateUKPhone(formData.phone);
+    if (!phoneValidation.isValid) {
+      setPhoneError(phoneValidation.error);
+      toast.error(phoneValidation.error || "Invalid phone number format");
+      return;
+    }
+
     // Check if email or phone changed and require OTP verification
     const emailIsChanged = formData.email.trim() !== (userInfo?.email || "");
     const phoneIsChanged = formData.phone.trim() !== (userInfo?.phone || "");
@@ -1907,7 +1917,7 @@ function DetailsSection() {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       email: formData.email.trim(),
-      phone: formData.phone.trim(),
+      phone: normalizePhoneForBackend(formData.phone), // Remove country code before sending
       postcode: formData.postcode.trim(),
       address: formData.address.trim() || undefined,
       townCity: formData.townCity.trim() || undefined,
@@ -2255,9 +2265,28 @@ function DetailsSection() {
                   setPhoneOTPCode("");
                   setPhoneOTPHint(null);
                 }
+                
+                // Validate phone number
+                if (newPhone.trim()) {
+                  const phoneValidation = validateUKPhone(newPhone);
+                  if (!phoneValidation.isValid) {
+                    setPhoneError(phoneValidation.error);
+                  } else {
+                    setPhoneError(undefined);
+                  }
+                } else {
+                  setPhoneError(undefined);
+                }
               }}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              className={`h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] ${
+                phoneError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#3B82F6]'
+              }`}
             />
+            {phoneError && (
+              <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
+                {phoneError}
+              </p>
+            )}
             {phoneChanged && !phoneOTPVerified && (
               <div className="mt-2 space-y-2">
                 {!phoneOTPSent ? (
@@ -2267,7 +2296,8 @@ function DetailsSection() {
                       console.log('[Phone Verification] AccountPage - Requesting phone change OTP for:', formData.phone);
                       setIsSendingPhoneOTP(true);
                       try {
-                        const response = await requestPhoneChangeOTP(formData.phone);
+                        const normalizedPhone = normalizePhoneForBackend(formData.phone); // Remove country code before sending
+                        const response = await requestPhoneChangeOTP(normalizedPhone);
                         console.log('[Phone Verification] AccountPage - Phone change OTP request successful');
                         setPhoneOTPSent(true);
                         // Only show hint in development (when Twilio is not configured)

@@ -30,13 +30,34 @@ const sanitizeUser = (user) => user.toSafeObject();
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
 
-// Normalize phone number: remove spaces, ensure consistent format
+// Normalize phone number: remove country code and spaces
 const normalizePhone = (phone) => {
   if (!phone || typeof phone !== 'string') {
     return null;
   }
-  // Remove all spaces and keep the format with country code
-  return phone.trim().replace(/\s+/g, '');
+  
+  let cleaned = phone.trim();
+  
+  // Remove common country code patterns
+  // UK: +44, 44, 0044
+  cleaned = cleaned.replace(/^(\+44|44|0044)\s*/i, '');
+  
+  // US/Canada: +1, 1, 001
+  cleaned = cleaned.replace(/^(\+1|1|001)\s*/i, '');
+  
+  // Other common patterns: +XX, XX, 00XX (1-3 digits)
+  cleaned = cleaned.replace(/^(\+\d{1,3}|\d{1,3}|00\d{1,3})\s*/i, (match) => {
+    const digits = match.replace(/[^\d]/g, '');
+    if (digits.length >= 1 && digits.length <= 3) {
+      return '';
+    }
+    return match;
+  });
+  
+  // Remove all spaces and non-digit characters
+  cleaned = cleaned.replace(/\D/g, '');
+  
+  return cleaned || null;
 };
 
 const cookieOptions = {
@@ -618,20 +639,6 @@ router.post('/register/initiate', async (req, res) => {
       travelDistance,
     } = req.body;
 
-    // console.log('[Registration] Received registration data:', {
-    //   userType,
-    //   tradingName: tradingName || '(empty)',
-    //   address: address || '(empty)',
-    //   townCity: townCity || '(empty)',
-    //   county: county || '(empty)',
-    //   travelDistance: travelDistance || '(empty)',
-    //   hasTradingName: tradingName !== undefined && tradingName !== null,
-    //   hasAddress: address !== undefined && address !== null,
-    //   hasTownCity: townCity !== undefined && townCity !== null,
-    //   hasCounty: county !== undefined && county !== null,
-    //   tradingNameType: typeof tradingName,
-    //   addressType: typeof address,
-    // });
 
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {

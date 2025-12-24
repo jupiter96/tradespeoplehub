@@ -31,6 +31,7 @@ import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { resolveApiUrl } from "../../config/api";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
+import { useAdminPermissions } from "../../hooks/useAdminPermissions";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -110,6 +111,7 @@ export default function AdminServicesPage({
 }: AdminServicesPageProps) {
   useAdminRouteGuard();
   const navigate = useNavigate();
+  const { isSuperAdmin, hasPermission } = useAdminPermissions();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -656,9 +658,17 @@ export default function AdminServicesPage({
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem
                                     onClick={() => {
-                                      // Only allow viewing approved services
-                                      if (service.status === 'approved') {
-                                        window.open(`/service/${service.slug || service._id}`, '_blank');
+                                      // Check if user is admin or has service management permission
+                                      const isAdmin = isSuperAdmin || hasPermission('service');
+                                      
+                                      if (isAdmin) {
+                                        // Admin can view any service regardless of status
+                                        const serviceIdentifier = service.slug || service._id;
+                                        window.open(`/service/${serviceIdentifier}?admin=true`, '_blank');
+                                      } else if (service.status === 'approved') {
+                                        // Non-admin users can only view approved services
+                                        const serviceIdentifier = service.slug || service._id;
+                                        window.open(`/service/${serviceIdentifier}`, '_blank');
                                       } else {
                                         toast.error(`This service is ${service.status.replace('_', ' ')} and cannot be viewed. Only approved services can be viewed.`);
                                       }

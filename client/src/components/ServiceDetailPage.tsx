@@ -216,6 +216,10 @@ export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Check if this is an admin access (from URL params or location state)
+  const searchParams = new URLSearchParams(location.search);
+  const isAdminAccess = searchParams.get('admin') === 'true' || (location.state as any)?.adminAccess === true;
   const { addToCart } = useCart();
   const [isFavorite, setIsFavorite] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
@@ -329,8 +333,8 @@ export default function ServiceDetailPage() {
           };
           setService(transformedService);
           
-          // Check if service is not approved
-          if (s.status !== 'approved') {
+          // Check if service is not approved (only redirect if not admin access)
+          if (s.status !== 'approved' && !isAdminAccess) {
             setIsPendingService(true);
             setServiceStatus(s.status);
           }
@@ -347,7 +351,7 @@ export default function ServiceDetailPage() {
     };
 
     fetchService();
-  }, [id]);
+  }, [id, isAdminAccess]);
 
   // Handle pending service redirect
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Phone, ChevronDown } from "lucide-react";
 import ReactCountryFlag from "react-country-flag";
 import { Input } from "./ui/input";
@@ -6,6 +6,7 @@ import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Button } from "./ui/button";
+import { validateUKPhone } from "../utils/phoneValidation";
 
 // Country codes data with ISO country codes for flags
 const countryCodes = [
@@ -132,7 +133,33 @@ export default function PhoneInput({
     const cleaned = newNumber.replace(/[^\d\s]/g, "");
     const fullPhone = cleaned ? `${selectedCode} ${cleaned}`.trim() : selectedCode;
     onChange(fullPhone);
+    
+    // Validate phone number
+    if (fullPhone && fullPhone.trim() !== selectedCode) {
+      const validation = validateUKPhone(fullPhone);
+      if (!validation.isValid) {
+        setValidationError(validation.error);
+      } else {
+        setValidationError(undefined);
+      }
+    } else {
+      setValidationError(undefined);
+    }
   };
+
+  // Validate on value change
+  useEffect(() => {
+    if (value && value.trim() !== selectedCode) {
+      const validation = validateUKPhone(value);
+      if (!validation.isValid) {
+        setValidationError(validation.error);
+      } else {
+        setValidationError(undefined);
+      }
+    } else {
+      setValidationError(undefined);
+    }
+  }, [value, selectedCode]);
 
   // Filter countries for search
   const [searchQuery, setSearchQuery] = useState("");
@@ -232,9 +259,9 @@ export default function PhoneInput({
           />
         </div>
       </div>
-      {error && (
+      {(error || validationError) && (
         <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-          {error}
+          {error || validationError}
         </p>
       )}
     </div>

@@ -44,6 +44,15 @@ import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 import type { ServiceCategory, ServiceSubCategory, Sector } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
 import { useAccount } from "./AccountContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
+import { AlertCircle } from "lucide-react";
 
 interface AddServiceSectionProps {
   onClose: () => void;
@@ -1436,6 +1445,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const isEditMode = !!initialService;
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Fetch sectors and service categories
   const { sectors } = useSectors(false, false);
@@ -2819,7 +2831,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       <div className="mb-4 md:mb-6">
         <Button
           variant="ghost"
-          onClick={onClose}
+          onClick={handleClose}
           className="mb-4 font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#3B82F6] hover:text-[#FE8A0F] hover:bg-transparent transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -2887,6 +2899,50 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           </div>
         </div>
       </div>
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent className="font-['Poppins',sans-serif] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+              Save Your Progress?
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#6b6b6b] mt-2">
+              You have unsaved changes. What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-[13px] text-[#6b6b6b]">
+              Your current progress will be lost if you leave without saving.
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelExit}
+              className="font-['Poppins',sans-serif] flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDeleteDraftAndExit}
+              className="font-['Poppins',sans-serif] flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Draft
+            </Button>
+            <Button
+              onClick={handleSaveDraftAndExit}
+              className="font-['Poppins',sans-serif] flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save as Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {loadingDraft ? (
         <Card className="border-2 border-gray-200 shadow-lg p-12">
@@ -4087,7 +4143,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
             )}
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
               className="font-['Poppins',sans-serif] text-[14px] border-gray-300 text-[#6b6b6b] hover:bg-gray-50"
             >
               <X className="w-4 h-4 mr-2" />
@@ -4124,6 +4180,50 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         </Tabs>
       </Card>
       )}
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent className="font-['Poppins',sans-serif] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+              Save Your Progress?
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#6b6b6b] mt-2">
+              You have unsaved changes. What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-[13px] text-[#6b6b6b]">
+              Your current progress will be lost if you leave without saving.
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelExit}
+              className="font-['Poppins',sans-serif] flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDeleteDraftAndExit}
+              className="font-['Poppins',sans-serif] flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Draft
+            </Button>
+            <Button
+              onClick={handleSaveDraftAndExit}
+              className="font-['Poppins',sans-serif] flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save as Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

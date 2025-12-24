@@ -35,7 +35,8 @@ import { Textarea } from "./ui/textarea";
 import { toast } from "sonner";
 
 import API_BASE_URL from "../config/api";
-import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
+import { validatePassword } from "../utils/passwordValidation";
+import { validateUKPhone, normalizePhoneForBackend } from "../utils/phoneValidation";
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -69,8 +70,6 @@ export default function LoginPage() {
   const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationPhone, setVerificationPhone] = useState("");
-  const [emailCodeHint, setEmailCodeHint] = useState<string | null>(null);
-  const [phoneCodeHint, setPhoneCodeHint] = useState<string | null>(null);
 
   // (duplicate redirect effect removed - handled above)
   
@@ -81,7 +80,6 @@ export default function LoginPage() {
   const [isRequestingReset, setIsRequestingReset] = useState(false);
   const [resetRequestSent, setResetRequestSent] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
-  const [resetLinkHint, setResetLinkHint] = useState<string | null>(null);
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Login form state
@@ -236,6 +234,11 @@ export default function LoginPage() {
     }
     if (!registerPhone.trim()) {
       errors.phone = "Phone number is required";
+    } else {
+      const phoneValidation = validateUKPhone(registerPhone);
+      if (!phoneValidation.isValid) {
+        errors.phone = phoneValidation.error || "Invalid phone number format";
+      }
     }
     if (!registerEmail.trim()) {
       errors.email = "Email is required";
@@ -268,7 +271,7 @@ export default function LoginPage() {
       firstName: registerFirstName,
       lastName: registerLastName,
       email: registerEmail,
-      phone: registerPhone,
+      phone: normalizePhoneForBackend(registerPhone), // Remove country code before sending
       postcode: registerPostcode,
       password: registerPassword,
       referralCode: registerReferralCode,
@@ -286,7 +289,6 @@ export default function LoginPage() {
     setVerificationPhone(registerPhone);
     try {
       const response = await initiateRegistration(registerData);
-      setPhoneCodeHint(null);
       setVerificationStep(1);
       setEmailVerificationCode("");
       setPhoneVerificationCode("");
@@ -307,39 +309,11 @@ export default function LoginPage() {
     setRegisterError(null);
     setIsVerifyingEmail(true);
     try {
-      // console.log('[Phone Code] Frontend - Verifying email code, will request phone code next');
-      const response = await verifyRegistrationEmail(emailVerificationCode, registerEmail);
-      // console.log('[Phone Code] Frontend - Email verified, phone code received:', {
-      //   hasPhoneCode: !!response?.phoneCode,
-      //   phoneCode: response?.phoneCode || 'not provided',
-      //   message: response?.message
-      // });
-      setEmailCodeHint(null);
+      await verifyRegistrationEmail(emailVerificationCode, registerEmail);
       setVerificationStep(2);
       setEmailVerificationCode("");
     } catch (error: any) {
-      // console.error('[Phone Code] Frontend - Email verification failed');
-      // console.error('[Phone Code] Frontend - Error object:', error);
-      // console.error('[Phone Code] Frontend - Error message:', error?.message);
-      // console.error('[Phone Code] Frontend - Twilio error code:', error?.twilioErrorCode);
-      // console.error('[Phone Code] Frontend - Twilio error message:', error?.twilioErrorMessage);
-      // console.error('[Phone Code] Frontend - Twilio error moreInfo:', error?.twilioErrorMoreInfo);
-      
-      // Extract detailed error message
-      let errorMessage = "Email verification failed";
-      if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      // Add Twilio error details if available
-      if (error?.twilioErrorCode) {
-        errorMessage += ` (Twilio Error Code: ${error.twilioErrorCode})`;
-      }
-      if (error?.twilioErrorMoreInfo) {
-        errorMessage += ` - ${error.twilioErrorMoreInfo}`;
-      }
-      
-      setRegisterError(errorMessage);
+      setRegisterError("Email verification failed");
     } finally {
       setIsVerifyingEmail(false);
     }
@@ -347,14 +321,8 @@ export default function LoginPage() {
 
   const handleVerifyPhoneCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    // console.log('[Phone Code] Frontend - Starting phone code verification:', {
-    //   codeLength: phoneVerificationCode.length,
-    //   code: phoneVerificationCode ? '****' : 'missing',
-    //   email: registerEmail
-    // });
     
     if (phoneVerificationCode.length !== 4) {
-      // console.log('[Phone Code] Frontend - Invalid code length, expected 4 digits');
       alert("Please enter a 4-digit code");
       return;
     }
@@ -362,14 +330,7 @@ export default function LoginPage() {
     setIsRegistering(true);
     setIsCompletingRegistration(true);
     try {
-      // console.log('[Phone Code] Frontend - Calling completeRegistration API with phone code');
       const user = await completeRegistration(phoneVerificationCode, registerEmail);
-      // console.log('[Phone Code] Frontend - Registration completed successfully:', {
-      //   userId: user.id,
-      //   email: user.email,
-      //   phone: user.phone,
-      //   role: user.role
-      // });
 
       // Close verification modal first
       setShowEmailVerification(false);
@@ -379,16 +340,11 @@ export default function LoginPage() {
 
       // Navigate immediately based on user role
       if (user.role === "professional") {
-        // console.log('[Phone Verification] Frontend - Navigating to professional registration steps');
-        // Redirect to professional registration steps page
         navigate("/professional-registration-steps", { replace: true });
       } else {
-        // console.log('[Phone Verification] Frontend - Navigating to account page');
-        // Client: go directly to account
         navigate("/account", { replace: true });
       }
     } catch (error) {
-      // console.error('[Phone Verification] Frontend - Registration failed:', error);
       setRegisterError(error instanceof Error ? error.message : "Registration failed");
       setIsCompletingRegistration(false);
     } finally {
@@ -543,17 +499,11 @@ export default function LoginPage() {
     setIsRequestingReset(true);
     try {
       const response = await requestPasswordReset(resetEmail);
-      // console.log('Password reset response:', response);
-      const resetLink = response?.resetLink || null;
       const notFound = response?.userNotFound || false;
-      // console.log('Reset link hint:', resetLink);
-      // console.log('User not found:', notFound);
-      setResetLinkHint(resetLink);
       setUserNotFound(notFound);
       // Only show modal after we have the response (with or without resetLink)
       setResetRequestSent(true);
     } catch (error) {
-      // console.error('Password reset error:', error);
       setResetError(error instanceof Error ? error.message : "Unable to send reset link");
     } finally {
       setIsRequestingReset(false);
@@ -566,7 +516,6 @@ export default function LoginPage() {
     setResetRequestSent(false);
     setResetError(null);
     setIsRequestingReset(false);
-    setResetLinkHint(null);
   };
 
   return (
@@ -1196,16 +1145,6 @@ export default function LoginPage() {
                     {fieldErrors.password && (
                       <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
                         {fieldErrors.password}
-                      </p>
-                    )}
-                    {registerPassword && !fieldErrors.password && (
-                      <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
-                        {getPasswordHint(registerPassword)}
-                      </p>
-                    )}
-                    {!registerPassword && (
-                      <p className="mt-1 text-[11px] text-gray-500 font-['Poppins',sans-serif]">
-                        Password must include uppercase, lowercase, and numbers
                       </p>
                     )}
                   </div>
@@ -1894,21 +1833,6 @@ export default function LoginPage() {
                       <span className="text-[#3B82F6]">{resetEmail}</span>. Follow the instructions to
                       set a new password.
                     </p>
-                    {resetLinkHint && (
-                      <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
-                        <p className="font-['Poppins',sans-serif] text-[12px] font-semibold text-red-600 mb-2">
-                          Reset Link (until SMTP is configured):
-                        </p>
-                        <a
-                          href={resetLinkHint}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-['Poppins',sans-serif] text-[11px] text-red-700 break-all font-mono bg-white p-2 rounded border border-red-200 block hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer underline"
-                        >
-                          {resetLinkHint}
-                        </a>
-                      </div>
-                    )}
                     <Button
                       onClick={handleCloseResetModal}
                       className="w-full h-11 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white rounded-xl transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"

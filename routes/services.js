@@ -103,7 +103,24 @@ router.get('/', async (req, res) => {
 
     // Unified status (new). Prefer explicit `status`, otherwise accept legacy `approvalStatus`.
     const effectiveStatus = mapLegacyStatus(status) || mapLegacyApprovalToStatus(approvalStatus);
-    if (effectiveStatus) {
+    
+    // Always exclude draft services from admin pages (when activeOnly is false and no professionalId)
+    // Draft services should only be visible to the professional who created them
+    if (activeOnly === 'false' && !professionalId) {
+      // If a specific status filter is requested, apply it but exclude draft
+      if (effectiveStatus) {
+        if (effectiveStatus === 'draft') {
+          // If draft is explicitly requested, return empty (admin shouldn't see drafts)
+          query.status = { $exists: false }; // This will match nothing
+        } else {
+          query.status = effectiveStatus;
+        }
+      } else {
+        // No specific status filter, exclude draft
+        query.status = { $ne: 'draft' };
+      }
+    } else if (effectiveStatus) {
+      // For other cases (public listings, professional's own services), apply status filter normally
       query.status = effectiveStatus;
     }
 
