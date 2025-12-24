@@ -1091,7 +1091,7 @@ router.put('/:id', async (req, res) => {
     // Check if updateData is empty
     if (Object.keys(updateData).length === 0) {
       console.error('ERROR: updateData is empty! No fields to update.');
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'No fields to update',
         message: 'At least one field must be provided for update'
       });

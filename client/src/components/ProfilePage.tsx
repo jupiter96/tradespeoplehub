@@ -313,14 +313,13 @@ export default function ProfilePage() {
   const ratingPercent = Math.min(100, Math.max(0, (rating / 5) * 100));
   const completedJobs = typeof profile?.completedJobs === "number" ? profile.completedJobs : 0;
 
-  const handleMessage = () => {
-    if (!profile) return;
-    startConversation({
-      id: profile.id,
-      name: displayName || "User",
-      avatar: profile.avatar,
-      online: false,
-    });
+  const handleMessage = async () => {
+    if (!profile || !id) return;
+    try {
+      await startConversation(id);
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+    }
   };
 
   const bioText = useMemo(() => {

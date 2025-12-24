@@ -1982,15 +1982,15 @@ export default function AdminServiceCategoriesPage() {
             }
           } else {
             // If no sector found, just refresh the list
-            setPage(1);
-            setSortBy("order");
-            setSortOrder("desc");
+        setPage(1);
+        setSortBy("order");
+        setSortOrder("desc");
             await fetchServiceCategories(selectedSectorId || '');
           }
-        }
+      }
       } else {
         // Editing existing category - just refresh the list
-        if (selectedSectorId) {
+      if (selectedSectorId) {
           // Immediately update local state if editing
           if (editingServiceCategory && savedServiceCategory) {
             setServiceCategories(prev => prev.map(sc => 
@@ -3606,7 +3606,7 @@ export default function AdminServiceCategoriesPage() {
                                     {subCat.breadcrumbPath}
                                   </span>
                                   <span className="text-sm font-medium text-black dark:text-white leading-tight">
-                                    {subCat.name}
+                            {subCat.name}
                                   </span>
                                 </>
                               ) : (

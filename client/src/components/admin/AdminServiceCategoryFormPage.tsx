@@ -312,7 +312,7 @@ export default function AdminServiceCategoryFormPage() {
 
       if (isEditMode) {
         // Navigate back to list for editing
-        navigate("/admin/service-category");
+      navigate("/admin/service-category");
       } else {
         // For new category, navigate to subcategories view
         navigate(`/admin/service-category?view=subcategories&categoryId=${savedCategory._id}`);

@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from "react";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
+import { resolveApiUrl } from "../config/api";
+import { connectSocket, disconnectSocket, getSocket } from "../services/socket";
 import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface Contact {
@@ -11,18 +13,17 @@ export interface Contact {
   timestamp: string;
   unread: number;
   online: boolean;
-  jobId?: string;
-  jobTitle?: string;
-  serviceId?: string;
-  serviceName?: string;
-  servicePrice?: string;
+  conversationId?: string;
+  participantId?: string;
 }
 
 export interface Message {
   id: string;
   senderId: string;
+  senderName?: string;
+  senderAvatar?: string;
   text: string;
-  timestamp: string;
+  timestamp: string | Date;
   read: boolean;
   type: "text" | "image" | "file" | "order" | "system";
   fileUrl?: string;
@@ -49,9 +50,13 @@ interface MessengerContextType {
   setIsMinimized: (minimized: boolean) => void;
   selectedContactId: string | null;
   setSelectedContactId: (id: string | null) => void;
-  startConversation: (contact: Omit<Contact, "lastMessage" | "timestamp" | "unread">) => void;
+  startConversation: (participantId: string) => Promise<void>;
   userRole: "client" | "professional" | null;
   setUserRole: (role: "client" | "professional" | null) => void;
+  searchProfessionals: (query: string) => Promise<Array<{ id: string; name: string; avatar?: string }>>;
+  isTyping: Record<string, boolean>;
+  sendTyping: (conversationId: string, isTyping: boolean) => void;
+  markMessagesAsRead: (conversationId: string) => void;
 }
 
 const MessengerContext = createContext<MessengerContextType | undefined>(undefined);
@@ -61,401 +66,309 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<"client" | "professional" | null>("client"); // Default to client
-  
-  // Client contacts (professionals they're talking to)
-  const clientContacts: Contact[] = [
-    {
-      id: "pro-1",
-      name: "John Smith",
-      avatar: defaultAvatar,
-      lastMessage: "Great! I'll be there on time.",
-      timestamp: "Nov 5",
-      unread: 0,
-      online: false,
-      serviceId: "plumbing-1",
-      serviceName: "Plumbing Repair",
-      servicePrice: "£150",
-    },
-    {
-      id: "pro-2",
-      name: "Sarah Johnson",
-      avatar: defaultAvatar,
-      lastMessage: "I'll bring all the necessary equipment.",
-      timestamp: "Nov 8",
-      unread: 0,
-      online: true,
-      serviceId: "electrical-1",
-      serviceName: "Electrical Installation",
-      servicePrice: "£320",
-    },
-    {
-      id: "pro-3",
-      name: "Mike Brown",
-      avatar: defaultAvatar,
-      lastMessage: "Perfect! I'll start early morning.",
-      timestamp: "Nov 10",
-      unread: 0,
-      online: true,
-      serviceId: "painting-1",
-      serviceName: "Painting Service",
-      servicePrice: "£200",
-    },
-    {
-      id: "pro-4",
-      name: "David Wilson",
-      avatar: defaultAvatar,
-      lastMessage: "Thanks for your order! See you Monday.",
-      timestamp: "Nov 12",
-      unread: 0,
-      online: true,
-      serviceId: "carpentry-1",
-      serviceName: "Carpentry Work",
-      servicePrice: "£275",
-    },
-    {
-      id: "pro-5",
-      name: "Emma Taylor",
-      avatar: defaultAvatar,
-      lastMessage: "I'll be there on Saturday afternoon.",
-      timestamp: "Nov 11",
-      unread: 0,
-      online: false,
-      serviceId: "gardening-1",
-      serviceName: "Garden Maintenance",
-      servicePrice: "£95",
-    },
-    {
-      id: "pro-6",
-      name: "Rachel Green",
-      avatar: defaultAvatar,
-      lastMessage: "I'll bring all cleaning supplies!",
-      timestamp: "Nov 9",
-      unread: 0,
-      online: true,
-      serviceId: "cleaning-1",
-      serviceName: "Bathroom Cleaning",
-      servicePrice: "£85",
-    },
-    {
-      id: "pro-7",
-      name: "Tom Baker",
-      avatar: defaultAvatar,
-      lastMessage: "Thank you! Have a great day!",
-      timestamp: "Nov 8",
-      unread: 0,
-      online: false,
-      serviceId: "locksmith-1",
-      serviceName: "Locksmith Service",
-      servicePrice: "£120",
-    },
-  ];
+  const [userRole, setUserRole] = useState<"client" | "professional" | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [messagesByContact, setMessagesByContact] = useState<Record<string, Message[]>>({});
+  const [isTyping, setIsTyping] = useState<Record<string, boolean>>({});
+  const typingTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const socketInitialized = useRef(false);
 
-  // Professional contacts (clients they're talking to)
-  const professionalContacts: Contact[] = [
-    {
-      id: "client-1",
-      name: "James Anderson",
-      avatar: defaultAvatar,
-      lastMessage: "Thanks! Looking forward to it.",
-      timestamp: "Nov 13",
-      unread: 2,
-      online: true,
-      jobId: "job-101",
-      jobTitle: "Kitchen Plumbing Installation",
-    },
-    {
-      id: "client-2",
-      name: "Emily Roberts",
-      avatar: defaultAvatar,
-      lastMessage: "Perfect! See you tomorrow.",
-      timestamp: "Nov 12",
-      unread: 0,
-      online: false,
-      jobId: "job-102",
-      jobTitle: "Bathroom Renovation",
-    },
-    {
-      id: "client-3",
-      name: "Michael Chen",
-      avatar: defaultAvatar,
-      lastMessage: "Can you come earlier?",
-      timestamp: "Nov 11",
-      unread: 1,
-      online: true,
-      jobId: "job-103",
-      jobTitle: "Emergency Leak Repair",
-    },
-    {
-      id: "client-4",
-      name: "Sophie Turner",
-      avatar: defaultAvatar,
-      lastMessage: "Quote looks good to me!",
-      timestamp: "Nov 10",
-      unread: 0,
-      online: true,
-      jobId: "job-104",
-      jobTitle: "Boiler Service",
-    },
-    {
-      id: "client-5",
-      name: "Oliver Davis",
-      avatar: defaultAvatar,
-      lastMessage: "Job completed, thank you!",
-      timestamp: "Nov 9",
-      unread: 0,
-      online: false,
-      jobId: "job-105",
-      jobTitle: "Pipe Installation",
-    },
-  ];
+  // Initialize socket when user is logged in (only once)
+  useEffect(() => {
+    if (!userInfo?.id) {
+      // User logged out - disconnect socket
+      if (socketInitialized.current) {
+        disconnectSocket();
+        socketInitialized.current = false;
+      }
+      return;
+    }
 
-  // Store contacts based on user role
-  const [clientContactsState, setClientContactsState] = useState<Contact[]>(clientContacts);
-  const [professionalContactsState, setProfessionalContactsState] = useState<Contact[]>(professionalContacts);
+    // Get or create socket (will reuse if already exists and connected)
+    const socket = connectSocket(userInfo.id);
+    
+    // If already initialized, don't re-register listeners
+    if (socketInitialized.current) {
+      return;
+    }
 
-  // Get contacts based on current user role
-  const contacts = userRole === "client" ? clientContactsState : professionalContactsState;
-  const setContacts = userRole === "client" ? setClientContactsState : setProfessionalContactsState;
+    socketInitialized.current = true;
 
-  // Client messages (conversations with professionals)
-  const clientMessagesByContact: Record<string, Message[]> = {
-    "pro-1": [
-      {
-        id: "msg-1-1",
-        senderId: "client-1",
-        text: "Hi, I have a leaking kitchen sink that needs urgent repair.",
-        timestamp: "Nov 5, 9:00 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-1-2",
-        senderId: "pro-1",
-        text: "I can help with that! When would you like me to come?",
-        timestamp: "Nov 5, 9:10 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-1-3",
-        senderId: "client-1",
-        text: "Today morning would be perfect if you're available.",
-        timestamp: "Nov 5, 9:15 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-1-4",
-        senderId: "client-1",
-        text: "Order placed: Plumbing Repair",
-        timestamp: "Nov 5, 9:20 AM",
-        read: true,
-        type: "order",
-        orderId: "ORD-001",
-        orderDetails: {
-          service: "Plumbing Repair",
-          amount: "£150",
-          date: "Nov 5, 2024 10:00",
-          status: "completed",
-        },
-      },
-      {
-        id: "msg-1-5",
-        senderId: "pro-1",
-        text: "Great! I'll be there on time.",
-        timestamp: "Nov 5, 9:25 AM",
-        read: true,
-        type: "text",
-      },
-    ],
-    "pro-2": [
-      {
-        id: "msg-2-1",
-        senderId: "client-1",
-        text: "Hi, I need new ceiling lights installed in my living room and bedroom.",
-        timestamp: "Nov 8, 10:00 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-2-2",
-        senderId: "pro-2",
-        text: "I can help with that! Do you want LED downlights with dimmer switches?",
-        timestamp: "Nov 8, 10:15 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-2-3",
-        senderId: "client-1",
-        text: "Yes, that would be perfect! When can you do the installation?",
-        timestamp: "Nov 8, 10:20 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-2-4",
-        senderId: "client-1",
-        text: "Order placed: Electrical Installation",
-        timestamp: "Nov 8, 10:30 AM",
-        read: true,
-        type: "order",
-        orderId: "ORD-002",
-        orderDetails: {
-          service: "Electrical Installation",
-          amount: "£320",
-          date: "Nov 11, 2024 14:00",
-          status: "pending",
-        },
-      },
-      {
-        id: "msg-2-5",
-        senderId: "pro-2",
-        text: "I'll bring all the necessary equipment.",
-        timestamp: "Nov 8, 10:35 AM",
-        read: true,
-        type: "text",
-      },
-    ],
-  };
+    // Listen for new messages
+    const handleNewMessage = async (messageData: any) => {
+      const conversationId = messageData.conversationId;
+      
+      // Find contact by conversationId - use current state
+      setContacts(prevContacts => {
+        let contact = prevContacts.find(c => c.conversationId === conversationId);
+        
+        // If contact not found, it might be a new conversation - reload conversations
+        if (!contact) {
+          // Use setTimeout to avoid state update during render
+          setTimeout(() => {
+            fetchConversations();
+          }, 0);
+          return prevContacts; // Return unchanged for now, will update after fetch
+        }
 
-  // Professional messages (conversations with clients)
-  const professionalMessagesByContact: Record<string, Message[]> = {
-    "client-1": [
-      {
-        id: "msg-p1-1",
-        senderId: "client-1",
-        text: "Hi! I saw your profile and I'm interested in your kitchen plumbing services.",
-        timestamp: "Nov 13, 8:00 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p1-2",
-        senderId: "pro-1",
-        text: "Hello! I'd be happy to help. What exactly do you need done?",
-        timestamp: "Nov 13, 8:15 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p1-3",
-        senderId: "client-1",
-        text: "I need to install a new sink and dishwasher connections.",
-        timestamp: "Nov 13, 8:20 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p1-4",
-        senderId: "pro-1",
-        text: "I can do that for you. It should take about 3-4 hours. When would be convenient?",
-        timestamp: "Nov 13, 8:25 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p1-5",
-        senderId: "client-1",
-        text: "Thanks! Looking forward to it.",
-        timestamp: "Nov 13, 8:30 AM",
-        read: false,
-        type: "text",
-      },
-    ],
-    "client-2": [
-      {
-        id: "msg-p2-1",
-        senderId: "client-2",
-        text: "Hello, I need a complete bathroom renovation quote.",
-        timestamp: "Nov 12, 2:00 PM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p2-2",
-        senderId: "pro-1",
-        text: "I can provide a quote for that. Can you send me some photos of the bathroom?",
-        timestamp: "Nov 12, 2:10 PM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p2-3",
-        senderId: "client-2",
-        text: "Sure, I'll send them shortly.",
-        timestamp: "Nov 12, 2:15 PM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p2-4",
-        senderId: "pro-1",
-        text: "Based on the photos, I can give you a detailed quote tomorrow.",
-        timestamp: "Nov 12, 3:00 PM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p2-5",
-        senderId: "client-2",
-        text: "Perfect! See you tomorrow.",
-        timestamp: "Nov 12, 3:05 PM",
-        read: true,
-        type: "text",
-      },
-    ],
-    "client-3": [
-      {
-        id: "msg-p3-1",
-        senderId: "client-3",
-        text: "Emergency! I have a major leak in my basement.",
-        timestamp: "Nov 11, 7:00 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p3-2",
-        senderId: "pro-1",
-        text: "I'll be there in 30 minutes!",
-        timestamp: "Nov 11, 7:05 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p3-3",
-        senderId: "client-3",
-        text: "Thank you so much for the quick response!",
-        timestamp: "Nov 11, 7:10 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p3-4",
-        senderId: "pro-1",
-        text: "I've fixed the leak. You might want to check other pipes too.",
-        timestamp: "Nov 11, 9:30 AM",
-        read: true,
-        type: "text",
-      },
-      {
-        id: "msg-p3-5",
-        senderId: "client-3",
-        text: "Can you come earlier?",
-        timestamp: "Nov 11, 10:00 AM",
-        read: false,
-        type: "text",
-      },
-    ],
-  };
+        const formattedMessage: Message = {
+          id: messageData.id,
+          senderId: messageData.senderId,
+          senderName: messageData.senderName,
+          senderAvatar: messageData.senderAvatar,
+          text: messageData.text || '',
+          timestamp: new Date(messageData.timestamp),
+          read: messageData.read,
+          type: messageData.type || 'text',
+          fileUrl: messageData.fileUrl,
+          fileName: messageData.fileName,
+          orderId: messageData.orderId,
+          orderDetails: messageData.orderDetails,
+        };
 
-  const [clientMessagesState, setClientMessagesState] = useState<Record<string, Message[]>>(clientMessagesByContact);
-  const [professionalMessagesState, setProfessionalMessagesState] = useState<Record<string, Message[]>>(professionalMessagesByContact);
+        // Check if this is a duplicate (optimistic update already added it)
+        setMessagesByContact(prev => {
+          const existingMessages = prev[contact.id] || [];
+          // Check if message already exists (by ID or by temp ID matching)
+          const isDuplicate = existingMessages.some(msg => {
+            // If it's a temp message from optimistic update, replace it
+            if (msg.id.startsWith('temp-') && msg.senderId === formattedMessage.senderId && 
+                msg.text === formattedMessage.text && 
+                Math.abs(new Date(msg.timestamp).getTime() - formattedMessage.timestamp.getTime()) < 5000) {
+              return true;
+            }
+            // If it's the same message ID, it's a duplicate
+            return msg.id === formattedMessage.id;
+          });
 
-  // Get messages based on current user role
-  const messagesByContact = userRole === "client" ? clientMessagesState : professionalMessagesState;
-  const setMessagesByContact = userRole === "client" ? setClientMessagesState : setProfessionalMessagesState;
+          if (isDuplicate) {
+            // Replace temp message with real one
+            return {
+              ...prev,
+              [contact.id]: existingMessages.map(msg => {
+                if (msg.id.startsWith('temp-') && msg.senderId === formattedMessage.senderId && 
+                    msg.text === formattedMessage.text) {
+                  return formattedMessage;
+                }
+                return msg;
+              }).filter((msg, index, arr) => {
+                // Remove duplicates by ID
+                return arr.findIndex(m => m.id === msg.id) === index;
+              }),
+            };
+          }
+
+          // Add new message
+          return {
+            ...prev,
+            [contact.id]: [...existingMessages, formattedMessage],
+          };
+        });
+
+        // Show notification if not current conversation
+        setSelectedContactId(prevSelected => {
+          if (prevSelected !== contact.id && messageData.senderId !== userInfo.id) {
+            toast.info(`New message from ${contact.name}`);
+          }
+          return prevSelected;
+        });
+
+        // Return updated contacts
+        return prevContacts.map(c =>
+          c.id === contact.id
+            ? {
+                ...c,
+                lastMessage: formattedMessage.text || 'Sent a file',
+                timestamp: new Date(formattedMessage.timestamp).toLocaleDateString(),
+                unread: messageData.senderId !== userInfo.id ? (c.unread || 0) + 1 : c.unread,
+              }
+            : c
+        );
+      });
+    };
+
+    // Listen for typing indicators
+    const handleTyping = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
+      if (data.userId === userInfo.id) return;
+      
+      setContacts(prevContacts => {
+        const contact = prevContacts.find(c => c.conversationId === data.conversationId);
+        if (contact) {
+          setIsTyping(prev => ({
+            ...prev,
+            [contact.id]: data.isTyping,
+          }));
+        }
+        return prevContacts;
+      });
+    };
+
+    // Listen for conversation updates
+    const handleConversationUpdated = (data: any) => {
+      setContacts(prev =>
+        prev.map(c =>
+          c.conversationId === data.id
+            ? {
+                ...c,
+                lastMessage: data.lastMessage?.text || c.lastMessage,
+                timestamp: data.lastMessageAt ? new Date(data.lastMessageAt).toLocaleDateString() : c.timestamp,
+              }
+            : c
+        )
+      );
+    };
+
+    // Listen for user online/offline
+    const handleUserOnline = (data: { userId: string }) => {
+      setContacts(prev =>
+        prev.map(c =>
+          c.participantId === data.userId ? { ...c, online: true } : c
+        )
+      );
+    };
+
+    const handleUserOffline = (data: { userId: string }) => {
+      setContacts(prev =>
+        prev.map(c =>
+          c.participantId === data.userId ? { ...c, online: false } : c
+        )
+      );
+    };
+
+    // Listen for messages read event (when other participant reads messages)
+    const handleMessagesRead = (data: { conversationId: string; userId: string }) => {
+      setContacts(prevContacts => {
+        const contact = prevContacts.find(c => c.conversationId === data.conversationId);
+        if (contact) {
+          // Update read status for messages sent by current user
+          setMessagesByContact(prev => {
+            const messages = prev[contact.id] || [];
+            return {
+              ...prev,
+              [contact.id]: messages.map(msg => 
+                msg.senderId === userInfo.id ? { ...msg, read: true } : msg
+              ),
+            };
+          });
+        }
+        return prevContacts;
+      });
+    };
+
+    // Register event listeners
+    socket.on('new-message', handleNewMessage);
+    socket.on('typing', handleTyping);
+    socket.on('conversation-updated', handleConversationUpdated);
+    socket.on('user-online', handleUserOnline);
+    socket.on('user-offline', handleUserOffline);
+    socket.on('messages-read', handleMessagesRead);
+
+    // Cleanup: remove event listeners when user changes or component unmounts
+    return () => {
+      // Remove all event listeners to prevent memory leaks
+      socket.off('new-message', handleNewMessage);
+      socket.off('typing', handleTyping);
+      socket.off('conversation-updated', handleConversationUpdated);
+      socket.off('user-online', handleUserOnline);
+      socket.off('user-offline', handleUserOffline);
+      socket.off('messages-read', handleMessagesRead);
+      
+      // Only disconnect and reset if user is logging out
+      // Don't disconnect on every re-render, just remove listeners
+      socketInitialized.current = false;
+    };
+  }, [userInfo?.id]); // Only depend on userInfo?.id
+
+  // Set user role from account
+  useEffect(() => {
+    if (userInfo?.role) {
+      setUserRole(userInfo.role as "client" | "professional");
+    }
+  }, [userInfo?.role]);
+
+  // Fetch conversations
+  const fetchConversations = useCallback(async () => {
+    if (!userInfo?.id) return;
+
+    try {
+      const response = await fetch(resolveApiUrl('/api/chat/conversations'), {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const formattedContacts: Contact[] = data.conversations.map((conv: any) => ({
+          id: conv.participant.id,
+          name: conv.participant.name,
+          avatar: conv.participant.avatar, // Use actual profile image, no default fallback
+          lastMessage: conv.lastMessage?.text || 'Start a conversation',
+          timestamp: conv.lastMessage?.timestamp
+            ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
+            : new Date(conv.timestamp).toLocaleDateString(),
+          unread: conv.unread || 0,
+          online: conv.online || false,
+          conversationId: conv.id,
+          participantId: conv.participant.id,
+        }));
+
+        setContacts(formattedContacts);
+
+        // Fetch messages for each conversation
+        for (const contact of formattedContacts) {
+          if (contact.conversationId) {
+            await fetchMessages(contact.conversationId, contact.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    }
+  }, [userInfo?.id]);
+
+  // Fetch messages for a conversation
+  const fetchMessages = useCallback(async (conversationId: string, contactId: string) => {
+    try {
+      const response = await fetch(
+        resolveApiUrl(`/api/chat/conversations/${conversationId}/messages?limit=100`),
+        {
+          credentials: 'include',
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const formattedMessages: Message[] = data.messages.map((msg: any) => ({
+          id: msg.id,
+          senderId: msg.senderId,
+          senderName: msg.senderName,
+          senderAvatar: msg.senderAvatar,
+          text: msg.text || '',
+          timestamp: new Date(msg.timestamp),
+          read: msg.read,
+          type: msg.type || 'text',
+          fileUrl: msg.fileUrl,
+          fileName: msg.fileName,
+          orderId: msg.orderId,
+          orderDetails: msg.orderDetails,
+        }));
+
+        setMessagesByContact(prev => ({
+          ...prev,
+          [contactId]: formattedMessages,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  }, []);
+
+  // Load conversations when user is logged in
+  useEffect(() => {
+    if (userInfo?.id) {
+      fetchConversations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInfo?.id]);
 
   const getContactById = (id: string) => {
     return contacts.find(c => c.id === id);
@@ -467,7 +380,6 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
       return existing;
     }
 
-    // If user is blocked, prevent creating new contacts
     if (userInfo?.isBlocked) {
       throw new Error("Your account has been blocked. You can only message users already in your chat list.");
     }
@@ -488,7 +400,6 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
   };
 
   const addMessage = (contactId: string, messageData: Omit<Message, "id" | "timestamp">) => {
-    // If user is blocked, only allow messaging existing contacts
     if (userInfo?.isBlocked) {
       const contactExists = contacts.find(c => c.id === contactId);
       if (!contactExists) {
@@ -497,13 +408,32 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact?.conversationId) {
+      toast.error("Conversation not found");
+      return;
+    }
+
+    const socket = getSocket();
+    if (!socket) {
+      toast.error("Not connected to chat server");
+      return;
+    }
+
+    // Send via socket
+    socket.emit('new-message', {
+      conversationId: contact.conversationId,
+      text: messageData.text,
+      type: messageData.type || 'text',
+      fileUrl: messageData.fileUrl,
+      fileName: messageData.fileName,
+    });
+
+    // Optimistically add message to UI
     const newMessage: Message = {
       ...messageData,
-      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      }),
+      id: `temp-${Date.now()}`,
+      timestamp: new Date(),
     };
 
     setMessagesByContact(prev => ({
@@ -534,19 +464,147 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     setIsOpen(false);
   };
 
-  const startConversation = (contactData: Omit<Contact, "lastMessage" | "timestamp" | "unread">) => {
+  const startConversation = async (participantId: string) => {
+    if (!userInfo?.id) {
+      toast.error("Please log in to start a conversation");
+      return;
+    }
+
+    if (userInfo.role !== 'client') {
+      toast.error("Only clients can start new conversations");
+      return;
+    }
+
     try {
-      const contact = getOrCreateContact(contactData);
-      setSelectedContactId(contact.id);
+      const response = await fetch(resolveApiUrl('/api/chat/conversations'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ participantId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const conv = data.conversation;
+
+        const newContact: Contact = {
+          id: conv.participant.id,
+          name: conv.participant.name,
+          avatar: conv.participant.avatar, // Use actual profile image, no default fallback
+          lastMessage: conv.lastMessage?.text || 'Start a conversation',
+          timestamp: conv.lastMessage?.timestamp
+            ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
+            : 'now',
+          unread: conv.unread || 0,
+          online: conv.online || false,
+          conversationId: conv.id,
+          participantId: conv.participant.id,
+        };
+
+        setContacts(prev => {
+          const existing = prev.find(c => c.id === newContact.id);
+          if (existing) {
+            return prev;
+          }
+          return [newContact, ...prev];
+        });
+
+        setSelectedContactId(newContact.id);
       openMessenger();
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
+
+        // Fetch messages
+        if (newContact.conversationId) {
+          await fetchMessages(newContact.conversationId, newContact.id);
+        }
       } else {
-        toast.error("Unable to start conversation. Your account may be blocked.");
+        const error = await response.json();
+        toast.error(error.error || 'Failed to start conversation');
       }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      toast.error('Failed to start conversation');
     }
   };
+
+  const searchProfessionals = async (query: string): Promise<Array<{ id: string; name: string; avatar?: string }>> => {
+    if (!userInfo?.id || userInfo.role !== 'client') {
+      return [];
+    }
+
+    if (!query || query.trim().length < 2) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(
+        resolveApiUrl(`/api/chat/search-professionals?query=${encodeURIComponent(query)}`),
+        {
+          credentials: 'include',
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.professionals.map((pro: any) => ({
+          id: pro.id,
+          name: pro.name,
+          avatar: pro.avatar, // Use actual profile image, no default fallback
+        }));
+      }
+    } catch (error) {
+      console.error('Error searching professionals:', error);
+    }
+
+    return [];
+  };
+
+  const sendTyping = (conversationId: string, isTypingValue: boolean) => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const contact = contacts.find(c => c.conversationId === conversationId);
+    if (!contact) return;
+
+    // Clear existing timeout
+    if (typingTimeouts.current[conversationId]) {
+      clearTimeout(typingTimeouts.current[conversationId]);
+    }
+
+    if (isTypingValue) {
+      socket.emit('typing', { conversationId, isTyping: true });
+
+      // Auto-stop typing after 3 seconds
+      typingTimeouts.current[conversationId] = setTimeout(() => {
+        socket.emit('stop-typing', { conversationId });
+        setIsTyping(prev => ({
+          ...prev,
+          [contact.id]: false,
+        }));
+      }, 3000);
+    } else {
+      socket.emit('stop-typing', { conversationId });
+      setIsTyping(prev => ({
+        ...prev,
+        [contact.id]: false,
+      }));
+    }
+  };
+
+  const markMessagesAsRead = useCallback((conversationId: string) => {
+    const socket = getSocket();
+    if (socket && userInfo?.id && conversationId) {
+      socket.emit('mark-read', { conversationId });
+      
+      // Optimistically update unread count
+      setContacts(prev =>
+        prev.map(c =>
+          c.conversationId === conversationId ? { ...c, unread: 0 } : c
+        )
+      );
+    }
+  }, [userInfo?.id]);
 
   return (
     <MessengerContext.Provider
@@ -566,6 +624,10 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
         startConversation,
         userRole,
         setUserRole,
+        searchProfessionals,
+        isTyping,
+        sendTyping,
+        markMessagesAsRead,
       }}
     >
       {children}

@@ -135,6 +135,7 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { userRole, userInfo, logout, isLoggedIn } = useAccount();
+  const { contacts } = useMessenger();
   const [activeSection, setActiveSection] = useState<string>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
@@ -143,6 +144,11 @@ export default function AccountPage() {
   const [verificationModalData, setVerificationModalData] = useState<any>(null);
   const verificationModalRetryRef = useRef(0);
   const verificationModalTimeoutRef = useRef<number | null>(null);
+
+  // Calculate total unread messages count
+  const totalUnreadMessages = useMemo(() => {
+    return contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0);
+  }, [contacts]);
 
   // Check for URL parameters to navigate to specific section/order
   useEffect(() => {
@@ -269,7 +275,7 @@ export default function AccountPage() {
   };
 
   // Menu items for Client
-  const clientMenu = [
+  const clientMenu = useMemo(() => [
     { id: "overview", label: "Overview", icon: User },
     { id: "favourites", label: "Favourites", icon: Heart },
     { id: "orders", label: "Orders", icon: ShoppingBag },
@@ -277,10 +283,15 @@ export default function AccountPage() {
     { id: "details", label: "My Details", icon: Settings },
     { id: "billing", label: "Billing", icon: CreditCard },
     { id: "security", label: "Security", icon: Lock },
-    { id: "messenger", label: "Messenger", icon: MessageCircle, badge: "3" },
+    { 
+      id: "messenger", 
+      label: "Messenger", 
+      icon: MessageCircle, 
+      badge: totalUnreadMessages > 0 ? totalUnreadMessages.toString() : undefined 
+    },
     { id: "support", label: "Support Center", icon: HelpCircle },
     { id: "invite", label: "Invite & Earn", icon: Gift },
-  ];
+  ], [totalUnreadMessages]);
 
   // Menu items for Professional (dynamically generated to include verification badge)
   const professionalMenu = useMemo(() => [
@@ -299,10 +310,15 @@ export default function AccountPage() {
     { id: "details", label: "My Details", icon: Settings },
     { id: "withdraw", label: "Withdraw", icon: Wallet },
     { id: "security", label: "Security", icon: Lock },
-    { id: "messenger", label: "Messenger", icon: MessageCircle, badge: "3" },
+    { 
+      id: "messenger", 
+      label: "Messenger", 
+      icon: MessageCircle, 
+      badge: totalUnreadMessages > 0 ? totalUnreadMessages.toString() : undefined 
+    },
     { id: "support", label: "Support Center", icon: HelpCircle },
     { id: "invite", label: "Invite & Earn", icon: Gift },
-  ], [verificationPendingCount]);
+  ], [verificationPendingCount, totalUnreadMessages]);
 
   const menuItems = userRole === "client" ? clientMenu : professionalMenu;
 
@@ -3847,6 +3863,35 @@ function MessengerSection() {
     contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const formatTimestamp = (timestamp: string | Date) => {
+    if (typeof timestamp === 'string' && timestamp === 'now') {
+      return 'now';
+    }
+    
+    try {
+      const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+      
+      // Check if date is valid
+      if (!(date instanceof Date) || isNaN(date.getTime())) {
+        return 'now';
+      }
+      
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      return 'now';
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -3975,7 +4020,7 @@ function MessengerSection() {
                               {contact.name}
                             </h4>
                             <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] whitespace-nowrap flex-shrink-0">
-                              {contact.timestamp}
+                              {formatTimestamp(contact.timestamp)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-2">
@@ -4207,7 +4252,7 @@ function MessengerSection() {
                               }`}
                             >
                               <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
-                                {message.timestamp}
+                                {formatTimestamp(message.timestamp)}
                               </span>
                               {message.senderId === userInfo?.id && (
                                 <div className="text-[#8d8d8d]">

@@ -17,10 +17,13 @@ import subCategoryRoutes from './routes/subcategories.js';
 import serviceCategoryRoutes from './routes/service-categories.js';
 import serviceSubCategoryRoutes from './routes/service-subcategories.js';
 import serviceRoutes from './routes/services.js';
+import chatRoutes from './routes/chat.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
 import { initNotifier } from './services/notifier.js';
+import { initializeSocket } from './services/socket.js';
+import { createServer } from 'http';
 
 dotenv.config();
 
@@ -160,6 +163,7 @@ app.use('/api/subcategories', subCategoryRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
 app.use('/api/service-subcategories', serviceSubCategoryRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/chat', chatRoutes);
 
 // API catch-all handler
 app.get('/api/*', (req, res) => {
@@ -173,14 +177,21 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
-// Start server
+// Create HTTP server for Socket.io
 const PORT = process.env.PORT || 5000;
 const CLIENT_PORT = process.env.CLIENT_PORT || 3000;
 
-app.listen(PORT, () => {
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initializeSocket(httpServer);
+
+// Start server
+httpServer.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════');
   console.log('🚀 Server is running!');
   console.log(`📡 Server Port: http://localhost:${PORT}`);
   console.log(`💻 Client Port: http://localhost:${CLIENT_PORT}`);
+  console.log('🔌 Socket.io initialized');
   console.log('═══════════════════════════════════════════════════════');
 });
