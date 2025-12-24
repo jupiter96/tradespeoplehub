@@ -82,6 +82,7 @@ export default function PhoneInput({
   className = "",
 }: PhoneInputProps) {
   const [countryCodeOpen, setCountryCodeOpen] = useState(false);
+  const [validationError, setValidationError] = useState<string | undefined>(undefined);
   
   // Parse current value to extract country code and number
   const parsePhoneValue = (phoneValue: string) => {
