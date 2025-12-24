@@ -668,49 +668,158 @@ router.put('/bulk/order', async (req, res) => {
 
 // Bulk update service attributes (Admin only) - MUST be before /:id route
 router.put('/bulk-update-attributes', async (req, res) => {
+  console.log('=== BULK UPDATE ATTRIBUTES REQUEST ===');
+  console.log('Request received at:', new Date().toISOString());
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  
   try {
     const { updates } = req.body;
 
-    // console.log('Received bulk-update-attributes request:', JSON.stringify(updates, null, 2));
-
     if (!updates || !Array.isArray(updates)) {
-      // console.error('Invalid updates format:', updates);
+      console.error('Invalid updates format - updates is not an array:', typeof updates, updates);
       return res.status(400).json({ error: 'Invalid updates format' });
     }
 
+    console.log(`Processing ${updates.length} update(s)`);
+
+    // Validate all subCategoryIds before processing
+    const invalidIds = updates.filter(({ subCategoryId }) => 
+      !subCategoryId || !mongoose.Types.ObjectId.isValid(subCategoryId)
+    );
+    
+    if (invalidIds.length > 0) {
+      console.error('Invalid subCategoryIds found:', invalidIds.map(u => u.subCategoryId));
+      return res.status(400).json({ 
+        error: 'Invalid subCategoryId(s) provided',
+        invalidIds: invalidIds.map(u => u.subCategoryId)
+      });
+    }
+
+    console.log('All subCategoryIds are valid. Starting updates...');
+
     const updatePromises = updates.map(async ({ subCategoryId, serviceAttributes }) => {
-      // console.log(`Updating subcategory ${subCategoryId} with attributes:`, serviceAttributes);
-      const result = await ServiceSubCategory.findByIdAndUpdate(
-        subCategoryId,
-        { serviceAttributes },
-        { new: true }
-      );
-      // console.log(`Updated subcategory ${subCategoryId}:`, result?.serviceAttributes);
-      return result;
+      try {
+        console.log(`Updating subcategory ${subCategoryId} with ${serviceAttributes?.length || 0} attributes`);
+        console.log(`Attributes to save:`, serviceAttributes);
+        
+        const result = await ServiceSubCategory.findByIdAndUpdate(
+          subCategoryId,
+          { serviceAttributes },
+          { new: true, runValidators: true }
+        );
+        if (!result) {
+          throw new Error(`Service subcategory with id ${subCategoryId} not found`);
+        }
+        console.log(`Successfully updated subcategory ${subCategoryId}`);
+        console.log(`Updated attributes:`, result.serviceAttributes);
+        return result;
+      } catch (error) {
+        console.error(`Error updating subcategory ${subCategoryId}:`, error);
+        console.error(`Error details for ${subCategoryId}:`, {
+          message: error.message,
+          stack: error.stack,
+          code: error.code,
+          name: error.name,
+          errors: error.errors
+        });
+        
+        // Log validation errors in detail
+        if (error.name === 'ValidationError' && error.errors) {
+          console.error(`Validation errors for ${subCategoryId}:`);
+          Object.keys(error.errors).forEach(key => {
+            console.error(`  - ${key}: ${error.errors[key].message}`);
+          });
+        }
+        
+        throw error;
+      }
     });
 
     const results = await Promise.all(updatePromises);
-    // console.log('All updates completed. Total updated:', results.length);
+    console.log(`Successfully completed ${results.length} update(s)`);
+    console.log('=== BULK UPDATE ATTRIBUTES SUCCESS ===');
 
     return res.json({
       message: 'Service attributes updated successfully',
       updatedCount: results.length
     });
   } catch (error) {
-    // console.error('Bulk update service attributes error', error);
-    return res.status(500).json({ error: 'Failed to update service attributes' });
+    console.error('=== BULK UPDATE ATTRIBUTES ERROR ===');
+    console.error('Error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      name: error.name,
+      errors: error.errors
+    });
+    
+    // Log validation errors in detail
+    if (error.name === 'ValidationError' && error.errors) {
+      console.error('Validation errors:');
+      Object.keys(error.errors).forEach(key => {
+        console.error(`  - ${key}: ${error.errors[key].message}`);
+      });
+    }
+    
+    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    console.error('=== END ERROR ===');
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = {};
+      if (error.errors) {
+        Object.keys(error.errors).forEach(key => {
+          validationErrors[key] = error.errors[key].message;
+        });
+      }
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors,
+        message: error.message
+      });
+    }
+    
+    return res.status(500).json({ 
+      error: 'Failed to update service attributes',
+      details: error.message,
+      errorCode: error.code,
+      errorName: error.name
+    });
   }
 });
 
 // Update service subcategory (Admin only)
+// NOTE: This route MUST come after all specific routes like /bulk-update-attributes
 router.put('/:id', async (req, res) => {
+  console.log('=== UPDATE SERVICE SUBCATEGORY REQUEST ===');
+  console.log('Request received at:', new Date().toISOString());
+  console.log('Route ID:', req.params.id);
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  
   try {
     const { id } = req.params;
     
-    // Validate that id is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid service subcategory ID' });
+    // Explicitly reject known route names that should not match this pattern
+    const reservedRoutes = ['bulk-update-attributes', 'bulk', 'bulk/order'];
+    if (reservedRoutes.includes(id)) {
+      console.error(`ERROR: Route /${id} was incorrectly matched to /:id handler. This should not happen!`);
+      return res.status(404).json({ 
+        error: 'Route not found',
+        message: `The route /${id} should be handled by a specific route handler, not /:id`
+      });
     }
+    
+    // Validate that id is a valid ObjectId
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      console.error('Invalid service subcategory ID:', id);
+      return res.status(400).json({ 
+        error: 'Invalid service subcategory ID',
+        receivedId: id
+      });
+    }
+    
+    console.log(`Valid ObjectId: ${id}`);
     
     const {
       serviceCategory,
@@ -728,10 +837,22 @@ router.put('/:id', async (req, res) => {
       serviceTitleSuggestions,
     } = req.body;
     
+    console.log('Fields to update:', {
+      hasServiceCategory: !!serviceCategory,
+      hasName: name !== undefined,
+      hasServiceTitleSuggestions: serviceTitleSuggestions !== undefined,
+      hasTitles: titles !== undefined,
+      serviceTitleSuggestionsCount: Array.isArray(serviceTitleSuggestions) ? serviceTitleSuggestions.length : 0,
+      titlesCount: Array.isArray(titles) ? titles.length : 0
+    });
+    
     const serviceSubCategory = await ServiceSubCategory.findById(id);
     if (!serviceSubCategory) {
+      console.error(`Service subcategory not found for ID: ${id}`);
       return res.status(404).json({ error: 'Service subcategory not found' });
     }
+    
+    console.log(`Found service subcategory: ${serviceSubCategory.name || serviceSubCategory._id}`);
     
     // Update service category if provided
     if (serviceCategory) {
@@ -789,48 +910,133 @@ router.put('/:id', async (req, res) => {
     if (isActive !== undefined) serviceSubCategory.isActive = isActive;
     if (categoryLevel !== undefined) serviceSubCategory.categoryLevel = parseInt(categoryLevel);
     if (serviceTitleSuggestions !== undefined) {
+      console.log('Updating serviceTitleSuggestions...');
       // Ensure serviceTitleSuggestions is an array of strings
       if (Array.isArray(serviceTitleSuggestions)) {
-        serviceSubCategory.serviceTitleSuggestions = serviceTitleSuggestions
+        const filteredTitles = serviceTitleSuggestions
           .map(title => typeof title === 'string' ? title.trim() : String(title))
           .filter(title => title.length > 0);
+        console.log(`Filtered ${serviceTitleSuggestions.length} titles to ${filteredTitles.length} valid titles`);
+        serviceSubCategory.serviceTitleSuggestions = filteredTitles;
       } else {
+        console.log('serviceTitleSuggestions is not an array, setting to empty array');
         serviceSubCategory.serviceTitleSuggestions = [];
       }
     }
     if (titles !== undefined) {
+      console.log('Updating titles...');
       // Update titles - merge with existing titles, replacing those with the same level
       const existingTitles = serviceSubCategory.titles || [];
       const newTitles = titles || [];
+      console.log(`Existing titles: ${existingTitles.length}, New titles: ${newTitles.length}`);
 
       // Remove existing titles with levels that match new titles
       const newTitleLevels = new Set(newTitles.map(t => t.level));
       const filteredExisting = existingTitles.filter(t => !newTitleLevels.has(t.level));
+      console.log(`Filtered existing titles: ${filteredExisting.length}`);
 
       // Combine filtered existing titles with new titles
       serviceSubCategory.titles = [...filteredExisting, ...newTitles];
+      console.log(`Final titles count: ${serviceSubCategory.titles.length}`);
+    }
+    
+    console.log('Saving service subcategory...');
+    console.log('Current state before save:', {
+      name: serviceSubCategory.name,
+      serviceTitleSuggestions: serviceSubCategory.serviceTitleSuggestions,
+      titles: serviceSubCategory.titles,
+      serviceAttributes: serviceSubCategory.serviceAttributes,
+      categoryLevel: serviceSubCategory.categoryLevel
+    });
+    
+    // Validate before save
+    const validationError = serviceSubCategory.validateSync();
+    if (validationError) {
+      console.error('Validation error before save:', validationError);
+      const validationErrors = {};
+      if (validationError.errors) {
+        Object.keys(validationError.errors).forEach(key => {
+          validationErrors[key] = validationError.errors[key].message;
+        });
+      }
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors,
+        message: validationError.message
+      });
     }
     
     await serviceSubCategory.save();
+    console.log('Service subcategory saved successfully');
+    console.log('Saved state:', {
+      serviceTitleSuggestions: serviceSubCategory.serviceTitleSuggestions,
+      titles: serviceSubCategory.titles
+    });
     
     // Populate service category for response
     await serviceSubCategory.populate('serviceCategory', 'name slug');
     
+    console.log('=== UPDATE SERVICE SUBCATEGORY SUCCESS ===');
     return res.json({ serviceSubCategory });
   } catch (error) {
-    console.error('Update service subcategory error', error);
+    console.error('=== UPDATE SERVICE SUBCATEGORY ERROR ===');
+    console.error('Error:', error);
     console.error('Error details:', {
       message: error.message,
       stack: error.stack,
       code: error.code,
-      name: error.name
+      name: error.name,
+      errors: error.errors,
+      keyPattern: error.keyPattern,
+      keyValue: error.keyValue
     });
-    if (error.code === 11000) {
-      return res.status(409).json({ error: 'Service subcategory with this name already exists in this service category' });
+    
+    // Log validation errors in detail
+    if (error.name === 'ValidationError' && error.errors) {
+      console.error('Validation errors:');
+      Object.keys(error.errors).forEach(key => {
+        console.error(`  - ${key}: ${error.errors[key].message}`);
+      });
     }
+    
+    console.error('Request params:', req.params);
+    console.error('Request body was:', JSON.stringify(req.body, null, 2));
+    console.error('=== END ERROR ===');
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        error: 'Service subcategory with this name already exists in this service category',
+        duplicateField: error.keyPattern ? Object.keys(error.keyPattern)[0] : undefined,
+        duplicateValue: error.keyValue
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = {};
+      if (error.errors) {
+        Object.keys(error.errors).forEach(key => {
+          validationErrors[key] = error.errors[key].message;
+        });
+      }
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors,
+        message: error.message
+      });
+    }
+    
+    // Always include error details in response for debugging
     return res.status(500).json({ 
       error: 'Failed to update service subcategory',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: error.message,
+      errorCode: error.code,
+      errorName: error.name,
+      ...(error.errors && { validationErrors: Object.keys(error.errors).reduce((acc, key) => {
+        acc[key] = error.errors[key].message;
+        return acc;
+      }, {}) })
     });
   }
 });
@@ -839,6 +1045,12 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Validate that id is a valid ObjectId
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid service subcategory ID' });
+    }
+    
     const { hardDelete = 'false' } = req.query;
     
     const serviceSubCategory = await ServiceSubCategory.findById(id);
