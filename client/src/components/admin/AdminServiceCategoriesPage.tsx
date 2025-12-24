@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List } from "lucide-react";
 import {
   DndContext,
@@ -332,6 +332,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
 export default function AdminServiceCategoriesPage() {
   useAdminRouteGuard();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [selectedSectorId, setSelectedSectorId] = useState<string>("");
@@ -489,6 +490,61 @@ export default function AdminServiceCategoriesPage() {
   useEffect(() => {
     fetchSectors();
   }, []);
+
+  // Handle URL parameters for redirecting to subcategories view
+  useEffect(() => {
+    const categoryId = searchParams.get('categoryId');
+    const view = searchParams.get('view');
+    
+    if (categoryId && view === 'subcategories') {
+      // Fetch the category and navigate to subcategories view
+      const loadCategoryAndNavigate = async () => {
+        try {
+          const response = await fetch(
+            resolveApiUrl(`/api/service-categories/${categoryId}?includeSector=true&includeSubCategories=true`),
+            { credentials: "include" }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            const category = data.serviceCategory;
+            
+            if (category) {
+              // Set the sector as selected
+              const sectorId = typeof category.sector === 'string' 
+                ? category.sector 
+                : category.sector?._id;
+              
+              if (sectorId) {
+                setSelectedSectorId(sectorId);
+              }
+              
+              // Navigate to subcategories view
+              setSelectedServiceCategory(category);
+              setSelectedParentSubCategory(null);
+              setSubCategoryBreadcrumb([{ id: category._id, name: category.name, type: 'category' }]);
+              setViewMode("subcategories");
+              setSubCategoryPage(1);
+              setSubCategorySearchTerm("");
+              
+              // Set Level 2 (Sub Category) as the first tab
+              setSelectedAttributeType(null);
+              
+              // Clear URL parameters first
+              setSearchParams({});
+              
+              // Fetch subcategories will be triggered by the useEffect that watches viewMode and selectedServiceCategory
+              // No need to call it manually here
+            }
+          }
+        } catch (error) {
+          console.error("Error loading category:", error);
+        }
+      };
+      
+      loadCategoryAndNavigate();
+    }
+  }, [searchParams, setSearchParams]);
 
   // Handle tab change from AdminPageLayout
   const handleTabChange = (tab: string) => {
@@ -1844,11 +1900,62 @@ export default function AdminServiceCategoriesPage() {
             fetchServiceSubCategories(savedServiceCategory._id, undefined);
           }
         } else {
-          // If no sector selected, just refresh the list
-        setPage(1);
-        setSortBy("order");
-        setSortOrder("desc");
-      }
+          // If no sector selected, still navigate to subcategories view
+          // First try to get the sector from the saved category
+          if (savedServiceCategory.sector) {
+            const sectorId = typeof savedServiceCategory.sector === 'string' 
+              ? savedServiceCategory.sector 
+              : savedServiceCategory.sector._id;
+            
+            // Fetch updated category to get full data
+            const refreshResponse = await fetch(
+              resolveApiUrl(`/api/service-categories/${savedServiceCategory._id}?includeSector=true&includeSubCategories=true`),
+              { credentials: "include" }
+            );
+            
+            if (refreshResponse.ok) {
+              const refreshData = await refreshResponse.json();
+              const fullServiceCategory = refreshData.serviceCategory;
+              
+              // Set the sector as selected
+              setSelectedSectorId(sectorId);
+              
+              // Navigate to subcategories view
+              setSelectedServiceCategory(fullServiceCategory);
+              setSelectedParentSubCategory(null);
+              setSubCategoryBreadcrumb([{ id: fullServiceCategory._id, name: fullServiceCategory.name, type: 'category' }]);
+              setViewMode("subcategories");
+              setSubCategoryPage(1);
+              setSubCategorySearchTerm("");
+              
+              // Set Level 2 (Sub Category) as the first tab
+              setSelectedAttributeType(null);
+              
+              // Fetch subcategories
+              fetchServiceSubCategories(fullServiceCategory._id, undefined);
+            } else {
+              // If refresh fails, use the saved category data
+              setSelectedSectorId(sectorId);
+              setSelectedServiceCategory(savedServiceCategory);
+              setSelectedParentSubCategory(null);
+              setSubCategoryBreadcrumb([{ id: savedServiceCategory._id, name: savedServiceCategory.name, type: 'category' }]);
+              setViewMode("subcategories");
+              setSubCategoryPage(1);
+              setSubCategorySearchTerm("");
+              
+              // Set Level 2 (Sub Category) as the first tab
+              setSelectedAttributeType(null);
+              
+              fetchServiceSubCategories(savedServiceCategory._id, undefined);
+            }
+          } else {
+            // If no sector found, just refresh the list
+            setPage(1);
+            setSortBy("order");
+            setSortOrder("desc");
+            await fetchServiceCategories(selectedSectorId || '');
+          }
+        }
       } else {
         // Editing existing category - just refresh the list
         if (selectedSectorId) {

@@ -301,14 +301,22 @@ export default function AdminServiceCategoryFormPage() {
         throw new Error(errorData.message || "Failed to save category");
       }
 
+      const result = await response.json();
+      const savedCategory = result.serviceCategory;
+
       toast.success(
         isEditMode
           ? "Service category updated successfully"
           : "Service category created successfully"
       );
 
-      // Navigate back to list
-      navigate("/admin/service-category");
+      if (isEditMode) {
+        // Navigate back to list for editing
+        navigate("/admin/service-category");
+      } else {
+        // For new category, navigate to subcategories view
+        navigate(`/admin/service-category?view=subcategories&categoryId=${savedCategory._id}`);
+      }
     } catch (error: any) {
       console.error("Error saving category:", error);
       toast.error(error.message || "Failed to save category");
