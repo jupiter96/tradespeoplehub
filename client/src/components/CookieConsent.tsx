@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -10,8 +11,16 @@ import { Switch } from "./ui/switch";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import "../styles/globals.css";
 export default function CookieConsent() {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Don't show cookie consent on admin pages
+  const isAdminPage = location.pathname.startsWith('/admin') || location.pathname.startsWith('/admin-login');
+  
+  if (isAdminPage) {
+    return null;
+  }
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     necessary: false,
     performance: false,
