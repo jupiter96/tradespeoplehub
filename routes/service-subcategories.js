@@ -423,7 +423,27 @@ router.get('/', async (req, res) => {
     let serviceSubCategoriesQuery = ServiceSubCategory.find(query);
     
     // Always populate parentSubCategory to show parent information in the table
-    serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate('parentSubCategory', 'name slug');
+    // Also populate nested parentSubCategory for breadcrumb display
+    serviceSubCategoriesQuery = serviceSubCategoriesQuery.populate({
+      path: 'parentSubCategory',
+      select: 'name slug parentSubCategory',
+      populate: {
+        path: 'parentSubCategory',
+        select: 'name slug parentSubCategory',
+        populate: {
+          path: 'parentSubCategory',
+          select: 'name slug parentSubCategory',
+          populate: {
+            path: 'parentSubCategory',
+            select: 'name slug parentSubCategory',
+            populate: {
+              path: 'parentSubCategory',
+              select: 'name slug'
+            }
+          }
+        }
+      }
+    });
     
     // Include service category information if requested
     if (includeServiceCategory === 'true') {

@@ -603,6 +603,7 @@ export default function AdminServiceCategoriesPage() {
       }
 
       // Fetch subcategories from the parent level with the correct attributeType
+      // Include parentSubCategory to build breadcrumb paths
       const params = new URLSearchParams({
         activeOnly: "false",
         includeServiceCategory: "true",
@@ -627,7 +628,38 @@ export default function AdminServiceCategoriesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setLevel1SubCategories(data.serviceSubCategories || []);
+        const subCategories = data.serviceSubCategories || [];
+        
+        // Build breadcrumb paths for each subcategory using populated parent data
+        const subCategoriesWithBreadcrumbs = subCategories.map((subCat: ServiceSubCategory) => {
+          const breadcrumb: string[] = [];
+          let currentParent = subCat.parentSubCategory;
+          
+          // Build breadcrumb by traversing up the populated parent chain
+          while (currentParent) {
+            let parentName: string;
+            
+            if (currentParent && typeof currentParent === 'object') {
+              parentName = (currentParent as ServiceSubCategory).name || '';
+              if (parentName) {
+                breadcrumb.unshift(parentName); // Add to beginning
+              }
+              // Move to next parent in the chain
+              currentParent = (currentParent as ServiceSubCategory).parentSubCategory;
+            } else {
+              // If parent is just an ID (not populated), we can't build breadcrumb
+              // This shouldn't happen if populate is working correctly
+              break;
+            }
+          }
+          
+          return {
+            ...subCat,
+            breadcrumbPath: breadcrumb.length > 0 ? breadcrumb.join(' > ') : null
+          };
+        });
+        
+        setLevel1SubCategories(subCategoriesWithBreadcrumbs);
       }
     } catch (error) {
       // console.error("Error fetching parent subcategories:", error);
@@ -3565,9 +3597,24 @@ export default function AdminServiceCategoriesPage() {
                         <SelectValue placeholder={`Select a ${parentTabLabel}`} />
                       </SelectTrigger>
                       <SelectContent>
-                        {level1SubCategories.map((subCat) => (
+                        {level1SubCategories.map((subCat: any) => (
                           <SelectItem key={subCat._id} value={subCat._id}>
-                            {subCat.name}
+                            <div className="flex flex-col gap-0.5">
+                              {subCat.breadcrumbPath ? (
+                                <>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+                                    {subCat.breadcrumbPath}
+                                  </span>
+                                  <span className="text-sm font-medium text-black dark:text-white leading-tight">
+                                    {subCat.name}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-sm font-medium text-black dark:text-white leading-tight">
+                                  {subCat.name}
+                                </span>
+                              )}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
