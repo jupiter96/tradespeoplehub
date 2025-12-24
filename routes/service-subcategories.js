@@ -21,6 +21,35 @@ const getCached = (key) => {
 const setCached = (key, value) => {
   _cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 };
+// Clear cache for a specific service category or all cache
+const clearCache = (serviceCategoryId = null) => {
+  if (serviceCategoryId) {
+    // Clear all cache entries that might contain this service category
+    const keysToDelete = [];
+    for (const key of _cache.keys()) {
+      // Match various formats of serviceCategoryId in the URL
+      const idStr = serviceCategoryId.toString();
+      if (key.includes(`serviceCategoryId=${idStr}`) || 
+          key.includes(`serviceCategoryId=${serviceCategoryId}`) ||
+          key.includes(`serviceCategorySlug=`) || // Also clear by slug queries
+          key.includes(`parentSubCategoryId=`)) { // Clear parent queries too
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => _cache.delete(key));
+    console.log(`Cleared ${keysToDelete.length} cache entries for serviceCategoryId: ${serviceCategoryId}`);
+    
+    // Also clear all cache if we're being conservative (any update might affect nested data)
+    if (keysToDelete.length === 0) {
+      _cache.clear();
+      console.log('No matching cache entries found, cleared all cache to be safe');
+    }
+  } else {
+    // Clear all cache
+    _cache.clear();
+    console.log('Cleared all cache entries');
+  }
+};
 
 // Get all service subcategories (with optional filtering)
 router.get('/', async (req, res) => {
@@ -40,10 +69,13 @@ router.get('/', async (req, res) => {
       search
     } = req.query;
 
+    // Only cache public requests (activeOnly=true, no search, no admin-specific params)
+    // Admin pages use activeOnly=false, so they bypass cache automatically
     const shouldCache =
       req.method === 'GET' &&
       activeOnly === 'true' &&
-      !search;
+      !search &&
+      !req.query.includeServiceCategory; // Admin requests often include this
     const cacheKey = shouldCache ? req.originalUrl : null;
     if (cacheKey) {
       const cached = getCached(cacheKey);
@@ -712,7 +744,17 @@ router.put('/bulk-update-attributes', async (req, res) => {
         }
         console.log(`Successfully updated subcategory ${subCategoryId}`);
         console.log(`Updated attributes:`, result.serviceAttributes);
-        return result;
+        
+        // Get serviceCategory for cache clearing (could be ObjectId or populated)
+        const serviceCategoryId = result.serviceCategory 
+          ? (result.serviceCategory._id || result.serviceCategory).toString()
+          : null;
+        
+        return {
+          _id: result._id,
+          serviceAttributes: result.serviceAttributes,
+          serviceCategory: serviceCategoryId
+        };
       } catch (error) {
         console.error(`Error updating subcategory ${subCategoryId}:`, error);
         console.error(`Error details for ${subCategoryId}:`, {
@@ -737,6 +779,44 @@ router.put('/bulk-update-attributes', async (req, res) => {
 
     const results = await Promise.all(updatePromises);
     console.log(`Successfully completed ${results.length} update(s)`);
+    
+    // Verify data was saved by reading back from database and clear cache
+    const serviceCategoryIds = new Set();
+    for (const result of results) {
+      const verified = await ServiceSubCategory.findById(result._id).lean();
+      console.log(`Verified saved data for ${result._id}:`, {
+        serviceAttributes: verified?.serviceAttributes,
+        attributesCount: verified?.serviceAttributes?.length || 0
+      });
+      if (!verified) {
+        console.error(`ERROR: Could not verify saved data for ${result._id} - document not found!`);
+      } else if (JSON.stringify(verified.serviceAttributes) !== JSON.stringify(result.serviceAttributes)) {
+        console.error(`WARNING: Data mismatch for ${result._id}!`, {
+          saved: verified.serviceAttributes,
+          expected: result.serviceAttributes
+        });
+      } else {
+        console.log(`✓ Data verified successfully for ${result._id}`);
+      }
+      
+      // Collect serviceCategory IDs for cache clearing
+      if (result.serviceCategory) {
+        serviceCategoryIds.add(result.serviceCategory);
+      } else if (verified?.serviceCategory) {
+        serviceCategoryIds.add(verified.serviceCategory.toString());
+      }
+    }
+    
+    // Clear cache for affected service categories
+    serviceCategoryIds.forEach(id => clearCache(id));
+    if (serviceCategoryIds.size === 0) {
+      // If no serviceCategory found, clear all cache to be safe
+      console.log('No serviceCategory IDs found, clearing all cache');
+      clearCache();
+    } else {
+      console.log(`Cleared cache for ${serviceCategoryIds.size} service category(ies)`);
+    }
+    
     console.log('=== BULK UPDATE ATTRIBUTES SUCCESS ===');
 
     return res.json({
@@ -977,8 +1057,66 @@ router.put('/:id', async (req, res) => {
     console.log('Service subcategory saved successfully');
     console.log('Saved state:', {
       serviceTitleSuggestions: updatedSubCategory.serviceTitleSuggestions,
-      titles: updatedSubCategory.titles
+      titles: updatedSubCategory.titles,
+      serviceAttributes: updatedSubCategory.serviceAttributes
     });
+    
+    // Verify data was saved by reading back from database
+    const verified = await ServiceSubCategory.findById(id).lean();
+    console.log('Verified saved data from database:', {
+      _id: verified?._id,
+      serviceTitleSuggestions: verified?.serviceTitleSuggestions,
+      titles: verified?.titles,
+      serviceAttributes: verified?.serviceAttributes,
+      titlesCount: verified?.titles?.length || 0,
+      suggestionsCount: verified?.serviceTitleSuggestions?.length || 0,
+      attributesCount: verified?.serviceAttributes?.length || 0
+    });
+    
+    // Verify the data matches what we saved
+    if (verified) {
+      if (updateData.serviceTitleSuggestions !== undefined) {
+        const savedMatches = JSON.stringify(verified.serviceTitleSuggestions) === JSON.stringify(updateData.serviceTitleSuggestions);
+        console.log(`ServiceTitleSuggestions match: ${savedMatches}`);
+        if (!savedMatches) {
+          console.error('WARNING: serviceTitleSuggestions mismatch!', {
+            saved: verified.serviceTitleSuggestions,
+            expected: updateData.serviceTitleSuggestions
+          });
+        }
+      }
+      if (updateData.titles !== undefined) {
+        const savedMatches = JSON.stringify(verified.titles) === JSON.stringify(updateData.titles);
+        console.log(`Titles match: ${savedMatches}`);
+        if (!savedMatches) {
+          console.error('WARNING: titles mismatch!', {
+            saved: verified.titles,
+            expected: updateData.titles
+          });
+        }
+      }
+      if (updateData.serviceAttributes !== undefined) {
+        const savedMatches = JSON.stringify(verified.serviceAttributes) === JSON.stringify(updateData.serviceAttributes);
+        console.log(`ServiceAttributes match: ${savedMatches}`);
+        if (!savedMatches) {
+          console.error('WARNING: serviceAttributes mismatch!', {
+            saved: verified.serviceAttributes,
+            expected: updateData.serviceAttributes
+          });
+        }
+      }
+    } else {
+      console.error('ERROR: Could not verify saved data - document not found!');
+    }
+    
+    // Clear cache for this service category
+    const categoryIdToClear = updatedSubCategory.serviceCategory || serviceSubCategory.serviceCategory;
+    if (categoryIdToClear) {
+      clearCache(categoryIdToClear.toString());
+    } else {
+      // If no serviceCategory found, clear all cache to be safe
+      clearCache();
+    }
     
     // Populate service category for response
     await updatedSubCategory.populate('serviceCategory', 'name slug');
