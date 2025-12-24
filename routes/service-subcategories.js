@@ -765,6 +765,16 @@ router.put('/bulk-update-attributes', async (req, res) => {
     console.error('Request body was:', JSON.stringify(req.body, null, 2));
     console.error('=== END ERROR ===');
     
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        error: 'Duplicate key violation',
+        duplicateField: error.keyPattern ? Object.keys(error.keyPattern)[0] : undefined,
+        duplicateValue: error.keyValue,
+        details: error.message
+      });
+    }
+    
     // Handle validation errors
     if (error.name === 'ValidationError') {
       const validationErrors = {};
@@ -784,7 +794,11 @@ router.put('/bulk-update-attributes', async (req, res) => {
       error: 'Failed to update service attributes',
       details: error.message,
       errorCode: error.code,
-      errorName: error.name
+      errorName: error.name,
+      ...(error.errors && { validationErrors: Object.keys(error.errors).reduce((acc, key) => {
+        acc[key] = error.errors[key].message;
+        return acc;
+      }, {}) })
     });
   }
 });
@@ -854,9 +868,9 @@ router.put('/:id', async (req, res) => {
     
     console.log(`Found service subcategory: ${serviceSubCategory.name || serviceSubCategory._id}`);
     
-    // Update service category if provided
+    // Handle service category update if provided
+    let serviceCategoryDoc = null;
     if (serviceCategory) {
-      let serviceCategoryDoc;
       if (serviceCategory.match(/^[0-9a-fA-F]{24}$/)) {
         serviceCategoryDoc = await ServiceCategory.findById(serviceCategory);
       } else {
@@ -866,14 +880,13 @@ router.put('/:id', async (req, res) => {
       if (!serviceCategoryDoc) {
         return res.status(404).json({ error: 'Service category not found' });
       }
-      
-      serviceSubCategory.serviceCategory = serviceCategoryDoc._id;
     }
     
     // Check if name is being changed and if it conflicts
     if (name && name.trim() !== serviceSubCategory.name) {
+      const targetServiceCategory = serviceCategoryDoc ? serviceCategoryDoc._id : serviceSubCategory.serviceCategory;
       const existingServiceSubCategory = await ServiceSubCategory.findOne({ 
-        serviceCategory: serviceSubCategory.serviceCategory, 
+        serviceCategory: targetServiceCategory, 
         name: name.trim(),
         _id: { $ne: id }
       });
@@ -882,45 +895,28 @@ router.put('/:id', async (req, res) => {
       }
     }
     
-    // Auto-generate slug from name if name is changed (ignore provided slug)
-    if (name !== undefined && name.trim() !== serviceSubCategory.name) {
-      let newSlug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-      
-      // Check if slug already exists globally, if so, append number
-      let finalSlug = newSlug;
-      let counter = 1;
-      while (await ServiceSubCategory.findOne({ slug: finalSlug, _id: { $ne: id } })) {
-        finalSlug = `${newSlug}-${counter}`;
-        counter++;
-      }
-      serviceSubCategory.slug = finalSlug;
-    }
-    
-    // Update fields
-    if (name !== undefined) serviceSubCategory.name = name.trim();
-    if (order !== undefined) serviceSubCategory.order = order;
-    if (description !== undefined) serviceSubCategory.description = description;
-    if (metaTitle !== undefined) serviceSubCategory.metaTitle = metaTitle;
-    if (metaDescription !== undefined) serviceSubCategory.metaDescription = metaDescription;
-    if (bannerImage !== undefined) serviceSubCategory.bannerImage = bannerImage;
-    if (icon !== undefined) serviceSubCategory.icon = icon;
-    if (isActive !== undefined) serviceSubCategory.isActive = isActive;
-    if (categoryLevel !== undefined) serviceSubCategory.categoryLevel = parseInt(categoryLevel);
+    // Build update object with only the fields that are being updated
+    const updateData = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (order !== undefined) updateData.order = order;
+    if (description !== undefined) updateData.description = description;
+    if (metaTitle !== undefined) updateData.metaTitle = metaTitle;
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+    if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
+    if (icon !== undefined) updateData.icon = icon;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (categoryLevel !== undefined) updateData.categoryLevel = parseInt(categoryLevel);
     if (serviceTitleSuggestions !== undefined) {
       console.log('Updating serviceTitleSuggestions...');
-      // Ensure serviceTitleSuggestions is an array of strings
       if (Array.isArray(serviceTitleSuggestions)) {
         const filteredTitles = serviceTitleSuggestions
           .map(title => typeof title === 'string' ? title.trim() : String(title))
           .filter(title => title.length > 0);
         console.log(`Filtered ${serviceTitleSuggestions.length} titles to ${filteredTitles.length} valid titles`);
-        serviceSubCategory.serviceTitleSuggestions = filteredTitles;
+        updateData.serviceTitleSuggestions = filteredTitles;
       } else {
         console.log('serviceTitleSuggestions is not an array, setting to empty array');
-        serviceSubCategory.serviceTitleSuggestions = [];
+        updateData.serviceTitleSuggestions = [];
       }
     }
     if (titles !== undefined) {
@@ -936,48 +932,59 @@ router.put('/:id', async (req, res) => {
       console.log(`Filtered existing titles: ${filteredExisting.length}`);
 
       // Combine filtered existing titles with new titles
-      serviceSubCategory.titles = [...filteredExisting, ...newTitles];
-      console.log(`Final titles count: ${serviceSubCategory.titles.length}`);
+      updateData.titles = [...filteredExisting, ...newTitles];
+      console.log(`Final titles count: ${updateData.titles.length}`);
+    }
+    if (serviceCategoryDoc) {
+      updateData.serviceCategory = serviceCategoryDoc._id;
+    }
+    
+    // Auto-generate slug from name if name is changed
+    if (name !== undefined && name.trim() !== serviceSubCategory.name) {
+      let newSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      
+      // Check if slug already exists globally, if so, append number
+      let finalSlug = newSlug;
+      let counter = 1;
+      while (await ServiceSubCategory.findOne({ slug: finalSlug, _id: { $ne: id } })) {
+        finalSlug = `${newSlug}-${counter}`;
+        counter++;
+      }
+      updateData.slug = finalSlug;
     }
     
     console.log('Saving service subcategory...');
-    console.log('Current state before save:', {
-      name: serviceSubCategory.name,
-      serviceTitleSuggestions: serviceSubCategory.serviceTitleSuggestions,
-      titles: serviceSubCategory.titles,
-      serviceAttributes: serviceSubCategory.serviceAttributes,
-      categoryLevel: serviceSubCategory.categoryLevel
-    });
+    console.log('Update data:', JSON.stringify(updateData, null, 2));
     
-    // Validate before save
-    const validationError = serviceSubCategory.validateSync();
-    if (validationError) {
-      console.error('Validation error before save:', validationError);
-      const validationErrors = {};
-      if (validationError.errors) {
-        Object.keys(validationError.errors).forEach(key => {
-          validationErrors[key] = validationError.errors[key].message;
-        });
+    // Use findByIdAndUpdate with runValidators to ensure all validations (including unique indexes) are checked
+    const updatedSubCategory = await ServiceSubCategory.findByIdAndUpdate(
+      id,
+      updateData,
+      { 
+        new: true, 
+        runValidators: true
       }
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: validationErrors,
-        message: validationError.message
-      });
+    );
+    
+    if (!updatedSubCategory) {
+      console.error(`Service subcategory not found after update for ID: ${id}`);
+      return res.status(404).json({ error: 'Service subcategory not found' });
     }
     
-    await serviceSubCategory.save();
     console.log('Service subcategory saved successfully');
     console.log('Saved state:', {
-      serviceTitleSuggestions: serviceSubCategory.serviceTitleSuggestions,
-      titles: serviceSubCategory.titles
+      serviceTitleSuggestions: updatedSubCategory.serviceTitleSuggestions,
+      titles: updatedSubCategory.titles
     });
     
     // Populate service category for response
-    await serviceSubCategory.populate('serviceCategory', 'name slug');
+    await updatedSubCategory.populate('serviceCategory', 'name slug');
     
     console.log('=== UPDATE SERVICE SUBCATEGORY SUCCESS ===');
-    return res.json({ serviceSubCategory });
+    return res.json({ serviceSubCategory: updatedSubCategory });
   } catch (error) {
     console.error('=== UPDATE SERVICE SUBCATEGORY ERROR ===');
     console.error('Error:', error);
