@@ -36,7 +36,7 @@ import { toast } from "sonner";
 
 import API_BASE_URL from "../config/api";
 import { validatePassword } from "../utils/passwordValidation";
-import { validateUKPhone, normalizePhoneForBackend } from "../utils/phoneValidation";
+import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -232,10 +232,15 @@ export default function LoginPage() {
         errors.travelDistance = "Travel distance is required";
       }
     }
-    if (!registerPhone.trim()) {
+    // Parse phone value: format is "{countryCode}|{phoneNumber}"
+    const phoneParts = registerPhone.includes('|') ? registerPhone.split('|') : ['+44', registerPhone.replace(/\D/g, '')];
+    const countryCode = phoneParts[0] || '+44';
+    const phoneNumber = phoneParts[1] || '';
+    
+    if (!phoneNumber.trim()) {
       errors.phone = "Phone number is required";
     } else {
-      const phoneValidation = validateUKPhone(registerPhone);
+      const phoneValidation = validatePhoneNumber(phoneNumber);
       if (!phoneValidation.isValid) {
         errors.phone = phoneValidation.error || "Invalid phone number format";
       }
@@ -267,11 +272,12 @@ export default function LoginPage() {
       return;
     }
 
+    // phoneParts, countryCode, and phoneNumber are already declared above
     const registerData = {
       firstName: registerFirstName,
       lastName: registerLastName,
       email: registerEmail,
-      phone: normalizePhoneForBackend(registerPhone), // Remove country code before sending
+      phone: normalizePhoneForBackend(phoneNumber, countryCode), // Add country code before sending
       postcode: registerPostcode,
       password: registerPassword,
       referralCode: registerReferralCode,
@@ -1033,6 +1039,14 @@ export default function LoginPage() {
                         value={registerPhone}
                     onChange={(value) => {
                       setRegisterPhone(value);
+                      // Parse phone value: format is "{countryCode}|{phoneNumber}"
+                      const phoneParts = value.includes('|') ? value.split('|') : ['+44', value.replace(/\D/g, '')];
+                      const phoneNumber = phoneParts[1] || '';
+                      
+                      // Clear field error when user starts typing or when validation passes
+                      if (phoneNumber) {
+                        const phoneValidation = validatePhoneNumber(phoneNumber);
+                        if (phoneValidation.isValid) {
                           if (fieldErrors.phone) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
@@ -1040,7 +1054,15 @@ export default function LoginPage() {
                               return newErrors;
                             });
                           }
-                        }}
+                        }
+                      } else if (fieldErrors.phone) {
+                        setFieldErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.phone;
+                          return newErrors;
+                        });
+                      }
+                    }}
                     placeholder="7123 456789"
                     error={fieldErrors.phone}
                         required

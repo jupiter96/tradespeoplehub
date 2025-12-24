@@ -87,7 +87,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import API_BASE_URL from "../config/api";
-import { validateUKPhone, normalizePhoneForBackend } from "../utils/phoneValidation";
+import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 import {
   Dialog,
   DialogContent,
@@ -1890,8 +1890,16 @@ function DetailsSection() {
       return;
     }
 
-    // Validate phone number
-    const phoneValidation = validateUKPhone(formData.phone);
+    // Validate phone number (remove country code if present)
+    let phoneNumber = formData.phone.replace(/\D/g, '');
+    // If starts with country code (44, 1, etc.), remove it
+    if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
+      phoneNumber = phoneNumber.substring(2);
+    } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
+      phoneNumber = phoneNumber.substring(1);
+    }
+    
+    const phoneValidation = validatePhoneNumber(phoneNumber);
     if (!phoneValidation.isValid) {
       setPhoneError(phoneValidation.error);
       toast.error(phoneValidation.error || "Invalid phone number format");
@@ -1917,7 +1925,16 @@ function DetailsSection() {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       email: formData.email.trim(),
-      phone: normalizePhoneForBackend(formData.phone), // Remove country code before sending
+      phone: (() => {
+        // Remove country code if present and normalize
+        let phoneNumber = formData.phone.replace(/\D/g, '');
+        if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
+          phoneNumber = phoneNumber.substring(2);
+        } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
+          phoneNumber = phoneNumber.substring(1);
+        }
+        return normalizePhoneForBackend(phoneNumber, '+44'); // Add country code before sending
+      })(),
       postcode: formData.postcode.trim(),
       address: formData.address.trim() || undefined,
       townCity: formData.townCity.trim() || undefined,
@@ -2266,9 +2283,17 @@ function DetailsSection() {
                   setPhoneOTPHint(null);
                 }
                 
-                // Validate phone number
+                // Validate phone number (remove country code if present)
                 if (newPhone.trim()) {
-                  const phoneValidation = validateUKPhone(newPhone);
+                  let phoneNumber = newPhone.replace(/\D/g, '');
+                  // If starts with country code (44, 1, etc.), remove it
+                  if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
+                    phoneNumber = phoneNumber.substring(2);
+                  } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
+                    phoneNumber = phoneNumber.substring(1);
+                  }
+                  
+                  const phoneValidation = validatePhoneNumber(phoneNumber);
                   if (!phoneValidation.isValid) {
                     setPhoneError(phoneValidation.error);
                   } else {
@@ -2296,7 +2321,14 @@ function DetailsSection() {
                       console.log('[Phone Verification] AccountPage - Requesting phone change OTP for:', formData.phone);
                       setIsSendingPhoneOTP(true);
                       try {
-                        const normalizedPhone = normalizePhoneForBackend(formData.phone); // Remove country code before sending
+                        // Remove country code if present and normalize
+                        let phoneNumber = formData.phone.replace(/\D/g, '');
+                        if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
+                          phoneNumber = phoneNumber.substring(2);
+                        } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
+                          phoneNumber = phoneNumber.substring(1);
+                        }
+                        const normalizedPhone = normalizePhoneForBackend(phoneNumber, '+44'); // Add country code before sending
                         const response = await requestPhoneChangeOTP(normalizedPhone);
                         console.log('[Phone Verification] AccountPage - Phone change OTP request successful');
                         setPhoneOTPSent(true);

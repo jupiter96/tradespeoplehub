@@ -121,11 +121,16 @@ export default function SocialOnboardingPage() {
         errors.travelDistance = "Travel distance is required";
       }
     }
-    if (!phone.trim()) {
+    // Parse phone value: format is "{countryCode}|{phoneNumber}"
+    const phoneParts = phone.includes('|') ? phone.split('|') : ['+44', phone.replace(/\D/g, '')];
+    const countryCode = phoneParts[0] || '+44';
+    const phoneNumber = phoneParts[1] || '';
+    
+    if (!phoneNumber.trim()) {
       errors.phone = "Phone number is required";
     } else {
-      const { validateUKPhone } = await import("../utils/phoneValidation");
-      const phoneValidation = validateUKPhone(phone);
+      const { validatePhoneNumber } = await import("../utils/phoneValidation");
+      const phoneValidation = validatePhoneNumber(phoneNumber);
       if (!phoneValidation.isValid) {
         errors.phone = phoneValidation.error || "Invalid phone number format";
       }
@@ -146,12 +151,14 @@ export default function SocialOnboardingPage() {
 
     // Store registration data for after phone verification
     const { normalizePhoneForBackend } = await import("../utils/phoneValidation");
-    const normalizedPhone = normalizePhoneForBackend(phone);
+    // phoneParts, countryCode, and phoneNumber are already declared above
+    const normalizedPhone = normalizePhoneForBackend(phoneNumber, countryCode); // Add country code before sending
+    
     const data = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),
-      phone: normalizedPhone, // Remove country code before sending
+      phone: normalizedPhone,
       postcode: postcode.trim(),
       referralCode: referralCode.trim(),
       userType,
@@ -168,6 +175,7 @@ export default function SocialOnboardingPage() {
 
     setIsSendingPhoneCode(true);
     try {
+      // normalizedPhone is already calculated above
       await sendSocialPhoneCode(normalizedPhone); // Remove country code before sending
       setShowPhoneVerification(true);
     } catch (err: any) {
@@ -509,9 +517,26 @@ export default function SocialOnboardingPage() {
                 id="phone"
                 label="Phone Number"
                 value={phone}
-                onChange={(value) => {
+                onChange={async (value) => {
                   setPhone(value);
-                  if (fieldErrors.phone) {
+                  // Parse phone value: format is "{countryCode}|{phoneNumber}"
+                  const phoneParts = value.includes('|') ? value.split('|') : ['+44', value.replace(/\D/g, '')];
+                  const phoneNumber = phoneParts[1] || '';
+                  
+                  // Clear field error when user starts typing or when validation passes
+                  if (phoneNumber) {
+                    const { validatePhoneNumber } = await import("../utils/phoneValidation");
+                    const phoneValidation = validatePhoneNumber(phoneNumber);
+                    if (phoneValidation.isValid) {
+                      if (fieldErrors.phone) {
+                        setFieldErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.phone;
+                          return newErrors;
+                        });
+                      }
+                    }
+                  } else if (fieldErrors.phone) {
                     setFieldErrors(prev => {
                       const newErrors = { ...prev };
                       delete newErrors.phone;

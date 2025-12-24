@@ -6,7 +6,7 @@ import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Button } from "./ui/button";
-import { validateUKPhone } from "../utils/phoneValidation";
+import { validatePhoneNumber, formatPhoneNumber } from "../utils/phoneValidation";
 
 // Country codes data with ISO country codes for flags
 const countryCodes = [
@@ -61,8 +61,8 @@ const countryCodes = [
 ];
 
 interface PhoneInputProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string; // Format: "{countryCode}|{phoneNumber}" or just phoneNumber
+  onChange: (value: string) => void; // Returns: "{countryCode}|{phoneNumber}"
   label?: string;
   placeholder?: string;
   error?: string;
@@ -84,10 +84,9 @@ export default function PhoneInput({
   const [countryCodeOpen, setCountryCodeOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | undefined>(undefined);
   
-  // Parse current value to extract country code and number
-  const parsePhoneValue = (phoneValue: string) => {
-    // If empty, default to UK
-    if (!phoneValue || !phoneValue.trim()) {
+  // Parse value: format is "{countryCode}|{phoneNumber}" or just phoneNumber
+  const parseValue = (val: string) => {
+    if (!val || !val.trim()) {
       return {
         code: "+44",
         number: "",
@@ -95,72 +94,92 @@ export default function PhoneInput({
         iso: "GB",
       };
     }
-    
-    // Try to find a matching country code (check longer codes first)
+
+    // Check if value contains separator "|"
+    if (val.includes('|')) {
+      const [code, number] = val.split('|');
+      const country = countryCodes.find(c => c.code === code) || countryCodes[0];
+      return {
+        code: code || "+44",
+        number: number || "",
+        country: country.country,
+        iso: country.iso,
+      };
+    }
+
+    // Legacy format: try to parse as full phone with country code
     const sortedCodes = [...countryCodes].sort((a, b) => b.code.length - a.code.length);
     for (const country of sortedCodes) {
-      if (phoneValue.startsWith(country.code)) {
+      if (val.startsWith(country.code)) {
         return {
           code: country.code,
-          number: phoneValue.substring(country.code.length).trim(),
+          number: val.substring(country.code.length).trim().replace(/\D/g, ''),
           country: country.country,
           iso: country.iso,
         };
       }
     }
-    
-    // Default to UK if no match
+
+    // If no country code found, treat as phone number only
     return {
       code: "+44",
-      number: phoneValue.replace(/^\+44\s*/, "").trim(),
+      number: val.replace(/\D/g, ''),
       country: "United Kingdom",
       iso: "GB",
     };
   };
 
   const { code: selectedCode, number: phoneNumber, country: selectedCountry, iso: selectedIso } = useMemo(
-    () => parsePhoneValue(value),
+    () => parseValue(value),
     [value]
   );
 
   const handleCodeChange = (newCode: string, newCountry: string, newIso: string) => {
-    const fullPhone = phoneNumber ? `${newCode} ${phoneNumber}`.trim() : newCode;
-    onChange(fullPhone);
+    // Format: "{countryCode}|{phoneNumber}"
+    const newValue = phoneNumber ? `${newCode}|${phoneNumber}` : `${newCode}|`;
+    onChange(newValue);
     setCountryCodeOpen(false);
   };
 
   const handleNumberChange = (newNumber: string) => {
-    // Remove non-digit characters except spaces
-    const cleaned = newNumber.replace(/[^\d\s]/g, "");
-    const fullPhone = cleaned ? `${selectedCode} ${cleaned}`.trim() : selectedCode;
-    onChange(fullPhone);
+    // Remove non-digit characters
+    let cleaned = newNumber.replace(/\D/g, '');
     
-    // Validate phone number
-    if (fullPhone && fullPhone.trim() !== selectedCode) {
-      const validation = validateUKPhone(fullPhone);
-      if (!validation.isValid) {
-        setValidationError(validation.error);
-      } else {
-        setValidationError(undefined);
-      }
-    } else {
-      setValidationError(undefined);
+    // Remove country code if user typed it (e.g., 44, 1, etc.)
+    const codeDigits = selectedCode.replace(/\D/g, '');
+    if (cleaned.startsWith(codeDigits) && cleaned.length > codeDigits.length + 8) {
+      // If phone number starts with the selected country code and is long enough (9+ digits), remove it
+      cleaned = cleaned.substring(codeDigits.length);
+    } else if (cleaned.startsWith('44') && cleaned.length > 10) {
+      // Remove UK country code if present (if total length > 10, meaning 9+ digits after removing 44)
+      cleaned = cleaned.substring(2);
+    } else if (cleaned.startsWith('1') && cleaned.length > 10 && !cleaned.startsWith('11') && !cleaned.startsWith('12') && !cleaned.startsWith('13') && !cleaned.startsWith('14') && !cleaned.startsWith('15') && !cleaned.startsWith('16') && !cleaned.startsWith('17') && !cleaned.startsWith('18') && !cleaned.startsWith('19')) {
+      // Remove US/Canada country code if present (but not if it's part of the number like 11, 12, etc.)
+      cleaned = cleaned.substring(1);
     }
+    
+    // Format phone number (limit to 9-11 digits, remove excess from front if over 11)
+    const formatted = formatPhoneNumber(cleaned);
+    
+    // Format: "{countryCode}|{phoneNumber}"
+    const newValue = `${selectedCode}|${formatted}`;
+    onChange(newValue);
   };
 
   // Validate on value change
   useEffect(() => {
-    if (value && value.trim() !== selectedCode) {
-      const validation = validateUKPhone(value);
-      if (!validation.isValid) {
-        setValidationError(validation.error);
-      } else {
-        setValidationError(undefined);
-      }
+    if (!phoneNumber || phoneNumber.length === 0) {
+      setValidationError(undefined);
+      return;
+    }
+
+    const validation = validatePhoneNumber(phoneNumber);
+    if (!validation.isValid) {
+      setValidationError(validation.error);
     } else {
       setValidationError(undefined);
     }
-  }, [value, selectedCode]);
+  }, [phoneNumber]);
 
   // Filter countries for search
   const [searchQuery, setSearchQuery] = useState("");
@@ -189,7 +208,7 @@ export default function PhoneInput({
               type="button"
               variant="outline"
               className={`h-10 px-3 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] flex items-center gap-2 ${
-                error ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+                error || validationError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
               }`}
             >
               <ReactCountryFlag
@@ -253,8 +272,9 @@ export default function PhoneInput({
             placeholder={placeholder}
             value={phoneNumber}
             onChange={(e) => handleNumberChange(e.target.value)}
+            maxLength={11}
             className={`pl-10 h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-              error ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
+              error || validationError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
             }`}
             required={required}
           />
@@ -268,4 +288,3 @@ export default function PhoneInput({
     </div>
   );
 }
-
