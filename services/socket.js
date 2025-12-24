@@ -10,7 +10,7 @@ export const initializeSocket = (server) => {
   // Parse CORS origins
   let corsOrigin = 'http://localhost:5000';
   if (process.env.CLIENT_ORIGINS) {
-    corsOrigin = process.env.CLIENT_ORIGINS.split(',').map(origin => origin.trim());
+    corsOrigin = process.env.CLIENT_ORIGINS;
   } else if (process.env.CLIENT_ORIGIN) {
     corsOrigin = process.env.CLIENT_ORIGIN;
   }

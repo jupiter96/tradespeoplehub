@@ -41,8 +41,7 @@ if (!MONGODB_URI) {
 }
 
 // CORS configuration
-const clientOriginEnv =
-  process.env.CLIENT_ORIGIN || process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN_WHITELIST;
+const clientOriginEnv = process.env.CLIENT_ORIGIN;
 const parsedOrigins = clientOriginEnv
   ? clientOriginEnv
       .split(',')
