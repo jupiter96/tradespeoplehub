@@ -60,6 +60,51 @@ const normalizePhone = (phone) => {
   return cleaned || null;
 };
 
+// Convert phone number to E.164 format for Twilio (e.g., +447481709218)
+// Input can be: normalized phone (7481709218), with country code (447481709218), or already E.164 (+447481709218)
+const formatPhoneForTwilio = (phone, defaultCountryCode = '+44') => {
+  if (!phone || typeof phone !== 'string') {
+    return null;
+  }
+  
+  let cleaned = phone.trim();
+  
+  // If already in E.164 format, return as is
+  if (cleaned.startsWith('+')) {
+    return cleaned;
+  }
+  
+  // Remove all spaces and non-digit characters
+  let digitsOnly = cleaned.replace(/\D/g, '');
+  
+  if (!digitsOnly) {
+    return null;
+  }
+  
+  // Extract country code from defaultCountryCode (e.g., "+44" -> "44")
+  const countryCodeDigits = defaultCountryCode.replace(/\D/g, '');
+  
+  // Check if phone number already starts with country code
+  if (digitsOnly.startsWith(countryCodeDigits) && digitsOnly.length > countryCodeDigits.length + 7) {
+    // Phone already has country code, just add +
+    return '+' + digitsOnly;
+  }
+  
+  // Check for other common country codes
+  // UK: 44
+  if (digitsOnly.startsWith('44') && digitsOnly.length > 10) {
+    return '+' + digitsOnly;
+  }
+  // US/Canada: 1 (but not 11, 12, etc.)
+  if (digitsOnly.startsWith('1') && digitsOnly.length > 10 && 
+      !digitsOnly.match(/^1[1-9]/)) {
+    return '+' + digitsOnly;
+  }
+  
+  // Add default country code if no country code detected
+  return '+' + countryCodeDigits + digitsOnly;
+};
+
 const cookieOptions = {
   path: '/',
   httpOnly: true,
@@ -835,8 +880,13 @@ router.post('/register/initiate', async (req, res) => {
               // console.log('[Phone Code] Backend - Existing Registration - Step 1: Preparing to send SMS');
               // console.log('[Phone Code] Backend - Existing Registration - Step 1.1: Phone number:', existingPending.phone);
               // console.log('[Phone Code] Backend - Existing Registration - Step 1.2: SMS code generated:', smsCode);
+              // Format phone number to E.164 for Twilio
+              const twilioPhone = formatPhoneForTwilio(existingPending.phone);
+              if (!twilioPhone) {
+                throw new Error('Invalid phone number format');
+              }
               // console.log('[Phone Code] Backend - Existing Registration - Step 2: Calling sendSmsVerificationCode');
-              await sendSmsVerificationCode(existingPending.phone, smsCode);
+              await sendSmsVerificationCode(twilioPhone, smsCode);
               // console.log('[Phone Code] Backend - Existing Registration - Step 3: SMS sent successfully');
             } catch (notificationError) {
               // console.error('[Phone Code] Backend - Existing Registration - ERROR: Failed to send SMS code');
@@ -1174,8 +1224,13 @@ router.post('/register/verify-email', async (req, res) => {
       // console.log('[Phone Code] Backend - Regular Registration - Step 1: Preparing to send SMS');
       // console.log('[Phone Code] Backend - Regular Registration - Step 1.1: Phone number:', pendingRegistration.phone);
       // console.log('[Phone Code] Backend - Regular Registration - Step 1.2: SMS code generated:', smsCode);
+      // Format phone number to E.164 for Twilio
+      const twilioPhone = formatPhoneForTwilio(pendingRegistration.phone);
+      if (!twilioPhone) {
+        throw new Error('Invalid phone number format');
+      }
       // console.log('[Phone Code] Backend - Regular Registration - Step 2: Calling sendSmsVerificationCode');
-      const smsResult = await sendSmsVerificationCode(pendingRegistration.phone, smsCode);
+      const smsResult = await sendSmsVerificationCode(twilioPhone, smsCode);
       // console.log('[Phone Code] Backend - Regular Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
         // console.log('[Phone Code] Backend - Regular Registration - Step 3.1: SMS sent successfully:', {
@@ -1573,8 +1628,13 @@ router.post('/social/send-phone-code', async (req, res) => {
       // console.log('[Phone Code] Backend - Social Registration - Step 1: Preparing to send SMS');
       // console.log('[Phone Code] Backend - Social Registration - Step 1.1: Phone number:', phone.trim());
       // console.log('[Phone Code] Backend - Social Registration - Step 1.2: SMS code generated:', smsCode);
+      // Format phone number to E.164 for Twilio
+      const twilioPhone = formatPhoneForTwilio(phone.trim());
+      if (!twilioPhone) {
+        throw new Error('Invalid phone number format');
+      }
       // console.log('[Phone Code] Backend - Social Registration - Step 2: Calling sendSmsVerificationCode');
-      const smsResult = await sendSmsVerificationCode(phone.trim(), smsCode);
+      const smsResult = await sendSmsVerificationCode(twilioPhone, smsCode);
       // console.log('[Phone Code] Backend - Social Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
         // console.log('[Phone Code] Backend - Social Registration - Step 3.1: SMS sent successfully:', {
@@ -2174,8 +2234,13 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       // console.log('[Phone Verification] Profile Change - Step 1: Preparing to send SMS OTP');
       // console.log('[Phone Verification] Profile Change - Step 1.1: Phone number:', normalizedPhone);
       // console.log('[Phone Verification] Profile Change - Step 1.2: OTP code generated:', otpCode);
+      // Format phone number to E.164 for Twilio
+      const twilioPhone = formatPhoneForTwilio(normalizedPhone);
+      if (!twilioPhone) {
+        throw new Error('Invalid phone number format');
+      }
       // console.log('[Phone Verification] Profile Change - Step 2: Calling sendSmsVerificationCode');
-      await sendSmsVerificationCode(normalizedPhone, otpCode);
+      await sendSmsVerificationCode(twilioPhone, otpCode);
       // console.log('[Phone Verification] Profile Change - Step 3: SMS sent successfully to:', normalizedPhone);
     } catch (notificationError) {
       // console.error('[Phone Verification] Profile Change - ERROR: Failed to send SMS OTP');
