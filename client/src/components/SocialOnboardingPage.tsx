@@ -150,9 +150,11 @@ export default function SocialOnboardingPage() {
     }
 
     // Store registration data for after phone verification
+    console.log('[SocialOnboardingPage] handleSubmit - Step 1: Phone input - phoneNumber:', phoneNumber, 'countryCode:', countryCode);
     const { normalizePhoneForBackend } = await import("../utils/phoneValidation");
     // phoneParts, countryCode, and phoneNumber are already declared above
     const normalizedPhone = normalizePhoneForBackend(phoneNumber, countryCode); // Add country code before sending
+    console.log('[SocialOnboardingPage] handleSubmit - Step 2: Normalized phone for backend:', normalizedPhone);
     
     const data = {
       firstName: firstName.trim(),
@@ -171,14 +173,18 @@ export default function SocialOnboardingPage() {
         travelDistance: travelDistance,
       })
     };
+    console.log('[SocialOnboardingPage] handleSubmit - Step 3: Registration data prepared, phone:', data.phone);
     setRegistrationData(data);
 
     setIsSendingPhoneCode(true);
     try {
+      console.log('[SocialOnboardingPage] handleSubmit - Step 4: Calling sendSocialPhoneCode with:', normalizedPhone);
       // normalizedPhone is already calculated above
       await sendSocialPhoneCode(normalizedPhone); // Remove country code before sending
+      console.log('[SocialOnboardingPage] handleSubmit - Step 5: Phone code sent successfully');
       setShowPhoneVerification(true);
     } catch (err: any) {
+      console.error('[SocialOnboardingPage] handleSubmit - Step 5 ERROR: Failed to send verification code:', err);
       setError("Failed to send verification code");
     } finally {
       setIsSendingPhoneCode(false);

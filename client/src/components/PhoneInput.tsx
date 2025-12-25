@@ -142,27 +142,35 @@ export default function PhoneInput({
   };
 
   const handleNumberChange = (newNumber: string) => {
+    console.log('[PhoneInput] Step 1: User input received:', newNumber);
     // Remove non-digit characters
     let cleaned = newNumber.replace(/\D/g, '');
+    console.log('[PhoneInput] Step 2: After removing non-digits:', cleaned);
     
     // Remove country code if user typed it (e.g., 44, 1, etc.)
     const codeDigits = selectedCode.replace(/\D/g, '');
+    console.log('[PhoneInput] Step 3: Selected country code:', selectedCode, 'Digits:', codeDigits);
     if (cleaned.startsWith(codeDigits) && cleaned.length > codeDigits.length + 8) {
       // If phone number starts with the selected country code and is long enough (9+ digits), remove it
       cleaned = cleaned.substring(codeDigits.length);
+      console.log('[PhoneInput] Step 4: Removed country code from input:', cleaned);
     } else if (cleaned.startsWith('44') && cleaned.length > 10) {
       // Remove UK country code if present (if total length > 10, meaning 9+ digits after removing 44)
       cleaned = cleaned.substring(2);
+      console.log('[PhoneInput] Step 4: Removed UK country code 44:', cleaned);
     } else if (cleaned.startsWith('1') && cleaned.length > 10 && !cleaned.startsWith('11') && !cleaned.startsWith('12') && !cleaned.startsWith('13') && !cleaned.startsWith('14') && !cleaned.startsWith('15') && !cleaned.startsWith('16') && !cleaned.startsWith('17') && !cleaned.startsWith('18') && !cleaned.startsWith('19')) {
       // Remove US/Canada country code if present (but not if it's part of the number like 11, 12, etc.)
       cleaned = cleaned.substring(1);
+      console.log('[PhoneInput] Step 4: Removed US/Canada country code 1:', cleaned);
     }
     
     // Format phone number (limit to 9-11 digits, remove excess from front if over 11)
     const formatted = formatPhoneNumber(cleaned);
+    console.log('[PhoneInput] Step 5: Formatted phone number:', formatted);
     
     // Format: "{countryCode}|{phoneNumber}"
     const newValue = `${selectedCode}|${formatted}`;
+    console.log('[PhoneInput] Step 6: Final value to send:', newValue);
     onChange(newValue);
   };
 

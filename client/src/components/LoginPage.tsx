@@ -273,11 +273,14 @@ export default function LoginPage() {
     }
 
     // phoneParts, countryCode, and phoneNumber are already declared above
+    console.log('[LoginPage] handleRegister - Step 1: Phone input - phoneNumber:', phoneNumber, 'countryCode:', countryCode);
+    const normalizedPhone = normalizePhoneForBackend(phoneNumber, countryCode);
+    console.log('[LoginPage] handleRegister - Step 2: Normalized phone for backend:', normalizedPhone);
     const registerData = {
       firstName: registerFirstName,
       lastName: registerLastName,
       email: registerEmail,
-      phone: normalizePhoneForBackend(phoneNumber, countryCode), // Add country code before sending
+      phone: normalizedPhone, // Add country code before sending
       postcode: registerPostcode,
       password: registerPassword,
       referralCode: registerReferralCode,

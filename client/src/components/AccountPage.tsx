@@ -2318,19 +2318,24 @@ function DetailsSection() {
                   <Button
                     type="button"
                     onClick={async () => {
-                      console.log('[Phone Verification] AccountPage - Requesting phone change OTP for:', formData.phone);
+                      console.log('[AccountPage] requestPhoneOTP - Step 1: User clicked send verification code, input phone:', formData.phone);
                       setIsSendingPhoneOTP(true);
                       try {
                         // Remove country code if present and normalize
                         let phoneNumber = formData.phone.replace(/\D/g, '');
+                        console.log('[AccountPage] requestPhoneOTP - Step 2: After removing non-digits:', phoneNumber);
                         if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
                           phoneNumber = phoneNumber.substring(2);
+                          console.log('[AccountPage] requestPhoneOTP - Step 3: Removed UK country code 44:', phoneNumber);
                         } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
                           phoneNumber = phoneNumber.substring(1);
+                          console.log('[AccountPage] requestPhoneOTP - Step 3: Removed US/Canada country code 1:', phoneNumber);
                         }
                         const normalizedPhone = normalizePhoneForBackend(phoneNumber, '+44'); // Add country code before sending
+                        console.log('[AccountPage] requestPhoneOTP - Step 4: Normalized phone for backend:', normalizedPhone);
+                        console.log('[AccountPage] requestPhoneOTP - Step 5: Calling requestPhoneChangeOTP');
                         const response = await requestPhoneChangeOTP(normalizedPhone);
-                        console.log('[Phone Verification] AccountPage - Phone change OTP request successful');
+                        console.log('[AccountPage] requestPhoneOTP - Step 6: Phone change OTP request successful, response:', response);
                         setPhoneOTPSent(true);
                         // Only show hint in development (when Twilio is not configured)
                         if (response?.phoneCode) {

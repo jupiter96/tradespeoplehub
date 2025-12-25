@@ -61,48 +61,170 @@ const normalizePhone = (phone) => {
 };
 
 // Convert phone number to E.164 format for Twilio (e.g., +447481709218)
-// Input can be: normalized phone (7481709218), with country code (447481709218), or already E.164 (+447481709218)
+// Input from frontend: already includes country code (e.g., 447481709218, 11234567890)
+// Automatically detects country code from the phone number itself
+// UK numbers: Remove leading 0 if present after country code
 const formatPhoneForTwilio = (phone, defaultCountryCode = '+44') => {
   if (!phone || typeof phone !== 'string') {
     return null;
   }
   
-  let cleaned = phone.trim();
+  // Remove all spaces, hyphens, parentheses, and other non-digit characters except +
+  let cleaned = phone.trim().replace(/[\s\-\(\)\.]/g, '');
   
-  // If already in E.164 format, return as is
+  // If already in E.164 format, validate and return
   if (cleaned.startsWith('+')) {
-    return cleaned;
+    // Remove + temporarily to process
+    let digitsOnly = cleaned.substring(1).replace(/\D/g, '');
+    if (!digitsOnly) {
+      return null;
+    }
+    // Return with + prefix, ensuring no spaces or special characters
+    return '+' + digitsOnly;
   }
   
-  // Remove all spaces and non-digit characters
+  // Remove all non-digit characters
   let digitsOnly = cleaned.replace(/\D/g, '');
   
   if (!digitsOnly) {
     return null;
   }
   
-  // Extract country code from defaultCountryCode (e.g., "+44" -> "44")
-  const countryCodeDigits = defaultCountryCode.replace(/\D/g, '');
+  // Auto-detect country code from the phone number
+  // Common country codes: 1 (US/Canada), 44 (UK), 2-digit codes (20-99), 3-digit codes (100-999)
   
-  // Check if phone number already starts with country code
-  if (digitsOnly.startsWith(countryCodeDigits) && digitsOnly.length > countryCodeDigits.length + 7) {
-    // Phone already has country code, just add +
-    return '+' + digitsOnly;
+  // Case 1: UK (44) - most common for this application
+  if (digitsOnly.startsWith('44')) {
+    let after44 = digitsOnly.substring(2);
+    // Remove leading 0 if present (UK national format: 07481709218 -> 7481709218)
+    if (after44.startsWith('0')) {
+      after44 = after44.substring(1);
+    }
+    // Validate: UK numbers are 9-10 digits after country code
+    if (after44.length >= 9 && after44.length <= 10) {
+      const result = '+44' + after44;
+      console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, '(Detected: UK country code 44)');
+      return result;
+    }
+    // If length is 11-12, might already be correct (44 + 9-10 digits)
+    if (digitsOnly.length >= 11 && digitsOnly.length <= 12) {
+      // Double check: after removing 44, should have 9-10 digits
+      let checkAfter44 = digitsOnly.substring(2);
+      if (checkAfter44.startsWith('0')) {
+        checkAfter44 = checkAfter44.substring(1);
+      }
+      if (checkAfter44.length >= 9 && checkAfter44.length <= 10) {
+        const result = '+44' + checkAfter44;
+        console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, '(Detected: UK country code 44, removed leading 0)');
+        return result;
+      }
+      // If no leading 0 and length is correct, return as is
+      if (checkAfter44.length >= 9 && checkAfter44.length <= 10) {
+        const result = '+' + digitsOnly;
+        console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, '(Detected: UK country code 44, already formatted)');
+        return result;
+      }
+    }
+    // If too short, reject
+    console.error('[formatPhoneForTwilio] Input:', phone, '→ ERROR: UK phone number too short. After country code 44, need 9-10 digits, got:', after44.length);
+    return null;
   }
   
-  // Check for other common country codes
-  // UK: 44
-  if (digitsOnly.startsWith('44') && digitsOnly.length > 10) {
-    return '+' + digitsOnly;
-  }
-  // US/Canada: 1 (but not 11, 12, etc.)
-  if (digitsOnly.startsWith('1') && digitsOnly.length > 10 && 
+  // Case 2: US/Canada (1) - but not if it's part of the number (11, 12, etc.)
+  if (digitsOnly.startsWith('1') && digitsOnly.length === 11 && 
       !digitsOnly.match(/^1[1-9]/)) {
-    return '+' + digitsOnly;
+    // US/Canada numbers are exactly 11 digits (1 + 10 digits)
+    const result = '+' + digitsOnly;
+    console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, '(Detected: US/Canada country code 1)');
+    return result;
   }
   
-  // Add default country code if no country code detected
-  return '+' + countryCodeDigits + digitsOnly;
+  // Case 3: Other 2-digit country codes (20-99)
+  // Check if first 2 digits could be a country code
+  if (digitsOnly.length >= 11) {
+    const firstTwo = digitsOnly.substring(0, 2);
+    const countryCode = parseInt(firstTwo);
+    if (countryCode >= 20 && countryCode <= 99) {
+      const afterCode = digitsOnly.substring(2);
+      // Most countries have 7-15 digits after country code
+      if (afterCode.length >= 7 && afterCode.length <= 15) {
+        // Check if there's a leading 0 after country code (common in some countries)
+        let finalNumber = afterCode;
+        if (afterCode.startsWith('0') && afterCode.length >= 8) {
+          finalNumber = afterCode.substring(1);
+        }
+        // Validate final number length
+        if (finalNumber.length >= 7 && finalNumber.length <= 15) {
+          const result = '+' + firstTwo + finalNumber;
+          console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, `(Detected: 2-digit country code ${firstTwo})`);
+          return result;
+        }
+        const result = '+' + digitsOnly;
+        console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, `(Detected: 2-digit country code ${firstTwo}, no leading 0 removed)`);
+        return result;
+      }
+    }
+  }
+  
+  // Case 4: Other 3-digit country codes (100-999)
+  if (digitsOnly.length >= 12) {
+    const firstThree = digitsOnly.substring(0, 3);
+    const countryCode = parseInt(firstThree);
+    if (countryCode >= 100 && countryCode <= 999) {
+      const afterCode = digitsOnly.substring(3);
+      // Most countries have 7-15 digits after country code
+      if (afterCode.length >= 7 && afterCode.length <= 15) {
+        // Check if there's a leading 0 after country code
+        let finalNumber = afterCode;
+        if (afterCode.startsWith('0') && afterCode.length >= 8) {
+          finalNumber = afterCode.substring(1);
+        }
+        // Validate final number length
+        if (finalNumber.length >= 7 && finalNumber.length <= 15) {
+          const result = '+' + firstThree + finalNumber;
+          console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, `(Detected: 3-digit country code ${firstThree})`);
+          return result;
+        }
+        const result = '+' + digitsOnly;
+        console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, `(Detected: 3-digit country code ${firstThree}, no leading 0 removed)`);
+        return result;
+      }
+    }
+  }
+  
+  // Case 5: Starts with 0 (likely UK national format without country code)
+  if (digitsOnly.startsWith('0')) {
+    let withoutLeadingZero = digitsOnly.substring(1);
+    // UK numbers are 9-10 digits after removing leading 0
+    if (withoutLeadingZero.length >= 9 && withoutLeadingZero.length <= 10) {
+      const result = '+44' + withoutLeadingZero;
+      console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, '(Detected: UK national format starting with 0, added country code 44)');
+      return result;
+    }
+  }
+  
+  // Case 6: No country code detected, use default (fallback)
+  // If length is 9-10 digits, assume UK number (default for this application)
+  if (digitsOnly.length >= 9 && digitsOnly.length <= 10) {
+    const defaultCodeDigits = defaultCountryCode.replace(/\D/g, '');
+    const result = '+' + defaultCodeDigits + digitsOnly;
+    console.log('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, `(No country code detected, using default: ${defaultCountryCode})`);
+    return result;
+  }
+  
+  // If we can't determine the format, validate minimum length before returning
+  // E.164 format requires: country code (1-3 digits) + subscriber number (minimum 4-7 digits depending on country)
+  // Minimum total length should be at least 8-10 digits for most countries
+  if (digitsOnly.length < 8) {
+    console.error('[formatPhoneForTwilio] Input:', phone, '→ ERROR: Phone number too short. Minimum length required: 8 digits, got:', digitsOnly.length);
+    return null;
+  }
+  
+  // If we can't determine the format but length is acceptable, return as is with + prefix
+  // This will likely fail Twilio validation, but at least we tried
+  const result = '+' + digitsOnly;
+  console.warn('[formatPhoneForTwilio] Input:', phone, '→ Output:', result, '(WARNING: Could not determine country code, returning as is. Length:', digitsOnly.length, ')');
+  return result;
 };
 
 const cookieOptions = {
@@ -881,11 +1003,13 @@ router.post('/register/initiate', async (req, res) => {
               // console.log('[Phone Code] Backend - Existing Registration - Step 1.1: Phone number:', existingPending.phone);
               // console.log('[Phone Code] Backend - Existing Registration - Step 1.2: SMS code generated:', smsCode);
               // Format phone number to E.164 for Twilio
+              console.log('[Phone Code] Backend - Existing Registration - Input phone number:', existingPending.phone);
               const twilioPhone = formatPhoneForTwilio(existingPending.phone);
               if (!twilioPhone) {
-                throw new Error('Invalid phone number format');
+                console.error('[Phone Code] Backend - Existing Registration - Failed to format phone number:', existingPending.phone);
+                throw new Error('Invalid phone number format. Phone number is too short or invalid.');
               }
-              // console.log('[Phone Code] Backend - Existing Registration - Step 2: Calling sendSmsVerificationCode');
+              console.log('[Phone Code] Backend - Existing Registration - Sending SMS to Twilio with phone number:', twilioPhone);
               await sendSmsVerificationCode(twilioPhone, smsCode);
               // console.log('[Phone Code] Backend - Existing Registration - Step 3: SMS sent successfully');
             } catch (notificationError) {
@@ -1225,11 +1349,13 @@ router.post('/register/verify-email', async (req, res) => {
       // console.log('[Phone Code] Backend - Regular Registration - Step 1.1: Phone number:', pendingRegistration.phone);
       // console.log('[Phone Code] Backend - Regular Registration - Step 1.2: SMS code generated:', smsCode);
       // Format phone number to E.164 for Twilio
+      console.log('[Phone Code] Backend - Regular Registration - Input phone number:', pendingRegistration.phone);
       const twilioPhone = formatPhoneForTwilio(pendingRegistration.phone);
       if (!twilioPhone) {
-        throw new Error('Invalid phone number format');
+        console.error('[Phone Code] Backend - Regular Registration - Failed to format phone number:', pendingRegistration.phone);
+        throw new Error('Invalid phone number format. Phone number is too short or invalid.');
       }
-      // console.log('[Phone Code] Backend - Regular Registration - Step 2: Calling sendSmsVerificationCode');
+      console.log('[Phone Code] Backend - Regular Registration - Sending SMS to Twilio with phone number:', twilioPhone);
       const smsResult = await sendSmsVerificationCode(twilioPhone, smsCode);
       // console.log('[Phone Code] Backend - Regular Registration - Step 3: SMS function returned');
       if (smsResult?.success) {
@@ -1585,29 +1711,30 @@ router.get('/social/pending', (req, res) => {
 // Send phone verification code for social registration
 router.post('/social/send-phone-code', async (req, res) => {
   try {
-    // console.log('[Phone Code] Backend - Social Registration - Received request to send phone code');
+    console.log('[Backend] /social/send-phone-code - Step 1: Request received');
+    console.log('[Backend] /social/send-phone-code - Step 2: Request body:', req.body);
     const pending = getPendingSocialProfile(req);
     if (!pending) {
-      // console.log('[Phone Code] Backend - Social Registration - No pending social profile found');
+      console.log('[Backend] /social/send-phone-code - Step 3: No pending social profile found');
       return res.status(400).json({ error: 'No pending social registration' });
     }
-    // console.log('[Phone Code] Backend - Social Registration - Pending profile found:', {
-    //   provider: pending.provider,
-    //   email: pending.email
-    // });
+    console.log('[Backend] /social/send-phone-code - Step 3: Pending profile found:', {
+      provider: pending.provider,
+      email: pending.email
+    });
 
     const { phone } = req.body;
     if (!phone || !phone.trim()) {
-      // console.log('[Phone Code] Backend - Social Registration - Phone number missing');
+      console.log('[Backend] /social/send-phone-code - Step 4: Phone number missing');
       return res.status(400).json({ error: 'Phone number is required' });
     }
-    // console.log('[Phone Code] Backend - Social Registration - Phone number received:', phone.trim());
+    console.log('[Backend] /social/send-phone-code - Step 4: Phone number received:', phone.trim());
 
     const smsCode = generateCode();
-    // console.log('[Phone Code] Backend - Social Registration - Generated SMS code:', smsCode);
+    console.log('[Backend] /social/send-phone-code - Step 5: Generated SMS code:', smsCode);
     const smsCodeHash = await bcrypt.hash(smsCode, 10);
     const expiresAt = codeExpiryDate();
-    // console.log('[Phone Code] Backend - Social Registration - Code hash created, expires at:', expiresAt);
+    console.log('[Backend] /social/send-phone-code - Step 6: Code hash created, expires at:', expiresAt);
 
     // Store phone code in session
     if (!req.session[socialSessionKey]) {
@@ -1625,26 +1752,37 @@ router.post('/social/send-phone-code', async (req, res) => {
     // console.log('[Phone Code] Backend - Social Registration - Code stored in session');
 
     try {
-      // console.log('[Phone Code] Backend - Social Registration - Step 1: Preparing to send SMS');
-      // console.log('[Phone Code] Backend - Social Registration - Step 1.1: Phone number:', phone.trim());
-      // console.log('[Phone Code] Backend - Social Registration - Step 1.2: SMS code generated:', smsCode);
+      console.log('[Backend] /social/send-phone-code - Step 7: Preparing to send SMS');
+      console.log('[Backend] /social/send-phone-code - Step 8: Input phone number:', phone.trim());
+      console.log('[Backend] /social/send-phone-code - Step 9: SMS code generated:', smsCode);
       // Format phone number to E.164 for Twilio
+      console.log('[Backend] /social/send-phone-code - Step 10: Calling formatPhoneForTwilio');
       const twilioPhone = formatPhoneForTwilio(phone.trim());
       if (!twilioPhone) {
-        throw new Error('Invalid phone number format');
+        console.error('[Backend] /social/send-phone-code - Step 10 ERROR: Failed to format phone number:', phone.trim());
+        throw new Error('Invalid phone number format. Phone number is too short or invalid.');
       }
-      // console.log('[Phone Code] Backend - Social Registration - Step 2: Calling sendSmsVerificationCode');
+      console.log('[Backend] /social/send-phone-code - Step 11: Formatted phone for Twilio:', twilioPhone);
+      console.log('[Backend] /social/send-phone-code - Step 12: Calling sendSmsVerificationCode');
       const smsResult = await sendSmsVerificationCode(twilioPhone, smsCode);
-      // console.log('[Phone Code] Backend - Social Registration - Step 3: SMS function returned');
+      console.log('[Backend] /social/send-phone-code - Step 13: SMS function returned:', smsResult);
       if (smsResult?.success) {
-        // console.log('[Phone Code] Backend - Social Registration - Step 3.1: SMS sent successfully:', {
-        //   messageSid: smsResult.messageSid,
-        //   phone: phone.trim()
-        // });
+        console.log('[Backend] /social/send-phone-code - Step 14: SMS sent successfully:', {
+          messageSid: smsResult.messageSid,
+          phone: phone.trim(),
+          twilioPhone: twilioPhone
+        });
       } else {
-        // console.warn('[Phone Code] Backend - Social Registration - Step 3.2: SMS function returned but success is false');
+        console.warn('[Backend] /social/send-phone-code - Step 14 WARNING: SMS function returned but success is false');
       }
     } catch (notificationError) {
+      console.error('[Backend] /social/send-phone-code - Step 12-14 ERROR: Failed to send SMS code');
+      console.error('[Backend] /social/send-phone-code - ERROR details:', {
+        message: notificationError.message,
+        code: notificationError.code,
+        twilioErrorCode: notificationError.twilioErrorCode,
+        twilioErrorMessage: notificationError.twilioErrorMessage
+      });
       // console.error('[Phone Code] Backend - Social Registration - ERROR: Failed to send SMS code');
       // console.error('[Phone Code] Backend - Social Registration - ERROR.1: Error object:', notificationError);
       // console.error('[Phone Code] Backend - Social Registration - ERROR.2: Error message:', notificationError.message);
@@ -2235,12 +2373,17 @@ router.post('/profile/verify-phone-change', requireAuth, async (req, res) => {
       // console.log('[Phone Verification] Profile Change - Step 1.1: Phone number:', normalizedPhone);
       // console.log('[Phone Verification] Profile Change - Step 1.2: OTP code generated:', otpCode);
       // Format phone number to E.164 for Twilio
+      console.log('[Backend] /profile/verify-phone-change - Step 10: Input phone number:', normalizedPhone);
+      console.log('[Backend] /profile/verify-phone-change - Step 11: Calling formatPhoneForTwilio');
       const twilioPhone = formatPhoneForTwilio(normalizedPhone);
       if (!twilioPhone) {
-        throw new Error('Invalid phone number format');
+        console.error('[Backend] /profile/verify-phone-change - Step 11 ERROR: Failed to format phone number:', normalizedPhone);
+        throw new Error('Invalid phone number format. Phone number is too short or invalid.');
       }
-      // console.log('[Phone Verification] Profile Change - Step 2: Calling sendSmsVerificationCode');
-      await sendSmsVerificationCode(twilioPhone, otpCode);
+      console.log('[Backend] /profile/verify-phone-change - Step 15: Formatted phone for Twilio:', twilioPhone);
+      console.log('[Backend] /profile/verify-phone-change - Step 16: Calling sendSmsVerificationCode');
+      const smsResult = await sendSmsVerificationCode(twilioPhone, otpCode);
+      console.log('[Backend] /profile/verify-phone-change - Step 17: SMS sent successfully:', smsResult);
       // console.log('[Phone Verification] Profile Change - Step 3: SMS sent successfully to:', normalizedPhone);
     } catch (notificationError) {
       // console.error('[Phone Verification] Profile Change - ERROR: Failed to send SMS OTP');

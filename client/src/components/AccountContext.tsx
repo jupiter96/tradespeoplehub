@@ -273,18 +273,24 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const sendSocialPhoneCode = useCallback(
     async (phone: string) => {
-      // console.log('[Phone Code] Frontend - Requesting phone code for:', phone);
-      // console.log('[Phone Code] Frontend - API endpoint: /api/auth/social/send-phone-code');
-      const data = await requestJson("/api/auth/social/send-phone-code", {
-        method: "POST",
-        body: JSON.stringify({ phone }),
-      });
-      // console.log('[Phone Code] Frontend - Response received:', {
-      //   message: data.message,
-      //   hasPhoneCode: !!data.phoneCode,
-      //   phoneCode: data.phoneCode || 'not provided'
-      // });
-      return data;
+      console.log('[AccountContext] sendSocialPhoneCode - Step 1: Requesting phone code for:', phone);
+      console.log('[AccountContext] sendSocialPhoneCode - Step 2: API endpoint: /api/auth/social/send-phone-code');
+      console.log('[AccountContext] sendSocialPhoneCode - Step 3: Sending request body:', { phone });
+      try {
+        const data = await requestJson("/api/auth/social/send-phone-code", {
+          method: "POST",
+          body: JSON.stringify({ phone }),
+        });
+        console.log('[AccountContext] sendSocialPhoneCode - Step 4: Response received:', {
+          message: data.message,
+          hasPhoneCode: !!data.phoneCode,
+          phoneCode: data.phoneCode || 'not provided'
+        });
+        return data;
+      } catch (error) {
+        console.error('[AccountContext] sendSocialPhoneCode - Step 4 ERROR: Request failed:', error);
+        throw error;
+      }
     },
     [requestJson]
   );
@@ -336,11 +342,24 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const requestPhoneChangeOTP = useCallback(
     async (phone: string) => {
-      const data = await requestJson("/api/auth/profile/verify-phone-change", {
-        method: "POST",
-        body: JSON.stringify({ phone }),
-      });
-      return data;
+      console.log('[AccountContext] requestPhoneChangeOTP - Step 1: Requesting phone change OTP for:', phone);
+      console.log('[AccountContext] requestPhoneChangeOTP - Step 2: API endpoint: /api/auth/profile/verify-phone-change');
+      console.log('[AccountContext] requestPhoneChangeOTP - Step 3: Sending request body:', { phone });
+      try {
+        const data = await requestJson("/api/auth/profile/verify-phone-change", {
+          method: "POST",
+          body: JSON.stringify({ phone }),
+        });
+        console.log('[AccountContext] requestPhoneChangeOTP - Step 4: Response received:', {
+          message: data.message,
+          hasPhoneCode: !!data.phoneCode,
+          phoneCode: data.phoneCode || 'not provided'
+        });
+        return data;
+      } catch (error) {
+        console.error('[AccountContext] requestPhoneChangeOTP - Step 4 ERROR: Request failed:', error);
+        throw error;
+      }
     },
     [requestJson]
   );
