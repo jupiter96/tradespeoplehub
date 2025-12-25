@@ -578,25 +578,15 @@ export async function sendEmailVerificationCode(to, code, firstName = 'User') {
 }
 
 export async function sendSmsVerificationCode(to, code) {
-  console.log('[Twilio] sendSmsVerificationCode - Step 1: Function called');
-  console.log('[Twilio] sendSmsVerificationCode - Step 2: Input parameters - to:', to, 'code:', code);
-  
   if (!to || !code) {
-    console.error('[Twilio] sendSmsVerificationCode - Step 3 ERROR: Validation failed - Missing phone number or code');
     throw new Error('Phone number and code are required');
   }
-  console.log('[Twilio] sendSmsVerificationCode - Step 3: Validation passed');
 
-  console.log('[Twilio] sendSmsVerificationCode - Step 4: Logging code for manual verification');
   logCode('sms', to, code);
-  console.log('[Twilio] sendSmsVerificationCode - Step 5: Code logged successfully');
 
-  console.log('[Twilio] sendSmsVerificationCode - Step 6: Checking Twilio client configuration');
   if (!twilioClient) {
-    console.error('[Twilio] sendSmsVerificationCode - Step 6 ERROR: Twilio credentials are not configured');
     throw new Error('Twilio is not configured');
   }
-  console.log('[Twilio] sendSmsVerificationCode - Step 7: Twilio client is configured');
 
   try {
     // Ensure phone number is in E.164 format (no spaces, no special characters except +)
@@ -614,50 +604,14 @@ export async function sendSmsVerificationCode(to, code) {
       fromNumber = TWILIO_PHONE_NUMBER;
     }
     
-    // Log the exact phone number being sent to Twilio (without masking)
-    console.log('[SMS] Twilio API Call - Sending SMS to phone number:', cleanPhoneNumber);
-    console.log('[SMS] Twilio API Call - From number:', fromNumber);
-    console.log('[SMS] Twilio API Call - Phone number format check:', {
-      startsWithPlus: cleanPhoneNumber.startsWith('+'),
-      length: cleanPhoneNumber.length,
-      isUK: cleanPhoneNumber.startsWith('+44'),
-      hasSpaces: cleanPhoneNumber.includes(' '),
-      hasSpecialChars: /[^\d+]/.test(cleanPhoneNumber)
-    });
-    
-    console.log('[Twilio] sendSmsVerificationCode - Step 11: Calling Twilio API - messages.create()');
-    console.log('[Twilio] sendSmsVerificationCode - Step 12: Twilio API parameters:', {
-      to: cleanPhoneNumber,
-      from: fromNumber,
-      body: `Your SORTARS verification code is ${code}`
-    });
     const message = await twilioClient.messages.create({
       to: cleanPhoneNumber,
       from: fromNumber,
       body: `Your SORTARS verification code is ${code}`,
     });
     
-    console.log('[Twilio] sendSmsVerificationCode - Step 13: Twilio API call successful');
-    console.log('[Twilio] sendSmsVerificationCode - Step 14: Twilio response:', {
-      sid: message.sid,
-      to: message.to,
-      from: message.from,
-      status: message.status,
-      dateCreated: message.dateCreated,
-      dateUpdated: message.dateUpdated
-    });
-    
-    console.log('[Twilio] sendSmsVerificationCode - Step 15: Returning success result');
     return { success: true, messageSid: message.sid };
   } catch (error) {
-    console.error('[Twilio] sendSmsVerificationCode - Step 11-15 ERROR: Twilio API call failed');
-    console.error('[Twilio] sendSmsVerificationCode - ERROR details:', {
-      message: error.message,
-      code: error.code,
-      status: error.status,
-      moreInfo: error.moreInfo,
-      statusCode: error.statusCode
-    });
     // console.error('[SMS] Step ERROR: Failed to send verification SMS');
     // console.error('[SMS] Step ERROR.1: Error object:', error);
     // console.error('[SMS] Step ERROR.2: Error type:', error.constructor.name);

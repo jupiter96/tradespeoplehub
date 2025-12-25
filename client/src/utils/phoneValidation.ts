@@ -105,42 +105,34 @@ export const formatPhoneNumber = (phoneNumber: string): string => {
  * Removes existing country code from phone number before adding the specified country code
  */
 export const normalizePhoneForBackend = (phoneNumber: string, countryCode: string = '+44'): string => {
-  console.log('[normalizePhoneForBackend] Step 1: Input - phoneNumber:', phoneNumber, 'countryCode:', countryCode);
   if (!phoneNumber || typeof phoneNumber !== 'string') {
-    console.log('[normalizePhoneForBackend] Step 2: Invalid input, returning empty string');
     return '';
   }
 
   // Remove all spaces and non-digit characters
   let normalized = phoneNumber.replace(/\D/g, '');
-  console.log('[normalizePhoneForBackend] Step 3: After removing non-digits:', normalized);
 
   if (normalized.length === 0) {
-    console.log('[normalizePhoneForBackend] Step 4: Empty after cleaning, returning empty string');
     return '';
   }
 
   // Remove country code from countryCode string (e.g., "+44" -> "44")
   const codeDigits = countryCode.replace(/\D/g, '');
-  console.log('[normalizePhoneForBackend] Step 5: Country code digits:', codeDigits);
 
   // Remove existing country code from the beginning of the phone number
   // Check for common country codes: 44, 1, etc.
   if (normalized.startsWith(codeDigits) && normalized.length > codeDigits.length) {
     // If phone number already starts with the country code, remove it
     normalized = normalized.substring(codeDigits.length);
-    console.log('[normalizePhoneForBackend] Step 6: Removed existing country code, phone number:', normalized);
   } else {
     // Check for other common country codes and remove them
     // UK: 44, 0044
     if (normalized.startsWith('44') && normalized.length > 9) {
       normalized = normalized.substring(2);
-      console.log('[normalizePhoneForBackend] Step 6: Removed UK country code 44, phone number:', normalized);
     }
     // US/Canada: 1, 001
     else if (normalized.startsWith('1') && normalized.length > 9 && !normalized.startsWith('11') && !normalized.startsWith('12') && !normalized.startsWith('13') && !normalized.startsWith('14') && !normalized.startsWith('15') && !normalized.startsWith('16') && !normalized.startsWith('17') && !normalized.startsWith('18') && !normalized.startsWith('19')) {
       normalized = normalized.substring(1);
-      console.log('[normalizePhoneForBackend] Step 6: Removed US/Canada country code 1, phone number:', normalized);
     }
     // Other 2-digit country codes (20-99)
     else if (normalized.length > 12 && /^[2-9]\d/.test(normalized)) {
@@ -148,7 +140,6 @@ export const normalizePhoneForBackend = (phoneNumber: string, countryCode: strin
       // Check if it's a valid 2-digit country code (20-99)
       if (parseInt(firstTwo) >= 20 && parseInt(firstTwo) <= 99) {
         normalized = normalized.substring(2);
-        console.log('[normalizePhoneForBackend] Step 6: Removed 2-digit country code', firstTwo, 'phone number:', normalized);
       }
     }
     // Other 3-digit country codes (100-999)
@@ -157,13 +148,10 @@ export const normalizePhoneForBackend = (phoneNumber: string, countryCode: strin
       // Check if it's a valid 3-digit country code (100-999)
       if (parseInt(firstThree) >= 100 && parseInt(firstThree) <= 999) {
         normalized = normalized.substring(3);
-        console.log('[normalizePhoneForBackend] Step 6: Removed 3-digit country code', firstThree, 'phone number:', normalized);
       }
     }
   }
 
   // Combine country code and phone number
-  const result = codeDigits + normalized;
-  console.log('[normalizePhoneForBackend] Step 7: Final result:', result);
-  return result;
+  return codeDigits + normalized;
 };

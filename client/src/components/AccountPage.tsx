@@ -2318,40 +2318,26 @@ function DetailsSection() {
                   <Button
                     type="button"
                     onClick={async () => {
-                      console.log('[AccountPage] requestPhoneOTP - Step 1: User clicked send verification code, input phone:', formData.phone);
                       setIsSendingPhoneOTP(true);
                       try {
                         // Remove country code if present and normalize
                         let phoneNumber = formData.phone.replace(/\D/g, '');
-                        console.log('[AccountPage] requestPhoneOTP - Step 2: After removing non-digits:', phoneNumber);
                         if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
                           phoneNumber = phoneNumber.substring(2);
-                          console.log('[AccountPage] requestPhoneOTP - Step 3: Removed UK country code 44:', phoneNumber);
                         } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
                           phoneNumber = phoneNumber.substring(1);
-                          console.log('[AccountPage] requestPhoneOTP - Step 3: Removed US/Canada country code 1:', phoneNumber);
                         }
                         const normalizedPhone = normalizePhoneForBackend(phoneNumber, '+44'); // Add country code before sending
-                        console.log('[AccountPage] requestPhoneOTP - Step 4: Normalized phone for backend:', normalizedPhone);
-                        console.log('[AccountPage] requestPhoneOTP - Step 5: Calling requestPhoneChangeOTP');
                         const response = await requestPhoneChangeOTP(normalizedPhone);
-                        console.log('[AccountPage] requestPhoneOTP - Step 6: Phone change OTP request successful, response:', response);
                         setPhoneOTPSent(true);
                         // Only show hint in development (when Twilio is not configured)
                         if (response?.phoneCode) {
                           setPhoneOTPHint(response.phoneCode);
-                          console.log('[Phone Verification] AccountPage - OTP code hint provided (development mode)');
                         } else {
                           setPhoneOTPHint(null);
                         }
                         toast.success("Verification code sent to your phone number");
                       } catch (error: any) {
-                        console.error('[Phone Verification] AccountPage - Failed to send phone change OTP');
-                        console.error('[Phone Verification] AccountPage - Error object:', error);
-                        console.error('[Phone Verification] AccountPage - Error message:', error?.message);
-                        console.error('[Phone Verification] AccountPage - Twilio error code:', error?.twilioErrorCode);
-                        console.error('[Phone Verification] AccountPage - Twilio error message:', error?.twilioErrorMessage);
-                        console.error('[Phone Verification] AccountPage - Twilio error moreInfo:', error?.twilioErrorMoreInfo);
                         
                         // Extract detailed error message
                         let errorMessage = "Failed to send verification code";
@@ -2402,15 +2388,12 @@ function DetailsSection() {
                           toast.error("Please enter a 4-digit code");
                           return;
                         }
-                        console.log('[Phone Verification] AccountPage - Verifying phone OTP, code length:', phoneOTPCode.length);
                         setIsVerifyingPhoneOTP(true);
                         try {
                           await verifyOTP(phoneOTPCode, 'phone');
-                          console.log('[Phone Verification] AccountPage - Phone OTP verified successfully');
                           setPhoneOTPVerified(true);
                           toast.success("Phone number verified successfully");
                         } catch (error) {
-                          console.error('[Phone Verification] AccountPage - Phone OTP verification failed:', error);
                           const errorMessage = error instanceof Error ? error.message : "Invalid verification code";
                           toast.error(errorMessage);
                           // Clear the code input on error
