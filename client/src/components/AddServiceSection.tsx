@@ -2216,6 +2216,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         return;
       }
     }
+    if (activeTab === "profile" && TAB_ORDER.indexOf(newTab) > TAB_ORDER.indexOf("profile")) {
+      if (!aboutMe || !aboutMe.trim()) {
+        toast.error("Please fill in the 'About Me' section to continue");
+        return;
+      }
+    }
     setActiveTab(newTab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

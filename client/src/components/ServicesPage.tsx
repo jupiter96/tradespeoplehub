@@ -162,7 +162,7 @@ export default function ServicesPage() {
         // Build query params
         const params = new URLSearchParams();
         params.append('activeOnly', 'true');
-        params.append('status', 'active');
+        params.append('status', 'approved');
         if (sectorSlugParam) {
           // Find sector ID from slug
           const sectors = await fetch(resolveApiUrl('/api/sectors?activeOnly=true'), { credentials: 'include' })

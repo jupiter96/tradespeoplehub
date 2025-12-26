@@ -709,7 +709,7 @@ export default function FeaturedServices() {
         setLoading(true);
         const { resolveApiUrl } = await import("../config/api");
         const response = await fetch(
-          resolveApiUrl(`/api/services?activeOnly=true&status=active&limit=100&sortBy=rating&sortOrder=desc`),
+          resolveApiUrl(`/api/services?activeOnly=true&status=approved&limit=1000&sortBy=rating&sortOrder=desc`),
           { credentials: 'include' }
         );
         
@@ -797,9 +797,8 @@ export default function FeaturedServices() {
     fetchServices();
   }, []);
 
-  // Get featured services - top rated with good review count
+  // Get featured services - all approved services
   const featuredServices: Service[] = allServices
-    .filter(s => s.rating >= 4.5 && s.reviewCount >= 10)
     .slice(0, 8)
     .map(s => ({
       id: s.id,
@@ -822,10 +821,8 @@ export default function FeaturedServices() {
       packages: s.packages,
     }));
 
-  // Get popular/best sellers services - high completed tasks
+  // Get popular/best sellers services - all approved services
   const popularServices: Service[] = allServices
-    .filter(s => s.completedTasks >= 5)
-    .sort((a, b) => b.completedTasks - a.completedTasks)
     .slice(0, 10)
     .map(s => ({
       id: s.id,

@@ -293,7 +293,7 @@ export default function SectorPage() {
         
         const params = new URLSearchParams();
         params.append('activeOnly', 'true');
-        params.append('status', 'active');
+        params.append('status', 'approved');
         
         if (apiSector?._id) {
           // Fetch service categories for this sector first
@@ -1001,10 +1001,8 @@ export default function SectorPage() {
     }
   });
 
-  // Get featured services (top rated) - show when no filters applied
-  const featuredServices = sectorServices
-    .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
-    .slice(0, 8);
+  // Get featured services - all approved services when no filters applied
+  const featuredServices = sectorServices;
   
   // Determine which services to display
   const hasActiveFilters = selectedMainCategories.length > 0 || selectedSubCategories.length > 0 || searchQuery || selectedRating > 0 || priceRange[0] !== 0 || priceRange[1] !== 100000 || locationSearch;

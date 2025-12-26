@@ -124,11 +124,6 @@ router.get('/', async (req, res) => {
       query.status = effectiveStatus;
     }
 
-    // Filter by active status
-    if (activeOnly === 'true') {
-      query.isActive = true;
-    }
-
     // Exclude user-disabled services from public listings (unless fetching own services)
     if (!professionalId) {
       query.isUserDisabled = { $ne: true };
@@ -136,6 +131,19 @@ router.get('/', async (req, res) => {
       // BUT: if activeOnly is explicitly false, don't filter by status (for admin pages)
       if (!effectiveStatus && activeOnly === 'true') {
         query.status = 'approved';
+      }
+    }
+
+    // Filter by active status
+    // For approved services, show them regardless of isActive to ensure they display
+    if (activeOnly === 'true') {
+      // If querying for approved services (public listings), show all approved services
+      // Otherwise, require isActive = true
+      if (!professionalId && (query.status === 'approved' || (!effectiveStatus && activeOnly === 'true'))) {
+        // Don't filter by isActive for approved services - they should always be visible
+        // The status='approved' filter is sufficient
+      } else {
+        query.isActive = true;
       }
     }
 
@@ -281,6 +289,13 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       status: 'draft',
       isActive: false,
     };
+    
+    // Set isActive based on status for draft
+    if (draftServiceData.status === 'approved') {
+      draftServiceData.isActive = true;
+    } else {
+      draftServiceData.isActive = false;
+    }
 
     // Add optional fields only if they have values
     if (serviceCategoryId) draftServiceData.serviceCategory = serviceCategoryId;
@@ -687,6 +702,12 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     }
 
     service.status = nextStatus;
+    // Set isActive based on status
+    if (nextStatus === 'approved') {
+      service.isActive = true;
+    } else if (['inactive', 'paused', 'denied'].includes(nextStatus)) {
+      service.isActive = false;
+    }
     await service.save();
 
     await service.populate([
