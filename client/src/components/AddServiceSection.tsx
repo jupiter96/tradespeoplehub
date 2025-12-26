@@ -2209,6 +2209,17 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   const isLastTab = () => getCurrentTabIndex() === TAB_ORDER.length - 1;
   const isFirstTab = () => getCurrentTabIndex() === 0;
 
+  const handleTabChange = (newTab: string) => {
+    if (activeTab === "gallery" && TAB_ORDER.indexOf(newTab) > TAB_ORDER.indexOf("gallery")) {
+      if (!galleryImages || galleryImages.length === 0) {
+        toast.error("Please upload at least one image to continue");
+        return;
+      }
+    }
+    setActiveTab(newTab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handlePrevious = () => {
     const currentIndex = getCurrentTabIndex();
     if (currentIndex > 0) {
@@ -2249,7 +2260,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       // Optional, just save
       toast.success("Extra services saved!");
     } else if (activeTab === "gallery") {
-      // Optional, just save
+      if (!galleryImages || galleryImages.length === 0) {
+        toast.error("Please upload at least one image to continue");
+        return;
+      }
       toast.success("Gallery saved!");
     } else if (activeTab === "faqs") {
       // Optional, just save
@@ -2274,8 +2288,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     // Move to next tab
     const currentIndex = getCurrentTabIndex();
     if (currentIndex < TAB_ORDER.length - 1) {
-      setActiveTab(TAB_ORDER[currentIndex + 1]);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleTabChange(TAB_ORDER[currentIndex + 1]);
     }
   };
 
@@ -3046,7 +3059,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         </Card>
       ) : (
         <Card className="border-2 border-gray-200 shadow-lg">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="px-6 pt-6 pb-4 border-b border-gray-200">
             {/* Progress Indicator */}
             <div className="mb-6">
@@ -3091,8 +3104,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                           type="button"
                           onClick={() => {
                             if (isClickable) {
-                              setActiveTab(step.id);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                              handleTabChange(step.id);
                             }
                           }}
                           disabled={!isClickable}
