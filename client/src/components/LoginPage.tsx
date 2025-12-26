@@ -70,6 +70,17 @@ export default function LoginPage() {
   const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationPhone, setVerificationPhone] = useState("");
+  const [newlyRegisteredUser, setNewlyRegisteredUser] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    postcode?: string;
+    address?: string;
+    townCity?: string;
+    county?: string;
+    tradingName?: string;
+  } | null>(null);
 
   // (duplicate redirect effect removed - handled above)
   
@@ -293,6 +304,20 @@ export default function LoginPage() {
     setIsSendingRegistration(true);
     setVerificationEmail(registerEmail);
     setVerificationPhone(registerPhone);
+    // Store registration data for later use
+    setNewlyRegisteredUser({
+      firstName: registerFirstName,
+      lastName: registerLastName,
+      email: registerEmail,
+      phone: registerPhone,
+      postcode: registerPostcode,
+      address: registerAddress.trim(),
+      townCity: registerTownCity.trim(),
+      county: registerCounty.trim(),
+      ...(userType === "professional" && {
+        tradingName: registerTradingName.trim(),
+      })
+    });
     try {
       const response = await initiateRegistration(registerData);
       setVerificationStep(1);

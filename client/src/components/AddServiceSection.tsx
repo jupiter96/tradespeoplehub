@@ -1851,6 +1851,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       if (typeof initialService.originalPrice === "number") {
         setOriginalPrice(initialService.originalPrice.toString());
       }
+      if (initialService.originalPriceValidFrom) {
+        const d = new Date(initialService.originalPriceValidFrom);
+        if (!Number.isNaN(d.getTime())) {
+          setSaleValidFrom(d.toISOString().split("T")[0]);
+        }
+      }
       if (initialService.originalPriceValidUntil) {
         const d = new Date(initialService.originalPriceValidUntil);
         if (!Number.isNaN(d.getTime())) {
@@ -1861,8 +1867,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   }, [dynamicServiceAttributes, isEditMode, initialService]);
   const [basePrice, setBasePrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
+  const [saleValidFrom, setSaleValidFrom] = useState("");
   const [saleValidUntil, setSaleValidUntil] = useState("");
-  const [showSaleValidUntilPicker, setShowSaleValidUntilPicker] = useState(false);
+  const [showSaleValidDatePicker, setShowSaleValidDatePicker] = useState(false);
   // NOTE: Do not preselect any price unit for new services.
   // It will be chosen explicitly by the user once a category is selected.
   const [priceUnit, setPriceUnit] = useState("");
@@ -2328,6 +2335,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         draftData.originalPrice = parseFloat(originalPrice);
       }
 
+      if (saleValidFrom) {
+        draftData.originalPriceValidFrom = saleValidFrom;
+      }
       if (saleValidUntil) {
         draftData.originalPriceValidUntil = saleValidUntil;
       }
@@ -2816,6 +2826,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         aboutMe: aboutMe.trim(),
         price: parseFloat(basePrice),
         originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+        originalPriceValidFrom: saleValidFrom || undefined,
         originalPriceValidUntil: saleValidUntil || undefined,
         priceUnit: priceUnit || "fixed",
         images: galleryImages,
@@ -3638,25 +3649,58 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                       min="0"
                       value={originalPrice}
                       onChange={(e) => setOriginalPrice(e.target.value)}
-                      onFocus={() => setShowSaleValidUntilPicker(true)}
+                      onFocus={() => setShowSaleValidDatePicker(true)}
                       placeholder="0.00"
                       className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                     />
-                    {showSaleValidUntilPicker && (
-                      <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                    {showSaleValidDatePicker && (
+                      <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm space-y-3">
                         <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
-                          Valid until (optional)
+                          Valid Date Range (optional)
                         </Label>
-                        <Input
-                          type="date"
-                          value={saleValidUntil}
-                          onChange={(e) => setSaleValidUntil(e.target.value)}
-                          onBlur={() => {
-                            // 조금 늦게 숨겨서 클릭/탭 전환 시 깜빡임 방지
-                            setTimeout(() => setShowSaleValidUntilPicker(false), 150);
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                              From
+                            </Label>
+                            <Input
+                              type="date"
+                              value={saleValidFrom}
+                              onChange={(e) => setSaleValidFrom(e.target.value)}
+                              min={new Date().toISOString().split("T")[0]}
+                              className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
+                            />
+                          </div>
+                          <div>
+                            <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                              To
+                            </Label>
+                            <Input
+                              type="date"
+                              value={saleValidUntil}
+                              onChange={(e) => {
+                                setSaleValidUntil(e.target.value);
+                                // Validate that "to" date is not before "from" date
+                                if (saleValidFrom && e.target.value < saleValidFrom) {
+                                  toast.error("End date must be after start date");
+                                }
+                              }}
+                              min={saleValidFrom || new Date().toISOString().split("T")[0]}
+                              className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowSaleValidDatePicker(false);
                           }}
-                          className="font-['Poppins',sans-serif] text-[13px] border-gray-300"
-                        />
+                          className="w-full text-[11px] h-7"
+                        >
+                          Close
+                        </Button>
                       </div>
                     )}
                   </div>

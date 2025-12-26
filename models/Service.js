@@ -57,7 +57,10 @@ const serviceSchema = new mongoose.Schema(
       type: Number,
       min: 0,
     },
-    // Optional: discount/sale valid-until date for the main price
+    // Optional: discount/sale valid date range for the main price
+    originalPriceValidFrom: {
+      type: Date,
+    },
     originalPriceValidUntil: {
       type: Date,
     },

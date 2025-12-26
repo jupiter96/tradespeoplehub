@@ -285,8 +285,11 @@ export default function ServiceDetailPage() {
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
             price: `£${s.price?.toFixed(2) || '0.00'}`,
-            // Only treat originalPrice as active discount if valid-until is not past
-            originalPrice: (s.originalPrice && (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date()))
+            // Only treat originalPrice as active discount if it is within the valid date range
+            originalPrice: (s.originalPrice && (
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+            ))
               ? `£${s.originalPrice.toFixed(2)}`
               : undefined,
             priceUnit: s.priceUnit || "fixed",

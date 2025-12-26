@@ -210,8 +210,11 @@ export default function ServicesPage() {
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
             price: `£${s.price?.toFixed(2) || '0.00'}`,
-            // Only use originalPrice if discount is still valid
-            originalPrice: (s.originalPrice && (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date()))
+            // Only use originalPrice if discount is still valid (within date range)
+            originalPrice: (s.originalPrice && (
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+            ))
               ? `£${s.originalPrice.toFixed(2)}`
               : undefined,
             priceUnit: s.priceUnit || "fixed",

@@ -242,6 +242,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       aboutMe,
       price,
       originalPrice,
+      originalPriceValidFrom,
       originalPriceValidUntil,
       priceUnit,
       images,
@@ -289,6 +290,9 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
     if (aboutMe?.trim()) draftServiceData.aboutMe = aboutMe.trim();
     if (price !== undefined && price !== null) draftServiceData.price = parseFloat(price);
     if (originalPrice) draftServiceData.originalPrice = parseFloat(originalPrice);
+    if (originalPriceValidFrom) {
+      draftServiceData.originalPriceValidFrom = new Date(originalPriceValidFrom);
+    }
     if (originalPriceValidUntil) {
       draftServiceData.originalPriceValidUntil = new Date(originalPriceValidUntil);
     }
@@ -449,6 +453,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       aboutMe: aboutMe?.trim() || undefined,
       price: parseFloat(price),
       originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
+      originalPriceValidFrom: originalPriceValidFrom ? new Date(originalPriceValidFrom) : undefined,
       originalPriceValidUntil: originalPriceValidUntil ? new Date(originalPriceValidUntil) : undefined,
       priceUnit: priceUnit || 'fixed',
       images: images || [],
@@ -551,6 +556,11 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
     if (updateData.originalPrice !== undefined) {
       updateData.originalPrice = updateData.originalPrice ? parseFloat(updateData.originalPrice) : undefined;
+    }
+    if (updateData.originalPriceValidFrom !== undefined) {
+      updateData.originalPriceValidFrom = updateData.originalPriceValidFrom
+        ? new Date(updateData.originalPriceValidFrom)
+        : undefined;
     }
     if (updateData.originalPriceValidUntil !== undefined) {
       updateData.originalPriceValidUntil = updateData.originalPriceValidUntil
