@@ -831,10 +831,8 @@ export default function FeaturedServices() {
       packages: s.packages,
     }));
 
-  // Get popular/best sellers services - random 4 from all approved services (excluding featured)
-  const featuredIds = new Set(featuredServices.map(s => s._id));
-  const remainingServices = allServices.filter(s => !featuredIds.has(s._id));
-  const popularServices: Service[] = shuffleArray(remainingServices)
+  // Get popular/best sellers services - random 4 from all approved services (can overlap with featured)
+  const popularServices: Service[] = shuffleArray(allServices)
     .slice(0, 4)
     .map(s => ({
       id: s.id,
