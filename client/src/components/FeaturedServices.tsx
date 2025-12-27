@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Star, ShoppingCart, Zap, ChevronLeft, ChevronRight, Grid, List } from "lucide-react";
 import { useCart } from "./CartContext";
@@ -12,6 +12,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "./ui/carousel";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 
 interface Service {
   id: number;
@@ -142,11 +143,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Provider Info */}
                   <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2 min-h-[24px] md:min-h-[32px]">
                     <Link to={`/profile/117`} className="flex items-center gap-1.5 md:gap-2 hover:opacity-80 transition-opacity">
-                      <img
-                        src={service.providerImage}
-                        alt={service.tradingName}
-                        className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
-                      />
+                      <Avatar className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0">
+                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[10px] md:text-[12px]">
+                          {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                         {service.tradingName}
                       </span>
@@ -299,11 +301,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       {/* Provider Info */}
                       <div className="flex items-center gap-1.5">
                         <Link to={`/profile/117`} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                          <img
-                            src={service.providerImage}
-                            alt={service.tradingName}
-                            className="w-5 h-5 rounded-full object-cover"
-                          />
+                          <Avatar className="w-5 h-5 flex-shrink-0">
+                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[9px]">
+                              {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                             {service.tradingName}
                           </span>
@@ -522,11 +525,12 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                   {/* Provider Info */}
                   <div className="flex items-center gap-1 md:gap-1.5 mb-1 md:mb-1.5">
                     <Link to={`/profile/117`} className="flex items-center gap-1 md:gap-2 hover:opacity-80 transition-opacity">
-                      <img
-                        src={service.providerImage}
-                        alt={service.tradingName}
-                        className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover"
-                      />
+                      <Avatar className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0">
+                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[9px] md:text-[11px]">
+                          {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="font-['Poppins',sans-serif] text-[10px] md:text-[12px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                         {service.tradingName}
                       </span>
