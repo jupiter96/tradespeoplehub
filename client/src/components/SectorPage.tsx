@@ -281,153 +281,9 @@ export default function SectorPage() {
   // Fetch sector data from API if we have a sectorSlug
   const { sector: apiSector, loading: sectorLoading } = useSector(sectorSlug || '', false);
   
-  // Fetch services from API
+  // Fetch services from API - state declarations
   const [allServices, setAllServices] = useState<any[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        setServicesLoading(true);
-        const { resolveApiUrl } = await import("../config/api");
-        
-        const params = new URLSearchParams();
-        params.append('activeOnly', 'true');
-        params.append('status', 'approved');
-        
-        if (apiSector?._id) {
-          // Fetch service categories for this sector first
-          const categoriesResponse = await fetch(
-            resolveApiUrl(`/api/service-categories?sectorId=${apiSector._id}&activeOnly=true&limit=100`),
-            { credentials: 'include' }
-          );
-          if (categoriesResponse.ok) {
-            const categoriesData = await categoriesResponse.json();
-            const categoryIds = categoriesData.serviceCategories?.map((c: any) => c._id).join(',') || '';
-            if (categoryIds) {
-              // Fetch services for these categories
-              const servicesResponse = await fetch(
-                resolveApiUrl(`/api/services?${params.toString()}&limit=1000`),
-                { credentials: 'include' }
-              );
-              if (servicesResponse.ok) {
-                const servicesData = await servicesResponse.json();
-                // Transform API data
-                const transformed = (servicesData.services || []).map((s: any) => ({
-                  id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
-                  slug: s.slug,
-                  image: s.images?.[0] || s.portfolioImages?.[0] || "",
-                  providerName: typeof s.professional === 'object' 
-                    ? `${s.professional.firstName} ${s.professional.lastName}` 
-                    : "",
-                  tradingName: typeof s.professional === 'object' 
-                    ? s.professional.tradingName || ""
-                    : "",
-                  providerImage: typeof s.professional === 'object' 
-                    ? s.professional.avatar || ""
-                    : "",
-                  description: s.title || "",
-                  category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
-                    ? s.serviceCategory.sector.name || ""
-                    : "",
-                  subcategory: typeof s.serviceCategory === 'object'
-                    ? s.serviceCategory.name || ""
-                    : "",
-                  detailedSubcategory: typeof s.serviceSubCategory === 'object'
-                    ? s.serviceSubCategory.name || ""
-                    : undefined,
-                  rating: s.rating || 0,
-                  reviewCount: s.reviewCount || 0,
-                  completedTasks: s.completedTasks || 0,
-                  price: `£${s.price?.toFixed(2) || '0.00'}`,
-                  originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
-                  priceUnit: s.priceUnit || "fixed",
-                  badges: s.badges || [],
-                  deliveryType: s.deliveryType || "standard",
-                  postcode: s.postcode || "",
-                  location: s.location || "",
-                  latitude: s.latitude,
-                  longitude: s.longitude,
-                  highlights: s.highlights || [],
-                  addons: s.addons || [],
-                  idealFor: s.idealFor || [],
-                  specialization: "",
-                  packages: s.packages || [],
-                  skills: s.skills || [],
-                  responseTime: s.responseTime || "",
-                  portfolioImages: s.portfolioImages || [],
-                  _id: s._id,
-                }));
-                setAllServices(transformed);
-              }
-            }
-          }
-        } else {
-          // Fetch all services if no sector
-          const servicesResponse = await fetch(
-            resolveApiUrl(`/api/services?${params.toString()}&limit=1000`),
-            { credentials: 'include' }
-          );
-          if (servicesResponse.ok) {
-            const servicesData = await servicesResponse.json();
-            const transformed = (servicesData.services || []).map((s: any) => ({
-              id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
-              slug: s.slug,
-              image: s.images?.[0] || s.portfolioImages?.[0] || "",
-              providerName: typeof s.professional === 'object' 
-                ? `${s.professional.firstName} ${s.professional.lastName}` 
-                : "",
-              tradingName: typeof s.professional === 'object' 
-                ? s.professional.tradingName || ""
-                : "",
-              providerImage: typeof s.professional === 'object' 
-                ? s.professional.avatar || ""
-                : "",
-              description: s.title || "",
-              category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
-                ? s.serviceCategory.sector.name || ""
-                : "",
-              subcategory: typeof s.serviceCategory === 'object'
-                ? s.serviceCategory.name || ""
-                : "",
-              detailedSubcategory: typeof s.serviceSubCategory === 'object'
-                ? s.serviceSubCategory.name || ""
-                : undefined,
-              rating: s.rating || 0,
-              reviewCount: s.reviewCount || 0,
-              completedTasks: s.completedTasks || 0,
-              price: `£${s.price?.toFixed(2) || '0.00'}`,
-              originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
-              priceUnit: s.priceUnit || "fixed",
-              badges: s.badges || [],
-              deliveryType: s.deliveryType || "standard",
-              postcode: s.postcode || "",
-              location: s.location || "",
-              latitude: s.latitude,
-              longitude: s.longitude,
-              highlights: s.highlights || [],
-              addons: s.addons || [],
-              idealFor: s.idealFor || [],
-              specialization: "",
-              packages: s.packages || [],
-              skills: s.skills || [],
-              responseTime: s.responseTime || "",
-              portfolioImages: s.portfolioImages || [],
-              _id: s._id,
-            }));
-            setAllServices(transformed);
-          }
-        }
-      } catch (error) {
-        // console.error("Error fetching services:", error);
-        setAllServices([]);
-      } finally {
-        setServicesLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, [apiSector?._id]);
   
   // Filter state - declare early to avoid initialization errors
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
@@ -790,6 +646,97 @@ export default function SectorPage() {
       }
     }
   }, [sector, sectorLoading, serviceCategoryLoading, categoryLoading, serviceCategoriesLoading, subCategoryLoading, sectorSlug, serviceCategorySlug, categorySlug, apiCategory, apiServiceCategory, apiSector, currentServiceCategory, navigate]);
+
+  // Fetch services from API based on current page context
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setServicesLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        
+        const params = new URLSearchParams();
+        
+        // Build filter parameters based on current page context
+        // Priority: subcategory > category > sector
+        if (currentServiceSubCategoryData?._id) {
+          // We're on a subcategory page - filter by subcategory ID
+          params.append('serviceSubCategoryId', currentServiceSubCategoryData._id);
+        } else if (apiServiceCategory?._id) {
+          // We're on a service category page - filter by category ID
+          params.append('serviceCategoryId', apiServiceCategory._id);
+        } else if (apiSector?._id) {
+          // We're on a sector page - filter by sector ID
+          params.append('sectorId', apiSector._id);
+        }
+        
+        // Fetch services using the public endpoint with proper filters
+        const servicesResponse = await fetch(
+          resolveApiUrl(`/api/services/public?${params.toString()}`),
+          { credentials: 'include' }
+        );
+        
+        if (servicesResponse.ok) {
+          const servicesData = await servicesResponse.json();
+          // Transform API data
+          const transformed = (servicesData.services || []).map((s: any) => ({
+            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            slug: s.slug,
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
+            subcategory: typeof s.serviceCategory === 'object'
+              ? s.serviceCategory.name || ""
+              : "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+            _id: s._id,
+          }));
+          setAllServices(transformed);
+        } else {
+          setAllServices([]);
+        }
+      } catch (error) {
+        // console.error("Error fetching services:", error);
+        setAllServices([]);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [apiSector?._id, apiServiceCategory?._id, currentServiceSubCategoryData?._id]);
 
   // Helpers to build navigation URLs for categories/subcategories
   const getSlug = (obj: any) => obj?.slug || nameToSlug(obj?.name || "");

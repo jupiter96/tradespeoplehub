@@ -50,7 +50,6 @@ import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import type { Service } from "./servicesData";
-import { categoryTreeForServicesPage } from "./unifiedCategoriesData";
 import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 
@@ -152,121 +151,6 @@ export default function ServicesPage() {
   // Fetch services from API
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        setServicesLoading(true);
-        const { resolveApiUrl } = await import("../config/api");
-
-        // Build query params
-        const params = new URLSearchParams();
-        if (sectorSlugParam) {
-          // Find sector ID from slug
-          const sectors = await fetch(resolveApiUrl('/api/sectors?activeOnly=true'), { credentials: 'include' })
-            .then(r => r.json())
-            .then(d => d.sectors || []);
-          const sector = sectors.find((s: any) => s.slug === sectorSlugParam);
-          if (sector) {
-            // Use sectorId parameter to filter services by sector
-            params.append('sectorId', sector._id);
-          }
-        }
-
-        // Use public endpoint - returns ALL approved & active services without limit
-        const response = await fetch(
-          resolveApiUrl(`/api/services/public?${params.toString()}`),
-          { credentials: 'include' }
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          // Transform API data to match Service interface
-          const transformedServices: Service[] = (data.services || []).map((s: any) => ({
-            id: parseInt(s._id.slice(-8), 16) || Math.floor(Math.random() * 10000),
-            _id: s._id,
-            slug: s.slug,
-            image: s.images?.[0] || s.portfolioImages?.[0] || "",
-            providerName: typeof s.professional === 'object' 
-              ? `${s.professional.firstName} ${s.professional.lastName}` 
-              : "",
-            tradingName: typeof s.professional === 'object' 
-              ? s.professional.tradingName || ""
-              : "",
-            providerImage: typeof s.professional === 'object' 
-              ? s.professional.avatar || ""
-              : "",
-            description: s.title || "",
-            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
-              ? s.serviceCategory.sector.name || ""
-              : "",
-            subcategory: typeof s.serviceCategory === 'object'
-              ? s.serviceCategory.name || ""
-              : "",
-            detailedSubcategory: typeof s.serviceSubCategory === 'object'
-              ? s.serviceSubCategory.name || ""
-              : undefined,
-            rating: s.rating || 0,
-            reviewCount: s.reviewCount || 0,
-            completedTasks: s.completedTasks || 0,
-            price: `£${s.price?.toFixed(2) || '0.00'}`,
-            // Only use originalPrice if discount is still valid (within date range)
-            originalPrice: (s.originalPrice && (
-              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
-              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
-            ))
-              ? `£${s.originalPrice.toFixed(2)}`
-              : undefined,
-            priceUnit: s.priceUnit || "fixed",
-            badges: s.badges || [],
-            deliveryType: s.deliveryType || "standard",
-            postcode: s.postcode || "",
-            location: s.location || "",
-            latitude: s.latitude,
-            longitude: s.longitude,
-            highlights: s.highlights || [],
-            addons: s.addons?.map((a: any) => ({
-              id: a.id || a._id,
-              name: a.name,
-              description: a.description || "",
-              price: a.price,
-            })) || [],
-            idealFor: s.idealFor || [],
-            specialization: "",
-            packages: s.packages?.map((p: any) => ({
-              id: p.id || p._id,
-              name: p.name,
-              price: `£${p.price?.toFixed(2) || '0.00'}`,
-              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
-              priceUnit: "fixed",
-              description: p.description || "",
-              highlights: [],
-              features: p.features || [],
-              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
-              revisions: p.revisions || "",
-            })) || [],
-            skills: s.skills || [],
-            responseTime: s.responseTime || "",
-            portfolioImages: s.portfolioImages || [],
-            _id: s._id, // Keep original ID for navigation
-            _serviceCategory: s.serviceCategory,
-            _serviceSubCategory: s.serviceSubCategory,
-          }));
-          setAllServices(transformedServices);
-        } else {
-          // console.error("Failed to fetch services");
-          setAllServices([]);
-        }
-      } catch (error) {
-        // console.error("Error fetching services:", error);
-        setAllServices([]);
-      } finally {
-        setServicesLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, [sectorSlugParam, serviceCategorySlugParam]);
   const [showRadiusSlider, setShowRadiusSlider] = useState(false);
 
   // Main Sectors (Main Categories)
@@ -551,8 +435,8 @@ export default function ServicesPage() {
       });
     }
     
-    // Final fallback to static data
-    return categoryTreeForServicesPage;
+    // Return empty array if no data available
+    return [];
   }, [allServiceCategories, apiSectors, legacySectors]);
 
   // Selected filters - new approach with type and value
@@ -567,6 +451,196 @@ export default function ServicesPage() {
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilter[]>([]);
   const [expandedSectors, setExpandedSectors] = useState<Set<string>>(new Set());
   const [expandedMainCategories, setExpandedMainCategories] = useState<Set<string>>(new Set());
+
+  // Fetch services from API when filters change
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setServicesLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+
+        // Build query params
+        const params = new URLSearchParams();
+        
+        // Priority 1: URL params (for direct navigation to category pages)
+        if (serviceSubCategorySlugParam) {
+          try {
+            const response = await fetch(
+              resolveApiUrl(`/api/service-subcategories/${serviceSubCategorySlugParam}?activeOnly=true`),
+              { credentials: 'include' }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              const subcategory = data.serviceSubCategory;
+              if (subcategory) {
+                params.append('serviceSubCategoryId', subcategory._id);
+              }
+            }
+          } catch (error) {
+            // console.error("Error fetching subcategory:", error);
+          }
+        } else if (serviceCategorySlugParam) {
+          try {
+            const response = await fetch(
+              resolveApiUrl(`/api/service-categories/${serviceCategorySlugParam}?activeOnly=true`),
+              { credentials: 'include' }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              const category = data.serviceCategory;
+              if (category) {
+                params.append('serviceCategoryId', category._id);
+              }
+            }
+          } catch (error) {
+            // console.error("Error fetching category:", error);
+          }
+        } else if (sectorSlugParam) {
+          const sectors = await fetch(resolveApiUrl('/api/sectors?activeOnly=true'), { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => d.sectors || []);
+          const sector = sectors.find((s: any) => s.slug === sectorSlugParam);
+          if (sector) {
+            params.append('sectorId', sector._id);
+          }
+        } 
+        // Priority 2: UI selected filters (when no URL params)
+        else if (selectedFilters.length > 0) {
+          // Convert selectedFilters to API parameters
+          // Use the most specific filter available
+          const subCategoryFilter = selectedFilters.find(f => f.type === 'subCategory');
+          const mainCategoryFilter = selectedFilters.find(f => f.type === 'mainCategory');
+          const sectorFilter = selectedFilters.find(f => f.type === 'sector');
+          
+          if (subCategoryFilter) {
+            // Find subcategory ID by name
+            const matchingCategory = allServiceCategories.find(sc => 
+              sc.name === subCategoryFilter.mainCategory
+            );
+            if (matchingCategory && matchingCategory.subCategories) {
+              const matchingSubCategory = (matchingCategory.subCategories as ServiceSubCategory[]).find(
+                sub => sub.name === subCategoryFilter.subCategory
+              );
+              if (matchingSubCategory) {
+                params.append('serviceSubCategoryId', matchingSubCategory._id);
+              }
+            }
+          } else if (mainCategoryFilter) {
+            // Find category ID by name
+            const matchingCategory = allServiceCategories.find(sc => 
+              sc.name === mainCategoryFilter.mainCategory
+            );
+            if (matchingCategory) {
+              params.append('serviceCategoryId', matchingCategory._id);
+            }
+          } else if (sectorFilter) {
+            // Find sector ID by name
+            const matchingSector = apiSectors.find(s => s.name === sectorFilter.sector);
+            if (matchingSector) {
+              params.append('sectorId', matchingSector._id);
+            }
+          }
+        }
+        
+        // Add search query if present
+        if (searchQuery.trim()) {
+          params.append('search', searchQuery.trim());
+        }
+
+        // Use public endpoint - returns approved & active services
+        const response = await fetch(
+          resolveApiUrl(`/api/services/public?${params.toString()}`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Transform API data to match Service interface
+          const transformedServices: Service[] = (data.services || []).map((s: any) => ({
+            id: parseInt(s._id.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            _id: s._id,
+            slug: s.slug,
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
+            subcategory: typeof s.serviceCategory === 'object'
+              ? s.serviceCategory.name || ""
+              : "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            // Only use originalPrice if discount is still valid (within date range)
+            originalPrice: (s.originalPrice && (
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+            ))
+              ? `£${s.originalPrice.toFixed(2)}`
+              : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+            _id: s._id, // Keep original ID for navigation
+            _serviceCategory: s.serviceCategory,
+            _serviceSubCategory: s.serviceSubCategory,
+          }));
+          setAllServices(transformedServices);
+        } else {
+          // console.error("Failed to fetch services");
+          setAllServices([]);
+        }
+      } catch (error) {
+        // console.error("Error fetching services:", error);
+        setAllServices([]);
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParam, selectedFilters, searchQuery, apiSectors, allServiceCategories]);
 
   // Sector icon mapping for sidebar
   const getSectorIcon = (sectorName: string) => {
@@ -853,6 +927,8 @@ export default function ServicesPage() {
   }, []);
 
   // Filter and sort services with distance calculation
+  // Note: Category filtering and search are done by backend API
+  // Frontend only applies additional filters (delivery, rating, price, location)
   const filteredAndSortedServices = useMemo(() => {
     let filtered = allServices.map(service => ({
       ...service,
@@ -860,49 +936,6 @@ export default function ServicesPage() {
         ? calculateDistance(userCoords.latitude, userCoords.longitude, service.latitude, service.longitude)
         : undefined
     })).filter((service) => {
-      // Search filter - comprehensive search across multiple fields
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = searchQuery === "" || 
-        // Search in service title/description
-        service.description.toLowerCase().includes(searchLower) ||
-        // Search in professional name
-        service.providerName.toLowerCase().includes(searchLower) ||
-        // Search in trading/business name
-        service.tradingName.toLowerCase().includes(searchLower) ||
-        // Search in category (sector)
-        service.category.toLowerCase().includes(searchLower) ||
-        // Search in subcategory (main category)
-        (service.subcategory && service.subcategory.toLowerCase().includes(searchLower)) ||
-        // Search in detailed subcategory
-        (service.detailedSubcategory && service.detailedSubcategory.toLowerCase().includes(searchLower)) ||
-        // Search in location
-        service.location.toLowerCase().includes(searchLower) ||
-        // Search in specialization
-        (service.specialization && service.specialization.toLowerCase().includes(searchLower)) ||
-        // Search in ideal for tags
-        (service.idealFor && service.idealFor.some(tag => tag.toLowerCase().includes(searchLower))) ||
-        // Search in highlights
-        (service.highlights && service.highlights.some(highlight => highlight.toLowerCase().includes(searchLower)));
-
-      // New hierarchical category filter
-      const matchesCategory = selectedFilters.length === 0 || selectedFilters.some(filter => {
-        // Sector filter - matches if service category matches sector
-        if (filter.type === 'sector') {
-          return service.category === filter.sector;
-        }
-        // Main Category filter - matches if service subcategory matches
-        if (filter.type === 'mainCategory') {
-          return service.category === filter.sector && service.subcategory === filter.mainCategory;
-        }
-        // Sub Category filter - matches if service detailedSubcategory matches
-        if (filter.type === 'subCategory') {
-          return service.category === filter.sector && 
-                 service.subcategory === filter.mainCategory && 
-                 service.detailedSubcategory === filter.subCategory;
-        }
-        return false;
-      });
-
       // Location filter (postcode/radius)
       const matchesLocation = !userCoords || service.distance === undefined || service.distance <= radiusMiles;
 
@@ -919,21 +952,21 @@ export default function ServicesPage() {
       // Rating filter
       const matchesRating = selectedRating === 0 || service.rating >= selectedRating;
 
-      // Price filter
-      const priceValue = parseFloat(service.price);
+      // Price filter - remove £ symbol before parsing
+      const priceValue = parseFloat(service.price.replace('£', ''));
       const matchesPrice = priceValue >= priceRange[0] && priceValue <= priceRange[1];
 
-      return matchesSearch && matchesCategory && matchesLocation && matchesLocationSearch && 
+      return matchesLocation && matchesLocationSearch && 
              matchesDelivery && matchesRating && matchesPrice;
     });
 
     // Sort services
     switch (sortBy) {
       case "price-low":
-        filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        filtered.sort((a, b) => parseFloat(a.price.replace('£', '')) - parseFloat(b.price.replace('£', '')));
         break;
       case "price-high":
-        filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+        filtered.sort((a, b) => parseFloat(b.price.replace('£', '')) - parseFloat(a.price.replace('£', '')));
         break;
       case "rating":
         filtered.sort((a, b) => b.rating - a.rating);
@@ -956,7 +989,7 @@ export default function ServicesPage() {
     const experiencedProfessionals = filtered.filter(s => s.reviewCount > 0 || s.completedTasks > 0);
     
     return [...newProfessionals, ...experiencedProfessionals];
-  }, [searchQuery, selectedFilters, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch]);
+  }, [allServices, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch]);
 
   // Filter category tree based on selected filters (show only relevant sectors)
   const filteredCategoryTree = useMemo(() => {
@@ -1160,8 +1193,19 @@ export default function ServicesPage() {
           Categories
         </h3>
         
+        {/* Loading state */}
+        {serviceCategoriesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-[#FE8A0F]" />
+          </div>
+        ) : categoryTree.length === 0 ? (
+          <div className="text-center py-4 text-[#6b6b6b] text-[13px] font-['Poppins',sans-serif]">
+            No categories available
+          </div>
+        ) : null}
+        
         {/* Selected Filters */}
-        {selectedFilters.length > 0 && (
+        {!serviceCategoriesLoading && selectedFilters.length > 0 && (
           <TooltipProvider>
             <div className="flex flex-wrap gap-2 mb-4">
               {selectedFilters.map((filter, index) => {
@@ -1193,6 +1237,7 @@ export default function ServicesPage() {
         )}
 
         {/* Category Tree */}
+        {!serviceCategoriesLoading && categoryTree.length > 0 && (
         <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
           {filteredCategoryTree.map((sector) => {
             // Check if we have a subCategory filter - if so, show only subcategories
@@ -1325,6 +1370,7 @@ export default function ServicesPage() {
             );
           })}
         </div>
+        )}
       </div>
 
       <Separator />
