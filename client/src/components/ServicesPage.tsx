@@ -158,11 +158,9 @@ export default function ServicesPage() {
       try {
         setServicesLoading(true);
         const { resolveApiUrl } = await import("../config/api");
-        
+
         // Build query params
         const params = new URLSearchParams();
-        params.append('activeOnly', 'true');
-        params.append('status', 'approved');
         if (sectorSlugParam) {
           // Find sector ID from slug
           const sectors = await fetch(resolveApiUrl('/api/sectors?activeOnly=true'), { credentials: 'include' })
@@ -170,12 +168,14 @@ export default function ServicesPage() {
             .then(d => d.sectors || []);
           const sector = sectors.find((s: any) => s.slug === sectorSlugParam);
           if (sector) {
-            params.append('serviceCategoryId', sector._id);
+            // Use sectorId parameter to filter services by sector
+            params.append('sectorId', sector._id);
           }
         }
-        
+
+        // Use public endpoint - returns ALL approved & active services without limit
         const response = await fetch(
-          resolveApiUrl(`/api/services?${params.toString()}&limit=1000`),
+          resolveApiUrl(`/api/services/public?${params.toString()}`),
           { credentials: 'include' }
         );
         
@@ -870,7 +870,7 @@ export default function ServicesPage() {
         // Search in trading/business name
         service.tradingName.toLowerCase().includes(searchLower) ||
         // Search in category (sector)
-        (service.category && service.category.toLowerCase().includes(searchLower)) ||
+        service.category.toLowerCase().includes(searchLower) ||
         // Search in subcategory (main category)
         (service.subcategory && service.subcategory.toLowerCase().includes(searchLower)) ||
         // Search in detailed subcategory
@@ -903,8 +903,8 @@ export default function ServicesPage() {
         return false;
       });
 
-      // Location filter (postcode/radius) - only apply when location search is active
-      const matchesLocation = locationSearch === "" || !showRadiusSlider || !userCoords || service.distance === undefined || service.distance <= radiusMiles;
+      // Location filter (postcode/radius)
+      const matchesLocation = !userCoords || service.distance === undefined || service.distance <= radiusMiles;
 
       // Location text search
       const matchesLocationSearch = locationSearch === "" ||
@@ -956,7 +956,7 @@ export default function ServicesPage() {
     const experiencedProfessionals = filtered.filter(s => s.reviewCount > 0 || s.completedTasks > 0);
     
     return [...newProfessionals, ...experiencedProfessionals];
-  }, [searchQuery, selectedFilters, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch, showRadiusSlider, allServices]);
+  }, [searchQuery, selectedFilters, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch]);
 
   // Filter category tree based on selected filters (show only relevant sectors)
   const filteredCategoryTree = useMemo(() => {

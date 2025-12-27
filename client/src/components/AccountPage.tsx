@@ -5112,7 +5112,7 @@ function ServicesSection() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ isUserDisabled: !serviceToToggle.currentStatus }),
+          body: JSON.stringify({ isActive: !serviceToToggle.currentStatus }),
         }
       );
 
@@ -5122,14 +5122,14 @@ function ServicesSection() {
         setMyServices(prevServices =>
           prevServices.map(service =>
             service._id === serviceToToggle.id
-              ? { ...service, isUserDisabled: data.service.isUserDisabled }
+              ? { ...service, isActive: data.service.isActive }
               : service
           )
         );
         toast.success(
-          data.service.isUserDisabled
-            ? "Service disabled successfully"
-            : "Service enabled successfully"
+          data.service.isActive
+            ? "Service enabled successfully"
+            : "Service disabled successfully"
         );
         setIsToggleDisableDialogOpen(false);
         setServiceToToggle(null);
@@ -5489,8 +5489,8 @@ function ServicesSection() {
                           <TableCell>
                             <div className="flex items-center justify-center">
                               <Switch
-                                checked={!service.isUserDisabled}
-                                onCheckedChange={() => handleToggleServiceDisable(service._id, service.isUserDisabled || false)}
+                                checked={service.isActive !== false}
+                                onCheckedChange={() => handleToggleServiceDisable(service._id, service.isActive !== false)}
                                 className="data-[state=checked]:bg-[#FE8A0F]"
                               />
                             </div>
@@ -6039,7 +6039,7 @@ function ServicesSection() {
                   className={`flex-1 font-['Poppins',sans-serif] ${
                     serviceToToggle?.currentStatus
                       ? "bg-green-600 hover:bg-green-700"
-                      : "bg-orange-600 hover:bg-orange-700"
+                      : "bg-red-600 hover:bg-red-700"
                   } text-white`}
                 >
                   {serviceToToggle?.currentStatus ? "Enable" : "Disable"}

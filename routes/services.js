@@ -49,7 +49,100 @@ const buildUniqueServiceSlug = async ({ title, excludeId } = {}) => {
   return exists ? `${fallback}-${randomSuffix(4)}` : fallback;
 };
 
-// Get all services (with optional filtering)
+// Get all PUBLIC services for frontend (NO LIMIT, only approved & active services)
+router.get('/public', async (req, res) => {
+  try {
+    const {
+      professionalId,
+      sectorId,
+      serviceCategoryId,
+      serviceSubCategoryId,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = req.query;
+
+    const query = {
+      status: 'approved', // Only approved services
+      isActive: true,     // Only active services
+    };
+
+    // Filter by professional
+    if (professionalId) {
+      query.professional = professionalId;
+    }
+
+    // Filter by sector - find all service categories in this sector
+    if (sectorId) {
+      const serviceCategories = await ServiceCategory.find({
+        sector: sectorId,
+        isActive: true
+      }).select('_id').lean();
+
+      const categoryIds = serviceCategories.map(cat => cat._id);
+      if (categoryIds.length > 0) {
+        query.serviceCategory = { $in: categoryIds };
+      } else {
+        // No categories found for this sector, return empty result
+        return res.json({
+          services: [],
+          totalCount: 0,
+        });
+      }
+    }
+
+    // Filter by service category (overrides sector filter if both provided)
+    if (serviceCategoryId) {
+      query.serviceCategory = serviceCategoryId;
+    }
+
+    // Filter by service subcategory
+    if (serviceSubCategoryId) {
+      query.serviceSubCategory = serviceSubCategoryId;
+    }
+
+    // Search functionality
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Build sort object
+    const sortObj = {};
+    const sortField = sortBy || 'createdAt';
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+    sortObj[sortField] = sortDirection;
+
+    // Get ALL services without pagination limit
+    // Populate professional, serviceCategory (with sector), and serviceSubCategory
+    console.log('Query:', query);
+    const services = await Service.find(query? query : {})
+      .populate('professional', 'firstName lastName tradingName avatar')
+      .populate({
+        path: 'serviceCategory',
+        select: 'name slug sector',
+        populate: {
+          path: 'sector',
+          select: 'name slug'
+        }
+      })
+      .populate('serviceSubCategory', 'name slug')
+      .sort(sortObj)
+      .lean();
+
+    return res.json({
+      services,
+      totalCount: services.length,
+    });
+  } catch (error) {
+    console.error('Get public services error', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch public services' });
+  }
+});
+
+// Get all services (with optional filtering) - ADMIN USE
 router.get('/', async (req, res) => {
   try {
     const {
@@ -63,7 +156,7 @@ router.get('/', async (req, res) => {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = '1',
-      limit = '20',
+      limit,
     } = req.query;
 
     const query = {};
@@ -124,27 +217,14 @@ router.get('/', async (req, res) => {
       query.status = effectiveStatus;
     }
 
+    // Filter by active status
+    if (activeOnly === 'true') {
+      query.isActive = true;
+    }
+
     // Exclude user-disabled services from public listings (unless fetching own services)
     if (!professionalId) {
       query.isUserDisabled = { $ne: true };
-      // Public listings: only show approved services by default
-      // BUT: if activeOnly is explicitly false, don't filter by status (for admin pages)
-      if (!effectiveStatus && activeOnly === 'true') {
-        query.status = 'approved';
-      }
-    }
-
-    // Filter by active status
-    // For approved services, show them regardless of isActive to ensure they display
-    if (activeOnly === 'true') {
-      // If querying for approved services (public listings), show all approved services
-      // Otherwise, require isActive = true
-      if (!professionalId && (query.status === 'approved' || (!effectiveStatus && activeOnly === 'true'))) {
-        // Don't filter by isActive for approved services - they should always be visible
-        // The status='approved' filter is sufficient
-      } else {
-        query.isActive = true;
-      }
     }
 
     // Add search functionality
@@ -157,8 +237,9 @@ router.get('/', async (req, res) => {
 
     // Parse pagination
     const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit) || 20;
-    const skip = (pageNum - 1) * limitNum;
+    // If limit is provided and > 0, use it. Otherwise, return all services (no limit)
+    const limitNum = limit ? (parseInt(limit) > 0 ? parseInt(limit) : null) : null;
+    const skip = limitNum ? (pageNum - 1) * limitNum : 0;
 
     // Build sort object
     const sortObj = {};
@@ -169,20 +250,21 @@ router.get('/', async (req, res) => {
     // Get total count for pagination
     const total = await Service.countDocuments(query);
 
-    const services = await Service.find(query)
-      .populate('professional', 'firstName lastName tradingName avatar email phone postcode')
-      .populate({
-        path: 'serviceCategory',
-        select: 'name slug icon bannerImage sector',
-        populate: {
-          path: 'sector',
-          select: 'name slug icon bannerImage'
-        }
-      })
-      .populate('serviceSubCategory', 'name slug icon')
+    let queryBuilder = Service.find(query)
       .sort(sortObj)
-      .skip(skip)
-      .limit(limitNum)
+      .skip(skip);
+    
+    // Only apply limit if limitNum is specified
+    if (limitNum) {
+      queryBuilder = queryBuilder.limit(limitNum);
+    }
+    
+    const services = await queryBuilder
+      .populate([
+        { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+        { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
+        { path: 'serviceSubCategory', select: 'name slug icon' },
+      ])
       .lean();
 
     return res.json({
@@ -190,9 +272,9 @@ router.get('/', async (req, res) => {
       totalCount: total,
       pagination: {
         page: pageNum,
-        limit: limitNum,
+        limit: limitNum || total, // If no limit, use total count
         total,
-        totalPages: Math.ceil(total / limitNum),
+        totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
       },
     });
   } catch (error) {
@@ -299,13 +381,6 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       status: 'draft',
       isActive: false,
     };
-    
-    // Set isActive based on status for draft
-    if (draftServiceData.status === 'approved') {
-      draftServiceData.isActive = true;
-    } else {
-      draftServiceData.isActive = false;
-    }
 
     // Add optional fields only if they have values
     if (serviceCategoryId) draftServiceData.serviceCategory = serviceCategoryId;
@@ -372,6 +447,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       aboutMe,
       price,
       originalPrice,
+      originalPriceValidFrom,
       originalPriceValidUntil,
       priceUnit,
       images,
@@ -712,12 +788,6 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     }
 
     service.status = nextStatus;
-    // Set isActive based on status
-    if (nextStatus === 'approved') {
-      service.isActive = true;
-    } else if (['inactive', 'paused', 'denied'].includes(nextStatus)) {
-      service.isActive = false;
-    }
     await service.save();
 
     await service.populate([
@@ -734,11 +804,11 @@ router.patch('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Toggle service user disable status (Professional only - own services)
+// Toggle service active status (Professional only - own services)
 router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { isUserDisabled } = req.body;
+    const { isActive } = req.body;
 
     // Find service
     const service = await Service.findById(id);
@@ -751,8 +821,8 @@ router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professiona
       return res.status(403).json({ error: 'You can only toggle your own services' });
     }
 
-    // Update isUserDisabled status
-    service.isUserDisabled = isUserDisabled !== undefined ? isUserDisabled : !service.isUserDisabled;
+    // Update isActive status
+    service.isActive = isActive !== undefined ? isActive : !service.isActive;
     await service.save();
 
     // Populate references
@@ -765,7 +835,7 @@ router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professiona
     return res.json({ service });
   } catch (error) {
     // console.error('Toggle service disable error', error);
-    return res.status(500).json({ error: error.message || 'Failed to toggle service disable status' });
+    return res.status(500).json({ error: error.message || 'Failed to toggle service active status' });
   }
 });
 
