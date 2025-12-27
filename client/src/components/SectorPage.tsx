@@ -910,6 +910,7 @@ export default function SectorPage() {
   };
 
   // Get services for this sector or category with distance calculation
+  // For now, display all services regardless of sector/category filters
   const sectorServices = allServices.map((service) => {
     // Calculate distance if user location is available
     if (userCoords && service.latitude && service.longitude) {
@@ -922,25 +923,28 @@ export default function SectorPage() {
       return { ...service, distance };
     }
     return service;
-  }).filter((service) => {
-    if (!sector) return false;
-    
-    // If we're in a subcategory (3rd level), filter by subcategory
-    if (currentSubCategory) {
-      return service.category === sector.name && 
-             service.subcategory === currentMainCategory?.name &&
-             service.detailedSubcategory === currentSubCategory.name;
-    }
-    
-    // If we're in a main category (2nd level), filter by that category
-    if (currentMainCategory) {
-      return service.category === sector.name && 
-             service.subcategory === currentMainCategory.name;
-    }
-    
-    // Otherwise, show all services for the sector
-    return service.category === sector.name;
   });
+  
+  // TODO: Re-enable sector/category filtering when needed
+  // .filter((service) => {
+  //   if (!sector) return true; // Show all services if no sector selected
+  //   
+  //   // If we're in a subcategory (3rd level), filter by subcategory
+  //   if (currentSubCategory) {
+  //     return service.category === sector.name && 
+  //            service.subcategory === currentMainCategory?.name &&
+  //            service.detailedSubcategory === currentSubCategory.name;
+  //   }
+  //   
+  //   // If we're in a main category (2nd level), filter by that category
+  //   if (currentMainCategory) {
+  //     return service.category === sector.name && 
+  //            service.subcategory === currentMainCategory.name;
+  //   }
+  //   
+  //   // Otherwise, show all services for the sector
+  //   return service.category === sector.name;
+  // });
 
   // Apply filters
   const filteredServices = sectorServices.filter((service) => {

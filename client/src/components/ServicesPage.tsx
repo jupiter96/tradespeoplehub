@@ -870,7 +870,7 @@ export default function ServicesPage() {
         // Search in trading/business name
         service.tradingName.toLowerCase().includes(searchLower) ||
         // Search in category (sector)
-        service.category.toLowerCase().includes(searchLower) ||
+        (service.category && service.category.toLowerCase().includes(searchLower)) ||
         // Search in subcategory (main category)
         (service.subcategory && service.subcategory.toLowerCase().includes(searchLower)) ||
         // Search in detailed subcategory
@@ -903,8 +903,8 @@ export default function ServicesPage() {
         return false;
       });
 
-      // Location filter (postcode/radius)
-      const matchesLocation = !userCoords || service.distance === undefined || service.distance <= radiusMiles;
+      // Location filter (postcode/radius) - only apply when location search is active
+      const matchesLocation = locationSearch === "" || !showRadiusSlider || !userCoords || service.distance === undefined || service.distance <= radiusMiles;
 
       // Location text search
       const matchesLocationSearch = locationSearch === "" ||
@@ -956,7 +956,7 @@ export default function ServicesPage() {
     const experiencedProfessionals = filtered.filter(s => s.reviewCount > 0 || s.completedTasks > 0);
     
     return [...newProfessionals, ...experiencedProfessionals];
-  }, [searchQuery, selectedFilters, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch]);
+  }, [searchQuery, selectedFilters, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch, showRadiusSlider, allServices]);
 
   // Filter category tree based on selected filters (show only relevant sectors)
   const filteredCategoryTree = useMemo(() => {

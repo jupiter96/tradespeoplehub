@@ -170,6 +170,16 @@ router.get('/', async (req, res) => {
     const total = await Service.countDocuments(query);
 
     const services = await Service.find(query)
+      .populate('professional', 'firstName lastName tradingName avatar email phone postcode')
+      .populate({
+        path: 'serviceCategory',
+        select: 'name slug icon bannerImage sector',
+        populate: {
+          path: 'sector',
+          select: 'name slug icon bannerImage'
+        }
+      })
+      .populate('serviceSubCategory', 'name slug icon')
       .sort(sortObj)
       .skip(skip)
       .limit(limitNum)
