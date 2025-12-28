@@ -26,6 +26,7 @@ import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
 import { useSectors, useCategories, useSubCategories } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
+import SEOHead from "./SEOHead";
 
 const STEPS = [
   { id: 1, title: "About Me", icon: User, description: "Tell us about yourself" },
@@ -394,9 +395,15 @@ export default function ProfessionalRegistrationSteps() {
   const CurrentStepIcon = STEPS[currentStep - 1]?.icon || Briefcase;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#FFF5EB] via-white to-[#FFF5EB]">
-      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-        <Nav />
+    <>
+      <SEOHead
+        title="Professional Registration"
+        description="Professional registration page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#FFF5EB] via-white to-[#FFF5EB]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
       </header>
       
       <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 mt-[50px] md:mt-0">
@@ -1083,7 +1090,8 @@ export default function ProfessionalRegistrationSteps() {
       </div>
       
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }
 

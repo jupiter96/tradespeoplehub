@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import mobileBannerImage from "figma:asset/618daa9a68ee59f7a6ae2af4cb4c10ea44a1211f.png";
 import heroVideo from "../assets/hero.webm";
 import { useSEO } from "../hooks/useSEO";
+import SEOHead from "./SEOHead";
 
 export default function HomePage() {
   useSEO("homepage");
@@ -34,6 +35,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title="Find Trusted Local Professionals | Sortars"
+        description="Connect with verified professionals across the UK. From home repairs to business services, find trusted tradespeople, read reviews, compare quotes, and book with confidence on Sortars."
+        ogTitle="Find Trusted Local Professionals | Sortars"
+        ogDescription="Connect with verified professionals across the UK. From home repairs to business services, find trusted tradespeople, read reviews, compare quotes, and book with confidence on Sortars."
+        ogType="website"
+        robots="index,follow"
+      />
       {/* Header */}
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />

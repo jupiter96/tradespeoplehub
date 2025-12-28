@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { MessageCircle, Clock, AlertCircle, Send } from "lucide-react";
 import { toast } from "sonner@2.0.3";
+import SEOHead from "./SEOHead";
 
 export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
@@ -147,10 +148,16 @@ export default function DisputeDiscussionPage() {
   const milestone = job?.milestones?.find((m) => m.id === (dispute as any).milestoneId);
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa]">
-      <Nav />
-      
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <>
+      <SEOHead
+        title="Dispute Discussion"
+        description="Dispute discussion page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-[#f8f9fa]">
+        <Nav />
+        
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
@@ -396,6 +403,7 @@ export default function DisputeDiscussionPage() {
       </div>
 
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }

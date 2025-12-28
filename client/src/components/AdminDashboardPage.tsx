@@ -60,6 +60,7 @@ import AdminServicesPage from "./admin/AdminServicesPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import SEOHead from "./SEOHead";
 import {
   LineChart,
   Line,
@@ -874,7 +875,16 @@ export default function AdminDashboardPage() {
   }
 
   // Render other sections
-  return <Suspense fallback={<div>Loading...</div>}>{renderSection()}</Suspense>;
+  return (
+    <>
+      <SEOHead
+        title="Admin Dashboard"
+        description="Admin dashboard"
+        robots="noindex,nofollow"
+      />
+      <Suspense fallback={<div>Loading...</div>}>{renderSection()}</Suspense>
+    </>
+  );
 }
 
 // Statistics Card Component

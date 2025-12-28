@@ -20,6 +20,7 @@ import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
 import AddressAutocomplete from "./AddressAutocomplete";
 import API_BASE_URL from "../config/api";
+import SEOHead from "./SEOHead";
 
 export default function SocialOnboardingPage() {
   const navigate = useNavigate();
@@ -213,9 +214,16 @@ export default function SocialOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] relative" aria-busy="true">
-        <span className="sr-only">Loading</span>
-      </div>
+      <>
+        <SEOHead
+          title="Social Onboarding"
+          description="Social onboarding page"
+          robots="noindex,nofollow"
+        />
+        <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] relative" aria-busy="true">
+          <span className="sr-only">Loading</span>
+        </div>
+      </>
     );
   }
 
@@ -730,7 +738,8 @@ export default function SocialOnboardingPage() {
         </div>
       </div>
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }
 

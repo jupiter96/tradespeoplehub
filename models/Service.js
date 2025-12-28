@@ -42,6 +42,7 @@ const serviceSchema = new mongoose.Schema(
       type: String,
       required: false, // Optional for drafts
       trim: true,
+      minlength: [35, 'Service description must be at least 35 characters long'],
     },
     // About Me section for the service
     aboutMe: {

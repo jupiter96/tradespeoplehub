@@ -8,6 +8,7 @@ import BookingModal from "./BookingModal";
 import AddToCartModal from "./AddToCartModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "./ui/sheet";
 import { nameToSlug } from "./categoriesHierarchy";
+import { SEOHead } from "./SEOHead";
 
 // Join URL path segments safely (prevents accidental double slashes)
 const joinPath = (...parts: Array<string | null | undefined>) => {
@@ -272,6 +273,8 @@ export default function ServiceDetailPage() {
               ? (s.professional.publicProfile?.bio || s.professional.aboutService || "")
               : ""),
             description: s.title || "",
+            title: s.title || "",
+            about: s.aboutMe || s.description || "",
             category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
               ? s.serviceCategory.sector.name || ""
               : "",
@@ -1027,8 +1030,25 @@ export default function ServiceDetailPage() {
                         service.rating >= 4.5 ? "Verified Professional" : 
                         null;
 
+  // Generate SEO metadata
+  const seoTitle = service.title || service.description;
+  const seoDescription = service.about || service.aboutMe || `Professional ${service.subcategory || service.category} service by ${service.providerName}. ${service.rating > 0 ? `Rated ${service.rating}/5 with ${service.reviewCount} reviews.` : 'Verified professional.'} Book now on Sortars.com!`;
+
+  const mainImageUrl = serviceImages[0] || service.image;
+
   return (
     <div className="w-full min-h-screen bg-[#f0f0f0]">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        ogTitle={seoTitle}
+        ogDescription={seoDescription}
+        ogImage={mainImageUrl}
+        ogType="product"
+        robots="index,follow"
+      />
+
       {/* Header - Desktop Only */}
       <header className="hidden md:block sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />

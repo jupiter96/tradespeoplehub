@@ -2783,8 +2783,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       setActiveTab("service-details");
       return;
     }
-    if (!description || description.length < 100) {
-      toast.error("Please provide at least 100 characters description");
+    if (!description || description.length < 35) {
+      toast.error("Please provide at least 35 characters description");
       setActiveTab("service-details");
       return;
     }
@@ -3748,8 +3748,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     placeholder="Description"
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
                   />
-                  <p className={`font-['Poppins',sans-serif] text-[12px] mt-2 text-right ${description.length < 100 ? 'text-red-500' : 'text-green-600'}`}>
-                    {description.length} / 100 minimum characters
+                  <p className={`font-['Poppins',sans-serif] text-[12px] mt-2 text-right ${description.length < 35 ? 'text-red-500' : 'text-green-600'}`}>
+                    {description.length} / 35 minimum characters
                   </p>
                 </div>
               </div>

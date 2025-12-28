@@ -81,6 +81,7 @@ import PromoCodeSection from "./PromoCodeSection";
 import FavouriteSection from "./FavouriteSection";
 import ProfileSection from "./ProfileSection";
 import VerificationProgressModal from "./VerificationProgressModal";
+import SEOHead from "./SEOHead";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -324,7 +325,13 @@ export default function AccountPage() {
   const menuItems = userRole === "client" ? clientMenu : professionalMenu;
 
   return (
-    <div className="min-h-screen bg-[#f0f0f0]">
+    <>
+      <SEOHead
+        title="My Account"
+        description="User account page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-[#f0f0f0]">
       <VerificationProgressModal
         open={showVerificationModal}
         onOpenChange={(open) => setShowVerificationModal(open)}
@@ -518,7 +525,8 @@ export default function AccountPage() {
       </div>
 
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }
 

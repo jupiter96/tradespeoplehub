@@ -12,6 +12,7 @@ import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSub
 import type { Sector } from "../hooks/useSectorsAndCategories";
 import { getSectorIcon, getCategoryIcon, getSubCategoryIcon } from "./categoryIconMappings";
 import serviceVector from "../assets/service_vector.jpg";
+import { SEOHead } from "./SEOHead";
 
 type ViewMode = "sectors" | "categories" | "subcategories";
 
@@ -110,8 +111,38 @@ export default function AllCategoriesPage() {
     setImageErrors(prev => ({ ...prev, [key]: true }));
   };
 
+  // Generate SEO metadata based on view mode
+  const getSEOContent = () => {
+    if (viewMode === 'subcategories' && selectedServiceCategory) {
+      return {
+        title: `${selectedServiceCategory.name} Services - Browse All Subcategories | Sortars`,
+        description: `Explore all ${selectedServiceCategory.name.toLowerCase()} service subcategories on Sortars.com. Find verified professionals for your specific needs.`
+      };
+    } else if (viewMode === 'categories' && selectedSector) {
+      return {
+        title: `${selectedSector.name} Services - Browse All Categories | Sortars`,
+        description: `Explore all ${selectedSector.name.toLowerCase()} service categories on Sortars.com. Find trusted professionals across various specializations.`
+      };
+    }
+    return {
+      title: 'Browse All Service Categories | Sortars',
+      description: 'Explore all professional service categories across 13+ sectors on Sortars.com. Find verified tradespeople, specialists, and professionals for any job.'
+    };
+  };
+
+  const seoContent = getSEOContent();
+
   return (
     <div className="min-h-screen bg-[#FAFBFC]">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={seoContent.title}
+        description={seoContent.description}
+        ogTitle={seoContent.title}
+        ogDescription={seoContent.description}
+        ogType="website"
+      />
+
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>

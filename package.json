@@ -13,7 +13,8 @@
     "build:client": "cd client && npm run build",
     "postinstall": "cd client && npm install",
     "start": "npm run build:client && node server.js",
-    "create-email-templates": "node utils/createDefaultEmailTemplates.js"
+    "create-email-templates": "node utils/createDefaultEmailTemplates.js",
+    "seed-seo": "node utils/seedSEOContent.js"
   },
   "keywords": [],
   "author": "",

@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Separator } from "./ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import Nav from "../imports/Nav";
+import SEOHead from "./SEOHead";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
 import AddressAutocomplete from "./AddressAutocomplete";
@@ -550,9 +551,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB]">
-      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-        <Nav />
+    <>
+      <SEOHead
+        title="Login"
+        description="Login page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
       </header>
       
       <div className="pt-[50px] py-6 md:py-6 px-4 md:px-6">
@@ -1895,6 +1902,7 @@ export default function LoginPage() {
         </div>
       </div>
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }

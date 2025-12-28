@@ -14,6 +14,7 @@ import {
 import { useSector, useCategories, useServiceCategories, useServiceCategory, type ServiceCategory } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
 import type { SubCategory } from "./unifiedCategoriesData";
+import { SEOHead } from "./SEOHead";
 
 // Define MainCategory type for compatibility
 type MainCategory = {
@@ -628,6 +629,15 @@ export default function SectorPage() {
         ? currentMainCategory.name 
         : (sector?.name || "");
 
+  // Current page description
+  const currentDescription = currentServiceCategory
+    ? (currentServiceCategory as any).metaDescription || (currentServiceCategory as any).description
+    : currentSubCategory 
+      ? (currentSubCategory as any).metaDescription || (currentSubCategory as any).description
+      : currentMainCategory 
+        ? (currentMainCategory as any).metaDescription || (currentMainCategory as any).description
+        : (sector && ((sector as any).metaDescription || (sector as any).description)) || "";
+
   useEffect(() => {
     // Only redirect if we're not loading and sector is still not found
     // Wait for all API calls to complete before redirecting
@@ -1021,8 +1031,77 @@ export default function SectorPage() {
     return null; // Will redirect via useEffect
   }
 
+  // Generate SEO metadata
+  // For sector pages (no category selected), use sector's metadata or generate fallback
+  const isMainSectorPage = !currentServiceCategory && !currentSubCategory && !currentMainCategory && sector;
+  const isCategoryPage = currentServiceCategory || currentSubCategory || currentMainCategory;
+  
+  // Determine the SEO title
+  let seoTitle: string;
+  if (isMainSectorPage && sector) {
+    // Main sector page: use sector's metaTitle or name
+    seoTitle = (sector as any).metaTitle || sector.name;
+  } else if (currentServiceCategory) {
+    // Service category page: use category's metaTitle or name
+    seoTitle = (currentServiceCategory as any).metaTitle || currentServiceCategory.name;
+  } else if (currentSubCategory) {
+    // Subcategory page: use subcategory's metaTitle or name
+    seoTitle = (currentSubCategory as any).metaTitle || currentSubCategory.name;
+  } else if (currentMainCategory) {
+    // Main category page: use category's metaTitle or name
+    seoTitle = (currentMainCategory as any).metaTitle || currentMainCategory.name;
+  } else {
+    seoTitle = currentTitle || 'Professional Services | Sortars';
+  }
+
+  // Determine the SEO description
+  let seoDescription: string;
+  if (isMainSectorPage && sector) {
+    // Main sector page: use sector's metaDescription, description, or fallback
+    seoDescription = (sector as any).metaDescription || 
+                     (sector as any).description || 
+                     `Browse ${sector.name} services and categories on Sortars.`;
+  } else if (currentServiceCategory) {
+    // Service category page: use category's metaDescription, description, or fallback
+    const categoryName = currentServiceCategory.name;
+    const sectorName = sector?.name || '';
+    seoDescription = (currentServiceCategory as any).metaDescription || 
+                     (currentServiceCategory as any).description || 
+                     (sectorName ? `Explore ${categoryName} in ${sectorName} on Sortars.` : `Explore ${categoryName} services on Sortars.`);
+  } else if (currentSubCategory) {
+    // Subcategory page: use subcategory's metaDescription, description, or fallback
+    const subCategoryName = currentSubCategory.name;
+    const sectorName = sector?.name || '';
+    seoDescription = (currentSubCategory as any).metaDescription || 
+                     (currentSubCategory as any).description || 
+                     (sectorName ? `Explore ${subCategoryName} in ${sectorName} on Sortars.` : `Explore ${subCategoryName} services on Sortars.`);
+  } else if (currentMainCategory) {
+    // Main category page: use category's metaDescription, description, or fallback
+    const categoryName = currentMainCategory.name;
+    const sectorName = sector?.name || '';
+    seoDescription = (currentMainCategory as any).metaDescription || 
+                     (currentMainCategory as any).description || 
+                     (sectorName ? `Explore ${categoryName} in ${sectorName} on Sortars.` : `Explore ${categoryName} services on Sortars.`);
+  } else {
+    seoDescription = currentDescription ||
+                     (currentTitle
+                       ? `Find verified ${currentTitle.toLowerCase()} professionals on Sortars.com. Compare ratings, read reviews, and book quality services with confidence.`
+                       : 'Browse verified professional services across the UK on Sortars.com. Compare prices, read reviews, and book trusted professionals near you.');
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFBFC]">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        ogTitle={seoTitle}
+        ogDescription={seoDescription}
+        ogImage={categoryBannerImage || (sector && (sector as any).bannerImage) || undefined}
+        ogType="website"
+        robots="index,follow"
+      />
+
       {/* Header */}
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
@@ -2060,103 +2139,89 @@ export default function SectorPage() {
 
                     {/* Content Section */}
                     <div className="p-2 md:p-4 flex flex-col flex-1">
-                      {/* Provider Info */}
-                      <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2">
-                        <img
-                          src={service.providerImage}
-                          alt={service.tradingName}
-                          className="w-5 h-5 md:w-8 md:h-8 rounded-full object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[14px] text-[#2c353f] block truncate">
-                            {service.tradingName}
-                          </span>
-                        </div>
-                      </div>
-
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b] mb-1.5 md:mb-3 line-clamp-2">
-                        {service.description}
+                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#5b5b5b] mb-1.5 md:mb-2 line-clamp-2 font-medium leading-snug">
+                        {service.description.length > 55 ? `${service.description.slice(0, 55)}...` : service.description}
                       </p>
 
                       {/* Star Rating */}
-                      <div className="flex items-center mb-1.5 md:mb-3">
+                      <div className="flex items-center justify-between mb-1.5 md:mb-2 min-h-[16px] md:min-h-[20px]">
                         {service.reviewCount > 0 ? (
-                          <div className="flex items-center gap-0.5 md:gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-2 h-2 md:w-3.5 md:h-3.5 ${
-                                  star <= Math.floor(service.rating)
-                                    ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                    : star - 0.5 <= service.rating
-                                    ? "fill-[#FE8A0F] text-[#FE8A0F] opacity-50"
-                                    : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                }`}
-                              />
-                            ))}
-                            <span className="font-['Poppins',sans-serif] text-[8px] md:text-[13px] text-[#2c353f] ml-0.5 md:ml-1">
-                              {service.rating} <span className="text-[#8d8d8d]">({service.completedTasks})</span>
-                            </span>
-                          </div>
+                          <>
+                            <div className="flex items-center gap-0.5 md:gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-2.5 h-2.5 md:w-3.5 md:h-3.5 ${
+                                    star <= Math.floor(service.rating)
+                                      ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                      : star - 0.5 <= service.rating
+                                      ? "fill-[#FE8A0F] text-[#FE8A0F] opacity-50"
+                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-0.5 md:gap-1">
+                              <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
+                                {service.rating}
+                              </span>
+                              <span className="font-['Poppins',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
+                                ({service.completedTasks})
+                              </span>
+                            </div>
+                          </>
                         ) : (
-                          <div className="flex items-center gap-1 md:gap-2 text-[#8d8d8d] text-[8px] md:text-[12px]">
-                            <Star className="w-2 h-2 md:w-3.5 md:h-3.5 fill-[#FE8A0F] text-[#FE8A0F]" />
-                            <span className="font-['Poppins',sans-serif]">New</span>
+                          <div className="w-full">{/* Empty space to maintain card height */}</div>
+                        )}
+                      </div>
+
+                      {/* Price Section */}
+                      <div className="mb-2 md:mb-3">
+                        {/* Current Price */}
+                        <div className={service.originalPrice ? "mb-0.5" : ""}>
+                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
+                            {service.originalPrice && "From "}
+                            <span className="text-[14px] md:text-[18px] text-[#2c353f]">
+                              {service.originalPrice || service.price}
+                            </span>
+                            /{service.priceUnit}
+                          </span>
+                        </div>
+                        {/* Original Price and Discount Badge */}
+                        {service.originalPrice && (
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
+                              {service.price}
+                            </span>
+                            <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
+                              <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
+                                {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
 
-                      {/* Price and Discount */}
-                      {service.originalPrice && (
-                        <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                          <span className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#c0c0c0] line-through">
-                            £{service.originalPrice}
-                          </span>
-                          <div className="px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] rounded">
-                            <span className="font-['Poppins',sans-serif] text-[7px] md:text-[10px] text-[#3D78CB]">
-                              {Math.round(((parseFloat(service.originalPrice) - parseFloat(service.price)) / parseFloat(service.originalPrice)) * 100)}% OFF
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Price Display and Delivery Badge */}
-                      <div className="flex items-center justify-between gap-1 md:gap-2 mb-2 md:mb-3">
-                        <span className="font-['Poppins',sans-serif] text-[9px] md:text-[13px] text-[#5b5b5b]">
-                          {service.originalPrice && "From "}
-                          <span className="text-[13px] md:text-[18px] text-[#2c353f] font-medium">
-                            £{service.price}
-                          </span>
-                          <span className="text-[8px] md:text-[13px]">/{service.priceUnit}</span>
-                        </span>
-                        
+                      {/* Delivery Badge and Add to Cart Button - Single Row */}
+                      <div className="flex items-center justify-between gap-2 mt-auto mb-2 md:mb-3">
                         {/* Delivery Badge */}
                         <div className="flex-shrink-0">
                           {service.deliveryType === "same-day" ? (
-                            <div className="inline-flex items-center px-1 md:px-2 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                              <span className="font-semibold">⚡ Same Day</span>
+                            <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                              <span className="font-medium heartbeat-text">⚡ Same Day</span>
                             </div>
                           ) : (
-                            <div className="inline-flex items-center gap-0.5 px-1 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[6px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                              <span className="font-semibold">Standard</span>
+                            <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                              <svg className="w-2 h-2 md:w-2.5 md:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 9h4l3 9 3-16 3 9h4"/>
+                              </svg>
+                              <span className="font-medium">Standard</span>
                             </div>
                           )}
                         </div>
-                      </div>
-
-                      {/* Action Buttons - Stacked on mobile, side by side on desktop */}
-                      <div className="flex flex-col md:flex-row gap-1.5 md:gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/service/${service.slug || service._id || service.id}`);
-                          }}
-                          className="w-full h-[26px] md:h-[38px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
-                        >
-                          <Zap className="w-3 h-3 md:w-4 md:h-4" />
-                          <span>Buy Now!</span>
-                        </button>
+                        
+                        {/* Add to Cart Button */}
                         <button 
                           onClick={(e) => {
                             e.preventDefault();
@@ -2164,11 +2229,23 @@ export default function SectorPage() {
                             setSelectedServiceForCart(service);
                             setShowAddToCartModal(true);
                           }}
-                          className="w-full h-[26px] md:h-[38px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
+                          className="flex-1 h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                         >
                           <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
-                          <span>Add to cart</span>
+                          Add to cart
                         </button>
+                      </div>
+
+                      {/* Provider Info - Moved to bottom */}
+                      <div className="flex items-center gap-1.5 md:gap-2 pt-2 md:pt-3 border-t border-gray-100">
+                        <img
+                          src={service.providerImage}
+                          alt={service.tradingName}
+                          className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
+                        />
+                        <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
+                          {service.tradingName}
+                        </span>
                       </div>
                     </div>
                   </Link>
@@ -2220,8 +2297,8 @@ export default function SectorPage() {
                               </div>
 
                               {/* Description */}
-                              <p className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] line-clamp-2">
-                                {service.description}
+                              <p className="font-['Poppins',sans-serif] text-[16px] text-[#5b5b5b] line-clamp-2 font-medium leading-snug">
+                                {service.description.length > 55 ? `${service.description.slice(0, 55)}...` : service.description}
                               </p>
 
                               {/* Star Rating & Delivery Badge Row */}
@@ -2278,13 +2355,13 @@ export default function SectorPage() {
                             <div className="flex flex-col">
                               {service.originalPrice && (
                                 <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
-                                  £{service.originalPrice}
+                                  {service.price}
                                 </span>
                               )}
                               <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
                                 {service.originalPrice && "From "}
                                 <span className="text-[14px] text-[#2c353f] font-medium">
-                                  £{service.price}
+                                  {service.originalPrice || service.price}
                                 </span>
                                 <span className="text-[9px]">/{service.priceUnit}</span>
                               </span>

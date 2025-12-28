@@ -6,6 +6,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
 import API_BASE_URL from "../config/api";
+import SEOHead from "./SEOHead";
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
@@ -96,15 +97,21 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#3B82F6] rounded-full mb-4">
-              <Lock className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="font-['Poppins',sans-serif] text-[28px] font-semibold text-[#2c353f] mb-2">
-              Admin Login
+    <>
+      <SEOHead
+        title="Admin Login"
+        description="Admin login page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-[#3B82F6] rounded-full mb-4">
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="font-['Poppins',sans-serif] text-[28px] font-semibold text-[#2c353f] mb-2">
+                Admin Login
             </h1>
             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               Sign in to access the admin dashboard
@@ -167,6 +174,7 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

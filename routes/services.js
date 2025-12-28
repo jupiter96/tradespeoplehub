@@ -300,10 +300,39 @@ router.get('/:id', async (req, res) => {
           await doc.save();
         }
       }
-      service = doc ? doc.toObject() : null;
+      if (doc) {
+        await doc.populate([
+          { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode publicProfile aboutService' },
+          { 
+            path: 'serviceCategory', 
+            select: 'name slug icon bannerImage sector',
+            populate: {
+              path: 'sector',
+              select: 'name slug'
+            }
+          },
+          { path: 'serviceSubCategory', select: 'name slug icon' },
+        ]);
+        service = doc.toObject();
+      } else {
+        service = null;
+      }
     } else {
       // It's likely a slug, find by slug
-      service = await Service.findOne({ slug: id }).lean();
+      service = await Service.findOne({ slug: id })
+        .populate([
+          { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode publicProfile aboutService' },
+          { 
+            path: 'serviceCategory', 
+            select: 'name slug icon bannerImage sector',
+            populate: {
+              path: 'sector',
+              select: 'name slug'
+            }
+          },
+          { path: 'serviceSubCategory', select: 'name slug icon' },
+        ])
+        .lean();
       
       // If not found by slug, try by ID as fallback (for backward compatibility)
       if (!service) {
@@ -315,7 +344,23 @@ router.get('/:id', async (req, res) => {
             await doc.save();
           }
         }
-        service = doc ? doc.toObject() : null;
+        if (doc) {
+          await doc.populate([
+            { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode publicProfile aboutService' },
+            { 
+              path: 'serviceCategory', 
+              select: 'name slug icon bannerImage sector',
+              populate: {
+                path: 'sector',
+                select: 'name slug'
+              }
+            },
+            { path: 'serviceSubCategory', select: 'name slug icon' },
+          ]);
+          service = doc.toObject();
+        } else {
+          service = null;
+        }
       }
     }
 
@@ -474,6 +519,11 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
 
     if (!title || !description || price === undefined) {
       return res.status(400).json({ error: 'Title, description, and price are required' });
+    }
+
+    // Validate description length (minimum 35 characters)
+    if (description.trim().length < 35) {
+      return res.status(400).json({ error: 'Service description must be at least 35 characters long' });
     }
 
     // Verify service category exists
@@ -652,7 +702,13 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
 
     // Clean up update data
     if (updateData.title) updateData.title = updateData.title.trim();
-    if (updateData.description) updateData.description = updateData.description.trim();
+    if (updateData.description) {
+      updateData.description = updateData.description.trim();
+      // Validate description length (minimum 35 characters) - skip for drafts
+      if (!isDraftUpdate && updateData.description.length < 35) {
+        return res.status(400).json({ error: 'Service description must be at least 35 characters long' });
+      }
+    }
     if (updateData.aboutMe !== undefined) updateData.aboutMe = updateData.aboutMe?.trim() || undefined;
     if (updateData.price !== undefined) updateData.price = parseFloat(updateData.price);
     if (updateData.originalPrice !== undefined) {

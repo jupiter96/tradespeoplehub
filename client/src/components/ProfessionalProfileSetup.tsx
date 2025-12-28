@@ -9,6 +9,7 @@ import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
 import ProfessionalRegistrationSteps from "./ProfessionalRegistrationSteps";
+import SEOHead from "./SEOHead";
 
 // Define sectors and their services
 const sectors = {
@@ -172,6 +173,13 @@ export default function ProfessionalProfileSetup() {
   }, [isLoggedIn, userRole, navigate]);
 
   return (
-    <ProfessionalRegistrationSteps />
+    <>
+      <SEOHead
+        title="Professional Profile Setup"
+        description="Professional profile setup page"
+        robots="noindex,nofollow"
+      />
+      <ProfessionalRegistrationSteps />
+    </>
   );
 }

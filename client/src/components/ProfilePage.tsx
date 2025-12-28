@@ -13,6 +13,7 @@ import type { Service as ServiceDataType } from "./servicesData";
 import ServiceAreaMap from "./ServiceAreaMap";
 import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
+import { SEOHead } from "./SEOHead";
 
 type PublicProfile = {
   bio?: string;
@@ -553,8 +554,24 @@ export default function ProfilePage() {
   // TODO: wire to real presence when backend supports it.
   const isOnline = true;
 
+  // Generate SEO metadata
+  const seoTitle = `${tradingName || displayName} - ${topCategory || 'Professional'} | Sortars`;
+  const seoDescription = profile.bio
+    ? profile.bio.substring(0, 160)
+    : `${tradingName || displayName} is a verified ${topCategory || 'professional'} ${displayLocation ? `in ${displayLocation}` : ''} on Sortars.com. ${profile.completedJobs ? `${profile.completedJobs} completed jobs.` : ''} View profile and book services.`;
+
   return (
     <div className="prolancer-profile min-h-screen">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        ogTitle={seoTitle}
+        ogDescription={seoDescription}
+        ogImage={avatarUrl || coverImageUrl}
+        ogType="profile"
+      />
+
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>

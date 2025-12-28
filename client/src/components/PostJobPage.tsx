@@ -8,6 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import SEOHead from "./SEOHead";
 import { 
   Check, 
   ChevronRight, 
@@ -417,9 +418,15 @@ export default function PostJobPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] relative">
-      {/* Floating Tools Background Animation - page-wide background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <>
+      <SEOHead
+        title="Post a Job"
+        description="Post a job page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-[#f5f5f5] relative">
+        {/* Floating Tools Background Animation - page-wide background */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <FloatingToolsBackground />
       </div>
 
@@ -1210,6 +1217,7 @@ export default function PostJobPage() {
         {/* Footer */}
         <Footer />
       </div>
-    </div>
+      </div>
+    </>
   );
 }

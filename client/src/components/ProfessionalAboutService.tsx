@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount } from "./AccountContext";
+import SEOHead from "./SEOHead";
 
 export default function ProfessionalAboutService() {
   const navigate = useNavigate();
@@ -118,8 +119,14 @@ export default function ProfessionalAboutService() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
-      <Nav />
+    <>
+      <SEOHead
+        title="Professional About Service"
+        description="Professional about service page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+        <Nav />
       
       <div className="flex-1 py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
@@ -304,6 +311,7 @@ export default function ProfessionalAboutService() {
       </div>
 
       <Footer />
-    </div>
+      </div>
+    </>
   );
 }
