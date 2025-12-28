@@ -5497,8 +5497,8 @@ function ServicesSection() {
                           <TableCell>
                             <div className="flex items-center justify-center">
                               <Switch
-                                checked={service.isActive !== false}
-                                onCheckedChange={() => handleToggleServiceDisable(service._id, service.isActive !== false)}
+                                checked={Boolean(service.isActive)}
+                                onCheckedChange={() => handleToggleServiceDisable(service._id, Boolean(service.isActive))}
                                 className="data-[state=checked]:bg-[#FE8A0F]"
                               />
                             </div>
@@ -6023,12 +6023,12 @@ function ServicesSection() {
               <DialogHeader>
                 <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-orange-500" />
-                  {serviceToToggle?.currentStatus ? "Enable Service" : "Disable Service"}
+                  {serviceToToggle?.currentStatus ? "Disable Service" : "Enable Service"}
                 </DialogTitle>
                 <DialogDescription className="text-[14px] text-[#6b6b6b]">
                   {serviceToToggle?.currentStatus
-                    ? "Are you sure you want to enable this service? It will become visible to clients again."
-                    : "Are you sure you want to disable this service? It will be hidden from clients."}
+                    ? "Are you sure you want to disable this service? It will be hidden from clients."
+                    : "Are you sure you want to enable this service? It will become visible to clients again."}
                 </DialogDescription>
               </DialogHeader>
               <div className="flex gap-3 mt-4">
@@ -6046,11 +6046,11 @@ function ServicesSection() {
                   onClick={confirmToggleServiceDisable}
                   className={`flex-1 font-['Poppins',sans-serif] ${
                     serviceToToggle?.currentStatus
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-red-600 hover:bg-red-700"
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-green-600 hover:bg-green-700"
                   } text-white`}
                 >
-                  {serviceToToggle?.currentStatus ? "Enable" : "Disable"}
+                  {serviceToToggle?.currentStatus ? "Disable" : "Enable"}
                 </Button>
               </div>
             </DialogContent>

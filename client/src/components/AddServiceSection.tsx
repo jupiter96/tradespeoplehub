@@ -2907,19 +2907,26 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
 
       const result = await response.json();
+      const updatedService = result.service || result;
       
-      // Show approval message for new service creation or draft update
+      // Show appropriate message based on service status
       // If it's a draft being published or a new service, show approval message
       const isDraftUpdate = draftId || initialService?.status === 'draft';
+      const wasApprovedNowPending = initialService?.status === 'approved' && updatedService?.status === 'pending';
+      
       if (!isEditMode || isDraftUpdate) {
         toast.success("Your listing has been submitted to approval and will go live shortly if approved.");
+      } else if (wasApprovedNowPending) {
+        toast.success("Your service content has been updated and submitted for admin approval. Price and availability changes are live.");
+      } else {
+        toast.success("Service updated successfully!");
       }
 
       // Clear draft state after successful publish
       setDraftId(null);
       setLastSaved(null);
 
-      onSave(result.service || result);
+      onSave(updatedService);
       onClose();
     } catch (error: any) {
       // console.error("Error creating service:", error);
@@ -3095,7 +3102,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     const stepIndex = TAB_ORDER.indexOf(step.id);
                     const isActive = activeTab === step.id;
                     const isCompleted = stepIndex < getCurrentTabIndex();
-                    const isClickable = stepIndex <= getCurrentTabIndex() + 1;
+                    // In edit mode, allow clicking any step. In create mode, only allow up to next step
+                    const isClickable = isEditMode ? true : stepIndex <= getCurrentTabIndex() + 1;
 
                     return (
                       <div key={step.id} className="flex flex-col items-center flex-1 min-w-[80px] md:min-w-0">

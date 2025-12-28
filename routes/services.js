@@ -776,16 +776,35 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
       }
     }
 
+    // Determine if content fields were changed (requires admin approval)
+    // Content fields: title, description, aboutMe, image, images, serviceCategory, serviceSubCategory, etc.
+    // Price/Availability fields: price, originalPrice, originalPriceValidFrom, originalPriceValidUntil, availability
+    const priceAndAvailabilityFields = ['price', 'originalPrice', 'originalPriceValidFrom', 'originalPriceValidUntil', 'availability'];
+    const changedFields = Object.keys(updateData);
+    const contentFieldsChanged = changedFields.some(field => !priceAndAvailabilityFields.includes(field) && field !== 'status');
+    
+    // Store original status before update
+    const originalStatus = service.status;
+    
     // Update service
     Object.assign(service, updateData);
 
     // If admin requested modification and pro updates the service, send back to pending review
-    if (service.status === 'required_modification') {
+    if (originalStatus === 'required_modification') {
       service.status = 'pending';
       service.modificationReason = null;
       service.reviewedBy = null;
       service.reviewedAt = null;
     }
+    // If service was approved and content fields were changed, send back to pending for admin review
+    else if (originalStatus === 'approved' && contentFieldsChanged && !isDraftUpdate) {
+      service.status = 'pending';
+      service.modificationReason = null;
+      service.reviewedBy = null;
+      service.reviewedAt = null;
+    }
+    // If only price/availability changed, keep approved status
+
     await service.save();
 
     // Populate references
