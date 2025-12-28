@@ -420,9 +420,12 @@ export default function PostJobPage() {
   return (
     <>
       <SEOHead
-        title="Post a Job"
-        description="Post a job page"
-        robots="noindex,nofollow"
+        title="Post a Job - Get Quotes from Verified Professionals | Sortars"
+        description="Need a service? Post your job and receive quotes from qualified professionals. Free to post, compare offers, read reviews, and hire the best expert for your project."
+        ogTitle="Post Your Job & Get Instant Quotes - Sortars"
+        ogDescription="Describe your job, receive competitive quotes from trusted professionals, and hire with confidence. 1000+ vetted experts ready to help."
+        ogType="website"
+        robots="index,follow"
       />
       <div className="min-h-screen bg-[#f5f5f5] relative">
         {/* Floating Tools Background Animation - page-wide background */}

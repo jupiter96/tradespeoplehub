@@ -115,18 +115,18 @@ export default function AllCategoriesPage() {
   const getSEOContent = () => {
     if (viewMode === 'subcategories' && selectedServiceCategory) {
       return {
-        title: `${selectedServiceCategory.name} Services - Browse All Subcategories | Sortars`,
-        description: `Explore all ${selectedServiceCategory.name.toLowerCase()} service subcategories on Sortars.com. Find verified professionals for your specific needs.`
+        title: `${selectedServiceCategory.name} Services - All Subcategories & Specialists | Sortars`,
+        description: `Discover all ${selectedServiceCategory.name.toLowerCase()} subcategories and hire verified professionals. Browse specialists, compare quotes, read reviews, and book instantly. Quality service guaranteed.`
       };
     } else if (viewMode === 'categories' && selectedSector) {
       return {
-        title: `${selectedSector.name} Services - Browse All Categories | Sortars`,
-        description: `Explore all ${selectedSector.name.toLowerCase()} service categories on Sortars.com. Find trusted professionals across various specializations.`
+        title: `${selectedSector.name} - All Professional Service Categories | Sortars UK`,
+        description: `Explore every ${selectedSector.name.toLowerCase()} service category. Connect with vetted professionals, view pricing, read customer reviews, and hire online. Trusted by 50,000+ UK clients.`
       };
     }
     return {
-      title: 'Browse All Service Categories | Sortars',
-      description: 'Explore all professional service categories across 13+ sectors on Sortars.com. Find verified tradespeople, specialists, and professionals for any job.'
+      title: 'All Professional Services & Categories - Find Any Expert | Sortars UK',
+      description: 'Browse our complete directory of professional services across all sectors. From tradespeople to freelancers - find, compare, and hire verified experts online. 100+ service categories, 1000+ professionals nationwide.'
     };
   };
 

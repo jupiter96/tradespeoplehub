@@ -37,10 +37,10 @@ export default function HomePage() {
     <div className="min-h-screen bg-white">
       {/* SEO Meta Tags */}
       <SEOHead
-        title="Find Trusted Local Professionals | Sortars"
-        description="Connect with verified professionals across the UK. From home repairs to business services, find trusted tradespeople, read reviews, compare quotes, and book with confidence on Sortars."
-        ogTitle="Find Trusted Local Professionals | Sortars"
-        ogDescription="Connect with verified professionals across the UK. From home repairs to business services, find trusted tradespeople, read reviews, compare quotes, and book with confidence on Sortars."
+        title="Sortars - Hire Trusted Professional Services Online | UK's Leading Service Marketplace"
+        description="Order professional services as easily as online shopping. Connect with verified tradespeople, freelancers, and specialists across the UK. Get instant quotes, compare reviews, and book trusted professionals for home services, business solutions, and more on Sortars."
+        ogTitle="Sortars - Hire Professional Services Online | Trusted UK Service Marketplace"
+        ogDescription="Book verified professionals for any service. From plumbers and electricians to web designers and accountants. Read reviews, compare quotes, and hire with confidence. Join 50,000+ professionals on the UK's trusted service platform."
         ogType="website"
         robots="index,follow"
       />

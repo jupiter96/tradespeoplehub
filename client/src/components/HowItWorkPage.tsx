@@ -11,10 +11,20 @@ import PeopleLoveUsSection from "./PeopleLoveUsSection";
 import ClientFaqSection from "./ClientFaqSection";
 import Vector3 from "../imports/Vector3";
 import Vector4 from "../imports/Vector4";
+import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkPage() {
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title="How It Works for Clients - Hire Professionals Online | Sortars"
+        description="Learn how to order professional services on Sortars. Post your job, receive quotes from verified experts, compare reviews, and hire with confidence. Simple, fast, and secure."
+        ogTitle="How to Hire Professionals Online - Sortars Client Guide"
+        ogDescription="Post jobs, get instant quotes, compare professionals, and book online. Our complete guide to hiring trusted tradespeople and specialists on the UK's leading service marketplace."
+        ogType="website"
+        robots="index,follow"
+      />
       {/* Header */}
       <header className="sticky top-0 h-[122px] z-50 bg-white">
         <Nav />

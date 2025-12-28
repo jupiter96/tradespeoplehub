@@ -8,7 +8,7 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import passport from './services/passport.js';
 import healthRoutes from './routes/health.js';
-import authRoutes from './routes/auth.js'; // Updated - OTP resend logic improved
+import authRoutes from './routes/auth.js'; // Updated - All SEO content improved
 import adminRoutes from './routes/admin.js';
 import addressRoutes from './routes/address.js';
 import sectorRoutes from './routes/sectors.js';

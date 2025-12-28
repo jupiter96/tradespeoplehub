@@ -12,10 +12,20 @@ import GrowBusinessSection from "./GrowBusinessSection";
 import img22 from "figma:asset/01f369f7145a1bda02cadae942ff191c7c2cda51.png";
 import img0125 from "figma:asset/10d3d015685dee0b00951bf262608d69093ccde4.png";
 import img127 from "figma:asset/f1d010159c6cb7c35142621cdde2a80e22049b68.png";
+import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkProPage() {
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title="Join as a Professional - Grow Your Business Online | Sortars"
+        description="Start selling your services on Sortars. Join 50,000+ verified professionals earning online. Create your profile, showcase your work, receive job requests, and grow your business. Free to join."
+        ogTitle="Grow Your Professional Service Business Online - Sortars Pro"
+        ogDescription="Join the UK's trusted service marketplace for professionals. Get more clients, manage bookings, receive payments online. Perfect for tradespeople, freelancers, and service providers."
+        ogType="website"
+        robots="index,follow"
+      />
       {/* Header */}
       <header className="sticky top-0 h-[122px] z-50 bg-white">
         <Nav />

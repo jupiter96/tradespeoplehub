@@ -555,10 +555,10 @@ export default function ProfilePage() {
   const isOnline = true;
 
   // Generate SEO metadata
-  const seoTitle = `${tradingName || displayName} - ${topCategory || 'Professional'} | Sortars`;
+  const seoTitle = `Hire ${tradingName || displayName} - Verified ${topCategory || 'Professional'} | Sortars`;
   const seoDescription = profile.bio
-    ? profile.bio.substring(0, 160)
-    : `${tradingName || displayName} is a verified ${topCategory || 'professional'} ${displayLocation ? `in ${displayLocation}` : ''} on Sortars.com. ${profile.completedJobs ? `${profile.completedJobs} completed jobs.` : ''} View profile and book services.`;
+    ? `${profile.bio.substring(0, 120)}... ${profile.rating ? `★ ${profile.rating}/5` : ''} ${profile.completedJobs ? `| ${profile.completedJobs}+ jobs completed` : ''} ${displayLocation ? `| ${displayLocation}` : ''}`
+    : `Book ${tradingName || displayName}, a trusted ${topCategory || 'professional'}${displayLocation ? ` in ${displayLocation}` : ''} on Sortars. ${profile.rating ? `Rated ${profile.rating}/5 stars.` : ''} ${profile.completedJobs ? `${profile.completedJobs}+ successful projects.` : ''} View services, read reviews, and hire online.`;
 
   return (
     <div className="prolancer-profile min-h-screen">

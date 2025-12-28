@@ -1031,8 +1031,10 @@ export default function ServiceDetailPage() {
                         null;
 
   // Generate SEO metadata
-  const seoTitle = service.title || service.description;
-  const seoDescription = service.about || service.aboutMe || `Professional ${service.subcategory || service.category} service by ${service.providerName}. ${service.rating > 0 ? `Rated ${service.rating}/5 with ${service.reviewCount} reviews.` : 'Verified professional.'} Book now on Sortars.com!`;
+  const seoTitle = `${service.title || service.description} - From £${service.price} | ${service.providerName}`;
+  const seoDescription = service.about 
+    ? `${service.about.substring(0, 130)}... ${service.rating > 0 ? `★ ${service.rating}/5` : ''} ${service.reviewCount ? `| ${service.reviewCount} reviews` : ''} | Starting from £${service.price}. Book online on Sortars.`
+    : `Book ${service.subcategory || service.category} services from ${service.providerName}. ${service.rating > 0 ? `Rated ${service.rating}/5 stars with ${service.reviewCount} verified reviews.` : 'Trusted professional.'} Prices from £${service.price}. Instant booking available on Sortars.`;
 
   return (
     <div className="w-full min-h-screen bg-[#f0f0f0]">

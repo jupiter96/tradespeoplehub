@@ -1562,19 +1562,19 @@ export default function ServicesPage() {
     
     if (categoryName && subcategoryName) {
       return {
-        title: `${subcategoryName} in ${categoryName} - Verified UK Professionals`,
-        description: `Find trusted ${subcategoryName.toLowerCase()} professionals in ${categoryName.toLowerCase()}. Browse verified service providers, compare prices, and book instantly.`
+        title: `Hire ${subcategoryName} Professionals in ${categoryName} | Sortars UK`,
+        description: `Book verified ${subcategoryName.toLowerCase()} experts in ${categoryName.toLowerCase()}. Compare quotes, read reviews, and hire trusted professionals instantly. Rated 4.9/5 by 50,000+ satisfied clients.`
       };
     } else if (categoryName) {
       return {
-        title: `${categoryName} Services - Trusted UK Professionals`,
-        description: `Discover verified ${categoryName.toLowerCase()} professionals across the UK. Compare ratings, read reviews, and book quality services with confidence.`
+        title: `${categoryName} Services - Find & Hire Trusted Professionals | Sortars`,
+        description: `Browse vetted ${categoryName.toLowerCase()} professionals across the UK. Get instant quotes, compare prices, read verified reviews, and book online. Quality guaranteed on every service.`
       };
     }
     
     return {
-      title: "Professional Services UK",
-      description: "Browse thousands of verified professional services across 13 categories. Compare prices, read reviews, and book trusted professionals near you instantly."
+      title: "Browse All Professional Services | Hire Experts Online - Sortars UK",
+      description: "Your trusted marketplace for professional services. From home repairs to business solutions - hire verified tradespeople, freelancers, and specialists. Compare quotes, read reviews, book instantly. Join 50,000+ professionals serving the UK."
     };
   };
 
