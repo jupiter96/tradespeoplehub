@@ -8,7 +8,6 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import SEOHead from "./SEOHead";
 import { 
   Check, 
@@ -382,6 +381,7 @@ export default function PostJobPage() {
       "flexible": "flexible",
       "specific-date": "specific",
     };
+    const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
     // Get sector label from sectors array
     const sectorLabel = sectors.find(s => s.value === selectedSector)?.label || selectedSector;

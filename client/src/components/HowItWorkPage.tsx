@@ -11,10 +11,10 @@ import PeopleLoveUsSection from "./PeopleLoveUsSection";
 import ClientFaqSection from "./ClientFaqSection";
 import Vector3 from "../imports/Vector3";
 import Vector4 from "../imports/Vector4";
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkPage() {
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
       {/* SEO Meta Tags */}

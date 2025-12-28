@@ -12,7 +12,6 @@ import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSub
 import type { Sector } from "../hooks/useSectorsAndCategories";
 import { getSectorIcon, getCategoryIcon, getSubCategoryIcon } from "./categoryIconMappings";
 import serviceVector from "../assets/service_vector.jpg";
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { SEOHead } from "./SEOHead";
 
 type ViewMode = "sectors" | "categories" | "subcategories";
@@ -26,6 +25,7 @@ export default function AllCategoriesPage() {
   const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Record<string, ServiceCategory[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
   // Fetch service categories for all sectors
   useEffect(() => {

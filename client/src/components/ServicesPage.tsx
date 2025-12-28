@@ -53,13 +53,13 @@ import type { Service } from "./servicesData";
 import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 import { SEOHead } from "./SEOHead";
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
 // Helper function to calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const EARTH_RADIUS_MILES = 3959; // Radius of Earth in miles
   const latitudeDifference = (lat2 - lat1) * Math.PI / 180;
   const longitudeDifference = (lon2 - lon1) * Math.PI / 180;
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const haversineA = 
     Math.sin(latitudeDifference / 2) * Math.sin(latitudeDifference / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *

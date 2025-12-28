@@ -12,10 +12,10 @@ import GrowBusinessSection from "./GrowBusinessSection";
 import img22 from "figma:asset/01f369f7145a1bda02cadae942ff191c7c2cda51.png";
 import img0125 from "figma:asset/10d3d015685dee0b00951bf262608d69093ccde4.png";
 import img127 from "figma:asset/f1d010159c6cb7c35142621cdde2a80e22049b68.png";
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkProPage() {
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
       {/* SEO Meta Tags */}

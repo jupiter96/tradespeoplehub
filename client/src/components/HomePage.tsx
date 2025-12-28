@@ -9,7 +9,6 @@ import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import mobileBannerImage from "figma:asset/618daa9a68ee59f7a6ae2af4cb4c10ea44a1211f.png";
 import heroVideo from "../assets/hero.webm";
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { useSEO } from "../hooks/useSEO";
 import SEOHead from "./SEOHead";
 
@@ -17,6 +16,7 @@ export default function HomePage() {
   useSEO("homepage");
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
   const handlePopularSearch = (term: string) => {
     navigate(`/services?search=${encodeURIComponent(term)}`);

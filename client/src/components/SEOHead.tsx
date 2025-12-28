@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
 interface SEOHeadProps {
   title: string;
@@ -32,6 +31,7 @@ export function SEOHead({
   robots = 'index, follow',
 }: SEOHeadProps) {
   const location = useLocation();
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   
   // Use default thumbnail if no ogImage is provided
   const defaultThumbnail = `${window.location.origin}${thumbnailImage}`;
