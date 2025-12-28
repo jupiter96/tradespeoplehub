@@ -1708,7 +1708,7 @@ function JobsSection() {
 
 // Details Section
 function DetailsSection() {
-  const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
+  const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, resendEmailChangeOTP, resendPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
   const [isEditing, setIsEditing] = useState(false);
   
   // Load sectors from API
@@ -1811,6 +1811,8 @@ function DetailsSection() {
   const [isSendingPhoneOTP, setIsSendingPhoneOTP] = useState(false);
   const [isVerifyingEmailOTP, setIsVerifyingEmailOTP] = useState(false);
   const [isVerifyingPhoneOTP, setIsVerifyingPhoneOTP] = useState(false);
+  const [isResendingEmailOTP, setIsResendingEmailOTP] = useState(false);
+  const [isResendingPhoneOTP, setIsResendingPhoneOTP] = useState(false);
 
   // Load user's existing services when categories are loaded
   // Support both ID-based (new) and name-based (legacy) storage
@@ -1893,7 +1895,8 @@ function DetailsSection() {
       return;
     }
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.postcode) {
+    // First name and last name are read-only after registration
+    if (!formData.email || !formData.phone || !formData.postcode) {
       toast.error("Please complete the required fields.");
       return;
     }
@@ -1930,8 +1933,7 @@ function DetailsSection() {
     setIsSaving(true);
 
     const payload: ProfileUpdatePayload = {
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
+      // firstName and lastName are not allowed to be updated after registration
       email: formData.email.trim(),
       phone: (() => {
         // Remove country code if present and normalize
@@ -2167,9 +2169,13 @@ function DetailsSection() {
             <Input
               type="text"
               value={formData.firstName}
-              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              disabled
+              readOnly
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] bg-gray-50 cursor-not-allowed"
             />
+            <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif] mt-1">
+              Name cannot be changed after registration
+            </p>
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
@@ -2178,9 +2184,13 @@ function DetailsSection() {
             <Input
               type="text"
               value={formData.lastName}
-              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              disabled
+              readOnly
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] bg-gray-50 cursor-not-allowed"
             />
+            <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif] mt-1">
+              Name cannot be changed after registration
+            </p>
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
@@ -2267,6 +2277,30 @@ function DetailsSection() {
                     >
                       {isVerifyingEmailOTP ? "Verifying..." : "Verify Code"}
                     </Button>
+                    <div className="text-center">
+                      <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                        Didn't receive the code?{" "}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setIsResendingEmailOTP(true);
+                            try {
+                              const response = await resendEmailChangeOTP();
+                              setEmailOTPHint(response?.emailCode || null);
+                              toast.success("Verification code resent to your email");
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Failed to resend code");
+                            } finally {
+                              setIsResendingEmailOTP(false);
+                            }
+                          }}
+                          disabled={isResendingEmailOTP}
+                          className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isResendingEmailOTP ? "Resending..." : "Resend"}
+                        </button>
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2415,6 +2449,34 @@ function DetailsSection() {
                     >
                       {isVerifyingPhoneOTP ? "Verifying..." : "Verify Code"}
                     </Button>
+                    <div className="text-center">
+                      <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                        Didn't receive the code?{" "}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setIsResendingPhoneOTP(true);
+                            try {
+                              const response = await resendPhoneChangeOTP();
+                              if (response?.phoneCode) {
+                                setPhoneOTPHint(response.phoneCode);
+                              } else {
+                                setPhoneOTPHint(null);
+                              }
+                              toast.success("Verification code resent to your phone");
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Failed to resend code");
+                            } finally {
+                              setIsResendingPhoneOTP(false);
+                            }
+                          }}
+                          disabled={isResendingPhoneOTP}
+                          className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isResendingPhoneOTP ? "Resending..." : "Resend"}
+                        </button>
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

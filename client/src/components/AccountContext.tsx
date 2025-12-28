@@ -81,8 +81,8 @@ interface PendingSocialProfile {
 }
 
 interface ProfileUpdatePayload {
-  firstName: string;
-  lastName: string;
+  firstName?: string; // Read-only after registration, not allowed to be updated
+  lastName?: string; // Read-only after registration, not allowed to be updated
   email: string;
   phone: string;
   postcode: string;
@@ -117,6 +117,8 @@ interface AccountContextType {
   updateProfile: (payload: ProfileUpdatePayload) => Promise<UserInfo>;
   requestEmailChangeOTP: (email: string) => Promise<{ message: string; emailCode?: string }>;
   requestPhoneChangeOTP: (phone: string) => Promise<{ message: string; phoneCode?: string }>;
+  resendEmailChangeOTP: () => Promise<{ message: string; emailCode?: string }>;
+  resendPhoneChangeOTP: () => Promise<{ message: string; phoneCode?: string }>;
   verifyOTP: (code: string, type: 'email' | 'phone') => Promise<{ message: string }>;
   uploadAvatar: (file: File) => Promise<UserInfo>;
   removeAvatar: () => Promise<UserInfo>;
@@ -338,6 +340,26 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     [requestJson]
   );
 
+  const resendEmailChangeOTP = useCallback(
+    async () => {
+      const data = await requestJson("/api/auth/profile/resend-email-change", {
+        method: "POST",
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
+  const resendPhoneChangeOTP = useCallback(
+    async () => {
+      const data = await requestJson("/api/auth/profile/resend-phone-change", {
+        method: "POST",
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
   const verifyOTP = useCallback(
     async (code: string, type: 'email' | 'phone') => {
       // console.log('[Phone Verification] AccountContext - verifyOTP called:', { type, code: code ? '****' : 'missing' });
@@ -517,6 +539,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         updateProfile,
         requestEmailChangeOTP,
         requestPhoneChangeOTP,
+        resendEmailChangeOTP,
+        resendPhoneChangeOTP,
         verifyOTP,
         uploadAvatar,
         removeAvatar,
@@ -567,6 +591,8 @@ export function useAccount() {
     updateProfile: async () => err(),
     requestEmailChangeOTP: async () => err(),
     requestPhoneChangeOTP: async () => err(),
+    resendEmailChangeOTP: async () => err(),
+    resendPhoneChangeOTP: async () => err(),
     verifyOTP: async () => err(),
     uploadAvatar: async () => err(),
     removeAvatar: async () => err(),

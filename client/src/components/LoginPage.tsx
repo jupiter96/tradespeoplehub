@@ -145,6 +145,8 @@ export default function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSendingRegistration, setIsSendingRegistration] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [isResendingPhone, setIsResendingPhone] = useState(false);
 
   // Field validation errors
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -548,6 +550,66 @@ export default function LoginPage() {
     setResetRequestSent(false);
     setResetError(null);
     setIsRequestingReset(false);
+  };
+
+  const handleResendEmailCode = async () => {
+    if (isResendingEmail) return;
+    
+    setIsResendingEmail(true);
+    setRegisterError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register/resend-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: verificationEmail })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to resend verification code');
+      }
+      
+      toast.success('Verification code resent to your email');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend code';
+      toast.error(errorMessage);
+      setRegisterError(errorMessage);
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  const handleResendPhoneCode = async () => {
+    if (isResendingPhone) return;
+    
+    setIsResendingPhone(true);
+    setRegisterError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register/resend-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: verificationEmail })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to resend verification code');
+      }
+      
+      toast.success('Verification code resent to your phone');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend code';
+      toast.error(errorMessage);
+      setRegisterError(errorMessage);
+    } finally {
+      setIsResendingPhone(false);
+    }
   };
 
   return (
@@ -1398,10 +1460,11 @@ export default function LoginPage() {
                           Didn't receive the code?{" "}
                           <button
                             type="button"
-                            onClick={() => alert(`Code resent to ${verificationEmail}`)}
-                            className="text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+                            onClick={handleResendEmailCode}
+                            disabled={isResendingEmail}
+                            className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Resend
+                            {isResendingEmail ? "Resending..." : "Resend"}
                           </button>
                         </p>
                       </div>
@@ -1467,10 +1530,11 @@ export default function LoginPage() {
                           Didn't receive the code?{" "}
                           <button
                             type="button"
-                            onClick={() => alert(`Code resent to ${verificationPhone}`)}
-                            className="text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+                            onClick={handleResendPhoneCode}
+                            disabled={isResendingPhone}
+                            className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Resend
+                            {isResendingPhone ? "Resending..." : "Resend"}
                           </button>
                         </p>
                       </div>

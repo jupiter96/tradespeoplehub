@@ -1239,6 +1239,49 @@ router.post('/register/initiate', async (req, res) => {
   }
 });
 
+// Resend email OTP during registration
+router.post('/register/resend-email', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    
+    const pendingRegistration = await loadPendingRegistration(req, email);
+    
+    if (!pendingRegistration) {
+      return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
+    }
+
+    if (pendingRegistration.emailVerified) {
+      return res.status(409).json({ error: 'Email already verified' });
+    }
+
+    // Generate new code
+    const emailCode = generateCode();
+    const emailCodeHash = await bcrypt.hash(emailCode, 10);
+
+    // Send new verification email
+    try {
+      await sendEmailVerificationCode(pendingRegistration.email, emailCode, pendingRegistration.firstName || 'User');
+    } catch (notificationError) {
+      if (!isProduction) {
+        return res.status(502).json({ error: 'Failed to resend verification email' });
+      }
+    }
+
+    // Update pending registration with new code
+    pendingRegistration.emailCodeHash = emailCodeHash;
+    pendingRegistration.emailCodeExpiresAt = codeExpiryDate();
+    await pendingRegistration.save();
+
+    return res.status(200).json({ 
+      message: 'Verification code resent',
+      emailCode: emailCode
+    });
+  } catch (error) {
+    console.error('Resend email error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code' });
+  }
+});
+
 router.post('/register/verify-email', async (req, res) => {
   try {
     const { code, email } = req.body || {};
@@ -1390,6 +1433,58 @@ router.post('/register/verify-email', async (req, res) => {
   } catch (err) {
     // console.error('Email verification error', err);
     return res.status(500).json({ error: 'Failed to verify email' });
+  }
+});
+
+// Resend phone OTP during registration
+router.post('/register/resend-phone', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    
+    const pendingRegistration = await loadPendingRegistration(req, email);
+    
+    if (!pendingRegistration) {
+      return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
+    }
+
+    if (!pendingRegistration.emailVerified) {
+      return res.status(400).json({ error: 'Please verify email first' });
+    }
+
+    // Generate new SMS code
+    const smsCode = generateCode();
+    const smsCodeHash = await bcrypt.hash(smsCode, 10);
+
+    // Send new SMS verification
+    try {
+      const twilioPhone = formatPhoneForTwilio(pendingRegistration.phone);
+      if (!twilioPhone) {
+        throw new Error('Invalid phone number format');
+      }
+      await sendSmsVerificationCode(twilioPhone, smsCode);
+    } catch (notificationError) {
+      if (!isProduction) {
+        const errorMessage = notificationError.userMessage || 
+          `Failed to resend SMS code. ${notificationError.message || 'Unknown error'}`;
+        return res.status(502).json({ 
+          error: errorMessage,
+          twilioErrorCode: notificationError.code
+        });
+      }
+    }
+
+    // Update pending registration with new code
+    pendingRegistration.phoneCodeHash = smsCodeHash;
+    pendingRegistration.phoneCodeExpiresAt = codeExpiryDate();
+    await pendingRegistration.save();
+
+    return res.status(200).json({ 
+      message: 'SMS code resent',
+      phoneCode: smsCode
+    });
+  } catch (error) {
+    console.error('Resend phone error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code' });
   }
 });
 
@@ -2150,6 +2245,113 @@ router.post('/password/reset', async (req, res) => {
 const emailChangeOTPKey = 'emailChangeOTP';
 const phoneChangeOTPKey = 'phoneChangeOTP';
 
+// Resend email OTP for profile change
+router.post('/profile/resend-email-change', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const emailChangeData = req.session[emailChangeOTPKey];
+    if (!emailChangeData || !emailChangeData.email) {
+      return res.status(400).json({ error: 'No pending email change request found' });
+    }
+
+    // Check if previous code expired
+    if (emailChangeData.expiresAt && new Date(emailChangeData.expiresAt) < new Date()) {
+      delete req.session[emailChangeOTPKey];
+      return res.status(410).json({ error: 'Verification session expired. Please request a new code.' });
+    }
+
+    // Generate new code
+    const otpCode = generateCode();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+
+    // Send new verification email
+    try {
+      await sendEmailVerificationCode(emailChangeData.email, otpCode, user.firstName || 'User');
+    } catch (notificationError) {
+      if (!isProduction) {
+        return res.status(502).json({ error: 'Failed to resend verification email' });
+      }
+    }
+
+    // Update session with new code
+    req.session[emailChangeOTPKey] = {
+      email: emailChangeData.email,
+      otpHash,
+      expiresAt: codeExpiryDate(),
+    };
+
+    return res.json({ 
+      message: 'Verification code resent to new email',
+      emailCode: otpCode
+    });
+  } catch (error) {
+    console.error('Resend email change error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code' });
+  }
+});
+
+// Resend phone OTP for profile change
+router.post('/profile/resend-phone-change', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const phoneChangeData = req.session[phoneChangeOTPKey];
+    if (!phoneChangeData || !phoneChangeData.phone) {
+      return res.status(400).json({ error: 'No pending phone change request found' });
+    }
+
+    // Check if previous code expired
+    if (phoneChangeData.expiresAt && new Date(phoneChangeData.expiresAt) < new Date()) {
+      delete req.session[phoneChangeOTPKey];
+      return res.status(410).json({ error: 'Verification session expired. Please request a new code.' });
+    }
+
+    // Generate new code
+    const otpCode = generateCode();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+
+    // Send new SMS verification
+    try {
+      const twilioPhone = formatPhoneForTwilio(phoneChangeData.phone);
+      if (!twilioPhone) {
+        throw new Error('Invalid phone number format');
+      }
+      await sendSmsVerificationCode(twilioPhone, otpCode);
+    } catch (notificationError) {
+      if (!isProduction) {
+        const errorMessage = notificationError.userMessage || 
+          `Failed to resend SMS code. ${notificationError.message || 'Unknown error'}`;
+        return res.status(502).json({ 
+          error: errorMessage,
+          twilioErrorCode: notificationError.code
+        });
+      }
+    }
+
+    // Update session with new code
+    req.session[phoneChangeOTPKey] = {
+      phone: phoneChangeData.phone,
+      otpHash,
+      expiresAt: codeExpiryDate(),
+    };
+
+    return res.json({ 
+      message: 'SMS code resent',
+      phoneCode: otpCode
+    });
+  } catch (error) {
+    console.error('Resend phone change error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code' });
+  }
+});
+
 router.post('/profile/verify-email-change', requireAuth, async (req, res) => {
   try {
     const { email } = req.body || {};
@@ -2442,11 +2644,12 @@ router.put('/profile', requireAuth, async (req, res) => {
     // - Validate required fields ONLY if the client is trying to set them.
     const hasField = (key) => Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined && body[key] !== null;
 
-    if (hasField('firstName') && !String(firstName).trim()) {
-      return res.status(400).json({ error: 'First name is required' });
+    // First name and last name cannot be changed after registration
+    if (hasField('firstName') && String(firstName).trim() !== user.firstName) {
+      return res.status(403).json({ error: 'First name cannot be changed after registration' });
     }
-    if (hasField('lastName') && !String(lastName).trim()) {
-      return res.status(400).json({ error: 'Last name is required' });
+    if (hasField('lastName') && String(lastName).trim() !== user.lastName) {
+      return res.status(403).json({ error: 'Last name cannot be changed after registration' });
     }
     if (hasField('postcode') && !String(postcode).trim()) {
       return res.status(400).json({ error: 'Postcode is required' });
@@ -2505,8 +2708,9 @@ router.put('/profile', requireAuth, async (req, res) => {
       delete req.session[phoneChangeOTPKey];
     }
 
-    if (hasField('firstName')) user.firstName = String(firstName).trim();
-    if (hasField('lastName')) user.lastName = String(lastName).trim();
+    // First name and last name are not allowed to be updated after registration
+    // if (hasField('firstName')) user.firstName = String(firstName).trim();
+    // if (hasField('lastName')) user.lastName = String(lastName).trim();
     if (hasField('postcode')) user.postcode = String(postcode).trim();
     
     // Address is required for client and professional, preserve existing value if not provided
