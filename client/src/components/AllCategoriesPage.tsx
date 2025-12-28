@@ -12,6 +12,7 @@ import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSub
 import type { Sector } from "../hooks/useSectorsAndCategories";
 import { getSectorIcon, getCategoryIcon, getSubCategoryIcon } from "./categoryIconMappings";
 import serviceVector from "../assets/service_vector.jpg";
+import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { SEOHead } from "./SEOHead";
 
 type ViewMode = "sectors" | "categories" | "subcategories";
@@ -140,6 +141,7 @@ export default function AllCategoriesPage() {
         description={seoContent.description}
         ogTitle={seoContent.title}
         ogDescription={seoContent.description}
+        ogImage={`${window.location.origin}${thumbnailImage}`}
         ogType="website"
       />
 

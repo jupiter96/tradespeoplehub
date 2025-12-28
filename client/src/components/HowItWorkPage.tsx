@@ -11,6 +11,7 @@ import PeopleLoveUsSection from "./PeopleLoveUsSection";
 import ClientFaqSection from "./ClientFaqSection";
 import Vector3 from "../imports/Vector3";
 import Vector4 from "../imports/Vector4";
+import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkPage() {
@@ -22,6 +23,7 @@ export default function HowItWorkPage() {
         description="Learn how to order professional services on Sortars. Post your job, receive quotes from verified experts, compare reviews, and hire with confidence. Simple, fast, and secure."
         ogTitle="How to Hire Professionals Online - Sortars Client Guide"
         ogDescription="Post jobs, get instant quotes, compare professionals, and book online. Our complete guide to hiring trusted tradespeople and specialists on the UK's leading service marketplace."
+        ogImage={`${window.location.origin}${thumbnailImage}`}
         ogType="website"
         robots="index,follow"
       />

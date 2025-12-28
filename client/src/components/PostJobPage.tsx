@@ -8,6 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import SEOHead from "./SEOHead";
 import { 
   Check, 
@@ -424,6 +425,7 @@ export default function PostJobPage() {
         description="Need a service? Post your job and receive quotes from qualified professionals. Free to post, compare offers, read reviews, and hire the best expert for your project."
         ogTitle="Post Your Job & Get Instant Quotes - Sortars"
         ogDescription="Describe your job, receive competitive quotes from trusted professionals, and hire with confidence. 1000+ vetted experts ready to help."
+        ogImage={`${window.location.origin}${thumbnailImage}`}
         ogType="website"
         robots="index,follow"
       />

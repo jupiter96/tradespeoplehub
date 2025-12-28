@@ -12,6 +12,7 @@ import GrowBusinessSection from "./GrowBusinessSection";
 import img22 from "figma:asset/01f369f7145a1bda02cadae942ff191c7c2cda51.png";
 import img0125 from "figma:asset/10d3d015685dee0b00951bf262608d69093ccde4.png";
 import img127 from "figma:asset/f1d010159c6cb7c35142621cdde2a80e22049b68.png";
+import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkProPage() {
@@ -23,6 +24,7 @@ export default function HowItWorkProPage() {
         description="Start selling your services on Sortars. Join 50,000+ verified professionals earning online. Create your profile, showcase your work, receive job requests, and grow your business. Free to join."
         ogTitle="Grow Your Professional Service Business Online - Sortars Pro"
         ogDescription="Join the UK's trusted service marketplace for professionals. Get more clients, manage bookings, receive payments online. Perfect for tradespeople, freelancers, and service providers."
+        ogImage={`${window.location.origin}${thumbnailImage}`}
         ogType="website"
         robots="index,follow"
       />

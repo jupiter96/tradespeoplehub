@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
 interface SEOHeadProps {
   title: string;
@@ -31,6 +32,11 @@ export function SEOHead({
   robots = 'index, follow',
 }: SEOHeadProps) {
   const location = useLocation();
+  
+  // Use default thumbnail if no ogImage is provided
+  const defaultThumbnail = `${window.location.origin}${thumbnailImage}`;
+  const finalOgImage = ogImage || defaultThumbnail;
+  const finalTwitterImage = twitterImage || ogImage || defaultThumbnail;
 
   useEffect(() => {
     // Set page title
@@ -78,25 +84,25 @@ export function SEOHead({
     setMetaTag('og:description', ogDescription || description, true);
     setMetaTag('og:type', ogType, true);
     setMetaTag('og:url', canonicalUrl, true);
-    if (ogImage) {
-      setMetaTag('og:image', ogImage, true);
-    }
+    setMetaTag('og:image', finalOgImage, true);
+    setMetaTag('og:image:alt', ogTitle || title, true);
+    setMetaTag('og:image:width', '1200', true);
+    setMetaTag('og:image:height', '630', true);
     setMetaTag('og:site_name', 'Sortars', true);
 
     // Twitter Card tags
     setMetaTag('twitter:card', twitterCard);
     setMetaTag('twitter:title', twitterTitle || ogTitle || title);
     setMetaTag('twitter:description', twitterDescription || ogDescription || description);
-    if (twitterImage || ogImage) {
-      setMetaTag('twitter:image', twitterImage || ogImage || '');
-    }
+    setMetaTag('twitter:image', finalTwitterImage);
+    setMetaTag('twitter:image:alt', twitterTitle || ogTitle || title);
 
     // Cleanup function to reset title on unmount (optional)
     return () => {
       // You can optionally reset to a default title here
       // document.title = 'Sortars';
     };
-  }, [title, description, canonical, ogTitle, ogDescription, ogImage, ogType, twitterCard, twitterTitle, twitterDescription, twitterImage, robots, location.pathname]);
+  }, [title, description, canonical, ogTitle, ogDescription, ogImage, ogType, twitterCard, twitterTitle, twitterDescription, twitterImage, robots, location.pathname, finalOgImage, finalTwitterImage]);
 
   return null; // This component doesn't render anything
 }

@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import mobileBannerImage from "figma:asset/618daa9a68ee59f7a6ae2af4cb4c10ea44a1211f.png";
 import heroVideo from "../assets/hero.webm";
+import thumbnailImage from "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 import { useSEO } from "../hooks/useSEO";
 import SEOHead from "./SEOHead";
 
@@ -41,6 +42,7 @@ export default function HomePage() {
         description="Order professional services as easily as online shopping. Connect with verified tradespeople, freelancers, and specialists across the UK. Get instant quotes, compare reviews, and book trusted professionals for home services, business solutions, and more on Sortars."
         ogTitle="Sortars - Hire Professional Services Online | Trusted UK Service Marketplace"
         ogDescription="Book verified professionals for any service. From plumbers and electricians to web designers and accountants. Read reviews, compare quotes, and hire with confidence. Join 50,000+ professionals on the UK's trusted service platform."
+        ogImage={`${window.location.origin}${thumbnailImage}`}
         ogType="website"
         robots="index,follow"
       />
