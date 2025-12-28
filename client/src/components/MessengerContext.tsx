@@ -43,6 +43,7 @@ interface MessengerContextType {
   getOrCreateContact: (contact: Omit<Contact, "lastMessage" | "timestamp" | "unread">) => Contact;
   getMessages: (contactId: string) => Message[];
   addMessage: (contactId: string, message: Omit<Message, "id" | "timestamp">) => void;
+  uploadFile: (contactId: string, file: File, text?: string) => Promise<void>;
   openMessenger: () => void;
   closeMessenger: () => void;
   isOpen: boolean;
@@ -455,6 +456,84 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const uploadFile = async (contactId: string, file: File, text?: string) => {
+    if (userInfo?.isBlocked) {
+      const contactExists = contacts.find(c => c.id === contactId);
+      if (!contactExists) {
+        toast.error("Your account has been blocked. You can only message users already in your chat list.");
+        return;
+      }
+    }
+
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact?.conversationId) {
+      toast.error("Conversation not found");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (text) {
+        formData.append('text', text);
+      }
+
+      const response = await fetch(
+        resolveApiUrl(`/api/chat/conversations/${contact.conversationId}/upload`),
+        {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload file');
+      }
+
+      const data = await response.json();
+      const message = data.message;
+
+      // Add message to local state
+      const newMessage: Message = {
+        id: message.id,
+        senderId: message.senderId,
+        senderName: message.senderName,
+        senderAvatar: message.senderAvatar,
+        text: message.text,
+        timestamp: message.timestamp,
+        read: message.read,
+        type: message.type,
+        fileUrl: message.fileUrl,
+        fileName: message.fileName,
+      };
+
+      setMessagesByContact(prev => ({
+        ...prev,
+        [contactId]: [...(prev[contactId] || []), newMessage],
+      }));
+
+      // Update contact's last message
+      setContacts(prev =>
+        prev.map(c =>
+          c.id === contactId
+            ? {
+                ...c,
+                lastMessage: message.text || 'Sent a file',
+                timestamp: "now",
+              }
+            : c
+        )
+      );
+
+      toast.success('File uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
+    }
+  };
+
   const openMessenger = () => {
     setIsOpen(true);
     setIsMinimized(false);
@@ -614,6 +693,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
         getOrCreateContact,
         getMessages,
         addMessage,
+        uploadFile,
         openMessenger,
         closeMessenger,
         isOpen,

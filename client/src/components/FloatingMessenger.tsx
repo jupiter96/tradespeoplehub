@@ -26,6 +26,7 @@ import { useAccount } from "./AccountContext";
 import { useNavigate } from "react-router-dom";
 import CustomOfferModal from "./CustomOfferModal";
 import { toast } from "sonner";
+import { resolveApiUrl } from "../config/api";
 
 export default function FloatingMessenger() {
   const {
@@ -39,6 +40,7 @@ export default function FloatingMessenger() {
     closeMessenger,
     getMessages,
     addMessage,
+    uploadFile,
     getContactById,
     userRole,
     startConversation,
@@ -204,28 +206,25 @@ export default function FloatingMessenger() {
     setMessageText(messageText + emoji);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedContactId || !userInfo?.id) return;
 
-    const fileType = file.type.startsWith("image/")
-      ? "image"
-      : file.type.startsWith("video/")
-      ? "file"
-      : "file";
+    const fileType = file.type.startsWith("image/") ? "image" : "file";
+    const text = fileType === "image" ? "" : `Sent ${file.name}`;
 
-    // TODO: Upload file to server and get URL
-    // For now, create a local URL
-    const fileUrl = URL.createObjectURL(file);
+    // Upload file to server
+    await uploadFile(selectedContactId, file, text);
 
-    addMessage(selectedContactId, {
-      senderId: userInfo.id,
-      text: fileType === "image" ? "Sent an image" : `Sent ${file.name}`,
-      read: false,
-      type: fileType as "text" | "image" | "file",
-      fileName: file.name,
-      fileUrl: fileUrl,
-    });
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // Stop typing indicator
+    if (selectedContact?.conversationId) {
+      sendTyping(selectedContact.conversationId, false);
+    }
   };
 
   const handleStartConversation = async (professionalId: string) => {
@@ -702,30 +701,41 @@ export default function FloatingMessenger() {
                               <div
                                 className={`rounded-2xl px-4 py-2 ${
                                   isOwnMessage
-                                    ? "bg-[#FE8A0F] text-white rounded-br-sm"
-                                    : "bg-white text-[#2c353f] rounded-bl-sm shadow-sm"
+                                    ? "bg-[#FFF5EB] text-black rounded-br-sm shadow-sm"
+                                    : "bg-[#FFF5EB] text-black rounded-bl-sm shadow-sm"
                                 }`}
                               >
                                 {message.type === "image" && message.fileUrl && (
-                                  <img
-                                    src={message.fileUrl}
-                                    alt="Shared"
-                                    className="rounded-lg mb-2 max-w-full"
-                                  />
+                                  <a 
+                                    href={resolveApiUrl(message.fileUrl)} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    download
+                                  >
+                                    <img
+                                      src={resolveApiUrl(message.fileUrl)}
+                                      alt="Shared"
+                                      className="rounded-lg mb-2 max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                    />
+                                  </a>
                                 )}
-                                {message.type === "file" && (
-                                  <div className={`flex items-center gap-2 mb-2 p-2 rounded-lg ${
-                                    isOwnMessage ? "bg-white/10" : "bg-gray-100"
-                                  }`}>
+                                {message.type === "file" && message.fileUrl && (
+                                  <a
+                                    href={resolveApiUrl(message.fileUrl)}
+                                    download
+                                    className="flex items-center gap-2 mb-2 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity bg-white/50"
+                                  >
                                     <Paperclip className="w-4 h-4" />
-                                    <span className="font-['Poppins',sans-serif] text-[13px]">
+                                    <span className="font-['Poppins',sans-serif] text-[13px] truncate">
                                       {message.fileName}
                                     </span>
-                                  </div>
+                                  </a>
                                 )}
-                                <p className="font-['Poppins',sans-serif] text-[14px]">
-                                  {message.text}
-                                </p>
+                                {message.text && (
+                                  <p className="font-['Poppins',sans-serif] text-[14px]">
+                                    {message.text}
+                                  </p>
+                                )}
                               </div>
                             )}
                             <div

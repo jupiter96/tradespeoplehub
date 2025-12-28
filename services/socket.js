@@ -337,6 +337,9 @@ export const getIO = () => {
   return io;
 };
 
+// Export io directly for route handlers
+export { io };
+
 // Check if a user is online
 export const isUserOnline = (userId) => {
   return userSockets.has(userId.toString());

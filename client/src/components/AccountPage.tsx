@@ -87,7 +87,7 @@ import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
-import API_BASE_URL from "../config/api";
+import API_BASE_URL, { resolveApiUrl } from "../config/api";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 import {
   Dialog,
@@ -3954,7 +3954,7 @@ function SecuritySection() {
 // Messenger Section
 function MessengerSection() {
   const navigate = useNavigate();
-  const { contacts, getMessages, addMessage, userRole, setUserRole } = useMessenger();
+  const { contacts, getMessages, addMessage, uploadFile, userRole, setUserRole } = useMessenger();
   const { userInfo, userRole: accountUserRole } = useAccount();
 
   // Sync messenger userRole with account userRole
@@ -4067,17 +4067,20 @@ function MessengerSection() {
     setMessageText(messageText + emoji);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedContactId) return;
 
-    const fileType = file.type.startsWith("image/") ? "Sent an image" : `Sent ${file.name}`;
-    addMessage(selectedContactId, {
-      senderId: userInfo?.id || "current-user",
-      text: fileType,
-      read: false,
-      type: "text",
-    });
+    const fileType = file.type.startsWith("image/") ? "image" : "file";
+    const text = fileType === "image" ? "" : `Sent ${file.name}`;
+
+    // Upload file to server
+    await uploadFile(selectedContactId, file, text);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -4356,15 +4359,43 @@ function MessengerSection() {
                             }`}
                           >
                             <div
-                              className={`rounded-2xl px-4 py-3 ${
+                              className={`rounded-2xl px-4 py-3 shadow-sm ${
                                 message.senderId === userInfo?.id
-                                  ? "bg-[#FE8A0F] text-white rounded-br-sm"
-                                  : "bg-white text-[#2c353f] rounded-bl-sm"
+                                  ? "bg-[#FFF5EB] text-black rounded-br-sm"
+                                  : "bg-[#FFF5EB] text-black rounded-bl-sm"
                               }`}
                             >
-                              <p className="font-['Poppins',sans-serif] text-[14px] leading-relaxed">
-                                {message.text}
-                              </p>
+                              {message.type === "image" && message.fileUrl && (
+                                <a 
+                                  href={resolveApiUrl(message.fileUrl)} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  download
+                                >
+                                  <img
+                                    src={resolveApiUrl(message.fileUrl)}
+                                    alt="Shared"
+                                    className="rounded-lg mb-2 max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                  />
+                                </a>
+                              )}
+                              {message.type === "file" && message.fileUrl && (
+                                <a
+                                  href={resolveApiUrl(message.fileUrl)}
+                                  download
+                                  className="flex items-center gap-2 mb-2 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity bg-white/50"
+                                >
+                                  <Paperclip className="w-4 h-4" />
+                                  <span className="font-['Poppins',sans-serif] text-[13px] truncate">
+                                    {message.fileName}
+                                  </span>
+                                </a>
+                              )}
+                              {message.text && (
+                                <p className="font-['Poppins',sans-serif] text-[14px] leading-relaxed">
+                                  {message.text}
+                                </p>
+                              )}
                             </div>
                             <div
                               className={`flex items-center gap-1 mt-1 px-1 ${

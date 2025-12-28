@@ -1,11 +1,65 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { isUserOnline } from '../services/socket.js';
+import { isUserOnline, io } from '../services/socket.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+// Create uploads/attachments directory if it doesn't exist
+const attachmentsDir = path.join(__dirname, '..', 'uploads', 'attachments');
+if (!fs.existsSync(attachmentsDir)) {
+  fs.mkdirSync(attachmentsDir, { recursive: true });
+}
+
+// Configure multer for file attachments
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, attachmentsDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    // Sanitize filename
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileUpload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (_req, file, cb) => {
+    // Allow common file types
+    const allowedMimes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/zip',
+      'application/x-zip-compressed',
+      'text/plain'
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Please upload images, PDFs, documents, or ZIP files.'));
+    }
+  }
+});
+
+const uploadMiddleware = fileUpload.single('file');
 
 // Use authentication middleware
 const requireAuth = authenticateToken;
@@ -263,6 +317,161 @@ router.get('/search-professionals', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error searching professionals:', error);
     res.status(500).json({ error: 'Failed to search professionals' });
+  }
+});
+
+// Upload file attachment
+router.post('/conversations/:conversationId/upload', requireAuth, (req, res, next) => {
+  uploadMiddleware(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    return next();
+  });
+}, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { conversationId } = req.params;
+    const { text } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
+    // Convert to ObjectId
+    const mongoose = (await import('mongoose')).default;
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // Verify user is a participant
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === userIdObj.toString()
+    );
+    if (!isParticipant) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Determine message type based on file mime type
+    let messageType = 'file';
+    if (req.file.mimetype.startsWith('image/')) {
+      messageType = 'image';
+    }
+
+    // Create message with file attachment
+    const message = new Message({
+      conversation: conversationId,
+      sender: userIdObj,
+      text: text || '',
+      type: messageType,
+      fileUrl: `/api/chat/attachments/${req.file.filename}`,
+      fileName: req.file.originalname,
+      read: false,
+    });
+
+    await message.save();
+
+    // Update conversation
+    conversation.lastMessage = message._id;
+    conversation.lastMessageAt = new Date();
+
+    // Increment unread count for other participant
+    const otherParticipantId = conversation.participants.find(
+      (p) => p.toString() !== userId.toString()
+    ).toString();
+    
+    const currentUnread = conversation.unreadCount.get(otherParticipantId) || 0;
+    conversation.unreadCount.set(otherParticipantId, currentUnread + 1);
+
+    await conversation.save();
+
+    // Populate sender info
+    await message.populate('sender', 'firstName lastName avatar role tradingName');
+
+    // Format response
+    const formattedMessage = {
+      id: message._id.toString(),
+      senderId: message.sender._id.toString(),
+      senderName: message.sender.role === 'professional'
+        ? message.sender.tradingName || `${message.sender.firstName} ${message.sender.lastName}`
+        : `${message.sender.firstName} ${message.sender.lastName}`,
+      senderAvatar: message.sender.avatar,
+      text: message.text,
+      timestamp: message.createdAt,
+      read: message.read,
+      type: message.type,
+      fileUrl: message.fileUrl,
+      fileName: message.fileName,
+    };
+
+    // Emit socket event
+    if (io) {
+      io.to(`conversation:${conversationId}`).emit('message:new', formattedMessage);
+      io.to(`user:${otherParticipantId}`).emit('conversation:updated', {
+        conversationId,
+        lastMessage: {
+          text: message.text || 'Sent a file',
+          timestamp: message.createdAt,
+        },
+        unread: conversation.unreadCount.get(otherParticipantId),
+      });
+    }
+
+    res.json({ message: formattedMessage });
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    // Delete uploaded file if message creation fails
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error deleting file:', unlinkError);
+      }
+    }
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+// Download file attachment
+router.get('/attachments/:filename', requireAuth, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(attachmentsDir, filename);
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Verify user has access to this file (must be participant in conversation that contains this file)
+    const message = await Message.findOne({ fileUrl: `/api/chat/attachments/${filename}` });
+    if (!message) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const mongoose = (await import('mongoose')).default;
+    const userIdObj = new mongoose.Types.ObjectId(req.user.id);
+
+    const conversation = await Conversation.findById(message.conversation);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === userIdObj.toString()
+    );
+    if (!isParticipant) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Send file
+    res.download(filePath, message.fileName || filename);
+  } catch (error) {
+    console.error('Error downloading file:', error);
+    res.status(500).json({ error: 'Failed to download file' });
   }
 });
 
