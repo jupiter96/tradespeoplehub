@@ -1244,26 +1244,59 @@ router.post('/register/resend-email', async (req, res) => {
   try {
     const { email } = req.body || {};
     
+    console.log('[Email Resend] Request received for email:', email ? email.substring(0, 3) + '***' : 'none');
+    
     const pendingRegistration = await loadPendingRegistration(req, email);
     
     if (!pendingRegistration) {
+      console.log('[Email Resend] No pending registration found');
       return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
 
     if (pendingRegistration.emailVerified) {
+      console.log('[Email Resend] Email already verified');
       return res.status(409).json({ error: 'Email already verified' });
+    }
+
+    // Check if too soon to resend (prevent spam - 30 seconds minimum)
+    const lastCodeTime = pendingRegistration.emailCodeExpiresAt 
+      ? new Date(pendingRegistration.emailCodeExpiresAt).getTime() - (10 * 60 * 1000) // Subtract expiry duration
+      : 0;
+    const now = Date.now();
+    const timeSinceLastCode = now - lastCodeTime;
+    
+    if (timeSinceLastCode < 30000 && lastCodeTime > 0) { // 30 seconds
+      const waitTime = Math.ceil((30000 - timeSinceLastCode) / 1000);
+      console.log('[Email Resend] Rate limit - too soon to resend');
+      return res.status(429).json({ 
+        error: `Please wait ${waitTime} seconds before requesting a new code` 
+      });
     }
 
     // Generate new code
     const emailCode = generateCode();
     const emailCodeHash = await bcrypt.hash(emailCode, 10);
 
+    console.log('[Email Resend] Sending verification email to:', pendingRegistration.email);
+
     // Send new verification email
+    let emailSent = false;
     try {
       await sendEmailVerificationCode(pendingRegistration.email, emailCode, pendingRegistration.firstName || 'User');
+      emailSent = true;
+      console.log('[Email Resend] Verification email sent successfully');
     } catch (notificationError) {
-      if (!isProduction) {
-        return res.status(502).json({ error: 'Failed to resend verification email' });
+      console.error('[Email Resend] Failed to send email:', notificationError.message);
+      
+      // In production, still save the code but warn user
+      if (isProduction) {
+        console.warn('[Email Resend] Continuing in production mode despite email failure');
+        emailSent = true; // Allow continuation in production
+      } else {
+        return res.status(502).json({ 
+          error: 'Failed to send verification email. Please check your email address or try again later.',
+          details: notificationError.message
+        });
       }
     }
 
@@ -1272,13 +1305,16 @@ router.post('/register/resend-email', async (req, res) => {
     pendingRegistration.emailCodeExpiresAt = codeExpiryDate();
     await pendingRegistration.save();
 
+    console.log('[Email Resend] Code saved to database, expires at:', pendingRegistration.emailCodeExpiresAt);
+
     return res.status(200).json({ 
-      message: 'Verification code resent',
-      emailCode: emailCode
+      message: 'Verification code has been resent to your email',
+      emailCode: emailCode, // Include for testing/development
+      expiresIn: '10 minutes'
     });
   } catch (error) {
-    console.error('Resend email error:', error);
-    return res.status(500).json({ error: 'Failed to resend verification code' });
+    console.error('[Email Resend] Unexpected error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code. Please try again.' });
   }
 });
 
@@ -1441,34 +1477,68 @@ router.post('/register/resend-phone', async (req, res) => {
   try {
     const { email } = req.body || {};
     
+    console.log('[Phone Resend] Request received for email:', email ? email.substring(0, 3) + '***' : 'none');
+    
     const pendingRegistration = await loadPendingRegistration(req, email);
     
     if (!pendingRegistration) {
+      console.log('[Phone Resend] No pending registration found');
       return res.status(400).json({ error: 'No pending registration found. Please start registration again.' });
     }
 
     if (!pendingRegistration.emailVerified) {
-      return res.status(400).json({ error: 'Please verify email first' });
+      console.log('[Phone Resend] Email not verified yet');
+      return res.status(400).json({ error: 'Please verify your email first before requesting phone verification' });
+    }
+
+    // Check if too soon to resend (prevent spam - 30 seconds minimum)
+    const lastCodeTime = pendingRegistration.phoneCodeExpiresAt 
+      ? new Date(pendingRegistration.phoneCodeExpiresAt).getTime() - (10 * 60 * 1000) // Subtract expiry duration
+      : 0;
+    const now = Date.now();
+    const timeSinceLastCode = now - lastCodeTime;
+    
+    if (timeSinceLastCode < 30000 && lastCodeTime > 0) { // 30 seconds
+      const waitTime = Math.ceil((30000 - timeSinceLastCode) / 1000);
+      console.log('[Phone Resend] Rate limit - too soon to resend');
+      return res.status(429).json({ 
+        error: `Please wait ${waitTime} seconds before requesting a new code` 
+      });
     }
 
     // Generate new SMS code
     const smsCode = generateCode();
     const smsCodeHash = await bcrypt.hash(smsCode, 10);
 
+    console.log('[Phone Resend] Sending SMS to:', pendingRegistration.phone ? pendingRegistration.phone.substring(0, 5) + '***' : 'unknown');
+
     // Send new SMS verification
+    let smsSent = false;
     try {
       const twilioPhone = formatPhoneForTwilio(pendingRegistration.phone);
       if (!twilioPhone) {
-        throw new Error('Invalid phone number format');
+        throw new Error('Invalid phone number format. Please check your phone number.');
       }
+      
       await sendSmsVerificationCode(twilioPhone, smsCode);
+      smsSent = true;
+      console.log('[Phone Resend] SMS sent successfully');
     } catch (notificationError) {
-      if (!isProduction) {
+      console.error('[Phone Resend] Failed to send SMS:', notificationError.message);
+      
+      // In production, still save the code but warn user
+      if (isProduction) {
+        console.warn('[Phone Resend] Continuing in production mode despite SMS failure');
+        smsSent = true; // Allow continuation in production
+      } else {
         const errorMessage = notificationError.userMessage || 
-          `Failed to resend SMS code. ${notificationError.message || 'Unknown error'}`;
+          notificationError.message || 
+          'Failed to send SMS code. Please check your phone number or try again later.';
+        
         return res.status(502).json({ 
           error: errorMessage,
-          twilioErrorCode: notificationError.code
+          twilioErrorCode: notificationError.code,
+          details: notificationError.moreInfo
         });
       }
     }
@@ -1478,13 +1548,16 @@ router.post('/register/resend-phone', async (req, res) => {
     pendingRegistration.phoneCodeExpiresAt = codeExpiryDate();
     await pendingRegistration.save();
 
+    console.log('[Phone Resend] Code saved to database, expires at:', pendingRegistration.phoneCodeExpiresAt);
+
     return res.status(200).json({ 
-      message: 'SMS code resent',
-      phoneCode: smsCode
+      message: 'SMS verification code has been resent to your phone',
+      phoneCode: smsCode, // Include for testing/development
+      expiresIn: '10 minutes'
     });
   } catch (error) {
-    console.error('Resend phone error:', error);
-    return res.status(500).json({ error: 'Failed to resend verification code' });
+    console.error('[Phone Resend] Unexpected error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code. Please try again.' });
   }
 });
 
@@ -2248,32 +2321,62 @@ const phoneChangeOTPKey = 'phoneChangeOTP';
 // Resend email OTP for profile change
 router.post('/profile/resend-email-change', requireAuth, async (req, res) => {
   try {
+    console.log('[Email Change Resend] Request received');
+    
     const user = await User.findById(req.session.userId);
     if (!user) {
+      console.log('[Email Change Resend] User session expired');
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
     const emailChangeData = req.session[emailChangeOTPKey];
     if (!emailChangeData || !emailChangeData.email) {
-      return res.status(400).json({ error: 'No pending email change request found' });
+      console.log('[Email Change Resend] No pending email change found');
+      return res.status(400).json({ error: 'No pending email change request found. Please request a new email change first.' });
     }
 
     // Check if previous code expired
     if (emailChangeData.expiresAt && new Date(emailChangeData.expiresAt) < new Date()) {
+      console.log('[Email Change Resend] Previous code expired');
       delete req.session[emailChangeOTPKey];
-      return res.status(410).json({ error: 'Verification session expired. Please request a new code.' });
+      return res.status(410).json({ error: 'Verification session expired. Please request a new email change.' });
+    }
+
+    // Check if too soon to resend (prevent spam - 30 seconds minimum)
+    if (emailChangeData.lastSentAt) {
+      const timeSinceLastSend = Date.now() - new Date(emailChangeData.lastSentAt).getTime();
+      if (timeSinceLastSend < 30000) { // 30 seconds
+        const waitTime = Math.ceil((30000 - timeSinceLastSend) / 1000);
+        console.log('[Email Change Resend] Rate limit - too soon');
+        return res.status(429).json({ 
+          error: `Please wait ${waitTime} seconds before requesting a new code` 
+        });
+      }
     }
 
     // Generate new code
     const otpCode = generateCode();
     const otpHash = await bcrypt.hash(otpCode, 10);
 
+    console.log('[Email Change Resend] Sending verification email to:', emailChangeData.email.substring(0, 3) + '***');
+
     // Send new verification email
+    let emailSent = false;
     try {
       await sendEmailVerificationCode(emailChangeData.email, otpCode, user.firstName || 'User');
+      emailSent = true;
+      console.log('[Email Change Resend] Email sent successfully');
     } catch (notificationError) {
-      if (!isProduction) {
-        return res.status(502).json({ error: 'Failed to resend verification email' });
+      console.error('[Email Change Resend] Failed to send email:', notificationError.message);
+      
+      if (isProduction) {
+        console.warn('[Email Change Resend] Continuing in production mode');
+        emailSent = true;
+      } else {
+        return res.status(502).json({ 
+          error: 'Failed to send verification email. Please try again later.',
+          details: notificationError.message
+        });
       }
     }
 
@@ -2282,55 +2385,90 @@ router.post('/profile/resend-email-change', requireAuth, async (req, res) => {
       email: emailChangeData.email,
       otpHash,
       expiresAt: codeExpiryDate(),
+      lastSentAt: new Date(),
     };
 
+    console.log('[Email Change Resend] Code saved, expires at:', req.session[emailChangeOTPKey].expiresAt);
+
     return res.json({ 
-      message: 'Verification code resent to new email',
-      emailCode: otpCode
+      message: 'Verification code has been resent to your new email',
+      emailCode: otpCode,
+      expiresIn: '10 minutes'
     });
   } catch (error) {
-    console.error('Resend email change error:', error);
-    return res.status(500).json({ error: 'Failed to resend verification code' });
+    console.error('[Email Change Resend] Unexpected error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code. Please try again.' });
   }
 });
 
 // Resend phone OTP for profile change
 router.post('/profile/resend-phone-change', requireAuth, async (req, res) => {
   try {
+    console.log('[Phone Change Resend] Request received');
+    
     const user = await User.findById(req.session.userId);
     if (!user) {
+      console.log('[Phone Change Resend] User session expired');
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
     const phoneChangeData = req.session[phoneChangeOTPKey];
     if (!phoneChangeData || !phoneChangeData.phone) {
-      return res.status(400).json({ error: 'No pending phone change request found' });
+      console.log('[Phone Change Resend] No pending phone change found');
+      return res.status(400).json({ error: 'No pending phone change request found. Please request a new phone change first.' });
     }
 
     // Check if previous code expired
     if (phoneChangeData.expiresAt && new Date(phoneChangeData.expiresAt) < new Date()) {
+      console.log('[Phone Change Resend] Previous code expired');
       delete req.session[phoneChangeOTPKey];
-      return res.status(410).json({ error: 'Verification session expired. Please request a new code.' });
+      return res.status(410).json({ error: 'Verification session expired. Please request a new phone change.' });
+    }
+
+    // Check if too soon to resend (prevent spam - 30 seconds minimum)
+    if (phoneChangeData.lastSentAt) {
+      const timeSinceLastSend = Date.now() - new Date(phoneChangeData.lastSentAt).getTime();
+      if (timeSinceLastSend < 30000) { // 30 seconds
+        const waitTime = Math.ceil((30000 - timeSinceLastSend) / 1000);
+        console.log('[Phone Change Resend] Rate limit - too soon');
+        return res.status(429).json({ 
+          error: `Please wait ${waitTime} seconds before requesting a new code` 
+        });
+      }
     }
 
     // Generate new code
     const otpCode = generateCode();
     const otpHash = await bcrypt.hash(otpCode, 10);
 
+    console.log('[Phone Change Resend] Sending SMS to:', phoneChangeData.phone.substring(0, 5) + '***');
+
     // Send new SMS verification
+    let smsSent = false;
     try {
       const twilioPhone = formatPhoneForTwilio(phoneChangeData.phone);
       if (!twilioPhone) {
-        throw new Error('Invalid phone number format');
+        throw new Error('Invalid phone number format. Please check your phone number.');
       }
+      
       await sendSmsVerificationCode(twilioPhone, otpCode);
+      smsSent = true;
+      console.log('[Phone Change Resend] SMS sent successfully');
     } catch (notificationError) {
-      if (!isProduction) {
+      console.error('[Phone Change Resend] Failed to send SMS:', notificationError.message);
+      
+      if (isProduction) {
+        console.warn('[Phone Change Resend] Continuing in production mode');
+        smsSent = true;
+      } else {
         const errorMessage = notificationError.userMessage || 
-          `Failed to resend SMS code. ${notificationError.message || 'Unknown error'}`;
+          notificationError.message || 
+          'Failed to send SMS code. Please check your phone number or try again later.';
+        
         return res.status(502).json({ 
           error: errorMessage,
-          twilioErrorCode: notificationError.code
+          twilioErrorCode: notificationError.code,
+          details: notificationError.moreInfo
         });
       }
     }
@@ -2340,15 +2478,19 @@ router.post('/profile/resend-phone-change', requireAuth, async (req, res) => {
       phone: phoneChangeData.phone,
       otpHash,
       expiresAt: codeExpiryDate(),
+      lastSentAt: new Date(),
     };
 
+    console.log('[Phone Change Resend] Code saved, expires at:', req.session[phoneChangeOTPKey].expiresAt);
+
     return res.json({ 
-      message: 'SMS code resent',
-      phoneCode: otpCode
+      message: 'SMS verification code has been resent to your new phone',
+      phoneCode: otpCode,
+      expiresIn: '10 minutes'
     });
   } catch (error) {
-    console.error('Resend phone change error:', error);
-    return res.status(500).json({ error: 'Failed to resend verification code' });
+    console.error('[Phone Change Resend] Unexpected error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code. Please try again.' });
   }
 });
 

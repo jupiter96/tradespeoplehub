@@ -259,8 +259,8 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     socket.on('new-message', handleNewMessage);
     socket.on('typing', handleTyping);
     socket.on('conversation-updated', handleConversationUpdated);
-    socket.on('user-online', handleUserOnline);
-    socket.on('user-offline', handleUserOffline);
+    socket.on('user:online', handleUserOnline);
+    socket.on('user:offline', handleUserOffline);
     socket.on('messages-read', handleMessagesRead);
 
     // Cleanup: remove event listeners when user changes or component unmounts
@@ -269,8 +269,8 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
       socket.off('new-message', handleNewMessage);
       socket.off('typing', handleTyping);
       socket.off('conversation-updated', handleConversationUpdated);
-      socket.off('user-online', handleUserOnline);
-      socket.off('user-offline', handleUserOffline);
+      socket.off('user:online', handleUserOnline);
+      socket.off('user:offline', handleUserOffline);
       socket.off('messages-read', handleMessagesRead);
       
       // Only disconnect and reset if user is logging out

@@ -5,6 +5,9 @@ import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 
 let io = null;
+// Store user socket mappings (moved outside to make accessible)
+const userSockets = new Map(); // userId -> socketId
+const socketUsers = new Map(); // socketId -> userId
 
 export const initializeSocket = (server) => {
   // Parse CORS origins
@@ -24,10 +27,6 @@ export const initializeSocket = (server) => {
     transports: ['websocket', 'polling'],
     allowEIO3: true,
   });
-
-  // Store user socket mappings
-  const userSockets = new Map(); // userId -> socketId
-  const socketUsers = new Map(); // socketId -> userId
 
   io.use(async (socket, next) => {
     // Get user from session cookie
@@ -87,7 +86,7 @@ export const initializeSocket = (server) => {
 
     // Emit online status to user's conversations (only if this is a new connection)
     if (!existingSocketId || existingSocketId !== socket.id) {
-      socket.broadcast.emit('user-online', { userId });
+      socket.broadcast.emit('user:online', { userId });
     }
 
     console.log(`User ${userId} connected (socket: ${socket.id})`);
@@ -320,7 +319,7 @@ export const initializeSocket = (server) => {
 
       // Emit offline status only if user has no other connections
       if (!userSockets.has(userId)) {
-        socket.broadcast.emit('user-offline', { userId });
+        socket.broadcast.emit('user:offline', { userId });
         console.log(`User ${userId} disconnected (socket: ${socket.id}, reason: ${reason})`);
       } else {
         console.log(`User ${userId} socket ${socket.id} disconnected but has other connections`);
@@ -336,5 +335,15 @@ export const getIO = () => {
     throw new Error('Socket.io not initialized');
   }
   return io;
+};
+
+// Check if a user is online
+export const isUserOnline = (userId) => {
+  return userSockets.has(userId.toString());
+};
+
+// Get all online users
+export const getOnlineUsers = () => {
+  return Array.from(userSockets.keys());
 };
 

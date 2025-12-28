@@ -3,6 +3,7 @@ import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { isUserOnline } from '../services/socket.js';
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ router.get('/conversations', requireAuth, async (req, res) => {
           : null,
         timestamp: conv.lastMessageAt,
         unread: unreadCount,
-        online: false, // Will be updated via socket.io
+        online: isUserOnline(otherParticipant?._id), // Check actual online status
       };
     });
 
