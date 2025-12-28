@@ -12,6 +12,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "./ui/carousel";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface Service {
   id: number;
@@ -238,11 +239,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Provider Info - Moved to bottom */}
                   <div className="flex items-center gap-1.5 md:gap-2 pt-2 md:pt-3 border-t border-gray-100">
                     <Link to={`/profile/117`} className="flex items-center gap-1.5 md:gap-2 hover:opacity-80 transition-opacity">
-                      <img
-                        src={service.providerImage}
-                        alt={service.tradingName}
-                        className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
-                      />
+                      <Avatar className="w-6 h-6 md:w-8 md:h-8">
+                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] md:text-[12px] font-semibold">
+                          {service.tradingName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                         {service.tradingName}
                       </span>
@@ -291,11 +293,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       {/* Provider Info */}
                       <div className="flex items-center gap-1.5">
                         <Link to={`/profile/117`} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                          <img
-                            src={service.providerImage}
-                            alt={service.tradingName}
-                            className="w-5 h-5 rounded-full object-cover"
-                          />
+                          <Avatar className="w-5 h-5">
+                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                              {service.tradingName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                             {service.tradingName}
                           </span>
@@ -610,11 +613,12 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                   {/* Provider Info - Moved to bottom */}
                   <div className="flex items-center gap-1.5 md:gap-2 pt-2 md:pt-3 border-t border-gray-100">
                     <Link to={`/profile/117`} className="flex items-center gap-1.5 md:gap-2 hover:opacity-80 transition-opacity">
-                      <img
-                        src={service.providerImage}
-                        alt={service.tradingName}
-                        className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
-                      />
+                      <Avatar className="w-6 h-6 md:w-8 md:h-8">
+                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] md:text-[12px] font-semibold">
+                          {service.tradingName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
                         {service.tradingName}
                       </span>

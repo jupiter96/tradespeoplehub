@@ -228,10 +228,16 @@ export default function SocialOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB]">
-      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-        <Nav />
-      </header>
+    <>
+      <SEOHead
+        title="Social Onboarding"
+        description="Social onboarding page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
+        </header>
       
       <div className="pt-[50px] py-6 md:py-6 px-4 md:px-6">
         <div className="max-w-[500px] mx-auto">
@@ -738,7 +744,7 @@ export default function SocialOnboardingPage() {
         </div>
       </div>
       <Footer />
-      </div>
+    </div>
     </>
   );
 }

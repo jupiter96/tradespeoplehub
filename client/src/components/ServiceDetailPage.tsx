@@ -1034,8 +1034,6 @@ export default function ServiceDetailPage() {
   const seoTitle = service.title || service.description;
   const seoDescription = service.about || service.aboutMe || `Professional ${service.subcategory || service.category} service by ${service.providerName}. ${service.rating > 0 ? `Rated ${service.rating}/5 with ${service.reviewCount} reviews.` : 'Verified professional.'} Book now on Sortars.com!`;
 
-  const mainImageUrl = serviceImages[0] || service.image;
-
   return (
     <div className="w-full min-h-screen bg-[#f0f0f0]">
       {/* SEO Meta Tags */}
