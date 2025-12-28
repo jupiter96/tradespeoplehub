@@ -328,11 +328,18 @@ export default function CartPage() {
         </div>
         <Footer />
       </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] to-[#f0f0f0]">
+    <>
+      <SEOHead
+        title="Shopping Cart"
+        description="Shopping cart page"
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] to-[#f0f0f0]">
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>
