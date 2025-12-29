@@ -521,6 +521,11 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       return res.status(400).json({ error: 'Title, description, and price are required' });
     }
 
+    // Validate title length (minimum 35 characters)
+    if (title.trim().length < 35) {
+      return res.status(400).json({ error: 'Service title must be at least 35 characters long' });
+    }
+
     // Validate description length (minimum 35 characters)
     if (description.trim().length < 35) {
       return res.status(400).json({ error: 'Service description must be at least 35 characters long' });
@@ -701,7 +706,13 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     }
 
     // Clean up update data
-    if (updateData.title) updateData.title = updateData.title.trim();
+    if (updateData.title) {
+      updateData.title = updateData.title.trim();
+      // Validate title length (minimum 35 characters) - skip for drafts
+      if (!isDraftUpdate && updateData.title.length < 35) {
+        return res.status(400).json({ error: 'Service title must be at least 35 characters long' });
+      }
+    }
     if (updateData.description) {
       updateData.description = updateData.description.trim();
       // Validate description length (minimum 35 characters) - skip for drafts
