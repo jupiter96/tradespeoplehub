@@ -401,9 +401,9 @@ export default function ProfessionalRegistrationSteps() {
         description="Professional registration page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#FFF5EB] via-white to-[#FFF5EB]">
-        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-          <Nav />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#FFF5EB] via-white to-[#FFF5EB]">
+      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+        <Nav />
       </header>
       
       <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 mt-[50px] md:mt-0">
@@ -1090,7 +1090,7 @@ export default function ProfessionalRegistrationSteps() {
       </div>
       
       <Footer />
-      </div>
+    </div>
     </>
   );
 }

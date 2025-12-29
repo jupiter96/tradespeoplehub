@@ -331,7 +331,7 @@ export default function AccountPage() {
         description="User account page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen bg-[#f0f0f0]">
+    <div className="min-h-screen bg-[#f0f0f0]">
       <VerificationProgressModal
         open={showVerificationModal}
         onOpenChange={(open) => setShowVerificationModal(open)}
@@ -525,7 +525,7 @@ export default function AccountPage() {
       </div>
 
       <Footer />
-      </div>
+    </div>
     </>
   );
 }
@@ -4392,9 +4392,9 @@ function MessengerSection() {
                                 </a>
                               )}
                               {message.text && (
-                                <p className="font-['Poppins',sans-serif] text-[14px] leading-relaxed">
-                                  {message.text}
-                                </p>
+                              <p className="font-['Poppins',sans-serif] text-[14px] leading-relaxed">
+                                {message.text}
+                              </p>
                               )}
                             </div>
                             <div

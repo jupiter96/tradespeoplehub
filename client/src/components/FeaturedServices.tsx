@@ -14,6 +14,47 @@ import {
 } from "./ui/carousel";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
+// Smart image renderer for service cards
+// - Foreground: object-contain (preserves portrait/landscape ratio, centered)
+// - Background: blurred version of the same image to fill leftover space
+function SmartImageLayers({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  if (!src) {
+    return <div className="absolute inset-0 bg-gray-200" aria-hidden="true" />;
+  }
+
+  return (
+    <>
+      {/* Blurred background layer */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-85"
+        decoding="async"
+        loading="lazy"
+      />
+      <div
+        className="absolute inset-0 bg-black/15"
+        aria-hidden="true"
+      />
+      {/* Foreground image with proper aspect ratio */}
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-contain"
+        decoding="async"
+        loading="lazy"
+      />
+    </>
+  );
+}
+
 interface Service {
   id: number;
   _id?: string;
@@ -117,11 +158,10 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                 className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
               >
                 {/* Image Section */}
-                <div className="relative h-[110px] md:h-[170px]">
-                  <img
+                <div className="relative h-[300px] overflow-hidden">
+                  <SmartImageLayers
                     src={service.image}
                     alt={service.description}
-                    className="w-full h-full object-cover"
                   />
                   {/* Badges */}
                   {service.badges && service.badges.length > 0 && (
@@ -191,37 +231,37 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     </div>
                     {/* Original Price and Discount Badge */}
                     {service.originalPrice && (
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
                           {service.price}
-                        </span>
-                        <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
-                          <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
-                            {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
                           </span>
+                          <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
+                            <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
+                            {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
+                            </span>
+                          </div>
                         </div>
-                      </div>
                     )}
-                  </div>
-
-                  {/* Delivery Badge and Add to Cart Button - Single Row */}
-                  <div className="flex items-center justify-between gap-2 mt-auto mb-2 md:mb-3">
-                    {/* Delivery Badge */}
-                    <div className="flex-shrink-0">
-                      {service.deliveryType === "same-day" ? (
-                        <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                          <span className="font-medium heartbeat-text">⚡ Same Day</span>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                          <svg className="w-2 h-2 md:w-2.5 md:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 9h4l3 9 3-16 3 9h4"/>
-                          </svg>
-                          <span className="font-medium">Standard</span>
-                        </div>
-                      )}
                     </div>
                     
+                  {/* Delivery Badge and Add to Cart Button - Single Row */}
+                  <div className="flex items-center justify-between gap-2 mt-auto mb-2 md:mb-3">
+                      {/* Delivery Badge */}
+                      <div className="flex-shrink-0">
+                        {service.deliveryType === "same-day" ? (
+                          <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                            <span className="font-medium heartbeat-text">⚡ Same Day</span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
+                            <svg className="w-2 h-2 md:w-2.5 md:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M3 9h4l3 9 3-16 3 9h4"/>
+                            </svg>
+                            <span className="font-medium">Standard</span>
+                          </div>
+                        )}
+                  </div>
+
                     {/* Add to Cart Button */}
                     <button 
                       onClick={(e) => {
@@ -491,11 +531,10 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                   className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col w-full"
                 >
                   {/* Image Section */}
-                  <div className="relative h-[110px] md:h-[170px]">
-                  <img
+                  <div className="relative h-[300px] overflow-hidden">
+                  <SmartImageLayers
                     src={service.image}
                     alt={service.description}
-                    className="w-full h-full object-cover"
                   />
                   {/* Badges */}
                   {service.badges && service.badges.length > 0 && (
@@ -559,43 +598,43 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                         {service.originalPrice && "From "}
                         <span className="text-[14px] md:text-[18px] text-[#2c353f]">
                           {service.originalPrice || service.price}
-                        </span>
+                          </span>
                         /{service.priceUnit}
-                      </span>
-                    </div>
+                            </span>
+                          </div>
                     {/* Original Price and Discount Badge */}
                     {service.originalPrice && (
                       <div className="flex items-center gap-1 md:gap-2">
                         <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
                           {service.price}
-                        </span>
+                          </span>
                         <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
                           <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
                             {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
-                          </span>
+                        </span>
                         </div>
                       </div>
                     )}
-                  </div>
-
+                      </div>
+                      
                   {/* Delivery Badge and Add to Cart Button - Single Row */}
                   <div className="flex items-center justify-between gap-2 mt-auto mb-2 md:mb-3">
-                    {/* Delivery Badge */}
-                    <div className="flex-shrink-0">
-                      {service.deliveryType === "same-day" ? (
+                      {/* Delivery Badge */}
+                      <div className="flex-shrink-0">
+                        {service.deliveryType === "same-day" ? (
                         <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                          <span className="font-medium heartbeat-text">⚡ Same Day</span>
-                        </div>
-                      ) : (
+                            <span className="font-medium heartbeat-text">⚡ Same Day</span>
+                          </div>
+                        ) : (
                         <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
                           <svg className="w-2 h-2 md:w-2.5 md:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 9h4l3 9 3-16 3 9h4"/>
-                          </svg>
-                          <span className="font-medium">Standard</span>
-                        </div>
-                      )}
-                    </div>
-                    
+                              <path d="M3 9h4l3 9 3-16 3 9h4"/>
+                            </svg>
+                            <span className="font-medium">Standard</span>
+                          </div>
+                        )}
+                  </div>
+
                     {/* Add to Cart Button */}
                     <button 
                       onClick={(e) => {

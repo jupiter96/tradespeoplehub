@@ -712,11 +712,11 @@ export default function FloatingMessenger() {
                                     rel="noopener noreferrer"
                                     download
                                   >
-                                    <img
+                                  <img
                                       src={resolveApiUrl(message.fileUrl)}
-                                      alt="Shared"
+                                    alt="Shared"
                                       className="rounded-lg mb-2 max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-                                    />
+                                  />
                                   </a>
                                 )}
                                 {message.type === "file" && message.fileUrl && (
@@ -732,9 +732,9 @@ export default function FloatingMessenger() {
                                   </a>
                                 )}
                                 {message.text && (
-                                  <p className="font-['Poppins',sans-serif] text-[14px]">
-                                    {message.text}
-                                  </p>
+                                <p className="font-['Poppins',sans-serif] text-[14px]">
+                                  {message.text}
+                                </p>
                                 )}
                               </div>
                             )}

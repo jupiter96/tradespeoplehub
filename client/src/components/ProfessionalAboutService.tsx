@@ -125,8 +125,8 @@ export default function ProfessionalAboutService() {
         description="Professional about service page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
-        <Nav />
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+      <Nav />
       
       <div className="flex-1 py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
@@ -311,7 +311,7 @@ export default function ProfessionalAboutService() {
       </div>
 
       <Footer />
-      </div>
+    </div>
     </>
   );
 }

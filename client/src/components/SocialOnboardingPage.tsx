@@ -220,9 +220,9 @@ export default function SocialOnboardingPage() {
           description="Social onboarding page"
           robots="noindex,nofollow"
         />
-        <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] relative" aria-busy="true">
-          <span className="sr-only">Loading</span>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] relative" aria-busy="true">
+        <span className="sr-only">Loading</span>
+      </div>
       </>
     );
   }
@@ -234,10 +234,10 @@ export default function SocialOnboardingPage() {
         description="Social onboarding page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB]">
-        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-          <Nav />
-        </header>
+    <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB]">
+      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+        <Nav />
+      </header>
       
       <div className="pt-[50px] py-6 md:py-6 px-4 md:px-6">
         <div className="max-w-[500px] mx-auto">

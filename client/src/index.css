@@ -4099,7 +4099,7 @@
   }
 
   .max-w-\[1200px\] {
-    max-width: 1200px;
+    max-width: 1500px;
   }
 
   .max-w-\[1280px\] {
@@ -12046,7 +12046,7 @@
 
   @media (width >= 96rem) {
     .\32 xl\:max-w-\[1200px\] {
-      max-width: 1200px;
+      max-width: 1500px;
     }
   }
 

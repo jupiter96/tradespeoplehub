@@ -2148,19 +2148,19 @@ export default function SectorPage() {
                       <div className="flex items-center justify-between mb-1.5 md:mb-2 min-h-[16px] md:min-h-[20px]">
                         {service.reviewCount > 0 ? (
                           <>
-                            <div className="flex items-center gap-0.5 md:gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
+                          <div className="flex items-center gap-0.5 md:gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
                                   className={`w-2.5 h-2.5 md:w-3.5 md:h-3.5 ${
-                                    star <= Math.floor(service.rating)
-                                      ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                      : star - 0.5 <= service.rating
-                                      ? "fill-[#FE8A0F] text-[#FE8A0F] opacity-50"
-                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                  }`}
-                                />
-                              ))}
+                                  star <= Math.floor(service.rating)
+                                    ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                    : star - 0.5 <= service.rating
+                                    ? "fill-[#FE8A0F] text-[#FE8A0F] opacity-50"
+                                    : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                }`}
+                              />
+                            ))}
                             </div>
                             <div className="flex items-center gap-0.5 md:gap-1">
                               <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
@@ -2168,8 +2168,8 @@ export default function SectorPage() {
                               </span>
                               <span className="font-['Poppins',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
                                 ({service.completedTasks})
-                              </span>
-                            </div>
+                            </span>
+                          </div>
                           </>
                         ) : (
                           <div className="w-full">{/* Empty space to maintain card height */}</div>
@@ -2189,18 +2189,18 @@ export default function SectorPage() {
                           </span>
                         </div>
                         {/* Original Price and Discount Badge */}
-                        {service.originalPrice && (
+                      {service.originalPrice && (
                           <div className="flex items-center gap-1 md:gap-2">
                             <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
                               {service.price}
-                            </span>
+                          </span>
                             <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
                               <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
                                 {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
-                              </span>
-                            </div>
+                            </span>
                           </div>
-                        )}
+                        </div>
+                      )}
                       </div>
 
                       {/* Delivery Badge and Add to Cart Button - Single Row */}
@@ -2219,8 +2219,8 @@ export default function SectorPage() {
                               <span className="font-medium">Standard</span>
                             </div>
                           )}
-                        </div>
-                        
+                      </div>
+
                         {/* Add to Cart Button */}
                         <button 
                           onClick={(e) => {

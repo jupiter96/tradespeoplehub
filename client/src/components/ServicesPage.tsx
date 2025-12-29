@@ -59,7 +59,6 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   const EARTH_RADIUS_MILES = 3959; // Radius of Earth in miles
   const latitudeDifference = (lat2 - lat1) * Math.PI / 180;
   const longitudeDifference = (lon2 - lon1) * Math.PI / 180;
-  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const haversineA = 
     Math.sin(latitudeDifference / 2) * Math.sin(latitudeDifference / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
@@ -1580,6 +1579,7 @@ export default function ServicesPage() {
   };
 
   const seoContent = generateSEOContent();
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
   return (
     <div className="w-full min-h-screen bg-[#f0f0f0]">

@@ -68,9 +68,9 @@ export default function ResetPasswordPage() {
         description="Reset password page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] flex flex-col">
-        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white shadow-sm">
-          <Nav />
+    <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] via-white to-[#FFF5EB] flex flex-col">
+      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white shadow-sm">
+        <Nav />
       </header>
 
       <main className="flex-1 w-full px-4 py-10">
@@ -189,7 +189,7 @@ export default function ResetPasswordPage() {
       </main>
 
       <Footer />
-      </div>
+    </div>
     </>
   );
 }

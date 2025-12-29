@@ -154,10 +154,10 @@ export default function DisputeDiscussionPage() {
         description="Dispute discussion page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen bg-[#f8f9fa]">
-        <Nav />
-        
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="min-h-screen bg-[#f8f9fa]">
+      <Nav />
+      
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-['Poppins',sans-serif] text-[28px] text-[#2c353f]">
@@ -403,7 +403,7 @@ export default function DisputeDiscussionPage() {
       </div>
 
       <Footer />
-      </div>
+    </div>
     </>
   );
 }

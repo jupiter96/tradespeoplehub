@@ -299,9 +299,9 @@ export default function CartPage() {
           description="Shopping cart page"
           robots="noindex,nofollow"
         />
-        <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] to-[#f0f0f0]">
-          <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-            <Nav />
+      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] to-[#f0f0f0]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
         </header>
         <div className="pt-[50px] pb-12 md:pb-20">
           <div className="max-w-[1200px] mx-auto px-4 md:px-6">
@@ -339,7 +339,7 @@ export default function CartPage() {
         description="Shopping cart page"
         robots="noindex,nofollow"
       />
-      <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] to-[#f0f0f0]">
+    <div className="min-h-screen bg-gradient-to-br from-[#f9fafb] to-[#f0f0f0]">
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>
@@ -1024,7 +1024,7 @@ export default function CartPage() {
         </div>
       </div>
       <Footer />
-      </div>
+    </div>
     </>
   );
 }

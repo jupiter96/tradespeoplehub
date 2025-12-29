@@ -179,7 +179,7 @@ export default function ProfessionalProfileSetup() {
         description="Professional profile setup page"
         robots="noindex,nofollow"
       />
-      <ProfessionalRegistrationSteps />
+    <ProfessionalRegistrationSteps />
     </>
   );
 }
