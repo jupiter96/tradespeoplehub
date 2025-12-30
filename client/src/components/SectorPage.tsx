@@ -16,6 +16,45 @@ import { resolveApiUrl } from "../config/api";
 import type { SubCategory } from "./unifiedCategoriesData";
 import { SEOHead } from "./SEOHead";
 
+// SmartImageLayers component for blur background effect
+function SmartImageLayers({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  if (!src) {
+    return <div className="absolute inset-0 bg-gray-200" aria-hidden="true" />;
+  }
+
+  return (
+    <>
+      {/* Blurred background layer */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-85"
+        decoding="async"
+        loading="lazy"
+      />
+      <div
+        className="absolute inset-0 bg-black/15"
+        aria-hidden="true"
+      />
+      {/* Foreground image with proper aspect ratio */}
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-contain"
+        decoding="async"
+        loading="lazy"
+      />
+    </>
+  );
+}
+
 // Define MainCategory type for compatibility
 type MainCategory = {
   id: string;
@@ -2132,16 +2171,15 @@ export default function SectorPage() {
                     className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 flex flex-col cursor-pointer"
                   >
                     {/* Image Section */}
-                    <div className="relative h-[120px] md:h-[170px]">
-                      <img
+                    <div className="relative h-[120px] md:h-[170px] overflow-hidden">
+                      <SmartImageLayers
                         src={service.image}
                         alt={service.description}
-                        className="w-full h-full object-cover"
                       />
                       
                       {/* Badges - Top Left */}
                       {service.badges && service.badges.length > 0 && (
-                        <div className="absolute top-1.5 md:top-3 left-1.5 md:left-3">
+                        <div className="absolute top-1.5 md:top-3 left-1.5 md:left-3 z-10">
                           <span className="bg-[#FE8A0F] text-white text-[7px] md:text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                             {service.badges[0]}
                           </span>
@@ -2238,7 +2276,14 @@ export default function SectorPage() {
 
                       {/* Provider Info - Moved to bottom */}
                       <div className="flex items-center gap-1.5 md:gap-2 pt-2 md:pt-3 h-[50px] mt-auto">
-                        <Link to={`/profile/117`} className="flex items-center gap-1.5 md:gap-2 hover:opacity-80 transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <div 
+                          className="flex items-center gap-1.5 md:gap-2 hover:opacity-80 transition-opacity cursor-pointer" 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            navigate(`/profile/117`);
+                          }}
+                        >
                           <img
                             src={service.providerImage}
                             alt={service.tradingName}
@@ -2273,7 +2318,7 @@ export default function SectorPage() {
                               </span>
                             )}
                           </div>
-                        </Link>
+                        </div>
                       </div>
                     </div>
                   </Link>
@@ -2291,15 +2336,14 @@ export default function SectorPage() {
                         className="bg-white rounded-lg shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_12px_0px_rgba(254,138,15,0.3)] overflow-hidden transition-shadow duration-300 cursor-pointer flex min-h-[145px]"
                       >
                         {/* Image Section - Left Side */}
-                        <div className="relative w-[100px] flex-shrink-0">
-                          <img
+                        <div className="relative w-[100px] flex-shrink-0 overflow-hidden">
+                          <SmartImageLayers
                             src={service.image}
                             alt={service.description}
-                            className="w-full h-full object-cover"
                           />
                           {/* Badges */}
                           {service.badges && service.badges.length > 0 && (
-                            <div className="absolute top-1.5 left-1.5">
+                            <div className="absolute top-1.5 left-1.5 z-10">
                               <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                                 {service.badges[0]}
                               </span>

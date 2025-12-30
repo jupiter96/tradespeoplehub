@@ -48,6 +48,45 @@ import { Checkbox } from "./ui/checkbox";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
+
+// SmartImageLayers component for blur background effect
+function SmartImageLayers({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  if (!src) {
+    return <div className="absolute inset-0 bg-gray-200" aria-hidden="true" />;
+  }
+
+  return (
+    <>
+      {/* Blurred background layer */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-85"
+        decoding="async"
+        loading="lazy"
+      />
+      <div
+        className="absolute inset-0 bg-black/15"
+        aria-hidden="true"
+      />
+      {/* Foreground image with proper aspect ratio */}
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-contain"
+        decoding="async"
+        loading="lazy"
+      />
+    </>
+  );
+}
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import type { Service } from "./servicesData";
 import { useSectors, useServiceCategories, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
@@ -1896,25 +1935,24 @@ export default function ServicesPage() {
                     <div 
                       className={`relative ${
                         viewMode === "list" ? "w-[100px] flex-shrink-0" : "h-[120px] md:h-[170px]"
-                      }`}
+                      } overflow-hidden`}
                     >
-                      <img
+                      <SmartImageLayers
                         src={service.image}
                         alt={service.description}
-                        className="w-full h-full object-cover"
                       />
                       
                       {/* Badges */}
                       {viewMode === "list" ? (
                         service.badges && service.badges.length > 0 && (
-                          <div className="absolute top-1.5 left-1.5">
+                          <div className="absolute top-1.5 left-1.5 z-10">
                             <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
                               {service.badges[0]}
                             </span>
                           </div>
                         )
                       ) : (
-                        <div className="absolute top-3 left-3">
+                        <div className="absolute top-3 left-3 z-10">
                           <div className="bg-white/95 backdrop-blur-sm text-[#3B82F6] font-['Poppins',sans-serif] font-medium px-2 py-1 rounded-full shadow-lg border border-[#3B82F6]/30 flex items-center gap-1 text-[10px]">
                             {getCategoryIcon(service.category)}
                             <span>{service.category}</span>

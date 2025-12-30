@@ -15,6 +15,45 @@ import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
 import { SEOHead } from "./SEOHead";
 
+// SmartImageLayers component for blur background effect
+function SmartImageLayers({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  if (!src) {
+    return <div className="absolute inset-0 bg-gray-200" aria-hidden="true" />;
+  }
+
+  return (
+    <>
+      {/* Blurred background layer */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-85"
+        decoding="async"
+        loading="lazy"
+      />
+      <div
+        className="absolute inset-0 bg-black/15"
+        aria-hidden="true"
+      />
+      {/* Foreground image with proper aspect ratio */}
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-contain"
+        decoding="async"
+        loading="lazy"
+      />
+    </>
+  );
+}
+
 type PublicProfile = {
   bio?: string;
   coverImage?: string;
@@ -780,11 +819,11 @@ export default function ProfilePage() {
                     className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
                   >
                     {/* Image Section */}
-                    <div className="relative h-[110px] md:h-[170px]">
-                      <img src={service.image} alt={service.description} className="w-full h-full object-cover" />
+                    <div className="relative h-[110px] md:h-[170px] overflow-hidden">
+                      <SmartImageLayers src={service.image} alt={service.description} />
                       {/* Badges */}
                       {service.badges && service.badges.length > 0 && (
-                        <div className="absolute top-2 md:top-3 right-2 md:right-3 flex flex-col gap-1">
+                        <div className="absolute top-2 md:top-3 right-2 md:right-3 flex flex-col gap-1 z-10">
                           {service.badges.slice(0, 2).map((badge, idx) => (
                             <span
                               key={idx}
