@@ -1817,8 +1817,21 @@ router.post('/register/verify-phone', async (req, res) => {
     //   phoneVerificationStatus: user.verification.phone.status
     // });
 
-    req.session.userId = user.id;
+    req.session.userId = user._id.toString();
     req.session.role = user.role;
+    
+    // Save session before responding
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[Session] Failed to save session on registration:', err);
+          return reject(err);
+        }
+        console.log('[Session] Registration complete - User:', user.email, 'Role:', user.role);
+        resolve();
+      });
+    });
+    
     await pendingRegistration.deleteOne();
     clearPendingRegistrationSession(req);
 
@@ -2098,13 +2111,26 @@ router.post('/social/verify-phone', async (req, res) => {
 
     const user = await User.create(userData);
 
-    req.session.userId = user.id;
+    req.session.userId = user._id.toString();
     req.session.role = user.role;
+    
+    // Save session before responding
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[Session] Failed to save session on social registration:', err);
+          return reject(err);
+        }
+        console.log('[Session] Social registration complete - User:', user.email, 'Role:', user.role);
+        resolve();
+      });
+    });
+    
     clearPendingSocialProfile(req);
 
     return res.status(201).json({ user: sanitizeUser(user) });
   } catch (error) {
-    // console.error('Social phone verification error', error);
+    console.error('[Session] Social phone verification error:', error);
     return res.status(500).json({ error: 'Failed to verify phone and complete registration' });
   }
 });
@@ -2211,13 +2237,26 @@ router.post('/social/complete', async (req, res) => {
 
     const user = await User.create(userData);
 
-    req.session.userId = user.id;
+    req.session.userId = user._id.toString();
     req.session.role = user.role;
+    
+    // Save session before responding
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[Session] Failed to save session on social completion:', err);
+          return reject(err);
+        }
+        console.log('[Session] Social completion - User:', user.email, 'Role:', user.role);
+        resolve();
+      });
+    });
+    
     clearPendingSocialProfile(req);
 
     return res.status(201).json({ user: sanitizeUser(user) });
   } catch (error) {
-    // console.error('Social completion error', error);
+    console.error('[Session] Social completion error:', error);
     return res.status(500).json({ error: 'Failed to complete social registration' });
   }
 });
@@ -3356,16 +3395,28 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    req.session.userId = user.id;
+    // Set session data - use _id.toString() for consistency
+    req.session.userId = user._id.toString();
     req.session.role = user.role;
 
+    // Set cookie maxAge
     req.session.cookie.maxAge = rememberMe
       ? 1000 * 60 * 60 * 24 * 30 // 30 days
-      : 1000 * 60 * 60 * 4; // 4 hours
+      : 1000 * 60 * 60 * 24 * 7; // 7 days (increased from 4 hours)
 
-    return res.json({ user: sanitizeUser(user) });
+    // Save session explicitly before responding
+    return await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[Session] Failed to save session on login:', err);
+          return reject(new Error('Failed to save session'));
+        }
+        console.log('[Session] Login successful - User:', user.email, 'Role:', user.role, 'ID:', user._id.toString());
+        resolve(res.json({ user: sanitizeUser(user) }));
+      });
+    });
   } catch (error) {
-    // console.error('Login error', error);
+    console.error('[Session] Login error:', error);
     return res.status(500).json({ error: 'Failed to login' });
   }
 });
@@ -3681,26 +3732,66 @@ router.delete('/verification/:type', requireAuth, async (req, res) => {
 
 router.get('/me', async (req, res) => {
   try {
+    console.log('[Session] /me endpoint - Session ID:', req.sessionID, 'User ID:', req.session?.userId, 'Role:', req.session?.role);
+    
     if (!req.session?.userId) {
+      console.log('[Session] /me - No userId in session');
       return res.json({ user: null });
     }
 
     const user = await User.findById(req.session.userId);
 
     if (!user) {
+      console.log('[Session] /me - User not found for ID:', req.session.userId);
       req.session.destroy(() => {});
       return res.json({ user: null });
     }
 
     // Return null for admin users - they should use /api/admin/me
     if (user.role === 'admin' || user.role === 'subadmin') {
+      console.log('[Session] /me - Admin user, redirecting to admin endpoint');
       return res.json({ user: null });
     }
 
+    console.log('[Session] /me - Returning user:', user.email, 'Role:', user.role);
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {
-    // console.error('Session lookup error', error);
+    console.error('[Session] /me - Error:', error);
     return res.status(500).json({ error: 'Failed to fetch user session' });
+  }
+});
+
+// Debug endpoint to check session status (can be removed after debugging)
+router.get('/session-debug', async (req, res) => {
+  try {
+    const sessionData = {
+      sessionID: req.sessionID,
+      userId: req.session?.userId || null,
+      role: req.session?.role || null,
+      cookie: {
+        maxAge: req.session?.cookie?.maxAge,
+        expires: req.session?.cookie?.expires,
+        httpOnly: req.session?.cookie?.httpOnly,
+        secure: req.session?.cookie?.secure,
+        sameSite: req.session?.cookie?.sameSite,
+      }
+    };
+    
+    if (req.session?.userId) {
+      const user = await User.findById(req.session.userId);
+      sessionData.userExists = !!user;
+      if (user) {
+        sessionData.userEmail = user.email;
+        sessionData.userRole = user.role;
+        sessionData.userIsDeleted = user.isDeleted;
+        sessionData.userIsBlocked = user.isBlocked;
+      }
+    }
+    
+    return res.json(sessionData);
+  } catch (error) {
+    console.error('[Session] Debug error:', error);
+    return res.status(500).json({ error: 'Failed to fetch session debug info' });
   }
 });
 

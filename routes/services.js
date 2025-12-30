@@ -742,13 +742,20 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     }
 
     // Get professional info
+    console.log('[Service] Create - User ID:', req.user.id, 'Role:', req.user.role);
     const professional = await User.findById(req.user.id);
-    if (!professional || professional.role !== 'professional') {
-      return res.status(403).json({ error: 'Only professionals can create services' });
+    if (!professional) {
+      console.log('[Service] Create - User not found:', req.user.id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (professional.role !== 'professional') {
+      console.log('[Service] Create - User is not professional. Role:', professional.role, 'Email:', professional.email);
+      return res.status(403).json({ error: 'Only professionals can create services. Your current role is: ' + professional.role });
     }
 
     // Check if user is blocked
     if (professional.isBlocked) {
+      console.log('[Service] Create - User is blocked:', professional.email);
       return res.status(403).json({ error: 'Your account has been blocked. You cannot create services.' });
     }
 
@@ -820,7 +827,10 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     }
 
     // Verify ownership
-    if (getRefId(service.professional) !== req.user.id) {
+    const serviceProfessionalId = getRefId(service.professional);
+    console.log('[Service] Update - Checking ownership. Service Professional ID:', serviceProfessionalId, 'Request User ID:', req.user.id);
+    if (serviceProfessionalId !== req.user.id) {
+      console.log('[Service] Update - Ownership verification failed. Service belongs to:', serviceProfessionalId, 'but request from:', req.user.id);
       return res.status(403).json({ error: 'You can only update your own services' });
     }
 

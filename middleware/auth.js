@@ -8,6 +8,7 @@ export const authenticateToken = async (req, res, next) => {
     if (req.session?.adminId) {
       const admin = await Admin.findById(req.session.adminId);
       if (!admin) {
+        console.log('[Auth] Admin not found for session adminId:', req.session.adminId);
         req.session.destroy(() => {});
         return res.status(401).json({ error: 'Admin not found' });
       }
@@ -19,18 +20,28 @@ export const authenticateToken = async (req, res, next) => {
         isAdmin: true,
         permissions: admin.permissions || [],
       };
+      console.log('[Auth] Admin authenticated:', admin.email, 'Role:', admin.role);
       return next();
     }
 
     // Check for regular user session
     if (!req.session?.userId) {
+      console.log('[Auth] No userId in session');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const user = await User.findById(req.session.userId);
     if (!user) {
+      console.log('[Auth] User not found for session userId:', req.session.userId);
       req.session.destroy(() => {});
       return res.status(401).json({ error: 'User not found' });
+    }
+
+    // Check if user is deleted or blocked
+    if (user.isDeleted) {
+      console.log('[Auth] User is deleted:', user.email);
+      req.session.destroy(() => {});
+      return res.status(403).json({ error: 'This account has been deleted' });
     }
 
     // Attach user to request
@@ -38,11 +49,13 @@ export const authenticateToken = async (req, res, next) => {
       id: user._id.toString(),
       role: user.role,
       isAdmin: false,
+      email: user.email, // Add email for debugging
     };
 
+    console.log('[Auth] User authenticated:', user.email, 'Role:', user.role, 'ID:', user._id.toString());
     next();
   } catch (error) {
-    // console.error('Authentication error', error);
+    console.error('[Auth] Authentication error:', error);
     return res.status(500).json({ error: 'Authentication failed' });
   }
 };
