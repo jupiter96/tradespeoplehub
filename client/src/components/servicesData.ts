@@ -31,6 +31,9 @@ export interface Service {
   providerName: string;
   tradingName: string; // Business/Trading name displayed to users
   providerImage: string;
+  providerIsVerified?: boolean; // Whether the provider is verified
+  providerRating?: number; // Provider's overall rating
+  providerReviewCount?: number; // Provider's total review count
   description: string;
   category: string; // Sector (e.g., "Home & Garden")
   subcategory?: string; // Main Category (e.g., "Plumbing")

@@ -864,11 +864,11 @@ export default function ProfilePage() {
                           <div className="flex-shrink-0">
                             {service.deliveryType === "same-day" ? (
                               <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                                <span className="font-medium heartbeat-text">⚡ Same Day</span>
+                                <span className="font-medium heartbeat-text">⚡ Same day delivery</span>
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                                <span className="font-medium">Standard</span>
+                                <span className="font-medium">Standard delivery</span>
                               </div>
                             )}
                           </div>

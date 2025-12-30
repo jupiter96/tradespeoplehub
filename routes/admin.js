@@ -1624,86 +1624,82 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
 
     await user.save();
 
-    // Send email for verification step approval/rejection (for professional users)
-    if (user.role === 'professional' && user.email) {
-      try {
-        const { sendTemplatedEmail } = await import('../services/notifier.js');
-        
-        // Verification type display names
-        const verificationTypeNames = {
-          email: 'Email Verification',
-          phone: 'Phone Verification',
-          address: 'Address Verification',
-          idCard: 'ID Card Verification',
-          paymentMethod: 'Payment Method Verification',
-          publicLiabilityInsurance: 'Public Liability Insurance Verification',
-        };
-
-        const verificationTypeName = verificationTypeNames[type] || type;
-
-        if (status === 'verified') {
-          // Send approval email for this verification step (category: verification -> SMTP_USER_VERIFICATION)
-          await sendTemplatedEmail(
-            user.email, 
-            'verification-approved', 
-            {
-              firstName: user.firstName,
-              verificationType: verificationTypeName,
-              verificationStep: type,
-            },
-            'verification' // Category: verification -> Uses SMTP_USER_VERIFICATION
-          );
-          // console.log(`[Admin] Verification approved email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
-        } else if (status === 'rejected') {
-          // Send rejection email (category: verification -> SMTP_USER_VERIFICATION)
-          await sendTemplatedEmail(
-            user.email, 
-            'verification-rejected', 
-            {
-              firstName: user.firstName,
-              verificationType: verificationTypeName,
-              verificationStep: type,
-              rejectionReason: rejectionReason || 'No reason provided',
-            },
-            'verification' // Category: verification -> Uses SMTP_USER_VERIFICATION
-          );
-          // console.log(`[Admin] Verification rejected email sent to ${user.email} for ${verificationTypeName} (category: verification)`);
-        }
-      } catch (emailError) {
-        // console.error('[Admin] Failed to send verification step email:', emailError);
-        // Don't fail the request if email fails
-      }
-    }
-
-    // Check if professional user is fully verified and send email
-    if (user.role === 'professional') {
-      const isFullyVerified = 
-        user.verification?.email?.status === 'verified' &&
-        user.verification?.phone?.status === 'verified' &&
-        user.verification?.address?.status === 'verified' &&
-        user.verification?.idCard?.status === 'verified' &&
-        user.verification?.paymentMethod?.status === 'verified' &&
-        user.verification?.publicLiabilityInsurance?.status === 'verified';
-
-      if (isFullyVerified) {
-        try {
-          const { sendTemplatedEmail } = await import('../services/notifier.js');
-          // Send fully verified email (category: verification -> SMTP_USER_VERIFICATION)
-          await sendTemplatedEmail(user.email, 'fully-verified', {
-            firstName: user.firstName,
-          }, 'verification'); // Category: verification -> Uses SMTP_USER_VERIFICATION
-          // console.log('[Admin] Fully verified email sent to:', user.email, '(category: verification)');
-        } catch (emailError) {
-          // console.error('[Admin] Failed to send fully verified email:', emailError);
-          // Don't fail the request if email fails
-        }
-      }
-    }
-
-    return res.json({ 
+    // Prepare response data
+    const responseData = { 
       verification: user.verification[type],
       message: `Verification status updated to ${status}`
-    });
+    };
+
+    // Send response immediately
+    res.json(responseData);
+
+    // Send emails in the background (non-blocking)
+    if (user.role === 'professional' && user.email) {
+      // Run email sending in background without awaiting
+      (async () => {
+        try {
+          const { sendTemplatedEmail } = await import('../services/notifier.js');
+          
+          // Verification type display names
+          const verificationTypeNames = {
+            email: 'Email Verification',
+            phone: 'Phone Verification',
+            address: 'Address Verification',
+            idCard: 'ID Card Verification',
+            paymentMethod: 'Payment Method Verification',
+            publicLiabilityInsurance: 'Public Liability Insurance Verification',
+          };
+
+          const verificationTypeName = verificationTypeNames[type] || type;
+
+          if (status === 'verified') {
+            // Send approval email for this verification step
+            await sendTemplatedEmail(
+              user.email, 
+              'verification-approved', 
+              {
+                firstName: user.firstName,
+                verificationType: verificationTypeName,
+                verificationStep: type,
+              },
+              'verification'
+            );
+          } else if (status === 'rejected') {
+            // Send rejection email
+            await sendTemplatedEmail(
+              user.email, 
+              'verification-rejected', 
+              {
+                firstName: user.firstName,
+                verificationType: verificationTypeName,
+                verificationStep: type,
+                rejectionReason: rejectionReason || 'No reason provided',
+              },
+              'verification'
+            );
+          }
+
+          // Check if professional user is fully verified
+          const isFullyVerified = 
+            user.verification?.email?.status === 'verified' &&
+            user.verification?.phone?.status === 'verified' &&
+            user.verification?.address?.status === 'verified' &&
+            user.verification?.idCard?.status === 'verified' &&
+            user.verification?.paymentMethod?.status === 'verified' &&
+            user.verification?.publicLiabilityInsurance?.status === 'verified';
+
+          if (isFullyVerified) {
+            // Send fully verified email
+            await sendTemplatedEmail(user.email, 'fully-verified', {
+              firstName: user.firstName,
+            }, 'verification');
+          }
+        } catch (emailError) {
+          // console.error('[Admin] Failed to send verification emails:', emailError);
+          // Email errors don't affect the response
+        }
+      })();
+    }
   } catch (error) {
     // console.error('Update verification status error', error);
     return res.status(500).json({ error: 'Failed to update verification status' });

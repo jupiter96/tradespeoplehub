@@ -3,6 +3,7 @@ import Service from '../models/Service.js';
 import User from '../models/User.js';
 import ServiceCategory from '../models/ServiceCategory.js';
 import ServiceSubCategory from '../models/ServiceSubCategory.js';
+import Review from '../models/Review.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -117,9 +118,8 @@ router.get('/public', async (req, res) => {
 
     // Get ALL services without pagination limit
     // Populate professional, serviceCategory (with sector), and serviceSubCategory
-    console.log('Query:', query);
     const services = await Service.find(query? query : {})
-      .populate('professional', 'firstName lastName tradingName avatar')
+      .populate('professional', 'firstName lastName tradingName avatar verification')
       .populate({
         path: 'serviceCategory',
         select: 'name slug sector',
@@ -132,9 +132,88 @@ router.get('/public', async (req, res) => {
       .sort(sortObj)
       .lean();
 
+    // Calculate professional ratings and review counts
+    const professionalIds = [...new Set(services.map(s => s.professional?._id).filter(Boolean))];
+    const professionalStats = {};
+    
+    if (professionalIds.length > 0) {
+      const reviewStats = await Review.aggregate([
+        {
+          $match: {
+            professional: { $in: professionalIds },
+            isHidden: false
+          }
+        },
+        {
+          $group: {
+            _id: '$professional',
+            avgRating: { $avg: '$rating' },
+            reviewCount: { $sum: 1 }
+          }
+        }
+      ]);
+      
+      reviewStats.forEach(stat => {
+        professionalStats[stat._id.toString()] = {
+          rating: stat.avgRating || 0,
+          reviewCount: stat.reviewCount || 0
+        };
+      });
+    }
+    
+    // Add stats and verification status to services
+    const servicesWithStats = services.map(service => {
+      if (service.professional && service.professional._id) {
+        const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
+        
+        // Check if verification object exists
+        if (!service.professional.verification) {
+          return {
+            ...service,
+            professional: {
+              ...service.professional,
+              rating: stats.rating,
+              reviewCount: stats.reviewCount,
+              isVerified: false
+            }
+          };
+        }
+        
+        // Get each verification step status
+        const emailStatus = service.professional.verification.email?.status;
+        const phoneStatus = service.professional.verification.phone?.status;
+        const addressStatus = service.professional.verification.address?.status;
+        const idCardStatus = service.professional.verification.idCard?.status;
+        const paymentMethodStatus = service.professional.verification.paymentMethod?.status;
+        const publicLiabilityInsuranceStatus = service.professional.verification.publicLiabilityInsurance?.status;
+        
+        // Check individual conditions
+        const emailVerified = emailStatus === 'verified';
+        const phoneVerified = phoneStatus === 'verified';
+        const addressVerified = addressStatus === 'verified';
+        const idCardVerified = idCardStatus === 'verified';
+        const paymentMethodVerified = paymentMethodStatus === 'verified';
+        const publicLiabilityInsuranceVerified = publicLiabilityInsuranceStatus === 'verified';
+        
+        // Final check - ALL 6 steps must be verified
+        const isVerified = emailVerified && phoneVerified && addressVerified && idCardVerified && paymentMethodVerified && publicLiabilityInsuranceVerified;
+        
+        return {
+          ...service,
+          professional: {
+            ...service.professional,
+            rating: stats.rating,
+            reviewCount: stats.reviewCount,
+            isVerified: isVerified
+          }
+        };
+      }
+      return service;
+    });
+
     return res.json({
-      services,
-      totalCount: services.length,
+      services: servicesWithStats,
+      totalCount: servicesWithStats.length,
     });
   } catch (error) {
     console.error('Get public services error', error);
@@ -261,14 +340,93 @@ router.get('/', async (req, res) => {
     
     const services = await queryBuilder
       .populate([
-        { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+        { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode completedJobs verification' },
         { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
         { path: 'serviceSubCategory', select: 'name slug icon' },
       ])
       .lean();
 
+    // Calculate professional ratings and review counts
+    const professionalIds = [...new Set(services.map(s => s.professional?._id).filter(Boolean))];
+    const professionalStats = {};
+    
+    if (professionalIds.length > 0) {
+      const reviewStats = await Review.aggregate([
+        {
+          $match: {
+            professional: { $in: professionalIds },
+            isHidden: false
+          }
+        },
+        {
+          $group: {
+            _id: '$professional',
+            avgRating: { $avg: '$rating' },
+            reviewCount: { $sum: 1 }
+          }
+        }
+      ]);
+      
+      reviewStats.forEach(stat => {
+        professionalStats[stat._id.toString()] = {
+          rating: stat.avgRating || 0,
+          reviewCount: stat.reviewCount || 0
+        };
+      });
+    }
+    
+    // Add stats to services
+    const servicesWithStats = services.map(service => {
+      if (service.professional && service.professional._id) {
+        const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
+        
+        // Check if verification object exists
+        if (!service.professional.verification) {
+          return {
+            ...service,
+            professional: {
+              ...service.professional,
+              rating: stats.rating,
+              reviewCount: stats.reviewCount,
+              isVerified: false
+            }
+          };
+        }
+        
+        // Get each verification step status
+        const emailStatus = service.professional.verification.email?.status;
+        const phoneStatus = service.professional.verification.phone?.status;
+        const addressStatus = service.professional.verification.address?.status;
+        const idCardStatus = service.professional.verification.idCard?.status;
+        const paymentMethodStatus = service.professional.verification.paymentMethod?.status;
+        const publicLiabilityInsuranceStatus = service.professional.verification.publicLiabilityInsurance?.status;
+        
+        // Check individual conditions
+        const emailVerified = emailStatus === 'verified';
+        const phoneVerified = phoneStatus === 'verified';
+        const addressVerified = addressStatus === 'verified';
+        const idCardVerified = idCardStatus === 'verified';
+        const paymentMethodVerified = paymentMethodStatus === 'verified';
+        const publicLiabilityInsuranceVerified = publicLiabilityInsuranceStatus === 'verified';
+        
+        // Final check - ALL 6 steps must be verified
+        const isVerified = emailVerified && phoneVerified && addressVerified && idCardVerified && paymentMethodVerified && publicLiabilityInsuranceVerified;
+        
+        return {
+          ...service,
+          professional: {
+            ...service.professional,
+            rating: stats.rating,
+            reviewCount: stats.reviewCount,
+            isVerified: isVerified
+          }
+        };
+      }
+      return service;
+    });
+
     return res.json({
-      services,
+      services: servicesWithStats,
       totalCount: total,
       pagination: {
         page: pageNum,

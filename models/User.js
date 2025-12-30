@@ -125,6 +125,8 @@ const userSchema = new mongoose.Schema(
     },
     // KYC Verification fields
     verification: {
+      select: true,
+      type: Object,
       email: {
         status: {
           type: String,

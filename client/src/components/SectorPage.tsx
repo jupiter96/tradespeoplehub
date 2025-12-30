@@ -701,6 +701,18 @@ export default function SectorPage() {
             providerImage: typeof s.professional === 'object' 
               ? s.professional.avatar || ""
               : "",
+            providerRating: typeof s.professional === 'object' 
+              ? s.professional.rating || 0
+              : 0,
+            providerReviewCount: typeof s.professional === 'object' 
+              ? s.professional.reviewCount || 0
+              : 0,
+            providerIsVerified: (() => {
+              if (typeof s.professional !== 'object') {
+                return false;
+              }
+              return s.professional.isVerified || false;
+            })(),
             description: s.title || "",
             category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
               ? s.serviceCategory.sector.name || ""
@@ -2140,12 +2152,12 @@ export default function SectorPage() {
                     {/* Content Section */}
                     <div className="p-2 md:p-4 flex flex-col flex-1">
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#5b5b5b] mb-1.5 md:mb-2 line-clamp-2 font-medium leading-snug">
+                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#5b5b5b] mb-1 md:mb-1.5 line-clamp-2 font-bold leading-snug">
                         {service.description.length > 55 ? `${service.description.slice(0, 55)}...` : service.description}
                       </p>
 
                       {/* Star Rating */}
-                      <div className="flex items-center justify-between mb-1.5 md:mb-2 min-h-[16px] md:min-h-[20px]">
+                      <div className="flex items-center justify-between mb-1 md:mb-1.5 min-h-[16px] md:min-h-[20px]">
                         {service.reviewCount > 0 ? (
                           <>
                           <div className="flex items-center gap-0.5 md:gap-1">
@@ -2176,76 +2188,92 @@ export default function SectorPage() {
                         )}
                       </div>
 
-                      {/* Price Section */}
-                      <div className="mb-2 md:mb-3">
-                        {/* Current Price */}
-                        <div className={service.originalPrice ? "mb-0.5" : ""}>
-                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
-                            {service.originalPrice && "From "}
-                            <span className="text-[14px] md:text-[18px] text-[#2c353f]">
-                              {service.originalPrice || service.price}
-                            </span>
-                            /{service.priceUnit}
-                          </span>
-                        </div>
-                        {/* Original Price and Discount Badge */}
-                      {service.originalPrice && (
-                          <div className="flex items-center gap-1 md:gap-2">
-                            <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
-                              {service.price}
-                          </span>
-                            <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
-                              <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
-                                {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
+                      {/* Price Section with Delivery Badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          {/* Current Price */}
+                          <div className={service.originalPrice ? "mb-0.5" : ""}>
+                            <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
+                              {service.originalPrice && "From "}
+                              <span className="text-[14px] md:text-[18px] text-[#2c353f]">
+                                {service.originalPrice || service.price}
+                              </span>
+                              /{service.priceUnit}
                             </span>
                           </div>
+                          {/* Original Price and Discount Badge */}
+                        {service.originalPrice && (
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
+                                {service.price}
+                            </span>
+                              <div className="px-1 md:px-2 py-0.5 bg-[#E6F0FF] rounded-md">
+                                <span className="font-['Poppins',sans-serif] text-[8px] md:text-[11px] text-[#3D78CB]">
+                                  {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         </div>
-                      )}
-                      </div>
 
-                      {/* Delivery Badge and Add to Cart Button - Single Row */}
-                      <div className="flex items-center justify-between gap-2 mt-auto mb-2 md:mb-3">
                         {/* Delivery Badge */}
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 mt-1">
                           {service.deliveryType === "same-day" ? (
                             <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                              <span className="font-medium heartbeat-text">⚡ Same Day</span>
+                              <span className="font-medium heartbeat-text">⚡ Same day delivery</span>
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
                               <svg className="w-2 h-2 md:w-2.5 md:h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M3 9h4l3 9 3-16 3 9h4"/>
                               </svg>
-                              <span className="font-medium">Standard</span>
+                              <span className="font-medium">Standard delivery</span>
                             </div>
                           )}
+                        </div>
                       </div>
 
-                        {/* Add to Cart Button */}
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedServiceForCart(service);
-                            setShowAddToCartModal(true);
-                          }}
-                          className="flex-1 h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
-                        >
-                          <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
-                          Add to cart
-                        </button>
-                      </div>
+                      {/* Dynamic Spacer */}
+                      <div className="flex-1"></div>
 
                       {/* Provider Info - Moved to bottom */}
-                      <div className="flex items-center gap-1.5 md:gap-2 pt-2 md:pt-3 border-t border-gray-100">
-                        <img
-                          src={service.providerImage}
-                          alt={service.tradingName}
-                          className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
-                        />
-                        <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
-                          {service.tradingName}
-                        </span>
+                      <div className="flex items-center gap-1.5 md:gap-2 pt-2 md:pt-3 h-[50px] mt-auto">
+                        <Link to={`/profile/117`} className="flex items-center gap-1.5 md:gap-2 hover:opacity-80 transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          <img
+                            src={service.providerImage}
+                            alt={service.tradingName}
+                            className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
+                          />
+                          <div className="flex items-center gap-1 md:gap-1.5 flex-wrap">
+                            <span className="font-['Poppins',sans-serif] text-[9px] md:text-[11px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors">
+                              {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
+                            </span>
+                            {service.providerIsVerified && (
+                              <span className="inline-flex items-center px-1 md:px-1.5 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[7px] md:text-[8px] font-['Poppins',sans-serif] font-medium">
+                                ✓ Verified
+                              </span>
+                            )}
+                            {service.providerRating && service.providerRating > 0 ? (
+                              <>
+                                <div className="flex items-center gap-0.5">
+                                  <Star className="w-2.5 h-2.5 md:w-3 md:h-3 fill-[#FE8A0F] text-[#FE8A0F]" />
+                                  <span className="font-['Poppins',sans-serif] text-[8px] md:text-[10px] text-[#2c353f]">
+                                    {service.providerRating.toFixed(1)}
+                                  </span>
+                                </div>
+                                {service.providerReviewCount && service.providerReviewCount > 0 && (
+                                  <span className="font-['Poppins',sans-serif] text-[8px] md:text-[9px] text-[#8d8d8d]">
+                                    ({service.providerReviewCount} reviews)
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="inline-flex items-center px-1.5 md:px-2 py-0.5 bg-gradient-to-r from-[#FE8A0F] to-[#FF6B00] text-white rounded text-[7px] md:text-[8px] font-['Poppins',sans-serif] font-semibold shadow-sm">
+                                ✨ New Professional
+                              </span>
+                            )}
+                          </div>
+                        </Link>
                       </div>
                     </div>
                   </Link>
@@ -2291,18 +2319,44 @@ export default function SectorPage() {
                                   alt={service.tradingName}
                                   className="w-5 h-5 rounded-full object-cover"
                                 />
-                                <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] truncate">
-                                  {service.tradingName}
-                                </span>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
+                                    {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
+                                  </span>
+                                  {service.providerIsVerified && (
+                                    <span className="inline-flex items-center px-1 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[7px] font-['Poppins',sans-serif] font-medium">
+                                      ✓ Verified
+                                    </span>
+                                  )}
+                                  {service.providerRating && service.providerRating > 0 ? (
+                                    <>
+                                      <div className="flex items-center gap-0.5">
+                                        <Star className="w-2.5 h-2.5 fill-[#FE8A0F] text-[#FE8A0F]" />
+                                        <span className="font-['Poppins',sans-serif] text-[8px] text-[#2c353f]">
+                                          {service.providerRating.toFixed(1)}
+                                        </span>
+                                      </div>
+                                      {service.providerReviewCount && service.providerReviewCount > 0 && (
+                                        <span className="font-['Poppins',sans-serif] text-[7px] text-[#8d8d8d]">
+                                          ({service.providerReviewCount} reviews)
+                                        </span>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-gradient-to-r from-[#FE8A0F] to-[#FF6B00] text-white rounded text-[7px] font-['Poppins',sans-serif] font-semibold shadow-sm">
+                                      ✨ New Professional
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Description */}
-                              <p className="font-['Poppins',sans-serif] text-[16px] text-[#5b5b5b] line-clamp-2 font-medium leading-snug">
+                              <p className="font-['Poppins',sans-serif] text-[16px] text-[#5b5b5b] line-clamp-2 font-bold leading-snug">
                                 {service.description.length > 55 ? `${service.description.slice(0, 55)}...` : service.description}
                               </p>
 
-                              {/* Star Rating & Delivery Badge Row */}
-                              <div className="flex items-center justify-between gap-2">
+                              {/* Star Rating Row */}
+                              <div className="flex items-center gap-2">
                                 {service.reviewCount > 0 ? (
                                   <div className="flex items-center gap-1">
                                     <div className="flex items-center gap-0.5">
@@ -2329,27 +2383,11 @@ export default function SectorPage() {
                                 ) : (
                                   <div></div>
                                 )}
-
-                                {/* Delivery Badge */}
-                                <div className="flex-shrink-0">
-                                  {service.deliveryType === "same-day" ? (
-                                    <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
-                                      <span className="font-medium">⚡ Same Day</span>
-                                    </div>
-                                  ) : (
-                                    <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
-                                      <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M3 9h4l3 9 3-16 3 9h4"/>
-                                      </svg>
-                                      <span className="font-medium">Standard</span>
-                                    </div>
-                                  )}
-                                </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Bottom Section - Price & Buttons */}
+                          {/* Bottom Section - Price with Delivery Badge */}
                           <div className="flex items-end justify-between gap-2 mt-auto">
                             {/* Price - Left Bottom */}
                             <div className="flex flex-col">
@@ -2367,27 +2405,20 @@ export default function SectorPage() {
                               </span>
                             </div>
 
-                            {/* Action Buttons - Right Bottom */}
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  navigate(`/service/${service.slug || service._id || service.id}`);
-                                }}
-                                className="h-[28px] w-[28px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_10px_rgba(254,138,15,0.5)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
-                              >
-                                <Zap className="w-3.5 h-3.5" />
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setSelectedServiceForCart(service);
-                                  setShowAddToCartModal(true);
-                                }}
-                                className="h-[28px] w-[28px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_6px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center"
-                              >
-                                <ShoppingCart className="w-3.5 h-3.5" />
-                              </button>
+                            {/* Delivery Badge - Right Bottom */}
+                            <div className="flex-shrink-0">
+                              {service.deliveryType === "same-day" ? (
+                                <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                  <span className="font-medium">⚡ Same day delivery</span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                  <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 9h4l3 9 3-16 3 9h4"/>
+                                  </svg>
+                                  <span className="font-medium">Standard delivery</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
