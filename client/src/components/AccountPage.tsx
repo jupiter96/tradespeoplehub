@@ -4361,8 +4361,8 @@ function MessengerSection() {
                             <div
                               className={`rounded-2xl px-4 py-3 shadow-sm ${
                                 message.senderId === userInfo?.id
-                                  ? "bg-[#FFF5EB] text-black rounded-br-sm"
-                                  : "bg-[#FFF5EB] text-black rounded-bl-sm"
+                                  ? "bg-[#FFF5EB] text-black rounded-br-sm border-l-[3px] border-b-[3px] border-[#FE8A0F]"
+                                  : "bg-white text-black rounded-bl-sm border-r-[3px] border-b-[3px] border-[#FE8A0F]"
                               }`}
                             >
                               {message.type === "image" && message.fileUrl && (
@@ -4421,7 +4421,7 @@ function MessengerSection() {
                     })}
                     {isTyping && (
                       <div className="flex justify-start">
-                        <div className="bg-white rounded-2xl rounded-bl-sm px-5 py-3">
+                        <div className="bg-white rounded-2xl rounded-bl-sm px-5 py-3 border-r-[3px] border-b-[3px] border-[#FE8A0F]">
                           <div className="flex gap-1">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>

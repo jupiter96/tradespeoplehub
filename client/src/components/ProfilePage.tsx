@@ -815,119 +815,130 @@ export default function ProfilePage() {
                   homeServiceCards.map((service) => (
                     <div
                       key={service._id || service.id}
-                      onClick={() => navigate(`/service/${service.slug || service._id || service.id}`)}
-                    className="bg-white rounded-[10px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
-                  >
+                      className="bg-white rounded-[16px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
+                    >
                     {/* Image Section */}
-                    <div className="relative h-[110px] md:h-[170px] overflow-hidden">
-                      <SmartImageLayers src={service.image} alt={service.description} />
-                      {/* Badges */}
+                    <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: '180px' }}>
+                      <img
+                        src={service.image}
+                        alt={service.description}
+                        className="w-full h-full object-cover"
+                        style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
+                      />
+                      {/* Emergency Badge - Top Right */}
                       {service.badges && service.badges.length > 0 && (
-                        <div className="absolute top-2 md:top-3 right-2 md:right-3 flex flex-col gap-1 z-10">
-                          {service.badges.slice(0, 2).map((badge, idx) => (
-                            <span
-                              key={idx}
-                              className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] font-['Poppins',sans-serif] font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-md"
-                            >
-                              {badge}
-                            </span>
-                          ))}
+                        <div className="absolute top-3 right-3">
+                          <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-3 py-1 rounded-[6px]">
+                            {service.badges[0]}
+                          </span>
                         </div>
                       )}
                     </div>
 
                     {/* Content Section */}
-                    <div className="p-2 md:p-4 flex flex-col flex-1">
-                      {/* Provider Info */}
-                      <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2 min-h-[24px] md:min-h-[32px]">
+                    <div className="p-4 flex flex-col gap-2 flex-1">
+                      {/* Provider Info with Avatar */}
+                      <div className="flex items-center gap-2">
                         <img
                           src={service.providerImage}
                           alt={service.tradingName}
-                          className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                         />
-                        <span className="font-['Poppins',sans-serif] text-[11px] md:text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors truncate">
-                          {service.tradingName}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] leading-tight">
+                            {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
+                          </h3>
+                          {service.providerIsVerified && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[8px] font-['Poppins',sans-serif] font-medium">
+                              ✓ Verified
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b] mb-2 md:mb-3 h-[28px] md:h-[36px] line-clamp-2">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#666666] leading-snug line-clamp-2">
                         {service.description}
                       </p>
 
                       {/* Star Rating */}
-                      <div className="flex items-center justify-between mb-2 md:mb-3 min-h-[16px] md:min-h-[20px]">
-                        {service.reviewCount > 0 ? (
-                          <>
-                            <div className="flex items-center gap-0.5 md:gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`w-2.5 h-2.5 md:w-3.5 md:h-3.5 ${
-                                    star <= Math.floor(service.rating)
-                                      ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <div className="flex items-center gap-0.5 md:gap-1">
-                              <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#2c353f]">
-                                {service.rating}
-                              </span>
-                              <span className="font-['Poppins',sans-serif] text-[9px] md:text-[12px] text-[#8d8d8d]">
-                                ({service.completedTasks})
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="w-full" />
-                        )}
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-4 h-4 ${
+                              star <= Math.floor(service.rating || 0)
+                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                : "fill-[#E5E5E5] text-[#E5E5E5]"
+                            }`}
+                          />
+                        ))}
+                        <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] ml-1">
+                          {service.rating || 0}
+                        </span>
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#999999]">
+                          ({service.reviewCount || 0})
+                        </span>
                       </div>
 
-                      {/* Price and Delivery Section */}
-                      <div className="mb-2 md:mb-4">
-                        <div className="h-[18px] md:h-[24px] mb-0.5 md:mb-1 flex items-center">
+                      {/* Price and Delivery Badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        {/* Price Section */}
+                        <div className="flex flex-col gap-1 min-h-[56px]">
+                          <div className="font-['Poppins',sans-serif] text-[24px] font-bold text-[#2c353f]">
+                            £{service.originalPrice || service.price}
+                            <span className="text-[14px] font-normal text-[#666666]">/{service.priceUnit}</span>
+                          </div>
                           {service.originalPrice ? (
-                            <div className="flex items-center gap-1 md:gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[12px] md:text-[16px] text-[#c0c0c0] line-through">
-                                £{service.originalPrice}
+                            <div className="flex items-center gap-2">
+                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#999999] line-through">
+                                £{service.price}
+                              </span>
+                              <div className="px-2 py-0.5 bg-[#E6F0FF] rounded-md">
+                                <span className="font-['Poppins',sans-serif] text-[10px] text-[#3D78CB] font-semibold">
+                                  {Math.round(((parseFloat(service.price) - parseFloat(service.originalPrice || '0')) / parseFloat(service.price)) * 100)}% OFF
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="h-[20px]">{/* Spacer to maintain height */}</div>
+                          )}
+                        </div>
+                        
+                        {/* Delivery Badge */}
+                        <div className="flex-shrink-0">
+                          {service.deliveryType === "same-day" ? (
+                            <div className="px-2 py-1 border-2 border-[#FE8A0F] rounded-[6px]">
+                              <span className="font-['Poppins',sans-serif] text-[10px] font-semibold text-[#FE8A0F] uppercase tracking-wide">
+                                ⚡ Same Day
                               </span>
                             </div>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center justify-between gap-1 md:gap-2">
-                          <span className="font-['Poppins',sans-serif] text-[10px] md:text-[13px] text-[#5b5b5b]">
-                            <span className="text-[14px] md:text-[18px] text-[#2c353f]">£{service.price}</span>/{service.priceUnit}
-                          </span>
-                          <div className="flex-shrink-0">
-                            {service.deliveryType === "same-day" ? (
-                              <div className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 bg-white border-2 border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                                <span className="font-medium heartbeat-text">⚡ Same day delivery</span>
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] md:text-[9px] tracking-wide uppercase rounded-sm">
-                                <span className="font-medium">Standard delivery</span>
-                              </div>
-                            )}
-                          </div>
+                          ) : (
+                            <div className="px-2 py-1 border border-[#3D78CB] bg-[#E6F0FF] rounded-[6px] flex items-center gap-1">
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="#3D78CB" strokeWidth="2">
+                                <path d="M3 9h4l3 9 3-16 3 9h4"/>
+                              </svg>
+                              <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#3D78CB] uppercase tracking-wide">
+                                Standard
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex flex-col gap-1.5 md:gap-2 items-center mt-auto">
+                      <div className="flex flex-col gap-2 mt-auto pt-2">
                         <button
-                          className="w-[80%] h-[26px] md:h-[32px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_15px_rgba(254,138,15,0.6)] text-white rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/service/${service.slug || service._id || service.id}`);
                           }}
+                          className="w-full bg-[#FE8A0F] hover:bg-[#FF9A1F] text-white font-['Poppins',sans-serif] text-[14px] font-semibold py-3 rounded-[8px] transition-colors flex items-center justify-center gap-2"
                         >
-                          <Zap className="w-3 h-3 md:w-4 md:h-4" />
-                          Buy Now!
+                          <span>⚡</span>
+                          <span>Buy Now!</span>
                         </button>
                         <button
-                          className="w-[80%] h-[26px] md:h-[32px] bg-white border border-[#FE8A0F] hover:bg-[#FFF5EB] hover:shadow-[0_0_8px_rgba(254,138,15,0.3)] text-[#FE8A0F] rounded-full font-['Poppins',sans-serif] transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 md:gap-2 text-[10px] md:text-[13px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             addToCart(
@@ -942,9 +953,10 @@ export default function ProfilePage() {
                               1
                             );
                           }}
+                          className="w-full bg-white hover:bg-gray-50 text-[#FE8A0F] border-2 border-[#FE8A0F] font-['Poppins',sans-serif] text-[14px] font-semibold py-3 rounded-[8px] transition-colors flex items-center justify-center gap-2"
                         >
-                          <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
-                          Add to cart
+                          <span>🛒</span>
+                          <span>Add to cart</span>
                         </button>
                       </div>
                     </div>
