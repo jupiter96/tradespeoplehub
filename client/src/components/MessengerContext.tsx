@@ -307,7 +307,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
             ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
             : new Date(conv.timestamp).toLocaleDateString(),
           unread: conv.unread || 0,
-          online: conv.online || false,
+          online: Boolean(conv.online),
           conversationId: conv.id,
           participantId: conv.participant.id,
         }));
@@ -577,7 +577,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
             ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
             : 'now',
           unread: conv.unread || 0,
-          online: conv.online || false,
+          online: Boolean(conv.online),
           conversationId: conv.id,
           participantId: conv.participant.id,
         };

@@ -439,9 +439,10 @@ export default function FloatingMessenger() {
                                   : "U"}
                               </AvatarFallback>
                             </Avatar>
-                            {contact.online && (
-                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                            )}
+                            <div 
+                              className="absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full"
+                              style={{ backgroundColor: contact.online === true ? '#10b981' : '#FFA500' }}
+                            ></div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 mb-0.5">
@@ -496,15 +497,19 @@ export default function FloatingMessenger() {
                               : "U"}
                           </AvatarFallback>
                         </Avatar>
-                        {selectedContact.online && (
-                          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-                        )}
+                        <div 
+                          className="absolute bottom-0 right-0 w-3.5 h-3.5 border-2 border-white rounded-full"
+                          style={{ backgroundColor: selectedContact.online === true ? '#10b981' : '#FFA500' }}
+                        ></div>
                       </div>
                       <div>
                         <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                           {selectedContact.name}
                         </h4>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#10b981]">
+                        <p 
+                          className="font-['Poppins',sans-serif] text-[13px]"
+                          style={{ color: selectedContact.online === true ? '#10b981' : '#FFA500' }}
+                        >
                           {selectedContact.online ? "Online" : "Offline"}
                         </p>
                       </div>
