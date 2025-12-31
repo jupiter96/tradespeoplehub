@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useSearchParams, Link, useNavigate, useParams } from "react-router-dom";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 // Import icons from lucide-react
 import { 
   Star, 
@@ -2025,14 +2026,14 @@ export default function ServicesPage() {
                               boxShadow: '0 0 0 2px rgba(255,255,255,0.6), 0 4px 12px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(0,0,0,0.1)' 
                             }}></div>
                           </div>
-                          <img
-                            src={service.providerImage}
-                            alt={service.tradingName}
-                            className="w-14 h-14 rounded-full object-cover flex-shrink-0 relative"
-                            style={{
-                              boxShadow: '0 0 0 4px white, 0 0 0 6px rgba(255,255,255,0.4), 0 4px 16px rgba(0,0,0,0.25)'
-                            }}
-                          />
+                          <Avatar className="w-14 h-14 flex-shrink-0 relative" style={{
+                            boxShadow: '0 0 0 4px white, 0 0 0 6px rgba(255,255,255,0.4), 0 4px 16px rgba(0,0,0,0.25)'
+                          }}>
+                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white text-[16px] font-semibold">
+                              {service.tradingName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                         </div>
                       </div>
                       
@@ -2110,11 +2111,12 @@ export default function ServicesPage() {
                             <div className="space-y-1.5 mb-2">
                               {/* Provider Info */}
                               <div className="flex items-center gap-1.5">
-                                <img
-                                  src={service.providerImage}
-                                  alt={service.tradingName}
-                                  className="w-5 h-5 rounded-full object-cover"
-                                />
+                                <Avatar className="w-5 h-5 flex-shrink-0">
+                                  <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                                  <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                                    {service.tradingName.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <div className="flex items-center gap-1 flex-wrap">
                                   <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
                                     {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
