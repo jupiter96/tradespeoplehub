@@ -261,12 +261,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                 
                 {/* Discount Ribbon - Bottom Right on image */}
                 {service.originalPrice && (
-                  <div className="absolute right-0 z-10" style={{ top: '190px' }}>
+                  <div className="absolute right-0 z-10 pointer-events-none" style={{ top: '190px', background: 'transparent' }}>
                     {/* Ribbon shadow layer */}
-                    <div className="absolute inset-0 bg-black/20 blur-sm translate-y-0.5"></div>
+                    
                     
                     {/* Main ribbon */}
-                    <div className="relative overflow-hidden" style={{ 
+                    <div className="relative overflow-hidden pointer-events-auto" style={{ 
                       background: 'linear-gradient(135deg, #FFB366 0%, #FF8C42 50%, #FF6B35 100%)',
                       clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
                       boxShadow: '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.3)'
@@ -623,12 +623,12 @@ function ServiceCarousel({ title, services }: ServiceGridProps) {
                   
                   {/* Discount Ribbon - Bottom Right on image */}
                   {service.originalPrice && (
-                    <div className="absolute right-0 z-10" style={{ top: '190px' }}>
+                    <div className="absolute right-0 z-10 pointer-events-none" style={{ top: '190px', background: 'transparent' }}>
                       {/* Ribbon shadow layer */}
-                      <div className="absolute inset-0 bg-black/20 blur-sm translate-y-0.5"></div>
+                      
                       
                       {/* Main ribbon */}
-                      <div className="relative overflow-hidden" style={{ 
+                      <div className="relative overflow-hidden pointer-events-auto" style={{ 
                         background: 'linear-gradient(135deg, #FFB366 0%, #FF8C42 50%, #FF6B35 100%)',
                         clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
                         boxShadow: '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.3)'
