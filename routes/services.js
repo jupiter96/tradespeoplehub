@@ -1075,8 +1075,25 @@ router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professiona
       return res.status(403).json({ error: 'You can only toggle your own services' });
     }
 
+    // Store previous status before toggling
+    const previousStatus = service.status;
+
     // Update isActive status
-    service.isActive = isActive !== undefined ? isActive : !service.isActive;
+    const newIsActive = isActive !== undefined ? isActive : !service.isActive;
+    service.isActive = newIsActive;
+    
+    // Update status based on isActive
+    if (!newIsActive) {
+      // When disabling, set status to inactive
+      service.status = 'inactive';
+    } else {
+      // When enabling, restore to approved (if it was inactive, otherwise keep current status)
+      if (previousStatus === 'inactive') {
+        service.status = 'approved';
+      }
+      // Keep other statuses unchanged when re-enabling
+    }
+    
     await service.save();
 
     // Populate references

@@ -5219,11 +5219,11 @@ function ServicesSection() {
 
       if (response.ok) {
         const data = await response.json();
-        // Update the service in the local state
+        // Update the service in the local state, including status
         setMyServices(prevServices =>
           prevServices.map(service =>
             service._id === serviceToToggle.id
-              ? { ...service, isActive: data.service.isActive }
+              ? { ...service, isActive: data.service.isActive, status: data.service.status }
               : service
           )
         );
@@ -5589,11 +5589,13 @@ function ServicesSection() {
                         >
                           <TableCell>
                             <div className="flex items-center justify-center">
-                              <Switch
-                                checked={Boolean(service.isActive)}
-                                onCheckedChange={() => handleToggleServiceDisable(service._id, Boolean(service.isActive))}
-                                className="data-[state=checked]:bg-[#FE8A0F]"
-                              />
+                              {service.status !== 'draft' && (
+                                <Switch
+                                  checked={Boolean(service.isActive)}
+                                  onCheckedChange={() => handleToggleServiceDisable(service._id, Boolean(service.isActive))}
+                                  className="data-[state=checked]:bg-[#FE8A0F]"
+                                />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>

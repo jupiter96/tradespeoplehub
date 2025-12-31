@@ -2165,143 +2165,156 @@ export default function SectorPage() {
                 {viewMode === 'pane' && (
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
                     {displayServices.map((service) => (
-                  <div
+                  <Link
                     key={service.id}
-                    className="bg-white rounded-[16px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 flex flex-col"
+                    to={`/service/${service.slug || service._id || service.id}`}
+                    className="relative flex flex-col cursor-pointer"
                   >
-                    {/* Image Section */}
-                    <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: '180px' }}>
-                      <img
-                        src={service.image}
-                        alt={service.description}
-                        className="w-full h-full object-cover"
-                        style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
-                      />
-                      
-                      {/* Emergency Badge - Top Right */}
-                      {service.badges && service.badges.length > 0 && (
-                        <div className="absolute top-3 right-3">
-                          <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-3 py-1 rounded-[6px]">
-                            {service.badges[0]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content Section */}
-                    <div className="p-4 flex flex-col gap-2 flex-1">
-                      {/* Provider Info with Avatar */}
-                      <div className="flex items-center gap-2">
+                    <div className="bg-white rounded-[16px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 flex flex-col">
+                      {/* Image Section */}
+                      <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: '220px' }}>
                         <img
-                          src={service.providerImage}
-                          alt={service.tradingName}
-                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                          src={service.image}
+                          alt={service.description}
+                          className="w-full h-full object-cover"
+                          style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
                         />
+                        
+                        {/* Emergency Badge - Top Right */}
+                        {service.badges && service.badges.length > 0 && (
+                          <div className="absolute top-3 right-3 z-10">
+                            <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-3 py-1 rounded-[6px]">
+                              {service.badges[0]}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="p-4 pt-8 flex flex-col gap-2 flex-1">
+                        {/* Provider Info with Rating */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h3 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] leading-tight">
-                            {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
+                            {service.tradingName.length > 12 ? `${service.tradingName.slice(0, 12)}...` : service.tradingName}
                           </h3>
                           {service.providerIsVerified && (
                             <span className="inline-flex items-center px-1.5 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[8px] font-['Poppins',sans-serif] font-medium">
                               ✓ Verified
                             </span>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#666666] leading-snug line-clamp-2">
-                        {service.description}
-                      </p>
-
-                      {/* Star Rating */}
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-4 h-4 ${
-                              star <= Math.floor(service.rating || 0)
-                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                : "fill-[#E5E5E5] text-[#E5E5E5]"
-                            }`}
-                          />
-                        ))}
-                        <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] ml-1">
-                          {service.rating || 0}
-                        </span>
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#999999]">
-                          ({service.reviewCount || 0})
-                        </span>
-                      </div>
-
-                      {/* Price and Delivery Badge */}
-                      <div className="flex items-start justify-between gap-2">
-                        {/* Price Section */}
-                        <div className="flex flex-col gap-1 min-h-[56px]">
-                          <div className="font-['Poppins',sans-serif] text-[24px] font-bold text-[#2c353f]">
-                            {service.originalPrice || service.price}
-                            <span className="text-[14px] font-normal text-[#666666]">/{service.priceUnit}</span>
+                          {/* Rating */}
+                          <div className="flex items-center gap-0.5">
+                            <Star className="w-3.5 h-3.5 fill-[#FE8A0F] text-[#FE8A0F]" />
+                            <span className="font-['Poppins',sans-serif] text-[12px] font-semibold text-[#2c353f]">
+                              {service.rating || 0}
+                            </span>
+                            <span className="font-['Poppins',sans-serif] text-[11px] text-[#999999]">
+                              ({service.reviewCount || 0})
+                            </span>
                           </div>
-                          {service.originalPrice ? (
-                            <div className="flex items-center gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#999999] line-through">
-                                {service.price}
-                              </span>
-                              <div className="px-2 py-0.5 bg-[#E6F0FF] rounded-md">
-                                <span className="font-['Poppins',sans-serif] text-[10px] text-[#3D78CB] font-semibold">
-                                  {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
+                        </div>
+
+                        {/* Description */}
+                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#666666] leading-snug line-clamp-2 py-4">
+                          {service.description}
+                        </p>
+
+                        {/* Delivery Badge and Price */}
+                        <div className="flex items-center justify-between gap-2 mt-auto">
+                          {/* Delivery Badge - Left */}
+                          <div className="flex-shrink-0">
+                            {service.deliveryType === "same-day" ? (
+                              <div className="px-2 py-1 border-2 border-[#FE8A0F] rounded-[6px]">
+                                <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#FE8A0F] uppercase tracking-wide">
+                                  ⚡ Same day delivery
                                 </span>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="h-[20px]">{/* Spacer to maintain height */}</div>
-                          )}
-                        </div>
-                        
-                        {/* Delivery Badge */}
-                        <div className="flex-shrink-0">
-                          {service.deliveryType === "same-day" ? (
-                            <div className="px-2 py-1 border-2 border-[#FE8A0F] rounded-[6px]">
-                              <span className="font-['Poppins',sans-serif] text-[10px] font-semibold text-[#FE8A0F] uppercase tracking-wide">
-                                ⚡ Same Day
+                            ) : (
+                              <div className="px-2 py-1 border border-[#3D78CB] bg-[#E6F0FF] rounded-[6px] flex items-center gap-1">
+                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="#3D78CB" strokeWidth="2">
+                                  <path d="M3 9h4l3 9 3-16 3 9h4"/>
+                                </svg>
+                                <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#3D78CB] uppercase tracking-wide">
+                                  Standard delivery
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Price Section - Right */}
+                          <div className="flex items-center gap-2">
+                            {service.originalPrice && (
+                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#999999] line-through">
+                                {service.price}
                               </span>
-                            </div>
-                          ) : (
-                            <div className="px-2 py-1 border border-[#3D78CB] bg-[#E6F0FF] rounded-[6px] flex items-center gap-1">
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="#3D78CB" strokeWidth="2">
-                                <path d="M3 9h4l3 9 3-16 3 9h4"/>
-                              </svg>
-                              <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#3D78CB] uppercase tracking-wide">
-                                Standard
-                              </span>
-                            </div>
-                          )}
+                            )}
+                            <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                              {service.originalPrice || service.price}/{service.priceUnit}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col gap-2 mt-auto pt-2">
-                        <Link
-                          to={`/service/${service.slug || service._id || service.id}`}
-                          className="w-full bg-[#FE8A0F] hover:bg-[#FF9A1F] text-white font-['Poppins',sans-serif] text-[14px] font-semibold py-3 rounded-[8px] transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>⚡</span>
-                          <span>Buy Now!</span>
-                        </Link>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Add to cart logic here
-                          }}
-                          className="w-full bg-white hover:bg-gray-50 text-[#FE8A0F] border-2 border-[#FE8A0F] font-['Poppins',sans-serif] text-[14px] font-semibold py-3 rounded-[8px] transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>🛒</span>
-                          <span>Add to cart</span>
-                        </button>
                       </div>
                     </div>
-                  </div>
+                    
+                    {/* Avatar positioned at bottom of image, overlapping */}
+                    <div className="absolute left-4 z-10" style={{ top: '190px' }}>
+                      <div className="relative">
+                        <div className="absolute inset-0 rounded-full bg-white" style={{ padding: '4px' }}>
+                          <div className="w-full h-full rounded-full" style={{ 
+                            boxShadow: '0 0 0 2px rgba(255,255,255,0.6), 0 4px 12px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(0,0,0,0.1)' 
+                          }}></div>
+                        </div>
+                        <img
+                          src={service.providerImage}
+                          alt={service.tradingName}
+                          className="w-14 h-14 rounded-full object-cover flex-shrink-0 relative"
+                          style={{
+                            boxShadow: '0 0 0 4px white, 0 0 0 6px rgba(255,255,255,0.4), 0 4px 16px rgba(0,0,0,0.25)'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Discount Ribbon - Bottom Right on image */}
+                    {service.originalPrice && (
+                      <div className="absolute right-0 z-10" style={{ top: '190px' }}>
+                        {/* Ribbon shadow layer */}
+                        <div className="absolute inset-0 bg-black/20 blur-sm translate-y-0.5"></div>
+                        
+                        {/* Main ribbon */}
+                        <div className="relative overflow-hidden" style={{ 
+                          background: 'linear-gradient(135deg, #FFB366 0%, #FF8C42 50%, #FF6B35 100%)',
+                          clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                          boxShadow: '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.3)'
+                        }}>
+                          {/* Shine effect */}
+                          <div className="absolute inset-0" style={{
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)'
+                          }}></div>
+                          
+                          {/* Content */}
+                          <div className="relative px-3 py-1.5 pr-4 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 drop-shadow-sm" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1">
+                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                            </svg>
+                            <span className="font-['Poppins',sans-serif] text-[11px] font-bold tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
+                              {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
+                            </span>
+                          </div>
+                          
+                          {/* Ribbon fold/cut effect */}
+                          <div className="absolute bottom-0 left-0 w-3 h-3" style={{
+                            background: 'linear-gradient(135deg, #D94A1A 0%, #B83D15 100%)',
+                            clipPath: 'polygon(0 0, 100% 100%, 0 100%)',
+                            boxShadow: 'inset -1px -1px 2px rgba(0,0,0,0.3)'
+                          }}></div>
+                        </div>
+                        
+                        {/* Bottom stripe accent */}
+                        <div className="absolute bottom-0 right-0 left-3 h-0.5 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                      </div>
+                    )}
+                  </Link>
                     ))}
                   </div>
                 )}
