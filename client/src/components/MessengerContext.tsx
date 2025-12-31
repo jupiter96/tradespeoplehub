@@ -221,18 +221,28 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
 
     // Listen for user online/offline
     const handleUserOnline = (data: { userId: string }) => {
+      console.log('🟢 User came online:', data.userId);
       setContacts(prev =>
-        prev.map(c =>
-          c.participantId === data.userId ? { ...c, online: true } : c
-        )
+        prev.map(c => {
+          if (c.participantId === data.userId) {
+            console.log('✅ Updated contact to online:', c.name);
+            return { ...c, online: true };
+          }
+          return c;
+        })
       );
     };
 
     const handleUserOffline = (data: { userId: string }) => {
+      console.log('🔴 User went offline:', data.userId);
       setContacts(prev =>
-        prev.map(c =>
-          c.participantId === data.userId ? { ...c, online: false } : c
-        )
+        prev.map(c => {
+          if (c.participantId === data.userId) {
+            console.log('✅ Updated contact to offline:', c.name);
+            return { ...c, online: false };
+          }
+          return c;
+        })
       );
     };
 
@@ -298,20 +308,25 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        const formattedContacts: Contact[] = data.conversations.map((conv: any) => ({
-          id: conv.participant.id,
-          name: conv.participant.name,
-          avatar: conv.participant.avatar, // Use actual profile image, no default fallback
-          lastMessage: conv.lastMessage?.text || 'Start a conversation',
-          timestamp: conv.lastMessage?.timestamp
-            ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
-            : new Date(conv.timestamp).toLocaleDateString(),
-          unread: conv.unread || 0,
-          online: Boolean(conv.online),
-          conversationId: conv.id,
-          participantId: conv.participant.id,
-        }));
+        const formattedContacts: Contact[] = data.conversations.map((conv: any) => {
+          const isOnline = Boolean(conv.online);
+          console.log(`📇 Contact: ${conv.participant.name} - Online: ${isOnline}`);
+          return {
+            id: conv.participant.id,
+            name: conv.participant.name,
+            avatar: conv.participant.avatar, // Use actual profile image, no default fallback
+            lastMessage: conv.lastMessage?.text || 'Start a conversation',
+            timestamp: conv.lastMessage?.timestamp
+              ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
+              : new Date(conv.timestamp).toLocaleDateString(),
+            unread: conv.unread || 0,
+            online: isOnline,
+            conversationId: conv.id,
+            participantId: conv.participant.id,
+          };
+        });
 
+        console.log(`✅ Loaded ${formattedContacts.length} contacts, ${formattedContacts.filter(c => c.online).length} online`);
         setContacts(formattedContacts);
 
         // Fetch messages for each conversation

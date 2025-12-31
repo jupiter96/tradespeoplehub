@@ -30,32 +30,45 @@ export const connectSocket = (userId: string): Socket => {
     auth: {
       userId,
     },
+    withCredentials: true,
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: Infinity, // Keep trying to reconnect
     reconnectionDelayMax: 5000,
-    timeout: 20000,
+    timeout: 45000,
+    forceNew: false,
+    autoConnect: true,
   });
 
   socket.on('connect', () => {
-    console.log('Socket.io connected');
+    console.log('✅ Socket.io connected - Socket ID:', socket.id);
+    console.log('🔗 Transport:', socket.io.engine.transport.name);
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('Socket.io disconnected:', reason);
+    console.log('❌ Socket.io disconnected:', reason);
     // Only log if it's not a manual disconnect
     if (reason !== 'io client disconnect') {
-      console.log('Reconnecting...');
+      console.log('🔄 Reconnecting...');
     }
   });
 
+  socket.on('reconnect', (attemptNumber) => {
+    console.log('✅ Socket.io reconnected after', attemptNumber, 'attempts');
+  });
+
+  socket.on('reconnect_attempt', (attemptNumber) => {
+    console.log('🔄 Reconnection attempt', attemptNumber);
+  });
+
   socket.on('connect_error', (error) => {
-    console.error('Socket.io connection error:', error.message);
+    console.error('❌ Socket.io connection error:', error.message);
+    console.error('Error details:', error);
   });
 
   socket.on('error', (error) => {
-    console.error('Socket.io error:', error);
+    console.error('❌ Socket.io error:', error);
   });
 
   return socket;

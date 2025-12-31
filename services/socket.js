@@ -10,22 +10,32 @@ const userSockets = new Map(); // userId -> socketId
 const socketUsers = new Map(); // socketId -> userId
 
 export const initializeSocket = (server) => {
-  // Parse CORS origins
-  let corsOrigin = 'http://localhost:5000';
-  if (process.env.CLIENT_ORIGINS) {
-    corsOrigin = process.env.CLIENT_ORIGINS;
-  } else if (process.env.CLIENT_ORIGIN) {
-    corsOrigin = process.env.CLIENT_ORIGIN;
-  }
+  // Parse CORS origins - support multiple origins
+  const clientOriginEnv = process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN;
+  const parsedOrigins = clientOriginEnv
+    ? clientOriginEnv.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : [];
+  
+  // In development, allow localhost
+  const isProduction = process.env.NODE_ENV === 'production';
+  const fallbackOrigins = isProduction
+    ? []
+    : ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
+  
+  const allowedOrigins = [...new Set([...parsedOrigins, ...fallbackOrigins])];
 
   io = new Server(server, {
     cors: {
-      origin: corsOrigin,
+      origin: allowedOrigins.length > 0 ? allowedOrigins : true,
       credentials: true,
       methods: ['GET', 'POST'],
     },
     transports: ['websocket', 'polling'],
     allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    connectTimeout: 45000,
+    maxHttpBufferSize: 1e8, // 100MB for file transfers
   });
 
   io.use(async (socket, next) => {
@@ -84,12 +94,11 @@ export const initializeSocket = (server) => {
     // Join user's personal room
     socket.join(`user:${userId}`);
 
-    // Emit online status to user's conversations (only if this is a new connection)
-    if (!existingSocketId || existingSocketId !== socket.id) {
-      socket.broadcast.emit('user:online', { userId });
-    }
-
-    console.log(`User ${userId} connected (socket: ${socket.id})`);
+    // Emit online status to ALL connected clients (not just conversations)
+    socket.broadcast.emit('user:online', { userId });
+    
+    console.log(`✅ User ${userId} connected (socket: ${socket.id})`);
+    console.log(`📊 Total online users: ${userSockets.size}`);
 
     // Handle typing indicator
     socket.on('typing', async (data) => {
@@ -320,9 +329,10 @@ export const initializeSocket = (server) => {
       // Emit offline status only if user has no other connections
       if (!userSockets.has(userId)) {
         socket.broadcast.emit('user:offline', { userId });
-        console.log(`User ${userId} disconnected (socket: ${socket.id}, reason: ${reason})`);
+        console.log(`❌ User ${userId} disconnected (socket: ${socket.id}, reason: ${reason})`);
+        console.log(`📊 Total online users: ${userSockets.size}`);
       } else {
-        console.log(`User ${userId} socket ${socket.id} disconnected but has other connections`);
+        console.log(`⚠️ User ${userId} socket ${socket.id} disconnected but has other connections`);
       }
     });
   });
