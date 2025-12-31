@@ -164,9 +164,20 @@ app.use('/api/service-subcategories', serviceSubCategoryRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 
+console.log('✅ All API routes mounted');
+
+// Log all incoming requests in production for debugging
+if (isProduction) {
+  app.use('/api/*', (req, res, next) => {
+    console.log(`📥 ${req.method} ${req.originalUrl}`);
+    next();
+  });
+}
+
 // API catch-all handler
-app.get('/api/*', (req, res) => {
-  res.status(404).json({ error: 'API endpoint not found' });
+app.all('/api/*', (req, res) => {
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'API endpoint not found', path: req.originalUrl, method: req.method });
 });
 
 // Serve React build

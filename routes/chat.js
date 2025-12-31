@@ -304,16 +304,22 @@ router.get('/search-professionals', requireAuth, async (req, res) => {
 
 // Upload file attachment
 router.post('/conversations/:conversationId/upload', requireAuth, (req, res, next) => {
+  console.log(`📤 Upload request received for conversation: ${req.params.conversationId}`);
+  console.log(`📋 Content-Type: ${req.get('content-type')}`);
+  
   uploadMiddleware(req, res, (err) => {
     if (err) {
+      console.error('❌ Upload middleware error:', err);
       return res.status(400).json({ error: err.message });
     }
+    console.log('✅ Upload middleware passed, file:', req.file?.filename);
     return next();
   });
 }, async (req, res) => {
   try {
     const userId = req.user.id;
     const { conversationId } = req.params;
+    console.log(`🔄 Processing upload for user ${userId}, conversation ${conversationId}`);
     const { text } = req.body;
 
     if (!req.file) {
@@ -402,9 +408,10 @@ router.post('/conversations/:conversationId/upload', requireAuth, (req, res, nex
       });
     }
 
+    console.log('✅ File uploaded successfully:', formattedMessage.id);
     res.json({ message: formattedMessage });
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('❌ Error uploading file:', error);
     // Delete uploaded file if message creation fails
     if (req.file) {
       try {
@@ -413,7 +420,7 @@ router.post('/conversations/:conversationId/upload', requireAuth, (req, res, nex
         console.error('Error deleting file:', unlinkError);
       }
     }
-    res.status(500).json({ error: 'Failed to upload file' });
+    res.status(500).json({ error: 'Failed to upload file', details: error.message });
   }
 });
 
@@ -456,6 +463,15 @@ router.get('/attachments/:filename', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Failed to download file' });
   }
 });
+
+// Log registered routes
+console.log('✅ Chat routes registered:');
+console.log('  - POST /conversations');
+console.log('  - POST /conversations/:conversationId/upload');
+console.log('  - GET /conversations');
+console.log('  - GET /conversations/:conversationId/messages');
+console.log('  - GET /attachments/:filename');
+console.log('  - GET /search-professionals');
 
 export default router;
 
