@@ -38,25 +38,7 @@ const storage = multer.diskStorage({
 const fileUpload = multer({
   storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-  fileFilter: (_req, file, cb) => {
-    // Allow common file types
-    const allowedMimes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/zip',
-      'application/x-zip-compressed',
-      'text/plain'
-    ];
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Unsupported file type. Please upload images, PDFs, documents, or ZIP files.'));
-    }
-  }
+  // Allow all file types - no fileFilter restriction
 });
 
 const uploadMiddleware = fileUpload.single('file');

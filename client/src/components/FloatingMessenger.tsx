@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   ExternalLink,
   Loader2,
+  Download,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -725,16 +726,21 @@ export default function FloatingMessenger() {
                                   </a>
                                 )}
                                 {message.type === "file" && message.fileUrl && (
-                                  <a
-                                    href={resolveApiUrl(message.fileUrl)}
-                                    download
-                                    className="flex items-center gap-2 mb-2 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity bg-white/50"
-                                  >
-                                    <Paperclip className="w-4 h-4" />
-                                    <span className="font-['Poppins',sans-serif] text-[13px] truncate">
+                                  <div className="flex items-center gap-2 mb-2 p-3 rounded-lg bg-white/50 border border-gray-200">
+                                    <Paperclip className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
+                                    <span className="font-['Poppins',sans-serif] text-[13px] truncate flex-1">
                                       {message.fileName}
                                     </span>
-                                  </a>
+                                    <a
+                                      href={resolveApiUrl(message.fileUrl)}
+                                      download={message.fileName}
+                                      className="flex items-center gap-1 px-3 py-1.5 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex-shrink-0"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                      <span className="font-['Poppins',sans-serif] text-[11px]">Download</span>
+                                    </a>
+                                  </div>
                                 )}
                                 {message.text && (
                                 <p className="font-['Poppins',sans-serif] text-[14px]">
@@ -818,7 +824,6 @@ export default function FloatingMessenger() {
                         <input
                           ref={fileInputRef}
                           type="file"
-                          accept="image/*,video/*,.pdf,.doc,.docx"
                           onChange={handleFileUpload}
                           className="hidden"
                         />
