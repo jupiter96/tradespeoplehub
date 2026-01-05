@@ -2241,7 +2241,7 @@ export default function SectorPage() {
                         <Link
                           key={service.id}
                           to={`/service/${service.slug || service._id || service.id}`}
-                          className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full"
+                          className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full"
                           style={{ maxWidth: '330px', margin: '0 auto' }}
                         >
                           {/* Image Section */}

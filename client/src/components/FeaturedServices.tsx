@@ -171,8 +171,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
               <div
                 key={uniqueId}
                 onClick={() => handleServiceClick(service)}
-                className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full"
-                style={{ maxWidth: '330px', margin: '0 auto' }}
+                className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full sm:max-w-[330px] sm:mx-auto"
               >
                 {/* Image Section */}
                 <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
@@ -596,8 +595,8 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                 <CarouselItem key={service.id} className="pl-2 md:pl-3 basis-[85%] sm:basis-[48%] lg:basis-[32%] xl:basis-[23%]">
                   <div 
                     onClick={() => handleServiceClick(service)}
-                    className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full"
-                    style={{ maxWidth: '330px', margin: '0 auto' }}
+                    className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full"
+                    style={{ maxWidth: '100%', margin: '0 auto' }}
                   >
                     {/* Image Section */}
                     <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
