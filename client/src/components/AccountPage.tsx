@@ -59,6 +59,7 @@ import {
   PoundSterling,
   Loader2,
   Download,
+  Reply,
 } from "lucide-react";
 import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
@@ -3971,6 +3972,8 @@ function MessengerSection() {
   const [isTyping, setIsTyping] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<any>(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -4051,9 +4054,15 @@ function MessengerSection() {
       text: messageText,
       read: false,
       type: "text",
+      replyTo: replyToMessage ? {
+        id: replyToMessage.id,
+        text: replyToMessage.text,
+        senderName: replyToMessage.senderName,
+      } : undefined,
     });
     setMessageText("");
     setShowEmojiPicker(false);
+    setReplyToMessage(null);
 
     // Simulate typing indicator
     setTimeout(() => {
@@ -4352,25 +4361,61 @@ function MessengerSection() {
                       }
 
                       // Regular text message
+                      const isOwnMessage = message.senderId === userInfo?.id;
+                      const senderName = isOwnMessage 
+                        ? `${userInfo?.firstName || ''} ${userInfo?.lastName || ''}`.trim() || userInfo?.name
+                        : selectedContact?.name;
+                      
                       return (
                         <div
                           key={message.id}
                           className={`flex ${
-                            message.senderId === userInfo?.id ? "justify-end" : "justify-start"
-                          }`}
+                            isOwnMessage ? "justify-end" : "justify-start"
+                          } group relative`}
+                          onMouseEnter={() => setHoveredMessageId(message.id)}
+                          onMouseLeave={() => setHoveredMessageId(null)}
                         >
                           <div
                             className={`max-w-[70%] ${
-                              message.senderId === userInfo?.id ? "order-2" : "order-1"
-                            }`}
+                              isOwnMessage ? "order-2" : "order-1"
+                            } relative`}
                           >
+                            {/* Reply button - only show for received messages on hover */}
+                            {!isOwnMessage && hoveredMessageId === message.id && (
+                              <button
+                                onClick={() => {
+                                  setReplyToMessage({
+                                    id: message.id,
+                                    text: message.text || 'Attachment',
+                                    senderName: senderName,
+                                  });
+                                }}
+                                className="absolute -top-8 right-0 bg-white shadow-lg rounded-full p-2 hover:bg-gray-100 transition-colors z-10 border border-gray-200"
+                                title="Reply"
+                              >
+                                <Reply className="w-4 h-4 text-gray-600" />
+                              </button>
+                            )}
                             <div
                               className={`rounded-2xl px-4 py-3 shadow-sm ${
-                                message.senderId === userInfo?.id
+                                isOwnMessage
                                   ? "bg-[#FFF5EB] text-black rounded-br-sm border-l-[3px] border-b-[3px] border-[#FE8A0F]"
                                   : "bg-white text-black rounded-bl-sm border-r-[3px] border-b-[3px] border-[#FE8A0F]"
                               }`}
                             >
+                              {/* Replied message preview with quote */}
+                              {message.replyTo && (
+                                <div className="mb-2 pb-2 border-l-4 border-[#FE8A0F] pl-3 bg-gray-50/70 rounded-md p-2">
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F] font-semibold mb-1">
+                                    {message.replyTo.senderName}
+                                  </p>
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-gray-600 italic relative pl-4">
+                                    <span className="absolute left-0 top-0 text-gray-400 text-[16px] leading-none">"</span>
+                                    <span className="line-clamp-2">{message.replyTo.text}</span>
+                                    <span className="absolute bottom-0 right-0 text-gray-400 text-[16px] leading-none">"</span>
+                                  </p>
+                                </div>
+                              )}
                               {message.type === "image" && message.fileUrl && (
                                 <a 
                                   href={resolveApiUrl(message.fileUrl)} 
@@ -4465,6 +4510,27 @@ function MessengerSection() {
                             </button>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    
+                    {/* Reply Preview */}
+                    {replyToMessage && (
+                      <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 flex items-start gap-2 mb-2">
+                        <Reply className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F] font-semibold mb-0.5">
+                            Replying to {replyToMessage.senderName}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-gray-600 truncate">
+                            {replyToMessage.text}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setReplyToMessage(null)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                     
