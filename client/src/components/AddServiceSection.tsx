@@ -53,6 +53,7 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { AlertCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface AddServiceSectionProps {
   onClose: () => void;
@@ -1530,6 +1531,10 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       // Load About Me (bio) from profile, but only if not editing existing service
       const bio = userInfo.publicProfile?.bio || userInfo.aboutService || "";
       setAboutMe(bio);
+      // Load profile image from userInfo
+      if (userInfo.avatar) {
+        setProfileImage(userInfo.avatar);
+      }
     }
   }, [userInfo, isEditMode]);
 
@@ -1961,6 +1966,68 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
   // Profile/Settings Tab
   const [aboutMe, setAboutMe] = useState(""); // Bio from profile
+  const [profileImage, setProfileImage] = useState<string>(""); // Profile image URL
+  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
+  
+  // Handle profile image upload
+  const handleProfileImageUpload = async (file: File | null) => {
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    // Create temporary preview
+    const tempPreviewUrl = URL.createObjectURL(file);
+    setProfileImage(tempPreviewUrl);
+    setUploadingProfileImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const response = await fetch(`${resolveApiUrl()}/api/auth/profile/avatar`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload profile image");
+      }
+
+      const data = await response.json();
+      if (data.user && data.user.avatar) {
+        setProfileImage(data.user.avatar);
+        toast.success("Profile image uploaded successfully");
+        // Update userInfo in context if needed
+        if (userInfo) {
+          userInfo.avatar = data.user.avatar;
+        }
+      } else {
+        throw new Error("Failed to get avatar URL from response");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload profile image");
+      // Revert to previous image on error
+      if (userInfo?.avatar) {
+        setProfileImage(userInfo.avatar);
+      } else {
+        setProfileImage("");
+      }
+    } finally {
+      setUploadingProfileImage(false);
+    }
+  };
   
   const handleKeywordsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -4271,26 +4338,70 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     About Me <span className="text-red-500">*</span>
                   </Label>
-                  <Textarea
-                    value={aboutMe}
-                    onChange={(e) => setAboutMe(e.target.value)}
-                    placeholder="Tell clients about yourself, your experience, and what makes you unique..."
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[150px]"
-                    maxLength={1000}
-                  />
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                      This will be displayed on your public profile and service listings.
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500">
-                      {aboutMe.length}/1000 characters
-                    </p>
+                  <div className="flex gap-4 items-start">
+                    {/* Profile Image Section - Left */}
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <Avatar className="w-24 h-24 md:w-32 md:h-32 border-2 border-gray-200">
+                          <AvatarImage src={profileImage || userInfo?.avatar} alt="Profile" />
+                          <AvatarFallback className="bg-[#FE8A0F] text-white text-lg md:text-xl font-semibold">
+                            {userInfo?.firstName?.charAt(0) || userInfo?.tradingName?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <label
+                          htmlFor="profile-image-upload"
+                          className="absolute bottom-0 right-0 bg-[#FE8A0F] text-white rounded-full p-1.5 cursor-pointer hover:bg-[#e67a0e] transition-colors shadow-md"
+                          title="Upload profile image"
+                        >
+                          {uploadingProfileImage ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <ImagePlus className="w-4 h-4" />
+                          )}
+                        </label>
+                        <input
+                          id="profile-image-upload"
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleProfileImageUpload(file);
+                            }
+                          }}
+                        />
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-2 text-center">
+                        Profile Photo
+                      </p>
+                    </div>
+
+                    {/* About Me Textarea - Right */}
+                    <div className="flex-1">
+                      <Textarea
+                        value={aboutMe}
+                        onChange={(e) => setAboutMe(e.target.value)}
+                        placeholder="Tell clients about yourself, your experience, and what makes you unique..."
+                        className="font-['Poppins',sans-serif] !text-[14px] border-gray-300 min-h-[150px]"
+                        style={{ fontSize: '14px', fontFamily: "'Poppins', sans-serif" }}
+                        maxLength={1000}
+                      />
+                      <div className="flex justify-between items-center mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
+                          This will be displayed on your public profile and service listings.
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500">
+                          {aboutMe.length}/1000 characters
+                        </p>
+                      </div>
+                      {!aboutMe.trim() && (
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-red-500 mt-1">
+                          About Me is required to publish your service.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {!aboutMe.trim() && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-500 mt-1">
-                      About Me is required to publish your service.
-                    </p>
-                  )}
                 </div>
 
               </div>
