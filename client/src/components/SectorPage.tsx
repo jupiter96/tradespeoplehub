@@ -2315,7 +2315,7 @@ export default function SectorPage() {
                               {service.originalPrice && (
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
                                   <span 
-                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
                                     style={{ backgroundColor: '#CC0C39' }}
                                   >
                                     {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
@@ -2339,7 +2339,7 @@ export default function SectorPage() {
                               <div className="flex flex-wrap gap-1.5 mb-2 md:mb-2.5">
                                 <span
                                   style={{ backgroundColor: '#FF6B00' }}
-                                  className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
+                                  className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1"
                                 >
                                   #1 Best Seller
                                 </span>
@@ -2358,7 +2358,7 @@ export default function SectorPage() {
                             {/* Category Tag - Only show if available */}
                             {categoryTag && (
                               <div className="mb-3">
-                                <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full">
+                                <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                                   {categoryTag}
                                 </span>
                               </div>
@@ -2382,7 +2382,7 @@ export default function SectorPage() {
                                   </Link>
                                   {topRated && (
                                     <div 
-                                      className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-full"
+                                      className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-md"
                                       style={{ backgroundColor: '#FFD4A3' }}
                                     >
                                       <Medal className="w-3 h-3 flex-shrink-0" style={{ color: '#2c353f' }} />
@@ -2448,7 +2448,7 @@ export default function SectorPage() {
                           {/* Badges */}
                           {service.badges && service.badges.length > 0 && (
                             <div className="absolute top-1.5 left-1.5 z-10">
-                              <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-full shadow-md">
+                              <span className="bg-[#FE8A0F] text-white text-[8px] font-['Poppins',sans-serif] font-semibold px-1.5 py-0.5 rounded-md shadow-md">
                                 {service.badges[0]}
                               </span>
                             </div>
@@ -2565,11 +2565,11 @@ export default function SectorPage() {
                             {/* Delivery Badge - Right Bottom */}
                             <div className="flex-shrink-0">
                               {service.deliveryType === "same-day" ? (
-                                <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-full">
+                                <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-md">
                                   <span className="font-medium">⚡ Same day delivery</span>
                             </div>
                               ) : (
-                                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-full">
+                                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-md">
                                   <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M3 9h4l3 9 3-16 3 9h4"/>
                                   </svg>
