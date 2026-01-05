@@ -1884,7 +1884,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-[1500px] mx-auto px-4 md:px-6 lg:px-16 pb-12">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 pb-12">
 
         {/* Results Count with Sort and View Mode */}
         <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
@@ -1983,7 +1983,7 @@ export default function ServicesPage() {
             ) : (
               <div className={`grid gap-4 md:gap-6 ${
                 viewMode === "grid" 
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 justify-items-center" 
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 justify-items-center" 
                   : "grid-cols-1"
               }`}>
 {filteredAndSortedServices.map((service) => {

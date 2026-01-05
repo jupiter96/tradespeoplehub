@@ -2223,7 +2223,7 @@ export default function SectorPage() {
               <>
                 {/* Pane View - Grid */}
                 {viewMode === 'pane' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 justify-items-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 justify-items-center">
                     {displayServices.map((service) => {
                       const bestSeller = isBestSeller(service);
                       const purchaseStatsText = getPurchaseStats(service);
