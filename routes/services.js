@@ -958,18 +958,24 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     // Determine if content fields were changed (requires admin approval)
     // Content fields: title, description, aboutMe, image, images, serviceCategory, serviceSubCategory, etc.
     // Price/Availability fields: price, originalPrice, originalPriceValidFrom, originalPriceValidUntil, availability
-    const priceAndAvailabilityFields = ['price', 'originalPrice', 'originalPriceValidFrom', 'originalPriceValidUntil', 'availability'];
+    const priceAndAvailabilityFields = ['price', 'originalPrice', 'originalPriceValidFrom', 'originalPriceValidUntil', 'availability', 'priceUnit'];
     const changedFields = Object.keys(updateData);
     const contentFieldsChanged = changedFields.some(field => !priceAndAvailabilityFields.includes(field) && field !== 'status');
     
     // Store original status before update
     const originalStatus = service.status;
     
+    console.log('[Service Update] Original Status:', originalStatus);
+    console.log('[Service Update] Changed Fields:', changedFields);
+    console.log('[Service Update] Content Fields Changed:', contentFieldsChanged);
+    console.log('[Service Update] Is Draft Update:', isDraftUpdate);
+    
     // Update service
     Object.assign(service, updateData);
 
     // If admin requested modification and pro updates the service, send back to pending review
     if (originalStatus === 'required_modification') {
+      console.log('[Service Update] Status: required_modification -> pending');
       service.status = 'pending';
       service.modificationReason = null;
       service.reviewedBy = null;
@@ -977,12 +983,16 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     }
     // If service was approved and content fields were changed, send back to pending for admin review
     else if (originalStatus === 'approved' && contentFieldsChanged && !isDraftUpdate) {
+      console.log('[Service Update] Status: approved -> pending (content changed)');
       service.status = 'pending';
       service.modificationReason = null;
       service.reviewedBy = null;
       service.reviewedAt = null;
     }
     // If only price/availability changed, keep approved status
+    else {
+      console.log('[Service Update] Status unchanged:', service.status);
+    }
 
     await service.save();
 

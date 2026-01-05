@@ -2918,6 +2918,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       const result = await response.json();
       const updatedService = result.service || result;
       
+      console.log('[Service Publish] Initial Service Status:', initialService?.status);
+      console.log('[Service Publish] Updated Service Status:', updatedService?.status);
+      console.log('[Service Publish] Is Edit Mode:', isEditMode);
+      console.log('[Service Publish] Draft ID:', draftId);
+      
       // Show appropriate message based on service status
       // If it's a draft being published or a new service, show approval message
       const isDraftUpdate = draftId || initialService?.status === 'draft';
@@ -2927,6 +2932,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         toast.success("Your listing has been submitted to approval and will go live shortly if approved.");
       } else if (wasApprovedNowPending) {
         toast.success("Your service content has been updated and submitted for admin approval. Price and availability changes are live.");
+      } else if (isEditMode && updatedService?.status === 'pending') {
+        // Handle case where service was edited and sent to pending (even if not previously approved)
+        toast.success("Your service has been updated and sent to admin for approval.");
       } else {
         toast.success("Service updated successfully!");
       }

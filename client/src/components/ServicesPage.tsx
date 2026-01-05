@@ -52,58 +52,37 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 
-// Badge types for random selection
-const availableBadges = [
-  { type: "bestSeller", label: "#1 Best Seller", bgColor: "bg-[#FF6B00]", textColor: "text-white" },
-];
+// Helper function to check if professional is verified
+const isVerified = (service: any) => {
+  return service.providerIsVerified === true;
+};
 
-// Helper function to get random badges for each card (excluding verified)
-const getRandomBadges = (serviceId: number) => {
-  // Service ID 1 should have no badges
-  if (serviceId === 1) {
-    return [];
-  }
-  
-  // Use serviceId as seed for consistent random selection per card
-  const seed = serviceId;
-  const numBadges = Math.floor((seed * 7919) % 4); // 0-3 badges
-  const selectedBadges = [];
-  
-  for (let i = 0; i < numBadges; i++) {
-    const index = (seed * (i + 1) * 13) % availableBadges.length;
-    const badge = availableBadges[index];
-    if (!selectedBadges.find(b => b.type === badge.type)) {
-      selectedBadges.push(badge);
+// Helper function to check if service is top rated (rating >= 4.8 with at least 50 reviews)
+const hasTopRated = (service: any) => {
+  return service.rating >= 4.8 && service.reviewCount >= 50;
+};
+
+// Helper function to check if service is best seller (has soldCount or orderCount)
+const isBestSeller = (service: any) => {
+  return service.soldCount > 100 || service.orderCount > 100;
+};
+
+// Helper function to get purchase stats
+const getPurchaseStats = (service: any) => {
+  if (service.soldCount && service.soldCount > 0) {
+    if (service.soldCount >= 1000) {
+      return `${Math.floor(service.soldCount / 1000)}K+ bought in past month`;
+    } else if (service.soldCount >= 100) {
+      return `${service.soldCount}+ bought in past month`;
     }
   }
-  
-  return selectedBadges;
-};
-
-// Helper function to check if service has verified badge
-const isVerified = (serviceId: number) => {
-  // Service ID 1 should always have verified badge
-  if (serviceId === 1) {
-    return true;
-  }
-  return (serviceId * 11) % 3 === 0; // ~33% of cards have verified badge
-};
-
-// Helper function to check if service has "bought in past month" stat
-const hasPurchaseStats = (serviceId: number) => {
-  return (serviceId * 3) % 2 === 0; // ~50% of cards
+  return null;
 };
 
 // Helper function to get category tag
-const getCategoryTag = (serviceId: number) => {
-  const categories = ["Digital marketing", "Graphic Design", "Web Development", "Photography", "Content Writing"];
-  return categories[(serviceId * 7) % categories.length];
-};
-
-// Helper function to get random "Top Rated" status
-const hasTopRated = (serviceId: number) => {
-  // Only show Top Rated on service ID 7
-  return serviceId === 7;
+const getCategoryTag = (service: any) => {
+  // Use actual service category name or subcategory name
+  return service.categoryName || service.subCategoryName || null;
 };
 
 // SmartImageLayers component for blur background effect
@@ -1997,12 +1976,12 @@ export default function ServicesPage() {
                   : "grid-cols-1"
               }`}>
 {filteredAndSortedServices.map((service) => {
-                  const randomBadges = getRandomBadges(service.id);
-                  const showPurchaseStats = hasPurchaseStats(service.id);
-                  const categoryTag = getCategoryTag(service.id);
+                  const bestSeller = isBestSeller(service);
+                  const purchaseStatsText = getPurchaseStats(service);
+                  const categoryTag = getCategoryTag(service);
                   const isLiked = likedServices.has(service.id);
-                  const verified = isVerified(service.id);
-                  const topRated = hasTopRated(service.id);
+                  const verified = isVerified(service);
+                  const topRated = hasTopRated(service);
                   
                   // Truncate trading name to 10 characters
                   const displayTradingName = service.tradingName.length > 10 
@@ -2101,24 +2080,21 @@ export default function ServicesPage() {
                       </div>
 
                       {/* Purchase Stats */}
-                      {showPurchaseStats && (
+                      {purchaseStatsText && (
                         <p className="text-[10px] md:text-[11px] text-[#666] mb-2 md:mb-2.5">
-                          1K+ bought in past month
+                          {purchaseStatsText}
                         </p>
                       )}
 
-                      {/* Random Badges - #1 Best Seller */}
-                      {randomBadges.length > 0 && (
+                      {/* Best Seller Badge - Only show if actually a best seller */}
+                      {bestSeller && (
                         <div className="flex flex-wrap gap-1.5 mb-2 md:mb-2.5">
-                          {randomBadges.map((badge, idx) => (
-                            <span
-                              key={idx}
-                              style={{ backgroundColor: '#FF6B00' }}
-                              className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-[4px] inline-flex items-center gap-1"
-                            >
-                              {badge.label}
-                            </span>
-                          ))}
+                          <span
+                            style={{ backgroundColor: '#FF6B00' }}
+                            className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-[4px] inline-flex items-center gap-1"
+                          >
+                            #1 Best Seller
+                          </span>
                         </div>
                       )}
 
@@ -2131,12 +2107,14 @@ export default function ServicesPage() {
                         </div>
                       )}
 
-                      {/* Category Tag */}
-                      <div className="mb-3">
-                        <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full">
-                          {categoryTag}
-                        </span>
-                      </div>
+                      {/* Category Tag - Only show if available */}
+                      {categoryTag && (
+                        <div className="mb-3">
+                          <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full">
+                            {categoryTag}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Provider Info - Pushed to bottom */}
                       <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
@@ -2413,3 +2391,4 @@ export default function ServicesPage() {
     </div>
   );
 }
+
