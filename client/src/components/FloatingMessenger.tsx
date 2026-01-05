@@ -731,15 +731,15 @@ export default function FloatingMessenger() {
                                     <span className="font-['Poppins',sans-serif] text-[13px] truncate flex-1">
                                       {message.fileName}
                                     </span>
-                                    <a
-                                      href={resolveApiUrl(message.fileUrl)}
+                                  <a
+                                    href={resolveApiUrl(message.fileUrl)}
                                       download={message.fileName}
                                       className="flex items-center gap-1 px-3 py-1.5 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex-shrink-0"
                                       onClick={(e) => e.stopPropagation()}
-                                    >
+                                  >
                                       <Download className="w-3.5 h-3.5" />
                                       <span className="font-['Poppins',sans-serif] text-[11px]">Download</span>
-                                    </a>
+                                  </a>
                                   </div>
                                 )}
                                 {message.text && (

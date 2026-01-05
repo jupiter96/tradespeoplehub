@@ -312,17 +312,17 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
           const isOnline = Boolean(conv.online);
           console.log(`📇 Contact: ${conv.participant.name} - Online: ${isOnline}`);
           return {
-            id: conv.participant.id,
-            name: conv.participant.name,
-            avatar: conv.participant.avatar, // Use actual profile image, no default fallback
-            lastMessage: conv.lastMessage?.text || 'Start a conversation',
-            timestamp: conv.lastMessage?.timestamp
-              ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
-              : new Date(conv.timestamp).toLocaleDateString(),
-            unread: conv.unread || 0,
+          id: conv.participant.id,
+          name: conv.participant.name,
+          avatar: conv.participant.avatar, // Use actual profile image, no default fallback
+          lastMessage: conv.lastMessage?.text || 'Start a conversation',
+          timestamp: conv.lastMessage?.timestamp
+            ? new Date(conv.lastMessage.timestamp).toLocaleDateString()
+            : new Date(conv.timestamp).toLocaleDateString(),
+          unread: conv.unread || 0,
             online: isOnline,
-            conversationId: conv.id,
-            participantId: conv.participant.id,
+          conversationId: conv.id,
+          participantId: conv.participant.id,
           };
         });
 

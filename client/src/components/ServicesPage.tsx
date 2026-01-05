@@ -36,6 +36,8 @@ import {
   PawPrint,
   TruckIcon,
   Loader2,
+  Medal,
+  BadgeCheck,
   type LucideIcon
 } from "lucide-react";
 import { useCart } from "./CartContext";
@@ -49,6 +51,60 @@ import { Checkbox } from "./ui/checkbox";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
+
+// Badge types for random selection
+const availableBadges = [
+  { type: "bestSeller", label: "#1 Best Seller", bgColor: "bg-[#FF6B00]", textColor: "text-white" },
+];
+
+// Helper function to get random badges for each card (excluding verified)
+const getRandomBadges = (serviceId: number) => {
+  // Service ID 1 should have no badges
+  if (serviceId === 1) {
+    return [];
+  }
+  
+  // Use serviceId as seed for consistent random selection per card
+  const seed = serviceId;
+  const numBadges = Math.floor((seed * 7919) % 4); // 0-3 badges
+  const selectedBadges = [];
+  
+  for (let i = 0; i < numBadges; i++) {
+    const index = (seed * (i + 1) * 13) % availableBadges.length;
+    const badge = availableBadges[index];
+    if (!selectedBadges.find(b => b.type === badge.type)) {
+      selectedBadges.push(badge);
+    }
+  }
+  
+  return selectedBadges;
+};
+
+// Helper function to check if service has verified badge
+const isVerified = (serviceId: number) => {
+  // Service ID 1 should always have verified badge
+  if (serviceId === 1) {
+    return true;
+  }
+  return (serviceId * 11) % 3 === 0; // ~33% of cards have verified badge
+};
+
+// Helper function to check if service has "bought in past month" stat
+const hasPurchaseStats = (serviceId: number) => {
+  return (serviceId * 3) % 2 === 0; // ~50% of cards
+};
+
+// Helper function to get category tag
+const getCategoryTag = (serviceId: number) => {
+  const categories = ["Digital marketing", "Graphic Design", "Web Development", "Photography", "Content Writing"];
+  return categories[(serviceId * 7) % categories.length];
+};
+
+// Helper function to get random "Top Rated" status
+const hasTopRated = (serviceId: number) => {
+  // Only show Top Rated on service ID 7
+  return serviceId === 7;
+};
 
 // SmartImageLayers component for blur background effect
 function SmartImageLayers({
@@ -179,6 +235,22 @@ export default function ServicesPage() {
   // Add to Cart Modal
   const [showAddToCartModal, setShowAddToCartModal] = useState(false);
   const [selectedServiceForCart, setSelectedServiceForCart] = useState<Service | null>(null);
+  
+  // Liked services
+  const [likedServices, setLikedServices] = useState<Set<number>>(new Set());
+  
+  const toggleLike = (e: React.MouseEvent, serviceId: number) => {
+    e.stopPropagation();
+    setLikedServices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(serviceId)) {
+        newSet.delete(serviceId);
+      } else {
+        newSet.add(serviceId);
+      }
+      return newSet;
+    });
+  };
   
   // Location-based filtering
   const [locationSearch, setLocationSearch] = useState("");
@@ -1822,7 +1894,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 pb-12">
+      <div className="max-w-[1500px] mx-auto px-4 md:px-6 lg:px-16 pb-12">
 
         {/* Results Count with Sort and View Mode */}
         <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
@@ -1921,162 +1993,210 @@ export default function ServicesPage() {
             ) : (
               <div className={`grid gap-4 md:gap-6 ${
                 viewMode === "grid" 
-                  ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3" 
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 justify-items-center" 
                   : "grid-cols-1"
               }`}>
-{filteredAndSortedServices.map((service) => (
-                  viewMode === "grid" ? (
-                    // GRID VIEW - New Design
-                    <div
-                      key={service.id}
-                      className="relative flex flex-col cursor-pointer"
-                      onClick={() => navigate(`/service/${service.slug || service._id || service.id}`, { state: { userCoords } })}
-                    >
-                      <div className="bg-white rounded-[16px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 flex flex-col">
-                        {/* Image Section */}
-                        <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: '220px' }}>
-                          <img
-                            src={service.image}
-                            alt={service.description}
-                            className="w-full h-full object-cover"
-                            style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
-                          />
-                          
-                          {/* Emergency Badge - Top Right */}
-                          {service.badges && service.badges.length > 0 && (
-                            <div className="absolute top-3 right-3 z-10">
-                              <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-3 py-1 rounded-[6px]">
-                                {service.badges[0]}
-                              </span>
+{filteredAndSortedServices.map((service) => {
+                  const randomBadges = getRandomBadges(service.id);
+                  const showPurchaseStats = hasPurchaseStats(service.id);
+                  const categoryTag = getCategoryTag(service.id);
+                  const isLiked = likedServices.has(service.id);
+                  const verified = isVerified(service.id);
+                  const topRated = hasTopRated(service.id);
+                  
+                  // Truncate trading name to 10 characters
+                  const displayTradingName = service.tradingName.length > 10 
+                    ? service.tradingName.substring(0, 10) + '...' 
+                    : service.tradingName;
+                  
+                  return viewMode === "grid" ? (
+                    // GRID VIEW - New Design matching FeaturedServices
+                  <div
+                    key={service.id}
+                    onClick={() => navigate(`/service/${service.slug || service._id || service.id}`, { state: { userCoords } })}
+                    className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full"
+                    style={{ maxWidth: '330px', margin: '0 auto' }}
+                  >
+                    {/* Image Section */}
+                    <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
+                      <img
+                        src={service.image}
+                        alt={service.description}
+                        className="w-full h-full object-cover object-center"
+                        style={{ minWidth: '100%', minHeight: '100%' }}
+                      />
+                      
+                      {/* Heart Icon - Top Right */}
+                      <button
+                        onClick={(e) => toggleLike(e, service.id)}
+                        className="absolute top-2 md:top-3 right-2 md:right-3 bg-white rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"
+                      >
+                        <Heart 
+                          className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Content Section */}
+                    <div className="p-3 md:p-4 flex flex-col flex-1">
+                      {/* Title/Description */}
+                      <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-[#2c353f] font-bold mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
+                        {service.description}
+                      </h3>
+
+                      {/* Star Rating */}
+                      <div className="flex items-center gap-1 mb-2 md:mb-2.5">
+                        {service.reviewCount > 0 ? (
+                          <>
+                            <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
+                              {service.rating.toFixed(1)}
+                            </span>
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
+                                    star <= Math.floor(service.rating)
+                                      ? "fill-[#FFB800] text-[#FFB800]"
+                                      : star - 0.5 <= service.rating
+                                      ? "fill-[#FFB800] text-[#FFB800] opacity-50"
+                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                  }`}
+                                />
+                              ))}
                             </div>
+                            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
+                              ({service.reviewCount})
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
+
+                      {/* Price Section */}
+                      <div className="mb-2 md:mb-2.5">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] font-semibold">
+                            {service.originalPrice || service.price}
+                          </span>
+                          {service.originalPrice && (
+                            <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
+                              Was: {service.price}
+                            </span>
                           )}
                         </div>
-                        
-                        {/* Content Section */}
-                        <div className="p-4 pt-8 flex flex-col gap-2 flex-1">
-                          {/* Provider Info with Rating */}
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h3 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] leading-tight">
-                              {service.tradingName.length > 12 ? `${service.tradingName.slice(0, 12)}...` : service.tradingName}
-                            </h3>
-                            {service.providerIsVerified && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[8px] font-['Poppins',sans-serif] font-medium">
-                                ✓ Verified
-                              </span>
-                            )}
-                            {/* Rating */}
-                            <div className="flex items-center gap-0.5">
-                              <Star className="w-3.5 h-3.5 fill-[#FE8A0F] text-[#FE8A0F]" />
-                              <span className="font-['Poppins',sans-serif] text-[12px] font-semibold text-[#2c353f]">
-                                {service.rating || 0}
-                              </span>
-                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#999999]">
-                                ({service.reviewCount || 0})
-                              </span>
-                            </div>
+                        {/* Discount and Limited Time Offer - Below Price */}
+                        {service.originalPrice && (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                            <span 
+                              className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-[3px] whitespace-nowrap"
+                              style={{ backgroundColor: '#CC0C39' }}
+                            >
+                              {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                            </span>
+                            <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                              Limited Time Offer
+                            </span>
                           </div>
-
-                          {/* Description */}
-                          <p className="font-['Poppins',sans-serif] text-[20px] text-[#666666] leading-snug line-clamp-2 py-4">
-                            {service.description}
-                          </p>
-
-                          {/* Delivery Badge and Price */}
-                          <div className="flex items-center justify-between gap-2 mt-auto">
-                            {/* Delivery Badge - Left */}
-                            <div className="flex-shrink-0">
-                              {service.deliveryType === "same-day" ? (
-                                <div className="px-2 py-1 border-2 border-[#FE8A0F] rounded-[6px]">
-                                  <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#FE8A0F] uppercase tracking-wide">
-                                    ⚡ Same day delivery
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="px-2 py-1 border border-[#3D78CB] bg-[#E6F0FF] rounded-[6px] flex items-center gap-1">
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="#3D78CB" strokeWidth="2">
-                                    <path d="M3 9h4l3 9 3-16 3 9h4"/>
-                                  </svg>
-                                  <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#3D78CB] uppercase tracking-wide">
-                                    Standard delivery
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Price Section - Right */}
-                            <div className="flex items-center gap-2">
-                              {service.originalPrice && (
-                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#999999] line-through">
-                                  {service.price}
-                                </span>
-                              )}
-                              <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                                {service.originalPrice || service.price}/{service.priceUnit}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                       </div>
-                      
-                      {/* Avatar positioned at bottom of image, overlapping */}
-                      <div className="absolute left-4 z-10" style={{ top: '190px' }}>
-                        <div className="relative">
-                          <div className="absolute inset-0 rounded-full bg-white" style={{ padding: '4px' }}>
-                            <div className="w-full h-full rounded-full" style={{ 
-                              boxShadow: '0 0 0 2px rgba(255,255,255,0.6), 0 4px 12px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(0,0,0,0.1)' 
-                            }}></div>
-                          </div>
-                          <Avatar className="w-14 h-14 flex-shrink-0 relative" style={{
-                            boxShadow: '0 0 0 4px white, 0 0 0 6px rgba(255,255,255,0.4), 0 4px 16px rgba(0,0,0,0.25)'
-                          }}>
-                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                            <AvatarFallback className="bg-[#FE8A0F] text-white text-[16px] font-semibold">
-                              {service.tradingName.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-                      </div>
-                      
-                      {/* Discount Ribbon - Bottom Right on image */}
-                      {service.originalPrice && (
-                        <div className="absolute right-0 z-10 pointer-events-none" style={{ top: '190px', background: 'transparent' }}>
-                          {/* Ribbon shadow layer */}
-                          
-                          
-                          {/* Main ribbon */}
-                          <div className="relative overflow-hidden pointer-events-auto" style={{ 
-                            background: 'linear-gradient(135deg, #FFB366 0%, #FF8C42 50%, #FF6B35 100%)',
-                            clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
-                            boxShadow: '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.3)'
-                          }}>
-                            {/* Shine effect */}
-                            <div className="absolute inset-0" style={{
-                              background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)'
-                            }}></div>
-                            
-                            {/* Content */}
-                            <div className="relative px-3 py-1.5 pr-4 flex items-center gap-1">
-                              <svg className="w-3.5 h-3.5 drop-shadow-sm" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1">
-                                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                              </svg>
-                              <span className="font-['Poppins',sans-serif] text-[11px] font-bold tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
-                                {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% OFF
-                              </span>
-                            </div>
-                            
-                            {/* Ribbon fold/cut effect */}
-                            <div className="absolute bottom-0 left-0 w-3 h-3" style={{
-                              background: 'linear-gradient(135deg, #D94A1A 0%, #B83D15 100%)',
-                              clipPath: 'polygon(0 0, 100% 100%, 0 100%)',
-                              boxShadow: 'inset -1px -1px 2px rgba(0,0,0,0.3)'
-                            }}></div>
-                          </div>
-                          
-                          {/* Bottom stripe accent */}
-                          <div className="absolute bottom-0 right-0 left-3 h-0.5 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+
+                      {/* Purchase Stats */}
+                      {showPurchaseStats && (
+                        <p className="text-[10px] md:text-[11px] text-[#666] mb-2 md:mb-2.5">
+                          1K+ bought in past month
+                        </p>
+                      )}
+
+                      {/* Random Badges - #1 Best Seller */}
+                      {randomBadges.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2 md:mb-2.5">
+                          {randomBadges.map((badge, idx) => (
+                            <span
+                              key={idx}
+                              style={{ backgroundColor: '#FF6B00' }}
+                              className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-[4px] inline-flex items-center gap-1"
+                            >
+                              {badge.label}
+                            </span>
+                          ))}
                         </div>
                       )}
+
+                      {/* New Listing - Only for first card (service.id === 1) */}
+                      {service.id === 1 && (
+                        <div className="mb-2 md:mb-2.5">
+                          <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666]">
+                            New Listing
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Category Tag */}
+                      <div className="mb-3">
+                        <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full">
+                          {categoryTag}
+                        </span>
+                      </div>
+
+                      {/* Provider Info - Pushed to bottom */}
+                      <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
+                        <Avatar className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0 self-center">
+                          <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                          <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                            {service.tradingName.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                          {/* First Row: Trading name and badges */}
+                          <div className="flex items-center justify-between gap-1.5 min-w-0">
+                            <Link to={`/profile/117`} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none" onClick={(e) => e.stopPropagation()}>
+                              <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
+                                by <span className="inline">{displayTradingName}</span>
+                              </p>
+                            </Link>
+                            {topRated && (
+                              <div 
+                                className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-[3px]"
+                                style={{ backgroundColor: '#FFD4A3' }}
+                              >
+                                <Medal className="w-3 h-3 flex-shrink-0" style={{ color: '#2c353f' }} />
+                                <span className="hidden md:inline font-['Poppins',sans-serif] text-[10px] font-semibold whitespace-nowrap">
+                                  Top Rated
+                                </span>
+                              </div>
+                            )}
+                            {!topRated && verified && (
+                              <div className="inline-flex items-center gap-0.5 flex-shrink-0">
+                                <div className="relative w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0">
+                                  <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                                    <circle cx="12" cy="12" r="10" fill="#1877F2"/>
+                                    <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </div>
+                                <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
+                                  Verified
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Second Row: Location info */}
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
+                            <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
+                              Islington, London
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Info */}
+                      <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
+                        <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
+                        <span className="text-[#999]">Available</span>
+                      </div>
                     </div>
+                  </div>
                   ) : (
                     // LIST VIEW - Keep existing design
                     <div
@@ -2230,8 +2350,8 @@ export default function ServicesPage() {
                         </>
                       </div>
                     </div>
-                  )
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
