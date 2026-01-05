@@ -143,7 +143,7 @@ export default function BrowseByCategory() {
     <div className="w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 md:mb-10">
-        <h2 className="font-['Poppins',sans-serif] text-[#003D82] text-[22px] md:text-[26px] font-semibold">
+        <h2 className="font-['Poppins',sans-serif] text-gray-700 text-[22px] md:text-[26px] font-normal">
           Browse Service by Category
         </h2>
         <Link 

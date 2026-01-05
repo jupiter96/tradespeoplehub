@@ -109,7 +109,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
     <div className="w-full mb-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 md:mb-10">
-        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px]">
+        <h2 className="font-['Poppins',sans-serif] text-gray-700 text-[20px] md:text-[24px] font-normal">
           {title}
         </h2>
         <div className="flex items-center gap-2">
@@ -197,7 +197,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                 {/* Content Section */}
                 <div className="p-3 md:p-4 flex flex-col flex-1">
                   {/* Title/Description */}
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-[#2c353f] font-bold mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
                     {service.description}
                   </h3>
 
@@ -232,7 +232,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Price Section */}
                   <div className="mb-2 md:mb-2.5">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] font-semibold">
+                      <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
                         {service.originalPrice || service.price}
                       </span>
                       {service.originalPrice && (
@@ -441,7 +441,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       </div>
 
                       {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[18px] text-[#5b5b5b] line-clamp-2 font-bold leading-snug">
+                      <p className="font-['Poppins',sans-serif] text-[18px] text-[#5b5b5b] line-clamp-2 leading-snug">
                         {service.description.length > 55 ? `${service.description.slice(0, 55)}...` : service.description}
                       </p>
 
@@ -564,7 +564,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
     <div className="w-full mb-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 md:mb-10">
-        <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-[20px] md:text-[24px]">
+        <h2 className="font-['Poppins',sans-serif] text-gray-700 text-[20px] md:text-[24px] font-normal">
           {title}
         </h2>
       </div>
@@ -622,7 +622,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                     {/* Content Section */}
                     <div className="p-3 md:p-4 flex flex-col flex-1">
                       {/* Title/Description */}
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-[#2c353f] font-bold mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
+                      <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-[#2c353f] mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
                         {service.description}
                       </h3>
 
@@ -657,7 +657,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                       {/* Price Section */}
                       <div className="mb-2 md:mb-2.5">
                         <div className="flex items-baseline gap-2">
-                          <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] font-semibold">
+                          <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
                             {service.originalPrice || service.price}
                           </span>
                           {service.originalPrice && (

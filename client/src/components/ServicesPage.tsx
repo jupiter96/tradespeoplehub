@@ -2019,7 +2019,7 @@ export default function ServicesPage() {
                     {/* Content Section */}
                     <div className="p-3 md:p-4 flex flex-col flex-1">
                       {/* Title/Description */}
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-[#2c353f] font-bold mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
+                      <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[20px] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1">
                         {service.description}
                       </h3>
 
@@ -2054,9 +2054,9 @@ export default function ServicesPage() {
                       {/* Price Section */}
                       <div className="mb-2 md:mb-2.5">
                         <div className="flex items-baseline gap-2">
-                          <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] font-semibold">
-                            {service.originalPrice || service.price}
-                          </span>
+                        <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                          {service.originalPrice || service.price}
+                        </span>
                           {service.originalPrice && (
                             <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
                               Was: {service.price}
