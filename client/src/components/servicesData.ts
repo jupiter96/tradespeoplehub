@@ -48,6 +48,7 @@ export interface Service {
   deliveryType: "same-day" | "standard";
   postcode: string;
   location: string;
+  townCity?: string;
   latitude?: number;
   longitude?: number;
   highlights?: string[]; // Key service highlights

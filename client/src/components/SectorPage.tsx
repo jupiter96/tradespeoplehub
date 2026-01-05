@@ -821,6 +821,17 @@ export default function SectorPage() {
             deliveryType: s.deliveryType || "standard",
             postcode: s.postcode || "",
             location: s.location || "",
+            townCity: (() => {
+              // Check if professional is populated as an object
+              if (s.professional && typeof s.professional === 'object' && s.professional !== null) {
+                // Get townCity value (even if it's empty string, null, or undefined)
+                const townCityValue = s.professional.townCity;
+                // Return the value if it exists (including empty string), otherwise return empty string
+                return townCityValue !== undefined && townCityValue !== null ? String(townCityValue) : "";
+              }
+              // If professional is not populated, return empty string
+              return "";
+            })(),
             latitude: s.latitude,
             longitude: s.longitude,
             highlights: s.highlights || [],
@@ -2304,7 +2315,7 @@ export default function SectorPage() {
                               {service.originalPrice && (
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
                                   <span 
-                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-[3px] whitespace-nowrap"
+                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap"
                                     style={{ backgroundColor: '#CC0C39' }}
                                   >
                                     {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
@@ -2328,7 +2339,7 @@ export default function SectorPage() {
                               <div className="flex flex-wrap gap-1.5 mb-2 md:mb-2.5">
                                 <span
                                   style={{ backgroundColor: '#FF6B00' }}
-                                  className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-[4px] inline-flex items-center gap-1"
+                                  className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
                                 >
                                   #1 Best Seller
                                 </span>
@@ -2371,7 +2382,7 @@ export default function SectorPage() {
                                   </Link>
                                   {topRated && (
                                     <div 
-                                      className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-[3px]"
+                                      className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-full"
                                       style={{ backgroundColor: '#FFD4A3' }}
                                     >
                                       <Medal className="w-3 h-3 flex-shrink-0" style={{ color: '#2c353f' }} />
@@ -2399,7 +2410,7 @@ export default function SectorPage() {
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                                   <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                                    Islington, London
+                                    {service.townCity || "Location not available"}
                                   </p>
                                 </div>
                               </div>
@@ -2554,11 +2565,11 @@ export default function SectorPage() {
                             {/* Delivery Badge - Right Bottom */}
                             <div className="flex-shrink-0">
                               {service.deliveryType === "same-day" ? (
-                                <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                <div className="inline-flex items-center px-1.5 py-0.5 bg-white border border-[#FE8A0F] text-[#FE8A0F] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-full">
                                   <span className="font-medium">⚡ Same day delivery</span>
                             </div>
                               ) : (
-                                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-sm">
+                                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#E6F0FF] border border-[#3D78CB] text-[#3D78CB] font-['Poppins',sans-serif] text-[7px] tracking-wide uppercase rounded-full">
                                   <svg className="w-1.5 h-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M3 9h4l3 9 3-16 3 9h4"/>
                                   </svg>

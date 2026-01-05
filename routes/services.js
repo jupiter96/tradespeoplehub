@@ -119,7 +119,7 @@ router.get('/public', async (req, res) => {
     // Get ALL services without pagination limit
     // Populate professional, serviceCategory (with sector), and serviceSubCategory
     const services = await Service.find(query? query : {})
-      .populate('professional', 'firstName lastName tradingName avatar verification')
+      .populate('professional', 'firstName lastName tradingName avatar townCity verification')
       .populate({
         path: 'serviceCategory',
         select: 'name slug sector',
@@ -340,11 +340,22 @@ router.get('/', async (req, res) => {
     
     const services = await queryBuilder
       .populate([
-        { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode completedJobs verification' },
+        { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity completedJobs verification' },
         { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
         { path: 'serviceSubCategory', select: 'name slug icon' },
       ])
       .lean();
+    // Debug: Log professional data for first service
+    // if (services && services.length > 0) {
+    //   const sampleService = services[0];
+    //   console.log('[API /services] Sample service professional:', {
+    //     serviceId: sampleService._id,
+    //     professional: sampleService.professional,
+    //     professionalType: typeof sampleService.professional,
+    //     townCity: sampleService.professional?.townCity,
+    //     allKeys: sampleService.professional ? Object.keys(sampleService.professional) : []
+    //   });
+    // }
 
     // Calculate professional ratings and review counts
     const professionalIds = [...new Set(services.map(s => s.professional?._id).filter(Boolean))];
@@ -460,7 +471,7 @@ router.get('/:id', async (req, res) => {
       }
       if (doc) {
         await doc.populate([
-          { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode publicProfile aboutService' },
+          { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
           { 
             path: 'serviceCategory', 
             select: 'name slug icon bannerImage sector',
@@ -479,7 +490,7 @@ router.get('/:id', async (req, res) => {
       // It's likely a slug, find by slug
       service = await Service.findOne({ slug: id })
         .populate([
-          { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode publicProfile aboutService' },
+          { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
           { 
             path: 'serviceCategory', 
             select: 'name slug icon bannerImage sector',
@@ -504,7 +515,7 @@ router.get('/:id', async (req, res) => {
         }
         if (doc) {
           await doc.populate([
-            { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode publicProfile aboutService' },
+            { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
             { 
               path: 'serviceCategory', 
               select: 'name slug icon bannerImage sector',
@@ -626,7 +637,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
 
     // Populate references
     await service.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
       { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
       { path: 'serviceSubCategory', select: 'name slug icon' },
     ]);
@@ -802,7 +813,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
 
     // Populate references
     await service.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
       { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
       { path: 'serviceSubCategory', select: 'name slug icon' },
     ]);
@@ -998,7 +1009,7 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
 
     // Populate references
     await service.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
       { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
       { path: 'serviceSubCategory', select: 'name slug icon' },
     ]);
@@ -1055,7 +1066,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     await service.save();
 
     await service.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
       { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
       { path: 'serviceSubCategory', select: 'name slug icon' },
       { path: 'reviewedBy', select: 'firstName lastName email' },
@@ -1108,7 +1119,7 @@ router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professiona
 
     // Populate references
     await service.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
       { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
       { path: 'serviceSubCategory', select: 'name slug icon' },
     ]);
@@ -1161,7 +1172,7 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
 
     // Populate references
     await service.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
       { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
       { path: 'serviceSubCategory', select: 'name slug icon' },
       { path: 'reviewedBy', select: 'firstName lastName email' },

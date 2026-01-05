@@ -65,6 +65,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     townCity: {
+      select: true,
       type: String,
       trim: true,
     },
