@@ -32,13 +32,11 @@ import {
   MapPin, 
   Car, 
   Package, 
-  MapPin,
   Sparkles,
   Stethoscope,
   PawPrint,
   TruckIcon,
   Loader2,
-  Medal,
   BadgeCheck,
   type LucideIcon
 } from "lucide-react";
