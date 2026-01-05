@@ -2314,8 +2314,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         toast.error("Please enter a service title");
         return;
       }
-      if (serviceTitle.trim().length < 35) {
-        toast.error("Service title must be at least 35 characters");
+      if (serviceTitle.trim().length < 50) {
+        toast.error("Service title must be at least 50 characters");
         return;
       }
       if (!description || description.length < 100) {
@@ -2854,8 +2854,8 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       setActiveTab("service-details");
       return;
     }
-    if (serviceTitle.trim().length < 35) {
-      toast.error("Service title must be at least 35 characters");
+    if (serviceTitle.trim().length < 50) {
+      toast.error("Service title must be at least 50 characters");
       setActiveTab("service-details");
       return;
     }
@@ -3463,7 +3463,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     Service Title
                   </Label>
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mb-2">
-                    Choose from suggested titles, edit it or write your own title. (Minimum 35 characters)
+                    Choose from suggested titles, edit it or write your own title. (Minimum 50 characters)
                   </p>
                   <Input
                     value={serviceTitle}
@@ -3473,9 +3473,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                   />
                   <div className="mt-1 flex items-center justify-between">
                     <span className={`font-['Poppins',sans-serif] text-[11px] ${
-                      serviceTitle.trim().length < 35 ? 'text-red-500' : 'text-green-600'
+                      serviceTitle.trim().length < 50 ? 'text-red-500' : 'text-green-600'
                     }`}>
-                      {serviceTitle.trim().length} / 35 characters {serviceTitle.trim().length < 35 ? '(minimum required)' : '✓'}
+                      {serviceTitle.trim().length} / 50 characters {serviceTitle.trim().length < 50 ? '(minimum required)' : '✓'}
                     </span>
                   </div>
                   {loadingTitles ? (

@@ -2267,7 +2267,7 @@ export default function SectorPage() {
                           {/* Content Section */}
                           <div className="p-3 md:p-4 flex flex-col flex-1">
                             {/* Title/Description */}
-                            <h3 className="font-['Poppins',sans-serif] !text-[14px] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '14px', fontFamily: "'Poppins', sans-serif" }}>
+                            <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '14px', fontFamily: "'Poppins', sans-serif" }}>
                               {service.description}
                             </h3>
 

@@ -207,6 +207,13 @@ export default function AdminServiceTitlesPage() {
       return;
     }
 
+    // Validate minimum 50 characters for each title
+    const invalidTitles = validTitles.filter(t => t.length < 50);
+    if (invalidTitles.length > 0) {
+      toast.error(`Service titles must be at least 50 characters. ${invalidTitles.length} title(s) are too short.`);
+      return;
+    }
+
     try {
       setIsSaving(true);
       let successCount = 0;
@@ -538,6 +545,9 @@ export default function AdminServiceTitlesPage() {
                         (Path: {breadcrumb.join(' > ')})
                       </span>
                     )}
+                    <span className="block mt-2 text-xs text-orange-600 dark:text-orange-400">
+                      Note: Each title must be at least 50 characters long.
+                    </span>
                   </p>
                 </div>
                 <Button
@@ -553,21 +563,30 @@ export default function AdminServiceTitlesPage() {
               <div className="space-y-3">
                 {titles.length > 0 ? (
                   titles.map((title, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        value={title}
-                        onChange={(e) => updateTitle(selectedSubCategoryId, index, e.target.value)}
-                        placeholder="e.g., Residential Electrical Installation"
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={() => removeTitle(selectedSubCategoryId, index)}
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div key={index} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={title}
+                          onChange={(e) => updateTitle(selectedSubCategoryId, index, e.target.value)}
+                          placeholder="e.g., Residential Electrical Installation"
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => removeTitle(selectedSubCategoryId, index)}
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between px-1">
+                        <span className={`text-xs ${
+                          title.trim().length < 50 ? 'text-red-500' : 'text-green-600'
+                        }`}>
+                          {title.trim().length} / 50 characters {title.trim().length < 50 ? '(minimum required)' : '✓'}
+                        </span>
+                      </div>
                     </div>
                   ))
                 ) : (
