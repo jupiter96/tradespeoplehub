@@ -196,7 +196,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                 {/* Content Section */}
                 <div className="p-3 md:p-4 flex flex-col flex-1">
                   {/* Title/Description */}
-                  <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '14px', fontFamily: "'Poppins', sans-serif" }}>
+                  <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                     {service.description}
                   </h3>
 
@@ -407,7 +407,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                 {/* Content Section - Right */}
                 <div className="flex-1 p-3 md:p-4 flex flex-col min-w-0">
                   {/* Title/Description */}
-                  <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1.5 line-clamp-2" style={{ fontSize: '14px', fontFamily: "'Poppins', sans-serif" }}>
+                  <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1.5 line-clamp-2" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                     {service.description}
                   </h3>
 
@@ -582,7 +582,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                 : service.tradingName;
 
               return (
-                <CarouselItem key={service.id} className="pl-2 md:pl-3 w-[48%] sm:w-auto sm:basis-[48%] lg:basis-[32%] xl:basis-[23%] flex-shrink-0">
+                <CarouselItem key={service.id} className="pl-2 md:pl-3 flex-shrink-0 w-[220px] md:w-[330px]">
                   <div 
                     onClick={() => handleServiceClick(service)}
                     className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full"
@@ -610,7 +610,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                     {/* Content Section */}
                     <div className="p-3 md:p-4 flex flex-col flex-1">
                       {/* Title/Description */}
-                      <h3 className="font-['Poppins',sans-serif] text-[#2c353f] mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '14px', fontFamily: "'Poppins', sans-serif" }}>
+                      <h3 className="font-['Poppins',sans-serif] text-[#2c353f] mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                         {service.description}
                       </h3>
 
