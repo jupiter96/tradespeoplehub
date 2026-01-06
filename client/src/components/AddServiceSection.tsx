@@ -2353,6 +2353,11 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         toast.error("Please fill in the 'About Me' section");
         return;
       }
+      // Validate Profile Picture (mandatory)
+      if (!profileImage && !userInfo?.avatar) {
+        toast.error("Please upload a profile picture");
+        return;
+      }
       toast.success("Profile information saved!");
     }
 
@@ -2872,6 +2877,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     // Validate About Me (mandatory)
     if (!aboutMe.trim()) {
       toast.error("Please fill in the 'About Me' section in the Profile step");
+      setActiveTab("profile");
+      return;
+    }
+    // Validate Profile Picture (mandatory)
+    if (!profileImage && !userInfo?.avatar) {
+      toast.error("Please upload a profile picture in the Profile step");
       setActiveTab("profile");
       return;
     }
