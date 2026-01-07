@@ -2240,20 +2240,20 @@ export default function SectorPage() {
                       
                       return (
                         <Link
-                          key={service.id}
+                    key={service.id}
                           to={`/service/${service.slug || service._id || service.id}`}
                           className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full"
                           style={{ maxWidth: '330px', margin: '0 auto' }}
-                        >
-                          {/* Image Section */}
+                  >
+                    {/* Image Section */}
                           <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
-                            <img
-                              src={service.image}
-                              alt={service.description}
+                      <img
+                        src={service.image}
+                        alt={service.description}
                               className="w-full h-full object-cover object-center"
                               style={{ minWidth: '100%', minHeight: '100%' }}
-                            />
-                            
+                      />
+                      
                             {/* Heart Icon - Top Right */}
                             <button
                               onClick={(e) => toggleLike(e, service.id)}
@@ -2263,16 +2263,16 @@ export default function SectorPage() {
                                 className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
                               />
                             </button>
-                          </div>
+                    </div>
 
-                          {/* Content Section */}
+                    {/* Content Section */}
                           <div className="p-3 md:p-4 flex flex-col flex-1">
                             {/* Title/Description */}
                             <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                               {service.description}
-                            </h3>
+                          </h3>
 
-                            {/* Star Rating */}
+                      {/* Star Rating */}
                             <div className="flex items-center gap-1 mb-2 md:mb-2.5">
                               {service.reviewCount > 0 ? (
                                 <>
@@ -2280,38 +2280,38 @@ export default function SectorPage() {
                                     {service.rating.toFixed(1)}
                                   </span>
                                   <div className="flex items-center gap-0.5">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Star
-                                        key={star}
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
                                         className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
                                           star <= Math.floor(service.rating)
                                             ? "fill-[#FFB800] text-[#FFB800]"
                                             : star - 0.5 <= service.rating
                                             ? "fill-[#FFB800] text-[#FFB800] opacity-50"
-                                            : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                        }`}
-                                      />
-                                    ))}
+                                : "fill-[#E5E5E5] text-[#E5E5E5]"
+                            }`}
+                          />
+                        ))}
                                   </div>
                                   <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
                                     ({service.reviewCount})
-                                  </span>
+                        </span>
                                 </>
                               ) : null}
-                            </div>
+                      </div>
 
-                            {/* Price Section */}
+                        {/* Price Section */}
                             <div className="mb-2 md:mb-2.5">
                               <div className="flex items-baseline gap-2">
                               <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                                {service.originalPrice || service.price}
+                            {service.originalPrice || service.price}
                               </span>
                                 {service.originalPrice && (
                                   <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
                                     Was: {service.price}
                                   </span>
                                 )}
-                              </div>
+                          </div>
                               {/* Discount and Limited Time Offer - Below Price */}
                               {service.originalPrice && (
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -2320,14 +2320,14 @@ export default function SectorPage() {
                                     style={{ backgroundColor: '#CC0C39' }}
                                   >
                                     {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                                  </span>
+                              </span>
                                   <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
                                     Limited Time Offer
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
+                                </span>
+                              </div>
+                          )}
+                        </div>
+                        
                             {/* Category Badge - Below Price */}
                             {(() => {
                               const categoryName = service.serviceCategory?.name || null;
@@ -2335,8 +2335,8 @@ export default function SectorPage() {
                                 <div className="mb-2 md:mb-2.5">
                                   <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                                     {categoryName}
-                                  </span>
-                                </div>
+                              </span>
+                            </div>
                               ) : null;
                             })()}
 
@@ -2355,9 +2355,9 @@ export default function SectorPage() {
                                   className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1"
                                 >
                                   #1 Best Seller
-                                </span>
-                              </div>
-                            )}
+                              </span>
+                            </div>
+                          )}
 
                             {/* New Listing - Only for first card (service.id === 1) */}
                             {service.id === 1 && (
@@ -2365,7 +2365,7 @@ export default function SectorPage() {
                                 <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666]">
                                   New Listing
                                 </p>
-                              </div>
+                        </div>
                             )}
 
                             {/* Category Tag - Only show if available */}
@@ -2374,7 +2374,7 @@ export default function SectorPage() {
                                 <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                                   {categoryTag}
                                 </span>
-                              </div>
+                      </div>
                             )}
 
                             {/* Provider Info - Pushed to bottom */}
@@ -2392,7 +2392,7 @@ export default function SectorPage() {
                                     <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
                                       by <span className="inline">{displayTradingName}</span>
                                     </p>
-                                  </Link>
+                        </Link>
                                   {topRated && (
                                     <div 
                                       className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-md"
@@ -2402,7 +2402,7 @@ export default function SectorPage() {
                                       <span className="hidden md:inline font-['Poppins',sans-serif] text-[10px] font-semibold whitespace-nowrap">
                                         Top Rated
                                       </span>
-                                    </div>
+                      </div>
                                   )}
                                   {!topRated && verified && (
                                     <div className="inline-flex items-center gap-0.5 flex-shrink-0">
@@ -2411,11 +2411,11 @@ export default function SectorPage() {
                                           <circle cx="12" cy="12" r="10" fill="#1877F2"/>
                                           <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
-                                      </div>
+                    </div>
                                       <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
                                         Verified
                                       </span>
-                                    </div>
+                  </div>
                                   )}
                                 </div>
                                 
@@ -2607,18 +2607,18 @@ export default function SectorPage() {
                                   // Show regular price when no packages
                                   return (
                                     <>
-                                      {service.originalPrice && (
-                                        <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
-                                          {service.price}
-                                        </span>
-                                      )}
-                                      <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
-                                        {service.originalPrice && "From "}
-                                        <span className="text-[14px] text-[#2c353f] font-medium">
-                                          {service.originalPrice || service.price}
-                                        </span>
-                                        <span className="text-[9px]">/{service.priceUnit}</span>
-                                      </span>
+                              {service.originalPrice && (
+                                <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
+                                  {service.price}
+                                </span>
+                              )}
+                              <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                                {service.originalPrice && "From "}
+                                <span className="text-[14px] text-[#2c353f] font-medium">
+                                  {service.originalPrice || service.price}
+                                </span>
+                                <span className="text-[9px]">/{service.priceUnit}</span>
+                              </span>
                                     </>
                                   );
                                 }

@@ -34,7 +34,7 @@ const getPurchaseStats = (service: any) => {
       return `${Math.floor(service.soldCount / 1000)}K+ bought in past month`;
     } else if (service.soldCount >= 100) {
       return `${service.soldCount}+ bought in past month`;
-    }
+  }
   }
   return null;
 };
@@ -228,7 +228,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Title/Description */}
                   <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                     {service.description}
-                  </h3>
+                      </h3>
 
                   {/* Star Rating */}
                   <div className="flex items-center gap-1 mb-2 md:mb-2.5">
@@ -238,27 +238,27 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                           {service.rating.toFixed(1)}
                         </span>
                         <div className="flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
                               className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
                                 star <= Math.floor(service.rating)
                                   ? "fill-[#FFB800] text-[#FFB800]"
                                   : star - 0.5 <= service.rating
                                   ? "fill-[#FFB800] text-[#FFB800] opacity-50"
-                                  : "fill-[#E5E5E5] text-[#E5E5E5]"
-                              }`}
-                            />
-                          ))}
+                            : "fill-[#E5E5E5] text-[#E5E5E5]"
+                        }`}
+                      />
+                    ))}
                         </div>
                         <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
                           ({service.reviewCount})
-                        </span>
+                    </span>
                       </>
                     ) : null}
                   </div>
 
-                  {/* Price Section */}
+                    {/* Price Section */}
                   <div className="mb-2 md:mb-2.5">
                     {(() => {
                       const priceRange = getPriceRange(service);
@@ -277,14 +277,14 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                           <>
                             <div className="flex items-baseline gap-2">
                               <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                                {service.originalPrice || service.price}
+                        {service.originalPrice || service.price}
                               </span>
                               {service.originalPrice && (
                                 <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
                                   Was: {service.price}
                                 </span>
                               )}
-                            </div>
+                      </div>
                             {/* Discount and Limited Time Offer - Below Price */}
                             {service.originalPrice && (
                               <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -293,17 +293,17 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                                   style={{ backgroundColor: '#CC0C39' }}
                                 >
                                   {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                                </span>
+                          </span>
                                 <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
                                   Limited Time Offer
-                                </span>
-                              </div>
+                            </span>
+                          </div>
                             )}
                           </>
                         );
                       }
                     })()}
-                  </div>
+                        </div>
 
                   {/* Category Badge - Below Price */}
                   {(() => {
@@ -335,7 +335,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       </span>
                     </div>
                   )}
-
+                    
                   {/* New Listing - Only for first card (service.id === 1) */}
                   {service.id === 1 && (
                     <div className="mb-2 md:mb-2.5">
@@ -350,8 +350,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     <div className="mb-3">
                       <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                         {categoryTag}
-                      </span>
-                    </div>
+                          </span>
+                        </div>
                   )}
 
                   {/* Provider Info - Pushed to bottom */}
@@ -387,13 +387,13 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                               <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                                 <circle cx="12" cy="12" r="10" fill="#1877F2"/>
                                 <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
+                          </svg>
                             </div>
                             <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
                               Verified
-                            </span>
-                          </div>
-                        )}
+                          </span>
+                        </div>
+                      )}
                       </div>
                       
                       {/* Second Row: Location info */}
@@ -449,7 +449,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     className="w-full h-full object-cover object-center"
                     style={{ minWidth: '100%', minHeight: '100%' }}
                   />
-                  
+
                   {/* Heart Icon - Top Right */}
                   <button
                     onClick={(e) => {
@@ -463,7 +463,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       className={`w-3.5 h-3.5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
                     />
                   </button>
-                </div>
+                      </div>
 
                 {/* Content Section - Right */}
                 <div className="flex-1 p-3 md:p-4 flex flex-col min-w-0">
@@ -474,28 +474,28 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                   {/* Star Rating */}
                   <div className="flex items-center gap-1 mb-2">
-                    {service.reviewCount > 0 ? (
+                        {service.reviewCount > 0 ? (
                       <>
                         <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#2c353f] font-semibold">
                           {service.rating.toFixed(1)}
                         </span>
-                        <div className="flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
                               className={`w-3 h-3 md:w-3.5 md:h-3.5 ${
-                                star <= Math.floor(service.rating)
+                                    star <= Math.floor(service.rating)
                                   ? "fill-[#FFB800] text-[#FFB800]"
-                                  : star - 0.5 <= service.rating
+                                      : star - 0.5 <= service.rating
                                   ? "fill-[#FFB800] text-[#FFB800] opacity-50"
-                                  : "fill-[#E5E5E5] text-[#E5E5E5]"
-                              }`}
-                            />
-                          ))}
-                        </div>
+                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                  }`}
+                                />
+                              ))}
+                            </div>
                         <span className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666]">
                           ({service.reviewCount})
-                        </span>
+                            </span>
                       </>
                     ) : null}
                   </div>
@@ -536,8 +536,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                                 >
                                   {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
                                 </span>
-                              </div>
-                            )}
+                            </div>
+                          )}
                           </>
                         );
                       }
@@ -551,8 +551,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       <div className="mb-2">
                         <span className="inline-block bg-gray-100 text-[#2c353f] text-[9px] md:text-[10px] px-2 py-0.5 rounded-md">
                           {categoryName}
-                        </span>
-                      </div>
+                      </span>
+                    </div>
                     ) : null;
                   })()}
 
@@ -578,7 +578,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                             <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] font-semibold whitespace-nowrap">
                               Top Rated
                             </span>
-                          </div>
+                    </div>
                         )}
                         {!topRated && verified && (
                           <div className="inline-flex items-center gap-0.5 flex-shrink-0">
@@ -586,14 +586,14 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                               <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                                 <circle cx="12" cy="12" r="10" fill="#1877F2"/>
                                 <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
+                                  </svg>
                             </div>
                             <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] text-[#1877F2] font-medium">
                               Verified
                             </span>
-                          </div>
-                        )}
-                      </div>
+                                </div>
+                              )}
+                            </div>
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                         <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
@@ -675,19 +675,19 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
 
               return (
                 <CarouselItem key={service.id} className="pl-2 md:pl-3 flex-shrink-0 basis-[48%] md:basis-1/4">
-                  <div 
-                    onClick={() => handleServiceClick(service)}
+                <div 
+                  onClick={() => handleServiceClick(service)}
                     className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full"
                     style={{ maxWidth: '330px', margin: '0 auto' }}
-                  >
-                    {/* Image Section */}
+                >
+                  {/* Image Section */}
                     <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
-                      <img
-                        src={service.image}
-                        alt={service.description}
+                    <img
+                      src={service.image}
+                      alt={service.description}
                         className="w-full h-full object-cover object-center"
                         style={{ minWidth: '100%', minHeight: '100%' }}
-                      />
+                    />
                       
                       {/* Heart Icon - Top Right */}
                       <button
@@ -698,16 +698,16 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                           className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
                         />
                       </button>
-                    </div>
+                  </div>
 
-                    {/* Content Section */}
+                  {/* Content Section */}
                     <div className="p-3 md:p-4 flex flex-col flex-1">
                       {/* Title/Description */}
                       <h3 className="font-['Poppins',sans-serif] text-[#2c353f] mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                         {service.description}
-                      </h3>
+                        </h3>
 
-                      {/* Star Rating */}
+                    {/* Star Rating */}
                       <div className="flex items-center gap-1 mb-2 md:mb-2.5">
                         {service.reviewCount > 0 ? (
                           <>
@@ -715,25 +715,25 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                               {service.rating.toFixed(1)}
                             </span>
                             <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
                                   className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
                                     star <= Math.floor(service.rating)
                                       ? "fill-[#FFB800] text-[#FFB800]"
                                       : star - 0.5 <= service.rating
                                       ? "fill-[#FFB800] text-[#FFB800] opacity-50"
-                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                  }`}
-                                />
-                              ))}
+                              : "fill-[#E5E5E5] text-[#E5E5E5]"
+                          }`}
+                        />
+                      ))}
                             </div>
                             <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
                               ({service.reviewCount})
-                            </span>
+                      </span>
                           </>
                         ) : null}
-                      </div>
+                    </div>
 
                       {/* Price Section */}
                       <div className="mb-2 md:mb-2.5">
@@ -754,14 +754,14 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                               <>
                                 <div className="flex items-baseline gap-2">
                                   <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
-                                    {service.originalPrice || service.price}
+                          {service.originalPrice || service.price}
                                   </span>
                                   {service.originalPrice && (
                                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
                                       Was: {service.price}
                                     </span>
                                   )}
-                                </div>
+                        </div>
                                 {/* Discount and Limited Time Offer - Below Price */}
                                 {service.originalPrice && (
                                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -770,17 +770,17 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                                       style={{ backgroundColor: '#CC0C39' }}
                                     >
                                       {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                                    </span>
+                            </span>
                                     <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
                                       Limited Time Offer
-                                    </span>
-                                  </div>
+                              </span>
+                            </div>
                                 )}
                               </>
                             );
                           }
                         })()}
-                      </div>
+                          </div>
 
                       {/* Category Badge - Below Price */}
                       {(() => {
@@ -810,9 +810,9 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                           >
                             #1 Best Seller
                           </span>
-                        </div>
+                      </div>
                       )}
-
+                      
                       {/* New Listing - Only for first card (service.id === 1) */}
                       {service.id === 1 && (
                         <div className="mb-2 md:mb-2.5">
@@ -827,8 +827,8 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                         <div className="mb-3">
                           <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                             {categoryTag}
-                          </span>
-                        </div>
+                            </span>
+                          </div>
                       )}
 
                       {/* Provider Info - Pushed to bottom */}
@@ -864,13 +864,13 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                                   <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                                     <circle cx="12" cy="12" r="10" fill="#1877F2"/>
                                     <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
+                            </svg>
                                 </div>
                                 <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
                                   Verified
-                                </span>
-                              </div>
-                            )}
+                            </span>
+                          </div>
+                        )}
                           </div>
                           
                           {/* Second Row: Location info */}
@@ -880,23 +880,23 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                               {service.townCity || "Location not available"}
                             </p>
                           </div>
-                        </div>
                       </div>
+                    </div>
 
                       {/* Bottom Info */}
                       <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
                         <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
                         <span className="text-[#999]">Available</span>
-                      </div>
                     </div>
                   </div>
-                </CarouselItem>
+                </div>
+            </CarouselItem>
               );
             })}
-          </CarouselContent>
-          <CarouselPrevious className="hidden md:flex -left-4 bg-white hover:bg-[#FFF5EB] border-2 border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F]" />
-          <CarouselNext className="hidden md:flex -right-4 bg-white hover:bg-[#FFF5EB] border-2 border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F]" />
-        </Carousel>
+        </CarouselContent>
+        <CarouselPrevious className="hidden md:flex -left-4 bg-white hover:bg-[#FFF5EB] border-2 border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F]" />
+        <CarouselNext className="hidden md:flex -right-4 bg-white hover:bg-[#FFF5EB] border-2 border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F]" />
+      </Carousel>
       </div>
     </div>
   );
@@ -930,86 +930,86 @@ export default function FeaturedServices() {
             })();
             
             return {
-              id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
-              _id: s._id,
-              slug: s.slug,
-              image: s.images?.[0] || s.portfolioImages?.[0] || "",
-              providerName: typeof s.professional === 'object' 
-                ? `${s.professional.firstName} ${s.professional.lastName}` 
-                : "",
-              tradingName: typeof s.professional === 'object' 
-                ? s.professional.tradingName || ""
-                : "",
-              providerImage: typeof s.professional === 'object' 
-                ? s.professional.avatar || ""
-                : "",
-              providerRating: typeof s.professional === 'object' 
-                ? s.professional.rating || 0
-                : 0,
-              providerReviewCount: typeof s.professional === 'object' 
-                ? s.professional.reviewCount || 0
-                : 0,
-              providerIsVerified: (() => {
-                if (typeof s.professional !== 'object') {
-                  return false;
-                }
-                
-                return s.professional.isVerified || false;
-              })(),
-              description: s.title || "",
-              category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
-                ? s.serviceCategory.sector.name || ""
-                : "",
+            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            _id: s._id,
+            slug: s.slug,
+            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            providerName: typeof s.professional === 'object' 
+              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              : "",
+            tradingName: typeof s.professional === 'object' 
+              ? s.professional.tradingName || ""
+              : "",
+            providerImage: typeof s.professional === 'object' 
+              ? s.professional.avatar || ""
+              : "",
+            providerRating: typeof s.professional === 'object' 
+              ? s.professional.rating || 0
+              : 0,
+            providerReviewCount: typeof s.professional === 'object' 
+              ? s.professional.reviewCount || 0
+              : 0,
+            providerIsVerified: (() => {
+              if (typeof s.professional !== 'object') {
+                return false;
+              }
+              
+              return s.professional.isVerified || false;
+            })(),
+            description: s.title || "",
+            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+              ? s.serviceCategory.sector.name || ""
+              : "",
               subcategory: typeof s.serviceCategory === 'object' && s.serviceCategory
-                ? s.serviceCategory.name || ""
-                : "",
+              ? s.serviceCategory.name || ""
+              : "",
               serviceCategory: s.serviceCategory, // Keep original serviceCategory object for debugging
-              detailedSubcategory: typeof s.serviceSubCategory === 'object'
-                ? s.serviceSubCategory.name || ""
-                : undefined,
-              rating: s.rating || 0,
-              reviewCount: s.reviewCount || 0,
-              completedTasks: s.completedTasks || 0,
-              price: `£${s.price?.toFixed(2) || '0.00'}`,
-              // Only treat originalPrice as active discount if it is set and still within its valid date range
-              originalPrice: (s.originalPrice && (
-                (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
-                (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
-              ))
-                ? `£${s.originalPrice.toFixed(2)}`
-                : undefined,
-              priceUnit: s.priceUnit || "fixed",
-              badges: s.badges || [],
-              deliveryType: s.deliveryType || "standard",
-              postcode: s.postcode || "",
-              location: s.location || "",
+            detailedSubcategory: typeof s.serviceSubCategory === 'object'
+              ? s.serviceSubCategory.name || ""
+              : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            // Only treat originalPrice as active discount if it is set and still within its valid date range
+            originalPrice: (s.originalPrice && (
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+            ))
+              ? `£${s.originalPrice.toFixed(2)}`
+              : undefined,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
               townCity: townCityValue,
-              latitude: s.latitude,
-              longitude: s.longitude,
-              highlights: s.highlights || [],
-              addons: s.addons?.map((a: any) => ({
-                id: a.id || a._id,
-                name: a.name,
-                description: a.description || "",
-                price: a.price,
-              })) || [],
-              idealFor: s.idealFor || [],
-              specialization: "",
-              packages: s.packages?.map((p: any) => ({
-                id: p.id || p._id,
-                name: p.name,
-                price: `£${p.price?.toFixed(2) || '0.00'}`,
-                originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
-                priceUnit: "fixed",
-                description: p.description || "",
-                highlights: [],
-                features: p.features || [],
-                deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
-                revisions: p.revisions || "",
-              })) || [],
-              skills: s.skills || [],
-              responseTime: s.responseTime || "",
-              portfolioImages: s.portfolioImages || [],
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
             };
           });
           

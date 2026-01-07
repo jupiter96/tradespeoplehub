@@ -79,15 +79,26 @@ router.get('/wallet/balance', authenticateToken, async (req, res) => {
 router.get('/wallet/transactions', authenticateToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
+    const status = req.query.status;
+    const type = req.query.type;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
     
-    const transactions = await Wallet.find({ userId: req.user.id })
-      .sort({ createdAt: -1 })
+    const query = { userId: req.user.id };
+    if (status) query.status = status;
+    if (type) query.type = type;
+    
+    const sort = {};
+    sort[sortBy] = sortOrder;
+    
+    const transactions = await Wallet.find(query)
+      .sort(sort)
       .limit(limit)
       .skip(skip);
     
-    const total = await Wallet.countDocuments({ userId: req.user.id });
+    const total = await Wallet.countDocuments(query);
     
     res.json({
       transactions,
@@ -615,20 +626,68 @@ router.get('/admin/wallet/transactions', authenticateToken, requireRole(['admin'
     const status = req.query.status;
     const type = req.query.type;
     const userId = req.query.userId;
+    const search = req.query.search; // Email search
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
     
     const query = {};
     if (status) query.status = status;
     if (type) query.type = type;
     if (userId) query.userId = userId;
     
-    const transactions = await Wallet.find(query)
+    const sort = {};
+    sort[sortBy] = sortOrder;
+    
+    let transactionsQuery = Wallet.find(query);
+    
+    // If search is provided, find users by email first
+    if (search) {
+      const users = await User.find({
+        email: { $regex: search, $options: 'i' }
+      }).select('_id');
+      const userIds = users.map(u => u._id);
+      if (userIds.length > 0) {
+        query.userId = { $in: userIds };
+      } else {
+        // No users found, return empty result
+        return res.json({
+          transactions: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            pages: 0,
+          },
+        });
+      }
+      transactionsQuery = Wallet.find(query);
+    }
+    
+    const transactions = await transactionsQuery
       .populate('userId', 'firstName lastName email')
       .populate('processedBy', 'firstName lastName email')
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .limit(limit)
       .skip(skip);
     
-    const total = await Wallet.countDocuments(query);
+    // Re-count with search filter if applicable
+    let countQuery = {};
+    if (status) countQuery.status = status;
+    if (type) countQuery.type = type;
+    if (userId) countQuery.userId = userId;
+    if (search) {
+      const users = await User.find({
+        email: { $regex: search, $options: 'i' }
+      }).select('_id');
+      const userIds = users.map(u => u._id);
+      if (userIds.length > 0) {
+        countQuery.userId = { $in: userIds };
+      } else {
+        countQuery.userId = { $in: [] }; // Empty array to return 0
+      }
+    }
+    
+    const total = await Wallet.countDocuments(countQuery);
     
     res.json({
       transactions,

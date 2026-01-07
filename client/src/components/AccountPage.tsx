@@ -35,6 +35,8 @@ import {
   Search,
   Filter,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Eye,
   Building2,
   Banknote,
@@ -67,6 +69,7 @@ import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount, ProfileUpdatePayload } from "./AccountContext";
 import WalletFundModal from "./WalletFundModal";
+import PaymentMethodModal from "./PaymentMethodModal";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 import { useOrders } from "./OrdersContext";
@@ -2574,11 +2577,18 @@ function BillingSection() {
   const [showFundModal, setShowFundModal] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (billingTab === "wallet") {
       fetchWalletBalance();
       fetchTransactions();
+    } else if (billingTab === "card") {
+      fetchPaymentMethods();
+      fetchPublishableKey();
     }
   }, [billingTab]);
 
@@ -2613,6 +2623,97 @@ function BillingSection() {
     } finally {
       setLoadingTransactions(false);
     }
+  };
+
+  const fetchPaymentMethods = async () => {
+    setLoadingPaymentMethods(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/payment-methods`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentMethods(data.paymentMethods || []);
+      }
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  const fetchPublishableKey = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/payment/publishable-key`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPublishableKey(data.publishableKey);
+      }
+    } catch (error) {
+      console.error("Error fetching publishable key:", error);
+    }
+  };
+
+  const handleSetDefault = async (paymentMethodId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/payment-methods/set-default`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ paymentMethodId }),
+      });
+
+      if (response.ok) {
+        toast.success("Primary payment method updated");
+        await fetchPaymentMethods();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to set default payment method");
+      }
+    } catch (error) {
+      toast.error("Failed to set default payment method");
+    }
+  };
+
+  const handleDeleteCard = async (paymentMethodId: string) => {
+    if (!confirm("Are you sure you want to delete this payment method?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/payment-methods/${paymentMethodId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast.success("Payment method deleted");
+        await fetchPaymentMethods();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete payment method");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete payment method");
+    }
+  };
+
+  const handleAddCardSuccess = async () => {
+    await fetchPaymentMethods();
+    setShowAddCardModal(false);
+  };
+
+  const getCardBrandIcon = (brand: string) => {
+    const brandLower = brand.toLowerCase();
+    if (brandLower.includes('visa')) return 'VISA';
+    if (brandLower.includes('mastercard')) return 'MC';
+    if (brandLower.includes('amex')) return 'AMEX';
+    if (brandLower.includes('discover')) return 'DISC';
+    return brand.toUpperCase().slice(0, 4);
   };
 
   const handleFundSuccess = async () => {
@@ -2743,19 +2844,466 @@ function BillingSection() {
 
       {/* Payment Cards Content */}
       {billingTab === "card" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+              Payment Methods
+            </h3>
+            <Button 
+              onClick={() => setShowAddCardModal(true)}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Add New Card
+            </Button>
+          </div>
+
+          {loadingPaymentMethods ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
+            </div>
+          ) : paymentMethods.length === 0 ? (
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
+              <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                No payment cards added yet
+              </p>
+              <Button 
+                onClick={() => setShowAddCardModal(true)}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Add Your First Card
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {paymentMethods.map((method) => (
+                <div
+                  key={method.paymentMethodId}
+                  className="bg-white border-2 rounded-xl p-6 hover:border-[#FE8A0F]/50 transition-all"
+                  style={{
+                    borderColor: method.isDefault ? "#FE8A0F" : "#e5e7eb",
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#FE8A0F] to-[#FFB347] rounded-xl flex items-center justify-center">
+                        <CreditCard className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
+                            {getCardBrandIcon(method.card.brand)} •••• {method.card.last4}
+                          </span>
+                          {method.isDefault && (
+                            <span className="px-3 py-1 bg-[#FE8A0F] text-white text-[11px] rounded-full font-['Poppins',sans-serif] font-medium">
+                              Primary
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          Expires {String(method.card.expMonth).padStart(2, '0')}/{method.card.expYear}
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                          Added {new Date(method.createdAt).toLocaleDateString("en-GB", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!method.isDefault && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSetDefault(method.paymentMethodId)}
+                          className="font-['Poppins',sans-serif] text-[12px]"
+                        >
+                          Set as Primary
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCard(method.paymentMethodId)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Card Modal */}
+      {showAddCardModal && publishableKey && (
+        <PaymentMethodModal
+          isOpen={showAddCardModal}
+          onClose={() => setShowAddCardModal(false)}
+          onSuccess={handleAddCardSuccess}
+          publishableKey={publishableKey}
+        />
+      )}
+
+      {/* Invoice Content */}
+      {billingTab === "invoice" && (
         <div className="space-y-4">
-          <Button className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] w-full md:w-auto">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Add New Card
-          </Button>
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-            <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              No payment cards added yet
+              No invoices yet
             </p>
           </div>
         </div>
       )}
+
+      {/* Transaction History Content */}
+      {billingTab === "history" && (
+        <TransactionHistoryTab />
+      )}
+    </div>
+  );
+}
+
+// Transaction History Tab Component
+function TransactionHistoryTab() {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [filters, setFilters] = useState({
+    status: "all",
+    type: "all",
+  });
+  const [sortField, setSortField] = useState<"createdAt" | "amount" | "type" | "status">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [page, filters, sortField, sortOrder]);
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "50",
+        sortBy: sortField,
+        sortOrder: sortOrder,
+      });
+      
+      if (filters.status && filters.status !== "all") params.append("status", filters.status);
+      if (filters.type && filters.type !== "all") params.append("type", filters.type);
+
+      const response = await fetch(`${API_BASE_URL}/api/wallet/transactions?${params}`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+        setTotalPages(data.pagination?.pages || 1);
+        setTotal(data.pagination?.total || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSort = (field: "createdAt" | "amount" | "type" | "status") => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("desc");
+    }
+    setPage(1);
+  };
+
+  const getSortIcon = (field: "createdAt" | "amount" | "type" | "status") => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 ml-1 text-gray-400" />;
+    }
+    return sortOrder === "asc" ? (
+      <ArrowUp className="w-3 h-3 ml-1 text-[#FE8A0F]" />
+    ) : (
+      <ArrowDown className="w-3 h-3 ml-1 text-[#FE8A0F]" />
+    );
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case "failed":
+        return <XCircle className="w-4 h-4 text-red-600" />;
+      case "pending":
+        return <Clock className="w-4 h-4 text-yellow-600" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-600" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "failed":
+        return "bg-red-100 text-red-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+          Filters
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="status-filter" className="font-['Poppins',sans-serif]">
+              Status
+            </Label>
+            <Select
+              value={filters.status || "all"}
+              onValueChange={(value) => {
+                setFilters({ ...filters, status: value });
+                setPage(1);
+              }}
+            >
+              <SelectTrigger id="status-filter" className="font-['Poppins',sans-serif]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="type-filter" className="font-['Poppins',sans-serif]">
+              Type
+            </Label>
+            <Select
+              value={filters.type || "all"}
+              onValueChange={(value) => {
+                setFilters({ ...filters, type: value });
+                setPage(1);
+              }}
+            >
+              <SelectTrigger id="type-filter" className="font-['Poppins',sans-serif]">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="deposit">Deposit</SelectItem>
+                <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                <SelectItem value="payment">Payment</SelectItem>
+                <SelectItem value="refund">Refund</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-end">
+            <Button
+              onClick={() => {
+                setFilters({ status: "all", type: "all" });
+                setPage(1);
+              }}
+              variant="outline"
+              className="w-full font-['Poppins',sans-serif]"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Transactions Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                Transaction History
+              </h3>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
+                Total: {total} transactions
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                No transactions found
+              </p>
+            </div>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-gray-200 bg-gray-50">
+                  <th 
+                    className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("createdAt")}
+                  >
+                    <div className="flex items-center">
+                      Date & Time
+                      {getSortIcon("createdAt")}
+                    </div>
+                  </th>
+                  <th 
+                    className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("type")}
+                  >
+                    <div className="flex items-center">
+                      Type
+                      {getSortIcon("type")}
+                    </div>
+                  </th>
+                  <th 
+                    className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("amount")}
+                  >
+                    <div className="flex items-center">
+                      Amount
+                      {getSortIcon("amount")}
+                    </div>
+                  </th>
+                  <th className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                    Balance
+                  </th>
+                  <th 
+                    className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center">
+                      Status
+                      {getSortIcon("status")}
+                    </div>
+                  </th>
+                  <th className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                    Method
+                  </th>
+                  <th className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                    Description
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((transaction) => (
+                  <tr key={transaction._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-nowrap">
+                      {formatDate(transaction.createdAt)}
+                    </td>
+                    <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      <span className="capitalize font-medium">{transaction.type}</span>
+                    </td>
+                    <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] whitespace-nowrap">
+                      <span
+                        className={`font-semibold ${
+                          transaction.type === "deposit" || transaction.type === "refund"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {transaction.type === "deposit" || transaction.type === "refund" ? "+" : "-"}
+                        £{transaction.amount.toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-nowrap">
+                      £{transaction.balance?.toFixed(2) || "0.00"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-['Poppins',sans-serif] ${getStatusColor(
+                          transaction.status
+                        )}`}
+                      >
+                        {getStatusIcon(transaction.status)}
+                        <span className="capitalize">{transaction.status}</span>
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      <span className="capitalize">
+                        {transaction.paymentMethod?.replace("_", " ") || "N/A"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] max-w-xs">
+                      <div className="truncate" title={transaction.description || "N/A"}>
+                        {transaction.description || "N/A"}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-6 border-t border-gray-200">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+              Showing page {page} of {totalPages} ({total} total transactions)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || loading}
+                variant="outline"
+                className="font-['Poppins',sans-serif]"
+              >
+                Previous
+              </Button>
+              <Button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || loading}
+                variant="outline"
+                className="font-['Poppins',sans-serif]"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

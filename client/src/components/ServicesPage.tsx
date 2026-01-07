@@ -27,7 +27,7 @@ import {
   Users, 
   Camera, 
   Wrench, 
-  BookOpen,
+  BookOpen, 
   Medal,
   MapPin, 
   Car, 
@@ -2025,7 +2025,7 @@ export default function ServicesPage() {
                           className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
                         />
                       </button>
-                    </div>
+                              </div>
 
                     {/* Content Section */}
                     <div className="p-3 md:p-4 flex flex-col flex-1">
@@ -2036,28 +2036,28 @@ export default function ServicesPage() {
 
                       {/* Star Rating */}
                       <div className="flex items-center gap-1 mb-2 md:mb-2.5">
-                        {service.reviewCount > 0 ? (
+                                {service.reviewCount > 0 ? (
                           <>
                             <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
                               {service.rating.toFixed(1)}
                             </span>
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
+                                    <div className="flex items-center gap-0.5">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                          key={star}
                                   className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
-                                    star <= Math.floor(service.rating)
+                                            star <= Math.floor(service.rating)
                                       ? "fill-[#FFB800] text-[#FFB800]"
-                                      : star - 0.5 <= service.rating
+                                              : star - 0.5 <= service.rating
                                       ? "fill-[#FFB800] text-[#FFB800] opacity-50"
-                                      : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                  }`}
-                                />
-                              ))}
-                            </div>
+                                              : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
                             <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
                               ({service.reviewCount})
-                            </span>
+                                    </span>
                           </>
                         ) : null}
                       </div>
@@ -2102,8 +2102,8 @@ export default function ServicesPage() {
                               <div className="flex items-baseline gap-2">
                                 <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
                                   {priceRange.formatted}
-                                </span>
-                              </div>
+                                    </span>
+                                  </div>
                             );
                           } else {
                             // Show regular price when no packages
@@ -2117,8 +2117,8 @@ export default function ServicesPage() {
                                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
                                       Was: {service.price}
                                     </span>
-                                  )}
-                                </div>
+                                )}
+                                    </div>
                                 {/* Discount and Limited Time Offer - Below Price */}
                                 {service.originalPrice && (
                                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -2131,13 +2131,13 @@ export default function ServicesPage() {
                                     <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
                                       Limited Time Offer
                                     </span>
-                                  </div>
+                            </div>
                                 )}
                               </>
                             );
                           }
                         })()}
-                      </div>
+                          </div>
 
                       {/* Category Badge - Below Price */}
                       {(() => {
@@ -2146,7 +2146,7 @@ export default function ServicesPage() {
                           <div className="mb-2 md:mb-2.5">
                             <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                               {categoryName}
-                            </span>
+                                </span>
                           </div>
                         ) : null;
                       })()}
@@ -2166,7 +2166,7 @@ export default function ServicesPage() {
                             className="text-white text-[10px] md:text-[11px] font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1"
                           >
                             #1 Best Seller
-                          </span>
+                                </span>
                         </div>
                       )}
 
@@ -2184,8 +2184,8 @@ export default function ServicesPage() {
                         <div className="mb-3">
                           <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                             {categoryTag}
-                          </span>
-                        </div>
+                              </span>
+                            </div>
                       )}
 
                       {/* Provider Info - Pushed to bottom */}
@@ -2213,7 +2213,7 @@ export default function ServicesPage() {
                                 <span className="hidden md:inline font-['Poppins',sans-serif] text-[10px] font-semibold whitespace-nowrap">
                                   Top Rated
                                 </span>
-                              </div>
+                                </div>
                             )}
                             {!topRated && verified && (
                               <div className="inline-flex items-center gap-0.5 flex-shrink-0">
@@ -2226,9 +2226,9 @@ export default function ServicesPage() {
                                 <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
                                   Verified
                                 </span>
-                              </div>
-                            )}
-                          </div>
+                                </div>
+                              )}
+                            </div>
                           
                           {/* Second Row: Location info */}
                           <div className="flex items-center gap-1">
@@ -2276,16 +2276,16 @@ export default function ServicesPage() {
                             className={`w-3.5 h-3.5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
                           />
                         </button>
-                      </div>
+                          </div>
 
                       {/* Content Section - Right */}
                       <div className="flex-1 p-3 md:p-4 flex flex-col min-w-0">
                         {/* Title/Description */}
                         <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1.5 line-clamp-2" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
-                          {service.description}
+                            {service.description}
                         </h3>
 
-                        {/* Star Rating */}
+                          {/* Star Rating */}
                         <div className="flex items-center gap-1 mb-2">
                           {service.reviewCount > 0 ? (
                             <>
@@ -2293,38 +2293,38 @@ export default function ServicesPage() {
                                 {service.rating.toFixed(1)}
                               </span>
                               <div className="flex items-center gap-0.5">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star
-                                    key={star}
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
                                     className={`w-3 h-3 md:w-3.5 md:h-3.5 ${
                                       star <= Math.floor(service.rating)
                                         ? "fill-[#FFB800] text-[#FFB800]"
                                         : star - 0.5 <= service.rating
                                         ? "fill-[#FFB800] text-[#FFB800] opacity-50"
-                                        : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                    }`}
-                                  />
-                                ))}
+                                    : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                }`}
+                              />
+                            ))}
                               </div>
                               <span className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666]">
                                 ({service.reviewCount})
-                              </span>
+                            </span>
                             </>
                           ) : null}
-                        </div>
+                          </div>
 
-                        {/* Price Section */}
+                            {/* Price Section */}
                         <div className="mb-2">
                           <div className="flex items-baseline gap-2">
                             <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
-                              {service.originalPrice || service.price}
-                            </span>
+                                {service.originalPrice || service.price}
+                                  </span>
                             {service.originalPrice && (
                               <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#999] line-through">
                                 Was: {service.price}
-                              </span>
+                                    </span>
                             )}
-                          </div>
+                                  </div>
                           {/* Discount Badge */}
                           {service.originalPrice && (
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -2334,10 +2334,10 @@ export default function ServicesPage() {
                               >
                                 {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
                               </span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-
+                            
                         {/* Category Badge - Below Price */}
                         {(() => {
                           const categoryName = service.serviceCategory?.name || null;
@@ -2345,8 +2345,8 @@ export default function ServicesPage() {
                             <div className="mb-2">
                               <span className="inline-block bg-gray-100 text-[#2c353f] text-[9px] md:text-[10px] px-2 py-0.5 rounded-md">
                                 {categoryName}
-                              </span>
-                            </div>
+                                  </span>
+                                </div>
                           ) : null;
                         })()}
 
@@ -2380,7 +2380,7 @@ export default function ServicesPage() {
                                     <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                                       <circle cx="12" cy="12" r="10" fill="#1877F2"/>
                                       <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                    </svg>
+                                  </svg>
                                   </div>
                                   <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] text-[#1877F2] font-medium">
                                     Verified
@@ -2393,7 +2393,7 @@ export default function ServicesPage() {
                               <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
                                 {service.townCity || "Location not available"}
                               </p>
-                            </div>
+                          </div>
                           </div>
                         </div>
 
@@ -2401,8 +2401,8 @@ export default function ServicesPage() {
                         <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
                           <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
                           <span className="text-[#999]">Available</span>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     </div>
                   );
                 })}

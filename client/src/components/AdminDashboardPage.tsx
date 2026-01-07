@@ -330,6 +330,8 @@ export default function AdminDashboardPage() {
         return <AdminSectorsPage />;
       case "payment-settings":
         return <AdminPaymentSettingsPage />;
+      case "transaction-history":
+        return <AdminTransactionHistoryPage />;
       default:
         return (
           <AdminGenericPage
