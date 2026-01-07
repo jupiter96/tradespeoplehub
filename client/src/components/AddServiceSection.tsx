@@ -2985,14 +2985,14 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
       const method = isUpdatingExisting ? "PUT" : "POST";
       
-      console.log('[Service Publish] Publishing service:', {
-        isEditMode,
-        isUpdatingExisting,
-        draftId,
-        method,
-        url,
-        userId: userInfo?.id
-      });
+      // console.log('[Service Publish] Publishing service:', {
+      //   isEditMode,
+      //   isUpdatingExisting,
+      //   draftId,
+      //   method,
+      //   url,
+      //   userId: userInfo?.id
+      // });
       
       const response = await fetch(url, {
         method,
@@ -3019,9 +3019,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       const updatedService = result.service || result;
       
       console.log('[Service Publish] Initial Service Status:', initialService?.status);
-      console.log('[Service Publish] Updated Service Status:', updatedService?.status);
-      console.log('[Service Publish] Is Edit Mode:', isEditMode);
-      console.log('[Service Publish] Draft ID:', draftId);
+      // console.log('[Service Publish] Updated Service Status:', updatedService?.status);
+      // console.log('[Service Publish] Is Edit Mode:', isEditMode);
+      // console.log('[Service Publish] Draft ID:', draftId);
       
       // Show appropriate message based on service status
       // If it's a draft being published or a new service, show approval message

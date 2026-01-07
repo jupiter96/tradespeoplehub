@@ -162,19 +162,6 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
             const verified = isVerified(service);
             const topRated = hasTopRated(service);
             
-            // STEP 6: Log during Grid View rendering
-            if (index === 0) {
-              console.log('[FeaturedServices] STEP 6 - Grid View Rendering:', {
-                sectionId,
-                serviceId: service._id,
-                townCity: service.townCity,
-                townCityType: typeof service.townCity,
-                serviceCategory: service.serviceCategory,
-                hasTownCity: 'townCity' in service,
-                fullService: service
-              });
-            }
-            
             // Truncate trading name to 10 characters
             const displayTradingName = service.tradingName.length > 10 
               ? service.tradingName.substring(0, 10) + '...' 
@@ -272,7 +259,6 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Category Badge - Below Price */}
                   {(() => {
                     const categoryName = service.serviceCategory?.name || null;
-                    console.log('[FeaturedServices Grid] Category Badge Debug:',service);
                     return categoryName ? (
                       <div className="mb-2 md:mb-2.5">
                         <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
@@ -365,19 +351,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                         <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                          {(() => {
-                            // STEP 7: Log during location display in Grid View
-                            if (index === 0) {
-                              console.log('[FeaturedServices] STEP 7 - Grid View Location Display:', {
-                                serviceId: service._id,
-                                townCity: service.townCity,
-                                townCityType: typeof service.townCity,
-                                displayValue: service.townCity || "Location not available",
-                                willShowFallback: !service.townCity
-                              });
-                            }
-                            return service.townCity || "Location not available";
-                          })()}
+                          {service.townCity || "Location not available"}
                         </p>
                       </div>
                     </div>
@@ -406,19 +380,6 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
             const isLiked = likedServices.has(service.id);
             const verified = isVerified(service);
             const topRated = hasTopRated(service);
-            
-            // STEP 8: Log during List View rendering
-            if (index === 0) {
-              console.log('[FeaturedServices] STEP 8 - List View Rendering:', {
-                sectionId,
-                serviceId: service._id,
-                townCity: service.townCity,
-                townCityType: typeof service.townCity,
-                serviceCategory: service.serviceCategory,
-                hasTownCity: 'townCity' in service,
-                fullService: service
-              });
-            }
             
             // Truncate trading name to 10 characters
             const displayTradingName = service.tradingName.length > 10 
@@ -518,7 +479,6 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Category Badge - Below Price */}
                   {(() => {
                     const categoryName = service.serviceCategory?.name || null;
-                    console.log('[FeaturedServices List] Category Badge Debug:',service.serviceCategory?.name);
                     return categoryName ? (
                       <div className="mb-2">
                         <span className="inline-block bg-gray-100 text-[#2c353f] text-[9px] md:text-[10px] px-2 py-0.5 rounded-md">
@@ -569,19 +529,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                         <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                          {(() => {
-                            // STEP 9: Log during location display in List View
-                            if (index === 0) {
-                              console.log('[FeaturedServices] STEP 9 - List View Location Display:', {
-                                serviceId: service._id,
-                                townCity: service.townCity,
-                                townCityType: typeof service.townCity,
-                                displayValue: service.townCity || "Location not available",
-                                willShowFallback: !service.townCity
-                              });
-                            }
-                            return service.townCity || "Location not available";
-                          })()}
+                          {service.townCity || "Location not available"}
                         </p>
                       </div>
                     </div>
@@ -651,19 +599,6 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
               const isLiked = likedServices.has(service.id);
               const verified = isVerified(service);
               const topRated = hasTopRated(service);
-              
-              // STEP 10: Log during Carousel rendering
-              if (index === 0) {
-                console.log('[FeaturedServices] STEP 10 - Carousel Rendering:', {
-                  sectionId,
-                  serviceId: service._id,
-                  townCity: service.townCity,
-                  townCityType: typeof service.townCity,
-                  serviceCategory: service.serviceCategory,
-                  hasTownCity: 'townCity' in service,
-                  fullService: service
-                });
-              }
               
               // Truncate trading name to 10 characters
               const displayTradingName = service.tradingName.length > 10 
@@ -763,7 +698,6 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                       {/* Category Badge - Below Price */}
                       {(() => {
                         const categoryName = service.serviceCategory?.name || null;
-                        console.log('[FeaturedServices Carousel] Category Badge Debug:',service.serviceCategory?.name);
                         return categoryName ? (
                           <div className="mb-2 md:mb-2.5">
                             <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
@@ -856,19 +790,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                           <div className="flex items-center gap-1">
                             <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                             <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                              {(() => {
-                                // STEP 11: Log during location display in Carousel
-                                if (index === 0) {
-                                  console.log('[FeaturedServices] STEP 11 - Carousel Location Display:', {
-                                    serviceId: service._id,
-                                    townCity: service.townCity,
-                                    townCityType: typeof service.townCity,
-                                    displayValue: service.townCity || "Location not available",
-                                    willShowFallback: !service.townCity
-                                  });
-                                }
-                                return service.townCity || "Location not available";
-                              })()}
+                              {service.townCity || "Location not available"}
                             </p>
                           </div>
                         </div>
@@ -911,25 +833,7 @@ export default function FeaturedServices() {
         if (response.ok) {
           const data = await response.json();
           
-          // STEP 1: Log raw API response
-          console.log('[FeaturedServices] STEP 1 - Raw API Response:', {
-            totalServices: data.services?.length || 0,
-            firstService: data.services?.[0] ? {
-              _id: data.services[0]._id,
-              professional: data.services[0].professional,
-              professionalType: typeof data.services[0].professional,
-              professionalIsObject: typeof data.services[0].professional === 'object',
-              professionalIsNull: data.services[0].professional === null,
-              professionalKeys: data.services[0].professional ? Object.keys(data.services[0].professional) : [],
-              townCity: data.services[0].professional?.townCity,
-              townCityType: typeof data.services[0].professional?.townCity,
-              townCityValue: data.services[0].professional?.townCity,
-              fullProfessional: data.services[0].professional
-            } : null
-          });
-          
           const transformed = (data.services || []).map((s: any) => {
-            // STEP 2: Log each service during transformation
             const townCityValue = (() => {
               if (s.professional && typeof s.professional === 'object' && s.professional !== null) {
                 const value = s.professional.townCity;
@@ -937,18 +841,6 @@ export default function FeaturedServices() {
               }
               return "";
             })();
-            
-            // Log first service transformation details
-            if (data.services.indexOf(s) === 0) {
-              console.log('[FeaturedServices] STEP 2 - During Transformation:', {
-                serviceId: s._id,
-                professional: s.professional,
-                professionalTownCity: s.professional?.townCity,
-                extractedTownCity: townCityValue,
-                professionalType: typeof s.professional,
-                professionalKeys: s.professional ? Object.keys(s.professional) : []
-              });
-            }
             
             return {
               id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
@@ -1034,20 +926,6 @@ export default function FeaturedServices() {
             };
           });
           
-          // STEP 3: Log after transformation
-          if (transformed.length > 0) {
-            const sampleTransformed = transformed[0];
-            console.log('[FeaturedServices] STEP 3 - After Transformation:', {
-              serviceId: sampleTransformed._id,
-              townCity: sampleTransformed.townCity,
-              townCityType: typeof sampleTransformed.townCity,
-              hasTownCity: 'townCity' in sampleTransformed,
-              allLocationKeys: Object.keys(sampleTransformed).filter(k => k.includes('town') || k.includes('location') || k.includes('city')),
-              serviceCategory: sampleTransformed.serviceCategory,
-              fullService: sampleTransformed
-            });
-          }
-          
           setAllServices(transformed);
         } else {
           setAllServices([]);
@@ -1103,21 +981,6 @@ export default function FeaturedServices() {
       packages: s.packages,
     }));
     
-    // STEP 4: Log after featuredServices creation
-    if (mapped.length > 0) {
-      console.log('[FeaturedServices] STEP 4 - After Featured Services Creation:', {
-        count: mapped.length,
-        firstService: {
-          serviceId: mapped[0]._id,
-          townCity: mapped[0].townCity,
-          townCityType: typeof mapped[0].townCity,
-          serviceCategory: mapped[0].serviceCategory,
-          hasTownCity: 'townCity' in mapped[0],
-          fullService: mapped[0]
-        }
-      });
-    }
-    
     return mapped;
   }, [allServices]);
   // Get popular/best sellers services - sorted by actual sales/performance metrics
@@ -1165,21 +1028,6 @@ export default function FeaturedServices() {
       serviceCategory: s.serviceCategory,
       packages: s.packages,
     }));
-    
-    // STEP 5: Log after popularServices creation
-    if (mapped.length > 0) {
-      console.log('[FeaturedServices] STEP 5 - After Popular Services Creation:', {
-        count: mapped.length,
-        firstService: {
-          serviceId: mapped[0]._id,
-          townCity: mapped[0].townCity,
-          townCityType: typeof mapped[0].townCity,
-          serviceCategory: mapped[0].serviceCategory,
-          hasTownCity: 'townCity' in mapped[0],
-          fullService: mapped[0]
-        }
-      });
-    }
     
     return mapped;
   }, [allServices]);

@@ -2093,7 +2093,6 @@ export default function ServicesPage() {
                       {/* Category Badge - Below Price */}
                       {(() => {
                         const categoryName = service.serviceCategory?.name || null;
-                        console.log('[ServicesPage Grid] Category Badge Debug:',service.serviceCategory?.name);
                         return categoryName ? (
                           <div className="mb-2 md:mb-2.5">
                             <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
@@ -2293,7 +2292,6 @@ export default function ServicesPage() {
                         {/* Category Badge - Below Price */}
                         {(() => {
                           const categoryName = service.serviceCategory?.name || null;
-                          console.log('[ServicesPage List] Category Badge Debug:',service.serviceCategory?.name);
                           return categoryName ? (
                             <div className="mb-2">
                               <span className="inline-block bg-gray-100 text-[#2c353f] text-[9px] md:text-[10px] px-2 py-0.5 rounded-md">

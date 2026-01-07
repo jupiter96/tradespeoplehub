@@ -166,18 +166,6 @@ router.get('/public', async (req, res) => {
       if (service.professional && service.professional._id) {
         const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
         
-        // Debug: Log first service's professional data to check townCity
-        if (services.indexOf(service) === 0) {
-          console.log('[API /services/public] First service professional data:', {
-            serviceId: service._id,
-            professionalId: service.professional._id,
-            professionalKeys: Object.keys(service.professional),
-            townCity: service.professional.townCity,
-            townCityType: typeof service.professional.townCity,
-            professionalFull: service.professional
-          });
-        }
-        
         // Check if verification object exists
         if (!service.professional.verification) {
           return {
@@ -232,7 +220,6 @@ router.get('/public', async (req, res) => {
       totalCount: servicesWithStats.length,
     });
   } catch (error) {
-    console.error('Get public services error', error);
     return res.status(500).json({ error: error.message || 'Failed to fetch public services' });
   }
 });
@@ -406,18 +393,6 @@ router.get('/', async (req, res) => {
     const servicesWithStats = services.map(service => {
       if (service.professional && service.professional._id) {
         const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
-        
-        // Debug: Log first service's professional data to check townCity
-        if (services.indexOf(service) === 0) {
-          console.log('[API /services] First service professional data:', {
-            serviceId: service._id,
-            professionalId: service.professional._id,
-            professionalKeys: Object.keys(service.professional),
-            townCity: service.professional.townCity,
-            townCityType: typeof service.professional.townCity,
-            professionalFull: service.professional
-          });
-        }
         
         // Check if verification object exists
         if (!service.professional.verification) {
@@ -785,20 +760,16 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     }
 
     // Get professional info
-    console.log('[Service] Create - User ID:', req.user.id, 'Role:', req.user.role);
     const professional = await User.findById(req.user.id);
     if (!professional) {
-      console.log('[Service] Create - User not found:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
     if (professional.role !== 'professional') {
-      console.log('[Service] Create - User is not professional. Role:', professional.role, 'Email:', professional.email);
       return res.status(403).json({ error: 'Only professionals can create services. Your current role is: ' + professional.role });
     }
 
     // Check if user is blocked
     if (professional.isBlocked) {
-      console.log('[Service] Create - User is blocked:', professional.email);
       return res.status(403).json({ error: 'Your account has been blocked. You cannot create services.' });
     }
 
@@ -871,15 +842,12 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
 
     // Verify session and user
     if (!req.user || !req.user.id) {
-      console.log('[Service] Update - No user in request. Session may have expired.');
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
     // Verify ownership
     const serviceProfessionalId = getRefId(service.professional);
-    console.log('[Service] Update - Checking ownership. Service Professional ID:', serviceProfessionalId, 'Request User ID:', req.user.id, 'Service Status:', service.status);
     if (serviceProfessionalId !== req.user.id) {
-      console.log('[Service] Update - Ownership verification failed. Service belongs to:', serviceProfessionalId, 'but request from:', req.user.id);
       return res.status(403).json({ error: 'You can only update your own services' });
     }
 
@@ -1014,17 +982,11 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     // Store original status before update
     const originalStatus = service.status;
     
-    console.log('[Service Update] Original Status:', originalStatus);
-    console.log('[Service Update] Changed Fields:', changedFields);
-    console.log('[Service Update] Content Fields Changed:', contentFieldsChanged);
-    console.log('[Service Update] Is Draft Update:', isDraftUpdate);
-    
     // Update service
     Object.assign(service, updateData);
 
     // If admin requested modification and pro updates the service, send back to pending review
     if (originalStatus === 'required_modification') {
-      console.log('[Service Update] Status: required_modification -> pending');
       service.status = 'pending';
       service.modificationReason = null;
       service.reviewedBy = null;
@@ -1032,15 +994,10 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     }
     // If service was approved and content fields were changed, send back to pending for admin review
     else if (originalStatus === 'approved' && contentFieldsChanged && !isDraftUpdate) {
-      console.log('[Service Update] Status: approved -> pending (content changed)');
       service.status = 'pending';
       service.modificationReason = null;
       service.reviewedBy = null;
       service.reviewedAt = null;
-    }
-    // If only price/availability changed, keep approved status
-    else {
-      console.log('[Service Update] Status unchanged:', service.status);
     }
 
     await service.save();

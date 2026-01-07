@@ -40,7 +40,6 @@ const clearCache = (serviceCategoryId = null) => {
       }
     }
     keysToDelete.forEach(key => _cache.delete(key));
-    console.log(`Cleared ${keysToDelete.length} cache entries for serviceCategoryId: ${serviceCategoryId}`);
     
     // Always clear all cache to be safe - any update might affect nested data
     // This ensures no stale data is served
@@ -53,16 +52,13 @@ const clearCache = (serviceCategoryId = null) => {
           _cache.delete(key);
         }
       });
-      console.log(`Also cleared related cache entries`);
     } else {
       // If no specific matches, clear all cache to be safe
       _cache.clear();
-      console.log('No matching cache entries found, cleared all cache to be safe');
     }
   } else {
     // Clear all cache
     _cache.clear();
-    console.log('Cleared all cache entries');
   }
 };
 
@@ -748,19 +744,12 @@ router.put('/bulk/order', async (req, res) => {
 
 // Bulk update service attributes (Admin only) - MUST be before /:id route
 router.put('/bulk-update-attributes', async (req, res) => {
-  console.log('=== BULK UPDATE ATTRIBUTES REQUEST ===');
-  console.log('Request received at:', new Date().toISOString());
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
-  
   try {
     const { updates } = req.body;
 
     if (!updates || !Array.isArray(updates)) {
-      console.error('Invalid updates format - updates is not an array:', typeof updates, updates);
       return res.status(400).json({ error: 'Invalid updates format' });
     }
-
-    console.log(`Processing ${updates.length} update(s)`);
 
     // Validate all subCategoryIds before processing
     const invalidIds = updates.filter(({ subCategoryId }) => 
@@ -768,20 +757,14 @@ router.put('/bulk-update-attributes', async (req, res) => {
     );
     
     if (invalidIds.length > 0) {
-      console.error('Invalid subCategoryIds found:', invalidIds.map(u => u.subCategoryId));
       return res.status(400).json({ 
         error: 'Invalid subCategoryId(s) provided',
         invalidIds: invalidIds.map(u => u.subCategoryId)
       });
     }
 
-    console.log('All subCategoryIds are valid. Starting updates...');
-
     const updatePromises = updates.map(async ({ subCategoryId, serviceAttributes }) => {
       try {
-        console.log(`Updating subcategory ${subCategoryId} with ${serviceAttributes?.length || 0} attributes`);
-        console.log(`Attributes to save:`, serviceAttributes);
-        
         const result = await ServiceSubCategory.findByIdAndUpdate(
           subCategoryId,
           { serviceAttributes },
@@ -790,8 +773,6 @@ router.put('/bulk-update-attributes', async (req, res) => {
         if (!result) {
           throw new Error(`Service subcategory with id ${subCategoryId} not found`);
         }
-        console.log(`Successfully updated subcategory ${subCategoryId}`);
-        console.log(`Updated attributes:`, result.serviceAttributes);
         
         // Get serviceCategory for cache clearing (could be ObjectId or populated)
         const serviceCategoryId = result.serviceCategory 
@@ -804,48 +785,16 @@ router.put('/bulk-update-attributes', async (req, res) => {
           serviceCategory: serviceCategoryId
         };
       } catch (error) {
-        console.error(`Error updating subcategory ${subCategoryId}:`, error);
-        console.error(`Error details for ${subCategoryId}:`, {
-          message: error.message,
-          stack: error.stack,
-          code: error.code,
-          name: error.name,
-          errors: error.errors
-        });
-        
-        // Log validation errors in detail
-        if (error.name === 'ValidationError' && error.errors) {
-          console.error(`Validation errors for ${subCategoryId}:`);
-          Object.keys(error.errors).forEach(key => {
-            console.error(`  - ${key}: ${error.errors[key].message}`);
-          });
-        }
-        
         throw error;
       }
     });
 
     const results = await Promise.all(updatePromises);
-    console.log(`Successfully completed ${results.length} update(s)`);
     
     // Verify data was saved by reading back from database and clear cache
     const serviceCategoryIds = new Set();
     for (const result of results) {
       const verified = await ServiceSubCategory.findById(result._id).lean();
-      console.log(`Verified saved data for ${result._id}:`, {
-        serviceAttributes: verified?.serviceAttributes,
-        attributesCount: verified?.serviceAttributes?.length || 0
-      });
-      if (!verified) {
-        console.error(`ERROR: Could not verify saved data for ${result._id} - document not found!`);
-      } else if (JSON.stringify(verified.serviceAttributes) !== JSON.stringify(result.serviceAttributes)) {
-        console.error(`WARNING: Data mismatch for ${result._id}!`, {
-          saved: verified.serviceAttributes,
-          expected: result.serviceAttributes
-        });
-      } else {
-        console.log(`✓ Data verified successfully for ${result._id}`);
-      }
       
       // Collect serviceCategory IDs for cache clearing
       if (result.serviceCategory) {
@@ -857,43 +806,18 @@ router.put('/bulk-update-attributes', async (req, res) => {
     
     // Clear cache for affected service categories
     // Always clear all cache when attributes are updated to ensure no stale data
-    console.log('Clearing all cache after attribute update to ensure fresh data');
     clearCache();
     
     // Also clear specific service category caches if available
     serviceCategoryIds.forEach(id => {
-      console.log(`Also clearing cache for serviceCategoryId: ${id}`);
       clearCache(id);
     });
-    
-    console.log('=== BULK UPDATE ATTRIBUTES SUCCESS ===');
 
     return res.json({
       message: 'Service attributes updated successfully',
       updatedCount: results.length
     });
   } catch (error) {
-    console.error('=== BULK UPDATE ATTRIBUTES ERROR ===');
-    console.error('Error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      name: error.name,
-      errors: error.errors
-    });
-    
-    // Log validation errors in detail
-    if (error.name === 'ValidationError' && error.errors) {
-      console.error('Validation errors:');
-      Object.keys(error.errors).forEach(key => {
-        console.error(`  - ${key}: ${error.errors[key].message}`);
-      });
-    }
-    
-    console.error('Request body was:', JSON.stringify(req.body, null, 2));
-    console.error('=== END ERROR ===');
-    
     // Handle duplicate key error
     if (error.code === 11000) {
       return res.status(409).json({ 
@@ -935,18 +859,12 @@ router.put('/bulk-update-attributes', async (req, res) => {
 // Update service subcategory (Admin only)
 // NOTE: This route MUST come after all specific routes like /bulk-update-attributes
 router.put('/:id', async (req, res) => {
-  console.log('=== UPDATE SERVICE SUBCATEGORY REQUEST ===');
-  console.log('Request received at:', new Date().toISOString());
-  console.log('Route ID:', req.params.id);
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
-  
   try {
     const { id } = req.params;
     
     // Explicitly reject known route names that should not match this pattern
     const reservedRoutes = ['bulk-update-attributes', 'bulk', 'bulk/order'];
     if (reservedRoutes.includes(id)) {
-      console.error(`ERROR: Route /${id} was incorrectly matched to /:id handler. This should not happen!`);
       return res.status(404).json({ 
         error: 'Route not found',
         message: `The route /${id} should be handled by a specific route handler, not /:id`
@@ -955,14 +873,11 @@ router.put('/:id', async (req, res) => {
     
     // Validate that id is a valid ObjectId
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      console.error('Invalid service subcategory ID:', id);
       return res.status(400).json({ 
         error: 'Invalid service subcategory ID',
         receivedId: id
       });
     }
-    
-    console.log(`Valid ObjectId: ${id}`);
     
     const {
       serviceCategory,
@@ -980,22 +895,10 @@ router.put('/:id', async (req, res) => {
       serviceTitleSuggestions,
     } = req.body;
     
-    console.log('Fields to update:', {
-      hasServiceCategory: !!serviceCategory,
-      hasName: name !== undefined,
-      hasServiceTitleSuggestions: serviceTitleSuggestions !== undefined,
-      hasTitles: titles !== undefined,
-      serviceTitleSuggestionsCount: Array.isArray(serviceTitleSuggestions) ? serviceTitleSuggestions.length : 0,
-      titlesCount: Array.isArray(titles) ? titles.length : 0
-    });
-    
     const serviceSubCategory = await ServiceSubCategory.findById(id);
     if (!serviceSubCategory) {
-      console.error(`Service subcategory not found for ID: ${id}`);
       return res.status(404).json({ error: 'Service subcategory not found' });
     }
-    
-    console.log(`Found service subcategory: ${serviceSubCategory.name || serviceSubCategory._id}`);
     
     // Handle service category update if provided
     let serviceCategoryDoc = null;
@@ -1036,33 +939,26 @@ router.put('/:id', async (req, res) => {
     if (isActive !== undefined) updateData.isActive = isActive;
     if (categoryLevel !== undefined) updateData.categoryLevel = parseInt(categoryLevel);
     if (serviceTitleSuggestions !== undefined) {
-      console.log('Updating serviceTitleSuggestions...');
       if (Array.isArray(serviceTitleSuggestions)) {
         const filteredTitles = serviceTitleSuggestions
           .map(title => typeof title === 'string' ? title.trim() : String(title))
           .filter(title => title.length > 0);
-        console.log(`Filtered ${serviceTitleSuggestions.length} titles to ${filteredTitles.length} valid titles`);
         updateData.serviceTitleSuggestions = filteredTitles;
       } else {
-        console.log('serviceTitleSuggestions is not an array, setting to empty array');
         updateData.serviceTitleSuggestions = [];
       }
     }
     if (titles !== undefined) {
-      console.log('Updating titles...');
       // Update titles - merge with existing titles, replacing those with the same level
       const existingTitles = serviceSubCategory.titles || [];
       const newTitles = titles || [];
-      console.log(`Existing titles: ${existingTitles.length}, New titles: ${newTitles.length}`);
 
       // Remove existing titles with levels that match new titles
       const newTitleLevels = new Set(newTitles.map(t => t.level));
       const filteredExisting = existingTitles.filter(t => !newTitleLevels.has(t.level));
-      console.log(`Filtered existing titles: ${filteredExisting.length}`);
 
       // Combine filtered existing titles with new titles
       updateData.titles = [...filteredExisting, ...newTitles];
-      console.log(`Final titles count: ${updateData.titles.length}`);
     }
     if (serviceCategoryDoc) {
       updateData.serviceCategory = serviceCategoryDoc._id;
@@ -1085,12 +981,8 @@ router.put('/:id', async (req, res) => {
       updateData.slug = finalSlug;
     }
     
-    console.log('Saving service subcategory...');
-    console.log('Update data:', JSON.stringify(updateData, null, 2));
-    
     // Check if updateData is empty
     if (Object.keys(updateData).length === 0) {
-      console.error('ERROR: updateData is empty! No fields to update.');
       return res.status(400).json({
         error: 'No fields to update',
         message: 'At least one field must be provided for update'
@@ -1109,138 +1001,24 @@ router.put('/:id', async (req, res) => {
     );
     
     if (!updatedSubCategory) {
-      console.error(`Service subcategory not found after update for ID: ${id}`);
       return res.status(404).json({ error: 'Service subcategory not found' });
-    }
-    
-    console.log('Service subcategory saved successfully');
-    console.log('Saved state:', {
-      serviceTitleSuggestions: updatedSubCategory.serviceTitleSuggestions,
-      titles: updatedSubCategory.titles,
-      serviceAttributes: updatedSubCategory.serviceAttributes
-    });
-    
-    // Verify data was saved by reading back from database
-    const verified = await ServiceSubCategory.findById(id).lean();
-    console.log('Verified saved data from database:', {
-      _id: verified?._id,
-      serviceTitleSuggestions: verified?.serviceTitleSuggestions,
-      titles: verified?.titles,
-      serviceAttributes: verified?.serviceAttributes,
-      titlesCount: verified?.titles?.length || 0,
-      suggestionsCount: verified?.serviceTitleSuggestions?.length || 0,
-      attributesCount: verified?.serviceAttributes?.length || 0
-    });
-    
-    // Verify the data matches what we saved - retry if needed
-    let verificationPassed = true;
-    if (verified) {
-      if (updateData.serviceTitleSuggestions !== undefined) {
-        const savedMatches = JSON.stringify(verified.serviceTitleSuggestions) === JSON.stringify(updateData.serviceTitleSuggestions);
-        console.log(`ServiceTitleSuggestions match: ${savedMatches}`);
-        if (!savedMatches) {
-          console.error('ERROR: serviceTitleSuggestions mismatch!', {
-            saved: verified.serviceTitleSuggestions,
-            expected: updateData.serviceTitleSuggestions
-          });
-          verificationPassed = false;
-          // Retry once more after a short delay
-          await new Promise(resolve => setTimeout(resolve, 200));
-          const retryVerified = await ServiceSubCategory.findById(id).lean();
-          if (retryVerified && JSON.stringify(retryVerified.serviceTitleSuggestions) === JSON.stringify(updateData.serviceTitleSuggestions)) {
-            console.log('✓ ServiceTitleSuggestions match after retry');
-            verificationPassed = true;
-          }
-        }
-      }
-      if (updateData.titles !== undefined) {
-        const savedMatches = JSON.stringify(verified.titles) === JSON.stringify(updateData.titles);
-        console.log(`Titles match: ${savedMatches}`);
-        if (!savedMatches) {
-          console.error('ERROR: titles mismatch!', {
-            saved: verified.titles,
-            expected: updateData.titles
-          });
-          verificationPassed = false;
-          // Retry once more after a short delay
-          await new Promise(resolve => setTimeout(resolve, 200));
-          const retryVerified = await ServiceSubCategory.findById(id).lean();
-          if (retryVerified && JSON.stringify(retryVerified.titles) === JSON.stringify(updateData.titles)) {
-            console.log('✓ Titles match after retry');
-            verificationPassed = true;
-          }
-        }
-      }
-      if (updateData.serviceAttributes !== undefined) {
-        const savedMatches = JSON.stringify(verified.serviceAttributes) === JSON.stringify(updateData.serviceAttributes);
-        console.log(`ServiceAttributes match: ${savedMatches}`);
-        if (!savedMatches) {
-          console.error('ERROR: serviceAttributes mismatch!', {
-            saved: verified.serviceAttributes,
-            expected: updateData.serviceAttributes
-          });
-          verificationPassed = false;
-          // Retry once more after a short delay
-          await new Promise(resolve => setTimeout(resolve, 200));
-          const retryVerified = await ServiceSubCategory.findById(id).lean();
-          if (retryVerified && JSON.stringify(retryVerified.serviceAttributes) === JSON.stringify(updateData.serviceAttributes)) {
-            console.log('✓ ServiceAttributes match after retry');
-            verificationPassed = true;
-          }
-        }
-      }
-    } else {
-      console.error('ERROR: Could not verify saved data - document not found!');
-      verificationPassed = false;
-    }
-    
-    if (!verificationPassed) {
-      console.error('CRITICAL: Data verification failed! Update may not have persisted correctly.');
-      // Still return success but log the error - the data might be eventually consistent
     }
     
     // Clear cache for this service category
     // Always clear all cache when titles/attributes are updated to ensure no stale data
-    console.log('Clearing all cache after subcategory update to ensure fresh data');
     clearCache();
     
     // Also clear specific service category cache if available
     const categoryIdToClear = updatedSubCategory.serviceCategory || serviceSubCategory.serviceCategory;
     if (categoryIdToClear) {
-      console.log(`Also clearing cache for serviceCategoryId: ${categoryIdToClear.toString()}`);
       clearCache(categoryIdToClear.toString());
     }
     
     // Populate service category for response
     await updatedSubCategory.populate('serviceCategory', 'name slug');
     
-    console.log('=== UPDATE SERVICE SUBCATEGORY SUCCESS ===');
     return res.json({ serviceSubCategory: updatedSubCategory });
   } catch (error) {
-    console.error('=== UPDATE SERVICE SUBCATEGORY ERROR ===');
-    console.error('Error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      name: error.name,
-      errors: error.errors,
-      keyPattern: error.keyPattern,
-      keyValue: error.keyValue
-    });
-    
-    // Log validation errors in detail
-    if (error.name === 'ValidationError' && error.errors) {
-      console.error('Validation errors:');
-      Object.keys(error.errors).forEach(key => {
-        console.error(`  - ${key}: ${error.errors[key].message}`);
-      });
-    }
-    
-    console.error('Request params:', req.params);
-    console.error('Request body was:', JSON.stringify(req.body, null, 2));
-    console.error('=== END ERROR ===');
-    
     // Handle duplicate key error
     if (error.code === 11000) {
       return res.status(409).json({ 

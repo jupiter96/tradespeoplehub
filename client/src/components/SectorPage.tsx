@@ -2331,7 +2331,6 @@ export default function SectorPage() {
                             {/* Category Badge - Below Price */}
                             {(() => {
                               const categoryName = service.serviceCategory?.name || null;
-                              console.log('[SectorPage Grid] Category Badge Debug:',service.serviceCategory?.name);
                               return categoryName ? (
                                 <div className="mb-2 md:mb-2.5">
                                   <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">

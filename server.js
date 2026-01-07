@@ -164,6 +164,17 @@ app.use('/api/service-subcategories', serviceSubCategoryRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 
+// Log chat routes after mounting (non-blocking)
+setImmediate(() => {
+  console.log('✅ Chat routes registered:');
+  console.log('  - POST /conversations');
+  console.log('  - POST /conversations/:conversationId/upload');
+  console.log('  - GET /conversations');
+  console.log('  - GET /conversations/:conversationId/messages');
+  console.log('  - GET /attachments/:filename');
+  console.log('  - GET /search-professionals');
+});
+
 console.log('✅ All API routes mounted');
 
 // Log all incoming requests in production for debugging

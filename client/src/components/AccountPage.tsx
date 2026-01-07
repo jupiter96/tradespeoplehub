@@ -5134,13 +5134,13 @@ function ServicesSection() {
           const data = await response.json();
           const services = data.services || [];
           // Debug: Check services including draft status
-          console.log('Fetched services:', services.map((s: any) => ({
-            _id: s._id,
-            title: s.title,
-            status: s.status,
-            modificationReason: s.modificationReason
-          })));
-          console.log('Draft services count:', services.filter((s: any) => s.status === 'draft').length);
+          // console.log('Fetched services:', services.map((s: any) => ({
+          //   _id: s._id,
+          //   title: s.title,
+          //   status: s.status,
+          //   modificationReason: s.modificationReason
+          // })));
+          // console.log('Draft services count:', services.filter((s: any) => s.status === 'draft').length);
           setMyServices(services);
         } else {
           console.error("Failed to fetch services");
@@ -5747,15 +5747,15 @@ function ServicesSection() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         e.preventDefault();
-                                        console.log('Alert icon clicked, service:', {
-                                          _id: service._id,
-                                          title: service.title,
-                                          status: service.status,
-                                          modificationReason: service.modificationReason
-                                        });
+                                        // console.log('Alert icon clicked, service:', {
+                                        //   _id: service._id,
+                                        //   title: service.title,
+                                        //   status: service.status,
+                                        //   modificationReason: service.modificationReason
+                                        // });
                                         setSelectedService(service);
                                         setIsModificationReasonDialogOpen(true);
-                                        console.log('Dialog state set to true, isModificationReasonDialogOpen should be true');
+                                        // console.log('Dialog state set to true, isModificationReasonDialogOpen should be true');
                                       }}
                                       className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
                                       title={service.modificationReason ? "View Modification Reason" : "No modification reason available"}

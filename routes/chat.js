@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
@@ -14,11 +14,12 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Create uploads/attachments directory if it doesn't exist
+// Create uploads/attachments directory if it doesn't exist (async, non-blocking)
 const attachmentsDir = path.join(__dirname, '..', 'uploads', 'attachments');
-if (!fs.existsSync(attachmentsDir)) {
-  fs.mkdirSync(attachmentsDir, { recursive: true });
-}
+// Use async directory creation that doesn't block module loading
+fs.mkdir(attachmentsDir, { recursive: true }).catch(() => {
+  // Ignore errors - directory might already exist or will be created on first upload
+});
 
 // Configure multer for file attachments
 const storage = multer.diskStorage({
@@ -464,14 +465,8 @@ router.get('/attachments/:filename', requireAuth, async (req, res) => {
   }
 });
 
-// Log registered routes
-console.log('✅ Chat routes registered:');
-console.log('  - POST /conversations');
-console.log('  - POST /conversations/:conversationId/upload');
-console.log('  - GET /conversations');
-console.log('  - GET /conversations/:conversationId/messages');
-console.log('  - GET /attachments/:filename');
-console.log('  - GET /search-professionals');
+// Log registered routes (moved to end of file to avoid blocking)
+// Routes are registered asynchronously, so this log appears after all route definitions
 
 export default router;
 
