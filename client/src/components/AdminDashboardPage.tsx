@@ -58,6 +58,7 @@ import AdminServiceAttributesPage from "./admin/AdminServiceAttributesPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
+import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";

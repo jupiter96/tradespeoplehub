@@ -125,6 +125,36 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    stripeCustomerId: {
+      type: String,
+      trim: true,
+    },
+    paymentMethods: [{
+      paymentMethodId: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      type: {
+        type: String,
+        enum: ['card'],
+        default: 'card',
+      },
+      card: {
+        brand: String,
+        last4: String,
+        expMonth: Number,
+        expYear: Number,
+      },
+      isDefault: {
+        type: Boolean,
+        default: false,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
     insuranceExpiryDate: {
       type: Date,
       default: null,

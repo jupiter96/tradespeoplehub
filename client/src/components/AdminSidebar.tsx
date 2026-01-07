@@ -192,6 +192,7 @@ const menuItems: MenuItem[] = [
     icon: Settings,
     children: [
       { key: "payment-settings", label: "Payment Settings", icon: Settings, path: "/admin/payment-settings" },
+      { key: "transaction-history", label: "Transaction History", icon: FileText, path: "/admin/transaction-history" },
       { key: "bank-transfer-request", label: "Bank Transfer Request", icon: Banknote, path: "/admin/bank-transfer-request" },
       { key: "withdrawal-request", label: "Withdrawal Request", icon: DollarSign, path: "/admin/withdrawal-request" },
       { key: "refund", label: "Refund", icon: CreditCard, path: "/admin/refunds" },

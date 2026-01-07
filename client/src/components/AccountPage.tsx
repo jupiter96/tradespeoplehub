@@ -2615,12 +2615,13 @@ function BillingSection() {
     }
   };
 
-  const handleFundSuccess = () => {
-    fetchWalletBalance();
-    fetchTransactions();
+  const handleFundSuccess = async () => {
+    // Immediately fetch updated balance
+    await fetchWalletBalance();
+    await fetchTransactions();
     setShowFundModal(false);
     if (refreshUser) {
-      refreshUser();
+      await refreshUser();
     }
   };
 
