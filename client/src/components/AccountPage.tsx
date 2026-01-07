@@ -60,11 +60,13 @@ import {
   Loader2,
   Download,
   Reply,
+  ExternalLink,
 } from "lucide-react";
 import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount, ProfileUpdatePayload } from "./AccountContext";
+import WalletFundModal from "./WalletFundModal";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 import { useOrders } from "./OrdersContext";
@@ -1897,56 +1899,15 @@ function DetailsSection() {
       return;
     }
 
-    // First name and last name are read-only after registration
-    if (!formData.email || !formData.phone || !formData.postcode) {
+    // First name, last name, email, and phone are read-only after registration
+    if (!formData.postcode) {
       toast.error("Please complete the required fields.");
-      return;
-    }
-
-    // Validate phone number (remove country code if present)
-    let phoneNumber = formData.phone.replace(/\D/g, '');
-    // If starts with country code (44, 1, etc.), remove it
-    if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
-      phoneNumber = phoneNumber.substring(2);
-    } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
-      phoneNumber = phoneNumber.substring(1);
-    }
-    
-    const phoneValidation = validatePhoneNumber(phoneNumber);
-    if (!phoneValidation.isValid) {
-      setPhoneError(phoneValidation.error);
-      toast.error(phoneValidation.error || "Invalid phone number format");
-      return;
-    }
-
-    // Check if email or phone changed and require OTP verification
-    const emailIsChanged = formData.email.trim() !== (userInfo?.email || "");
-    const phoneIsChanged = formData.phone.trim() !== (userInfo?.phone || "");
-    
-    if (emailIsChanged && !emailOTPVerified) {
-      toast.error("Please verify your new email address with the OTP code");
-      return;
-    }
-
-    if (phoneIsChanged && !phoneOTPVerified) {
-      toast.error("Please verify your new phone number with the OTP code");
       return;
     }
     setIsSaving(true);
 
     const payload: ProfileUpdatePayload = {
-      // firstName and lastName are not allowed to be updated after registration
-      email: formData.email.trim(),
-      phone: (() => {
-        // Remove country code if present and normalize
-        let phoneNumber = formData.phone.replace(/\D/g, '');
-        if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
-          phoneNumber = phoneNumber.substring(2);
-        } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
-          phoneNumber = phoneNumber.substring(1);
-        }
-        return normalizePhoneForBackend(phoneNumber, '+44'); // Add country code before sending
-      })(),
+      // firstName, lastName, email, and phone are not allowed to be updated after registration
       postcode: formData.postcode.trim(),
       address: formData.address.trim() || undefined,
       townCity: formData.townCity.trim() || undefined,
@@ -2175,9 +2136,6 @@ function DetailsSection() {
               readOnly
               className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] bg-gray-50 cursor-not-allowed"
             />
-            <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif] mt-1">
-              Name cannot be changed after registration
-            </p>
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
@@ -2190,9 +2148,6 @@ function DetailsSection() {
               readOnly
               className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] bg-gray-50 cursor-not-allowed"
             />
-            <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif] mt-1">
-              Name cannot be changed after registration
-            </p>
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
@@ -2201,112 +2156,10 @@ function DetailsSection() {
             <Input
               type="email"
               value={formData.email}
-              onChange={(e) => {
-                const newEmail = e.target.value;
-                setFormData({ ...formData, email: newEmail });
-                const isChanged = newEmail.trim() !== (userInfo?.email || "");
-                setEmailChanged(isChanged);
-                if (isChanged) {
-                  setEmailOTPVerified(false);
-                  setEmailOTPSent(false);
-                  setEmailOTPCode("");
-                  setEmailOTPHint(null);
-                }
-              }}
-              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6]"
+              disabled
+              readOnly
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] bg-gray-50 cursor-not-allowed"
             />
-            {emailChanged && !emailOTPVerified && (
-              <div className="mt-2 space-y-2">
-                {!emailOTPSent ? (
-                  <Button
-                    type="button"
-                    onClick={async () => {
-                      setIsSendingEmailOTP(true);
-                      try {
-                        const response = await requestEmailChangeOTP(formData.email);
-                        setEmailOTPSent(true);
-                        setEmailOTPHint(response?.emailCode || null);
-                        toast.success("Verification code sent to new email");
-                      } catch (error) {
-                        toast.error(error instanceof Error ? error.message : "Failed to send verification code");
-                      } finally {
-                        setIsSendingEmailOTP(false);
-                      }
-                    }}
-                    disabled={isSendingEmailOTP}
-                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Poppins',sans-serif]"
-                  >
-                    {isSendingEmailOTP ? "Sending..." : "Send Verification Code"}
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      type="text"
-                      placeholder="Enter 4-digit code"
-                      value={emailOTPCode}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                        setEmailOTPCode(value);
-                      }}
-                      className="h-9 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] text-center tracking-widest"
-                      maxLength={4}
-                    />
-                    {emailOTPHint && (
-                      <p className="text-[11px] text-red-600 font-['Poppins',sans-serif] text-center">
-                        Hint: {emailOTPHint}
-                      </p>
-                    )}
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        if (emailOTPCode.length !== 4) {
-                          toast.error("Please enter a 4-digit code");
-                          return;
-                        }
-                        setIsVerifyingEmailOTP(true);
-                        try {
-                          await verifyOTP(emailOTPCode, 'email');
-                          setEmailOTPVerified(true);
-                          toast.success("Email verified successfully");
-                        } catch (error) {
-                          toast.error(error instanceof Error ? error.message : "Invalid verification code");
-                        } finally {
-                          setIsVerifyingEmailOTP(false);
-                        }
-                      }}
-                      disabled={isVerifyingEmailOTP || emailOTPCode.length !== 4}
-                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Poppins',sans-serif]"
-                    >
-                      {isVerifyingEmailOTP ? "Verifying..." : "Verify Code"}
-                    </Button>
-                    <div className="text-center">
-                      <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                        Didn't receive the code?{" "}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setIsResendingEmailOTP(true);
-                            try {
-                              const response = await resendEmailChangeOTP();
-                              setEmailOTPHint(response?.emailCode || null);
-                              toast.success("Verification code resent to your email");
-                            } catch (error) {
-                              toast.error(error instanceof Error ? error.message : "Failed to resend code");
-                            } finally {
-                              setIsResendingEmailOTP(false);
-                            }
-                          }}
-                          disabled={isResendingEmailOTP}
-                          className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isResendingEmailOTP ? "Resending..." : "Resend"}
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
@@ -2315,174 +2168,10 @@ function DetailsSection() {
             <Input
               type="tel"
               value={formData.phone}
-              onChange={(e) => {
-                const newPhone = e.target.value;
-                setFormData({...formData, phone: newPhone});
-                const isChanged = newPhone.trim() !== (userInfo?.phone || "");
-                setPhoneChanged(isChanged);
-                if (isChanged) {
-                  setPhoneOTPVerified(false);
-                  setPhoneOTPSent(false);
-                  setPhoneOTPCode("");
-                  setPhoneOTPHint(null);
-                }
-                
-                // Validate phone number (remove country code if present)
-                if (newPhone.trim()) {
-                  let phoneNumber = newPhone.replace(/\D/g, '');
-                  // If starts with country code (44, 1, etc.), remove it
-                  if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
-                    phoneNumber = phoneNumber.substring(2);
-                  } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
-                    phoneNumber = phoneNumber.substring(1);
-                  }
-                  
-                  const phoneValidation = validatePhoneNumber(phoneNumber);
-                  if (!phoneValidation.isValid) {
-                    setPhoneError(phoneValidation.error);
-                  } else {
-                    setPhoneError(undefined);
-                  }
-                } else {
-                  setPhoneError(undefined);
-                }
-              }}
-              className={`h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] ${
-                phoneError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#3B82F6]'
-              }`}
+              disabled
+              readOnly
+              className="h-10 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] bg-gray-50 cursor-not-allowed"
             />
-            {phoneError && (
-              <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                {phoneError}
-              </p>
-            )}
-            {phoneChanged && !phoneOTPVerified && (
-              <div className="mt-2 space-y-2">
-                {!phoneOTPSent ? (
-                  <Button
-                    type="button"
-                    onClick={async () => {
-                      setIsSendingPhoneOTP(true);
-                      try {
-                        // Remove country code if present and normalize
-                        let phoneNumber = formData.phone.replace(/\D/g, '');
-                        if (phoneNumber.startsWith('44') && phoneNumber.length > 10) {
-                          phoneNumber = phoneNumber.substring(2);
-                        } else if (phoneNumber.startsWith('1') && phoneNumber.length > 10) {
-                          phoneNumber = phoneNumber.substring(1);
-                        }
-                        const normalizedPhone = normalizePhoneForBackend(phoneNumber, '+44'); // Add country code before sending
-                        const response = await requestPhoneChangeOTP(normalizedPhone);
-                        setPhoneOTPSent(true);
-                        // Only show hint in development (when Twilio is not configured)
-                        if (response?.phoneCode) {
-                          setPhoneOTPHint(response.phoneCode);
-                        } else {
-                          setPhoneOTPHint(null);
-                        }
-                        toast.success("Verification code sent to your phone number");
-                      } catch (error: any) {
-                        
-                        // Extract detailed error message
-                        let errorMessage = "Failed to send verification code";
-                        if (error?.message) {
-                          errorMessage = error.message;
-                        }
-                        
-                        // Add Twilio error details if available
-                        if (error?.twilioErrorCode) {
-                          errorMessage += ` (Twilio Error Code: ${error.twilioErrorCode})`;
-                        }
-                        if (error?.twilioErrorMoreInfo) {
-                          errorMessage += ` - ${error.twilioErrorMoreInfo}`;
-                        }
-                        
-                        toast.error(errorMessage);
-                      } finally {
-                        setIsSendingPhoneOTP(false);
-                      }
-                    }}
-                    disabled={isSendingPhoneOTP}
-                    className="w-full h-9 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[12px] font-['Poppins',sans-serif]"
-                  >
-                    {isSendingPhoneOTP ? "Sending..." : "Send Verification Code"}
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      type="text"
-                      placeholder="Enter 4-digit code"
-                      value={phoneOTPCode}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                        setPhoneOTPCode(value);
-                      }}
-                      className="h-9 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] text-center tracking-widest"
-                      maxLength={4}
-                    />
-                    {phoneOTPHint && (
-                      <p className="text-[11px] text-red-600 font-['Poppins',sans-serif] text-center">
-                        Hint: {phoneOTPHint}
-                      </p>
-                    )}
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        if (phoneOTPCode.length !== 4) {
-                          toast.error("Please enter a 4-digit code");
-                          return;
-                        }
-                        setIsVerifyingPhoneOTP(true);
-                        try {
-                          await verifyOTP(phoneOTPCode, 'phone');
-                          setPhoneOTPVerified(true);
-                          toast.success("Phone number verified successfully");
-                        } catch (error) {
-                          const errorMessage = error instanceof Error ? error.message : "Invalid verification code";
-                          toast.error(errorMessage);
-                          // Clear the code input on error
-                          setPhoneOTPCode("");
-                        } finally {
-                          setIsVerifyingPhoneOTP(false);
-                        }
-                      }}
-                      disabled={isVerifyingPhoneOTP || phoneOTPCode.length !== 4}
-                      className="w-full h-9 bg-[#10B981] hover:bg-[#059669] text-white text-[12px] font-['Poppins',sans-serif]"
-                    >
-                      {isVerifyingPhoneOTP ? "Verifying..." : "Verify Code"}
-                    </Button>
-                    <div className="text-center">
-                      <p className="text-[11px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                        Didn't receive the code?{" "}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setIsResendingPhoneOTP(true);
-                            try {
-                              const response = await resendPhoneChangeOTP();
-                              if (response?.phoneCode) {
-                                setPhoneOTPHint(response.phoneCode);
-                              } else {
-                                setPhoneOTPHint(null);
-                              }
-                              toast.success("Verification code resent to your phone");
-                            } catch (error) {
-                              toast.error(error instanceof Error ? error.message : "Failed to resend code");
-                            } finally {
-                              setIsResendingPhoneOTP(false);
-                            }
-                          }}
-                          disabled={isResendingPhoneOTP}
-                          className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isResendingPhoneOTP ? "Resending..." : "Resend"}
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           {userRole === "professional" && (
             <>
@@ -2878,7 +2567,62 @@ function DetailsSection() {
 
 // Billing Section
 function BillingSection() {
+  const { userInfo, refreshUser } = useAccount();
   const [billingTab, setBillingTab] = useState<"wallet" | "card" | "invoice" | "history">("wallet");
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [showFundModal, setShowFundModal] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  useEffect(() => {
+    if (billingTab === "wallet") {
+      fetchWalletBalance();
+      fetchTransactions();
+    }
+  }, [billingTab]);
+
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/wallet/balance`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWalletBalance(data.balance || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching wallet balance:", error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    setLoadingTransactions(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/wallet/transactions?limit=20`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  const handleFundSuccess = () => {
+    fetchWalletBalance();
+    fetchTransactions();
+    setShowFundModal(false);
+    if (refreshUser) {
+      refreshUser();
+    }
+  };
 
   return (
     <div>
@@ -2919,17 +2663,81 @@ function BillingSection() {
         <div>
           <div className="bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] rounded-2xl p-8 text-white mb-6">
             <p className="font-['Poppins',sans-serif] text-[14px] mb-2 opacity-90">Total Balance</p>
-            <h3 className="font-['Poppins',sans-serif] text-[42px] mb-6">£2,450.00</h3>
+            <h3 className="font-['Poppins',sans-serif] text-[42px] mb-6">
+              {loadingBalance ? (
+                <Loader2 className="w-10 h-10 animate-spin" />
+              ) : (
+                `£${walletBalance.toFixed(2)}`
+              )}
+            </h3>
             <div className="flex gap-3">
-              <Button className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Poppins',sans-serif]">
+              <Button 
+                onClick={() => setShowFundModal(true)}
+                className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Poppins',sans-serif]"
+              >
                 Add Funds
-              </Button>
-              <Button className="bg-white text-[#3D78CB] hover:bg-gray-100 font-['Poppins',sans-serif]">
-                Withdraw
               </Button>
             </div>
           </div>
+
+          {/* Transactions History */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+              Recent Transactions
+            </h3>
+            {loadingTransactions ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
+              </div>
+            ) : transactions.length === 0 ? (
+              <p className="text-center py-8 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
+                No transactions yet
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {transactions.map((transaction) => (
+                  <div
+                    key={transaction._id}
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        {transaction.description || `${transaction.type} - £${transaction.amount}`}
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                        {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.status}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`font-['Poppins',sans-serif] text-[16px] font-semibold ${
+                          transaction.type === "deposit" || transaction.type === "refund"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {transaction.type === "deposit" || transaction.type === "refund" ? "+" : "-"}
+                        £{transaction.amount.toFixed(2)}
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                        Balance: £{transaction.balance?.toFixed(2) || "0.00"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Fund Wallet Modal */}
+      {showFundModal && (
+        <WalletFundModal
+          isOpen={showFundModal}
+          onClose={() => setShowFundModal(false)}
+          onSuccess={handleFundSuccess}
+        />
       )}
 
       {/* Payment Cards Content */}
@@ -3974,6 +3782,7 @@ function MessengerSection() {
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<{ url: string; fileName: string; type: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -4400,8 +4209,17 @@ function MessengerSection() {
                               className={`rounded-2xl px-4 py-3 shadow-sm ${
                                 isOwnMessage
                                   ? "bg-[#FFF5EB] text-black rounded-br-sm border-l-[3px] border-b-[3px] border-[#FE8A0F]"
-                                  : "bg-white text-black rounded-bl-sm border-r-[3px] border-b-[3px] border-[#FE8A0F]"
+                                  : "bg-white text-black rounded-bl-sm border-r-[3px] border-b-[3px] border-[#FE8A0F] cursor-pointer"
                               }`}
+                              onDoubleClick={() => {
+                                if (!isOwnMessage) {
+                                  setReplyToMessage({
+                                    id: message.id,
+                                    text: message.text || 'Attachment',
+                                    senderName: senderName,
+                                  });
+                                }
+                              }}
                             >
                               {/* Replied message preview with quote */}
                               {message.replyTo && (
@@ -4417,34 +4235,52 @@ function MessengerSection() {
                                 </div>
                               )}
                               {message.type === "image" && message.fileUrl && (
-                                <a 
-                                  href={resolveApiUrl(message.fileUrl)} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  download
+                                <div
+                                  onClick={() => setPreviewAttachment({
+                                    url: resolveApiUrl(message.fileUrl),
+                                    fileName: message.fileName || "Image",
+                                    type: "image"
+                                  })}
+                                  className="cursor-pointer"
                                 >
                                   <img
                                     src={resolveApiUrl(message.fileUrl)}
                                     alt="Shared"
-                                    className="rounded-lg mb-2 max-w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                    className="rounded-lg mb-2 max-w-full hover:opacity-90 transition-opacity"
                                   />
-                                </a>
+                                </div>
                               )}
                               {message.type === "file" && message.fileUrl && (
-                                <div className="flex items-center gap-2 mb-2 p-3 rounded-lg bg-white/50 border border-gray-200">
+                                <div 
+                                  className="flex items-center gap-2 mb-2 p-3 rounded-lg bg-white/50 border border-gray-200 cursor-pointer hover:bg-white/70 transition-colors"
+                                  onClick={() => {
+                                    const fileExtension = message.fileName?.split('.').pop()?.toLowerCase() || '';
+                                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension);
+                                    const isPdf = fileExtension === 'pdf';
+                                    setPreviewAttachment({
+                                      url: resolveApiUrl(message.fileUrl),
+                                      fileName: message.fileName || "File",
+                                      type: isImage ? "image" : isPdf ? "pdf" : "file"
+                                    });
+                                  }}
+                                >
                                   <Paperclip className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                                   <span className="font-['Poppins',sans-serif] text-[13px] truncate flex-1">
                                     {message.fileName}
                                   </span>
-                                <a
-                                  href={resolveApiUrl(message.fileUrl)}
-                                    download={message.fileName}
+                                  <button
                                     className="flex items-center gap-1 px-3 py-1.5 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex-shrink-0"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const link = document.createElement('a');
+                                      link.href = resolveApiUrl(message.fileUrl);
+                                      link.download = message.fileName || "file";
+                                      link.click();
+                                    }}
+                                  >
                                     <Download className="w-3.5 h-3.5" />
                                     <span className="font-['Poppins',sans-serif] text-[11px]">Download</span>
-                                </a>
+                                  </button>
                                 </div>
                               )}
                               {message.text && (
@@ -4611,6 +4447,75 @@ function MessengerSection() {
           clientId={selectedContact.id}
           clientName={selectedContact.name}
         />
+      )}
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+          <DialogContent className="w-[90vw] max-w-[900px] max-h-[90vh] bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  {previewAttachment.fileName}
+                </DialogTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = previewAttachment.url;
+                      link.download = previewAttachment.fileName;
+                      link.click();
+                    }}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
+              {previewAttachment.type === "image" ? (
+                <img
+                  src={previewAttachment.url}
+                  alt={previewAttachment.fileName}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                />
+              ) : previewAttachment.type === "pdf" ? (
+                <iframe
+                  src={previewAttachment.url}
+                  className="w-full h-[calc(90vh-180px)] min-h-[600px] border-0 rounded-lg"
+                  title={previewAttachment.fileName}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                    Preview not available for this file type
+                  </p>
+                  <Button
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -5416,7 +5321,6 @@ function ServicesSection() {
         <div className="flex gap-2 pb-2 border-b-2 border-gray-100">
         {[
           { id: "myservices", label: "My Services", icon: Briefcase },
-          { id: "servicepackages", label: "Service Packages", icon: Package },
           { id: "reviews", label: "Reviews", icon: Heart },
           { id: "analytics", label: "Analytics", icon: TrendingUp },
         ].map((tab) => {
@@ -5920,169 +5824,6 @@ function ServicesSection() {
             );
           })()}
             </>
-          )}
-        </div>
-      )}
-
-      {/* Service Packages Tab */}
-      {activeTab === "servicepackages" && (
-        <div>
-          {/* Action Bar */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
-            <div>
-              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
-                Service Packages
-              </h3>
-              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                Create bundled service packages for your clients
-              </p>
-            </div>
-            <Button 
-              onClick={() => setIsCreatePackageOpen(true)}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create Package
-            </Button>
-          </div>
-
-          {/* Packages Grid */}
-          {myPackages.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
-              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] mb-2">
-                No packages created yet
-              </p>
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                Click "Create Package" to get started
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myPackages.map((pkg) => (
-                <div key={pkg.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] hover:shadow-lg transition-all duration-300 bg-white">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                        {pkg.name}
-                      </h4>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        {pkg.features?.length || 0} features included
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => {
-                          // View package details
-                          toast.info("Package details view coming soon");
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Eye className="w-4 h-4 text-[#6b6b6b]" />
-                      </button>
-                      <button 
-                        onClick={() => {
-                          // Edit package
-                          toast.info("Package editing coming soon");
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Settings className="w-4 h-4 text-[#6b6b6b]" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {pkg.description && (
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4 line-clamp-2">
-                      {pkg.description}
-                    </p>
-                  )}
-
-                  {pkg.features && pkg.features.length > 0 && (
-                    <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
-                      {pkg.features.slice(0, 5).map((featureId: string, idx: number) => {
-                        // Find feature label from PACKAGE_FEATURE_OPTIONS
-                        const featureOptions = [
-                          { id: "feature-1", label: "Professional consultation included" },
-                          { id: "feature-2", label: "24/7 emergency support" },
-                          { id: "feature-3", label: "Quality guarantee" },
-                          { id: "feature-4", label: "Free follow-up visit" },
-                          { id: "feature-5", label: "All materials included" },
-                          { id: "feature-6", label: "Insurance covered" },
-                          { id: "feature-7", label: "Before & after photos" },
-                          { id: "feature-8", label: "Detailed report provided" },
-                          { id: "feature-9", label: "Eco-friendly options" },
-                          { id: "feature-10", label: "Senior discount available" },
-                          { id: "feature-11", label: "Free quote revision" },
-                          { id: "feature-12", label: "Weekend service available" },
-                          { id: "feature-13", label: "Licensed & certified" },
-                          { id: "feature-14", label: "No hidden fees" },
-                          { id: "feature-15", label: "Satisfaction guaranteed" },
-                          { id: "feature-16", label: "Multi-service discount" },
-                          { id: "feature-17", label: "Priority booking" },
-                          { id: "feature-18", label: "Flexible scheduling" },
-                          { id: "feature-19", label: "Money-back guarantee" },
-                          { id: "feature-20", label: "Cleanup included" },
-                        ];
-                        const feature = featureOptions.find(f => f.id === featureId);
-                        return feature ? (
-                          <div key={idx} className="flex items-center gap-2 text-[13px]">
-                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            <span className="font-['Poppins',sans-serif] text-[#2c353f]">{feature.label}</span>
-                          </div>
-                        ) : null;
-                      })}
-                      {pkg.features.length > 5 && (
-                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] pl-6">
-                          +{pkg.features.length - 5} more features
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Package Price</p>
-                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">£{parseFloat(pkg.price || "0").toFixed(2)}</p>
-                      </div>
-                      {pkg.deliveryType && (
-                        <div className="text-right">
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">Delivery</p>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                            {pkg.deliveryType === "same-day" ? "Same Day" : "Standard"}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="font-['Poppins',sans-serif] text-[#6b6b6b]">Status:</span>
-                      <span className="font-['Poppins',sans-serif] px-3 py-1 rounded-full bg-green-100 text-green-700">
-                        Active
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Create Package Modal */}
-          {isCreatePackageOpen && (
-            <CreatePackageModal
-              onClose={() => setIsCreatePackageOpen(false)}
-              onSave={(packages) => {
-                // Save packages to state
-                setMyPackages(prev => [...prev, ...packages.map((pkg, idx) => ({
-                  ...pkg,
-                  id: `pkg-${Date.now()}-${idx}`,
-                }))]);
-                setIsCreatePackageOpen(false);
-              }}
-            />
           )}
         </div>
       )}

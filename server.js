@@ -18,6 +18,7 @@ import serviceCategoryRoutes from './routes/service-categories.js';
 import serviceSubCategoryRoutes from './routes/service-subcategories.js';
 import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
+import paymentRoutes from './routes/payment.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
@@ -163,6 +164,7 @@ app.use('/api/service-categories', serviceCategoryRoutes);
 app.use('/api/service-subcategories', serviceSubCategoryRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api', paymentRoutes);
 
 // Log chat routes after mounting (non-blocking)
 setImmediate(() => {

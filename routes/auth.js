@@ -1945,6 +1945,86 @@ router.post('/social/send-phone-code', async (req, res) => {
   }
 });
 
+// Resend phone OTP for social registration
+router.post('/social/resend-phone-code', async (req, res) => {
+  try {
+    const pending = getPendingSocialProfile(req);
+    if (!pending) {
+      return res.status(400).json({ error: 'No pending social registration' });
+    }
+
+    const sessionData = req.session[socialSessionKey];
+    if (!sessionData || !sessionData.phone) {
+      return res.status(400).json({ error: 'No phone number found. Please enter your phone number first.' });
+    }
+
+    // Check if too soon to resend (prevent spam - 30 seconds minimum)
+    const lastCodeTime = sessionData.phoneCodeExpiresAt 
+      ? new Date(sessionData.phoneCodeExpiresAt).getTime() - (10 * 60 * 1000) // Subtract expiry duration
+      : 0;
+    const now = Date.now();
+    const timeSinceLastCode = now - lastCodeTime;
+    
+    if (timeSinceLastCode < 30000 && lastCodeTime > 0) { // 30 seconds
+      const waitTime = Math.ceil((30000 - timeSinceLastCode) / 1000);
+      return res.status(429).json({ 
+        error: `Please wait ${waitTime} seconds before requesting a new code` 
+      });
+    }
+
+    // Generate new SMS code
+    const smsCode = generateCode();
+    const smsCodeHash = await bcrypt.hash(smsCode, 10);
+    const expiresAt = codeExpiryDate();
+
+    // Update session with new code
+    sessionData.phoneCodeHash = smsCodeHash;
+    sessionData.phoneCodeExpiresAt = expiresAt;
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve(undefined);
+      });
+    });
+
+    // Send new SMS verification
+    try {
+      const twilioPhone = formatPhoneForTwilio(sessionData.phone);
+      if (!twilioPhone) {
+        throw new Error('Invalid phone number format. Please check your phone number.');
+      }
+      
+      await sendSmsVerificationCode(twilioPhone, smsCode);
+      console.log('[Social Phone Resend] SMS sent successfully');
+    } catch (notificationError) {
+      console.error('[Social Phone Resend] Failed to send SMS:', notificationError.message);
+      
+      if (isProduction) {
+        console.warn('[Social Phone Resend] Continuing in production mode despite SMS failure');
+      } else {
+        const errorMessage = notificationError.userMessage || 
+          notificationError.message || 
+          'Failed to send SMS code. Please check your phone number or try again later.';
+        
+        return res.status(502).json({ 
+          error: errorMessage,
+          twilioErrorCode: notificationError.code,
+          details: notificationError.moreInfo
+        });
+      }
+    }
+
+    return res.status(200).json({ 
+      message: 'SMS verification code has been resent to your phone',
+      phoneCode: smsCode, // Include for testing/development
+      expiresIn: '10 minutes'
+    });
+  } catch (error) {
+    console.error('[Social Phone Resend] Unexpected error:', error);
+    return res.status(500).json({ error: 'Failed to resend verification code. Please try again.' });
+  }
+});
+
 // Verify phone code and complete social registration
 router.post('/social/verify-phone', async (req, res) => {
   try {

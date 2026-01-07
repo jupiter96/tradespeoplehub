@@ -57,6 +57,7 @@ import AdminServiceTitlesPage from "./admin/AdminServiceTitlesPage";
 import AdminServiceAttributesPage from "./admin/AdminServiceAttributesPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
+import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -326,6 +327,8 @@ export default function AdminDashboardPage() {
         // Redirect category-manage to sectors
         navigate("/admin/sectors", { replace: true });
         return <AdminSectorsPage />;
+      case "payment-settings":
+        return <AdminPaymentSettingsPage />;
       default:
         return (
           <AdminGenericPage

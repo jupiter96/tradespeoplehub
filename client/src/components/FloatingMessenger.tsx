@@ -17,12 +17,14 @@ import {
   Loader2,
   Download,
   Reply,
+  FileText,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { useNavigate } from "react-router-dom";
@@ -63,6 +65,7 @@ export default function FloatingMessenger() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<{ url: string; fileName: string; type: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -735,8 +738,17 @@ export default function FloatingMessenger() {
                                 className={`rounded-2xl px-4 py-2 ${
                                   isOwnMessage
                                     ? "bg-[#FFF5EB] text-black rounded-br-sm shadow-sm border-l-[3px] border-b-[3px] border-[#FE8A0F]"
-                                    : "bg-white text-black rounded-bl-sm shadow-sm border-r-[3px] border-b-[3px] border-[#FE8A0F]"
+                                    : "bg-white text-black rounded-bl-sm shadow-sm border-r-[3px] border-b-[3px] border-[#FE8A0F] cursor-pointer"
                                 }`}
+                                onDoubleClick={() => {
+                                  if (!isOwnMessage) {
+                                    setReplyToMessage({
+                                      id: message.id,
+                                      text: message.text || 'Attachment',
+                                      senderName: senderName,
+                                    });
+                                  }
+                                }}
                               >
                                 {/* Replied message preview with quote */}
                                 {message.replyTo && (
@@ -752,34 +764,52 @@ export default function FloatingMessenger() {
                                   </div>
                                 )}
                                 {message.type === "image" && message.fileUrl && (
-                                  <a 
-                                    href={resolveApiUrl(message.fileUrl)} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    download
+                                  <div
+                                    onClick={() => setPreviewAttachment({
+                                      url: resolveApiUrl(message.fileUrl),
+                                      fileName: message.fileName || "Image",
+                                      type: "image"
+                                    })}
+                                    className="cursor-pointer"
                                   >
-                                  <img
+                                    <img
                                       src={resolveApiUrl(message.fileUrl)}
-                                    alt="Shared"
-                                      className="rounded-lg mb-2 max-w-full cursor-pointer hover:opacity-90 transition-opacity"
-                                  />
-                                  </a>
+                                      alt="Shared"
+                                      className="rounded-lg mb-2 max-w-full hover:opacity-90 transition-opacity"
+                                    />
+                                  </div>
                                 )}
                                 {message.type === "file" && message.fileUrl && (
-                                  <div className="flex items-center gap-2 mb-2 p-3 rounded-lg bg-white/50 border border-gray-200">
+                                  <div 
+                                    className="flex items-center gap-2 mb-2 p-3 rounded-lg bg-white/50 border border-gray-200 cursor-pointer hover:bg-white/70 transition-colors"
+                                    onClick={() => {
+                                      const fileExtension = message.fileName?.split('.').pop()?.toLowerCase() || '';
+                                      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension);
+                                      const isPdf = fileExtension === 'pdf';
+                                      setPreviewAttachment({
+                                        url: resolveApiUrl(message.fileUrl),
+                                        fileName: message.fileName || "File",
+                                        type: isImage ? "image" : isPdf ? "pdf" : "file"
+                                      });
+                                    }}
+                                  >
                                     <Paperclip className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                                     <span className="font-['Poppins',sans-serif] text-[13px] truncate flex-1">
                                       {message.fileName}
                                     </span>
-                                  <a
-                                    href={resolveApiUrl(message.fileUrl)}
-                                      download={message.fileName}
+                                    <button
                                       className="flex items-center gap-1 px-3 py-1.5 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex-shrink-0"
-                                      onClick={(e) => e.stopPropagation()}
-                                  >
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const link = document.createElement('a');
+                                        link.href = resolveApiUrl(message.fileUrl);
+                                        link.download = message.fileName || "file";
+                                        link.click();
+                                      }}
+                                    >
                                       <Download className="w-3.5 h-3.5" />
                                       <span className="font-['Poppins',sans-serif] text-[11px]">Download</span>
-                                  </a>
+                                    </button>
                                   </div>
                                 )}
                                 {message.text && (
@@ -963,6 +993,75 @@ export default function FloatingMessenger() {
           clientId={selectedContact.id}
           clientName={selectedContact.name}
         />
+      )}
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+          <DialogContent className="w-[90vw] max-w-[900px] max-h-[90vh] bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  {previewAttachment.fileName}
+                </DialogTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = previewAttachment.url;
+                      link.download = previewAttachment.fileName;
+                      link.click();
+                    }}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
+              {previewAttachment.type === "image" ? (
+                <img
+                  src={previewAttachment.url}
+                  alt={previewAttachment.fileName}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                />
+              ) : previewAttachment.type === "pdf" ? (
+                <iframe
+                  src={previewAttachment.url}
+                  className="w-full h-[calc(90vh-180px)] min-h-[600px] border-0 rounded-lg"
+                  title={previewAttachment.fileName}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                    Preview not available for this file type
+                  </p>
+                  <Button
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

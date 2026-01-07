@@ -2561,18 +2561,68 @@ export default function SectorPage() {
                           <div className="flex items-end justify-between gap-2 mt-auto">
                             {/* Price - Left Bottom */}
                             <div className="flex flex-col">
-                              {service.originalPrice && (
-                                <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
-                                  {service.price}
-                                </span>
-                              )}
-                              <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
-                                {service.originalPrice && "From "}
-                                <span className="text-[14px] text-[#2c353f] font-medium">
-                                  {service.originalPrice || service.price}
-                                </span>
-                                <span className="text-[9px]">/{service.priceUnit}</span>
-                              </span>
+                              {(() => {
+                                // Helper function to calculate price range when packages exist
+                                const getPriceRange = (service: any) => {
+                                  if (!service.packages || service.packages.length === 0) {
+                                    return null;
+                                  }
+                                  
+                                  // Get base price (originalPrice if exists, otherwise price)
+                                  const basePrice = parseFloat(String(service.originalPrice || service.price).replace('£', '').replace(/,/g, '')) || 0;
+                                  
+                                  // Find the most expensive package price
+                                  let maxPackagePrice = 0;
+                                  service.packages.forEach((pkg: any) => {
+                                    const pkgPrice = parseFloat(String(pkg.price || pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                    if (pkgPrice > maxPackagePrice) {
+                                      maxPackagePrice = pkgPrice;
+                                    }
+                                  });
+                                  
+                                  if (maxPackagePrice === 0) {
+                                    return null;
+                                  }
+                                  
+                                  const maxPrice = basePrice + maxPackagePrice;
+                                  return {
+                                    min: basePrice,
+                                    max: maxPrice,
+                                    formatted: `£${basePrice.toFixed(2)} - £${maxPrice.toFixed(2)}`
+                                  };
+                                };
+                                
+                                const priceRange = getPriceRange(service);
+                                if (priceRange) {
+                                  // Show price range when packages exist
+                                  return (
+                                    <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                                      <span className="text-[14px] text-[#2c353f] font-medium">
+                                        {priceRange.formatted}
+                                      </span>
+                                      <span className="text-[9px]">/{service.priceUnit}</span>
+                                    </span>
+                                  );
+                                } else {
+                                  // Show regular price when no packages
+                                  return (
+                                    <>
+                                      {service.originalPrice && (
+                                        <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
+                                          {service.price}
+                                        </span>
+                                      )}
+                                      <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                                        {service.originalPrice && "From "}
+                                        <span className="text-[14px] text-[#2c353f] font-medium">
+                                          {service.originalPrice || service.price}
+                                        </span>
+                                        <span className="text-[9px]">/{service.priceUnit}</span>
+                                      </span>
+                                    </>
+                                  );
+                                }
+                              })()}
                             </div>
 
                             {/* Delivery Badge - Right Bottom */}

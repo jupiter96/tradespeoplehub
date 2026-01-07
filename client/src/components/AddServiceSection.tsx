@@ -1587,8 +1587,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
               }
 
               // Set packages
-              if (draft.packages && Array.isArray(draft.packages)) {
+              if (draft.packages && Array.isArray(draft.packages) && draft.packages.length > 0) {
                 setPackages(draft.packages);
+                setOfferPackages(true);
               }
 
               // Set extra services (addons)
@@ -1666,6 +1667,12 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         setGalleryImages(initialService.images);
       } else if (initialService.portfolioImages && Array.isArray(initialService.portfolioImages)) {
         setGalleryImages(initialService.portfolioImages);
+      }
+      
+      // Set packages
+      if (initialService.packages && Array.isArray(initialService.packages) && initialService.packages.length > 0) {
+        setPackages(initialService.packages);
+        setOfferPackages(true);
       }
       
       // Set extra services (addons)
@@ -1881,6 +1888,49 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   
   // Packages Tab
   const [packages, setPackages] = useState<ServicePackage[]>([]);
+  const [offerPackages, setOfferPackages] = useState(false);
+  
+  // Initialize packages with BASIC, STANDARD, PREMIUM if offerPackages is enabled
+  useEffect(() => {
+    if (offerPackages && packages.length === 0) {
+      const defaultPackages: ServicePackage[] = [
+        {
+          id: "pkg-basic",
+          name: "BASIC",
+          description: "",
+          price: "",
+          deliveryDays: "",
+          revisions: "",
+          features: [],
+          order: 0,
+        },
+        {
+          id: "pkg-standard",
+          name: "STANDARD",
+          description: "",
+          price: "",
+          deliveryDays: "",
+          revisions: "",
+          features: [],
+          order: 1,
+        },
+        {
+          id: "pkg-premium",
+          name: "PREMIUM",
+          description: "",
+          price: "",
+          deliveryDays: "",
+          revisions: "",
+          features: [],
+          order: 2,
+        },
+      ];
+      setPackages(defaultPackages);
+    } else if (!offerPackages && packages.length > 0) {
+      setPackages([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerPackages]);
   
   // Extra Services Tab
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
@@ -2255,6 +2305,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   // Tab order for navigation
   const TAB_ORDER = [
     "service-details",
+    "packages",
     "extra-service",
     "gallery",
     "faqs",
@@ -2265,6 +2316,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   // Step configuration with icons
   const STEPS = [
     { id: "service-details", label: "Service Details", icon: FileText },
+    { id: "packages", label: "Package", icon: Package },
     { id: "extra-service", label: "Extra Service", icon: Settings },
     { id: "gallery", label: "Gallery", icon: ImagePlus },
     { id: "faqs", label: "FAQs", icon: MessageSquare },
@@ -2327,6 +2379,9 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         return;
       }
       toast.success("Service details saved!");
+    } else if (activeTab === "packages") {
+      // Optional, just save
+      toast.success("Packages saved!");
     } else if (activeTab === "extra-service") {
       // Optional, just save
       toast.success("Extra services saved!");
@@ -2931,7 +2986,18 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         priceUnit: priceUnit || "fixed",
         images: galleryImages,
         portfolioImages: galleryImages,
-        packages: [], // Packages are now managed separately in AccountPage Service Packages tab
+        packages: offerPackages ? packages.map((pkg) => ({
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description || "",
+          price: pkg.price ? parseFloat(String(pkg.price)) : 0,
+          originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
+          deliveryDays: pkg.deliveryDays || "standard",
+          deliveryType: pkg.deliveryDays === "same-day" ? "same-day" : "standard",
+          revisions: pkg.revisions || "",
+          features: Array.isArray(pkg.features) ? pkg.features : [],
+          order: pkg.order || 0,
+        })) : [],
         addons: extraServices
           .filter(e => e.title && e.price)
           .map((e, index) => ({
@@ -3884,6 +3950,142 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     {description.length} / 35 minimum characters
                   </p>
                 </div>
+              </div>
+            </TabsContent>
+
+            {/* Packages Tab */}
+            <TabsContent value="packages" className="mt-0 py-6">
+              <div className="space-y-6">
+                {/* Pricing Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      Pricing
+                    </h3>
+                  </div>
+                  
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      How do you charge?
+                    </Label>
+                    <Select value={priceUnit} onValueChange={setPriceUnit}>
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300 w-full">
+                        <SelectValue placeholder="Please Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Hours">Hours</SelectItem>
+                        <SelectItem value="Service">Service</SelectItem>
+                        {priceUnitOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Offer Packages
+                    </Label>
+                    <Switch
+                      checked={offerPackages}
+                      onCheckedChange={setOfferPackages}
+                    />
+                  </div>
+                </div>
+
+                {/* Packages Section */}
+                {offerPackages && (
+                  <div className="space-y-4">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      Packages
+                    </h3>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      {packages.map((pkg) => (
+                        <div key={pkg.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                          <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] uppercase">
+                            {pkg.name}
+                          </h4>
+                          
+                          {/* Description Textarea */}
+                          <div>
+                            <Textarea
+                              value={pkg.description}
+                              onChange={(e) => updatePackage(pkg.id, "description", e.target.value)}
+                              placeholder="Describe the details of your offering."
+                              className="font-['Poppins',sans-serif] text-[13px] border-gray-300 min-h-[100px]"
+                            />
+                          </div>
+
+                          {/* Checkboxes - Features */}
+                          <div className="space-y-2">
+                            {[
+                              "Fake Text Generator Lorem Ipsum Online",
+                              "What does Lorem ipsum dolor mean?",
+                              "The most used version of Lorem Ipsum?"
+                            ].map((featureText, idx) => {
+                              const featureKey = `feature-${idx + 1}`;
+                              const isChecked = pkg.features?.includes(featureText) || false;
+                              return (
+                                <div key={featureKey} className="flex items-center gap-2">
+                                  <Checkbox 
+                                    id={`${pkg.id}-${featureKey}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      const currentFeatures = pkg.features || [];
+                                      if (checked) {
+                                        updatePackage(pkg.id, "features", [...currentFeatures, featureText]);
+                                      } else {
+                                        updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== featureText));
+                                      }
+                                    }}
+                                  />
+                                  <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
+                                    {featureText}
+                                  </Label>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Delivery Dropdown */}
+                          <div>
+                            <Select
+                              value={pkg.deliveryDays || "standard"}
+                              onValueChange={(value) => updatePackage(pkg.id, "deliveryDays", value)}
+                            >
+                              <SelectTrigger className="font-['Poppins',sans-serif] text-[13px] border-gray-300">
+                                <SelectValue placeholder="Standard Delivery" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="standard">Standard Delivery</SelectItem>
+                                <SelectItem value="same-day">Same Day Delivery</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Price Label and Input */}
+                          <div>
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                              Price / {priceUnit || "Hours"}
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={pkg.price}
+                              onChange={(e) => updatePackage(pkg.id, "price", e.target.value)}
+                              placeholder="0.00"
+                              className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 

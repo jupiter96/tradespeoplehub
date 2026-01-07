@@ -117,6 +117,8 @@ import { Card, CardContent } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Progress } from "./ui/progress";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import { useCart } from "./CartContext";
 import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import serviceVector from "../assets/service_vector.jpg";
@@ -312,16 +314,18 @@ export default function ServiceDetailPage() {
             idealFor: s.idealFor || [],
             specialization: "",
             packages: s.packages?.map((p: any) => ({
-              id: p.id || p._id,
-              name: p.name,
-              price: `£${p.price?.toFixed(2) || '0.00'}`,
-              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
-              priceUnit: "fixed",
+              id: p.id || p._id || String(p._id) || `pkg-${Date.now()}`,
+              name: p.name || "",
+              price: typeof p.price === 'number' ? p.price : parseFloat(String(p.price || '0').replace('£', '').replace(/,/g, '')) || 0,
+              originalPrice: p.originalPrice ? (typeof p.originalPrice === 'number' ? p.originalPrice : parseFloat(String(p.originalPrice).replace('£', '').replace(/,/g, ''))) : undefined,
+              priceUnit: p.priceUnit || "fixed",
               description: p.description || "",
               highlights: [],
-              features: p.features || [],
-              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              features: Array.isArray(p.features) ? p.features : [],
+              deliveryDays: p.deliveryDays || p.deliveryType || "standard",
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : (p.deliveryType === "same-day" ? "Same day" : undefined),
               revisions: p.revisions || "",
+              order: p.order || 0,
             })) || [],
             skills: s.skills || [],
             responseTime: s.responseTime || "",
@@ -397,7 +401,7 @@ export default function ServiceDetailPage() {
   const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
   
   // Selected package state (for package-based services)
-  const [selectedPackageId, setSelectedPackageId] = useState<number>(0);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | number>(0);
   
   // Initialize vote counts from review data - will be set properly after service check
   const [reviewVoteCounts, setReviewVoteCounts] = useState<Map<number, { helpful: number; notHelpful: number }>>(new Map());
@@ -409,8 +413,12 @@ export default function ServiceDetailPage() {
   }, [service]);
 
   const selectedPackage = useMemo(() => {
-    if (!service?.packages) return undefined;
-    return service.packages.find((pkg: any) => pkg.id === selectedPackageId);
+    if (!service?.packages || service.packages.length === 0) return undefined;
+    return service.packages.find((pkg: any) => {
+      const pkgId = pkg.id || pkg._id || String(pkg._id);
+      const selectedId = String(selectedPackageId);
+      return String(pkgId) === selectedId;
+    });
   }, [service, selectedPackageId]);
 
   const serviceImages = useMemo(() => {
@@ -440,7 +448,9 @@ export default function ServiceDetailPage() {
 
     // Set initial package ID (only once when packages exist)
     if (service.packages && service.packages.length > 0) {
-      setSelectedPackageId((prev) => (prev ? prev : service.packages[0].id));
+      const firstPackage = service.packages[0];
+      const firstPackageId = firstPackage.id || firstPackage._id || String(firstPackage._id) || 0;
+      setSelectedPackageId((prev) => (prev ? prev : firstPackageId));
     }
 
     // Initialize vote counts from review data
@@ -649,7 +659,7 @@ export default function ServiceDetailPage() {
   };
   
   // Handle package selection change
-  const handlePackageChange = (packageId: number) => {
+  const handlePackageChange = (packageId: string | number) => {
     setSelectedPackageId(packageId);
     // Clear selected addons when switching packages
     setSelectedAddons(new Set());
@@ -1842,89 +1852,119 @@ export default function ServiceDetailPage() {
                   {/* Package Selection Tabs - Only show if service has packages */}
                   {service.packages && service.packages.length > 0 && (
                     <div className="mb-6">
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
-                        Select Package
-                      </h3>
-                      <div className="flex gap-2 mb-4">
-                        {service.packages.map((pkg) => (
-                          <button
-                            key={pkg.id}
-                            type="button"
-                            onClick={() => handlePackageChange(pkg.id)}
-                            className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[13px] ${
-                              selectedPackageId === pkg.id
-                                ? 'border-[#FE8A0F] bg-[#FE8A0F] text-white shadow-md'
-                                : 'border-gray-200 text-[#6b6b6b] hover:border-[#FE8A0F] hover:text-[#FE8A0F]'
-                            }`}
-                          >
-                            {pkg.name}
-                          </button>
-                        ))}
-                      </div>
-                      {selectedPackage && (
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
-                          {selectedPackage.description}
-                        </p>
-                      )}
+                      <Tabs value={String(selectedPackageId)} onValueChange={(value) => handlePackageChange(value)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 mb-4">
+                          {service.packages.map((pkg: any) => {
+                            const pkgId = pkg.id || pkg._id || String(pkg._id) || `pkg-${Date.now()}`;
+                            return (
+                            <TabsTrigger 
+                              key={pkgId} 
+                              value={String(pkgId)}
+                              className="font-['Poppins',sans-serif] text-[13px]"
+                            >
+                              {pkg.name || "Package"}
+                            </TabsTrigger>
+                            );
+                          })}
+                        </TabsList>
+                        
+                        {service.packages.map((pkg: any) => {
+                          const pkgId = pkg.id || pkg._id || String(pkg._id) || `pkg-${Date.now()}`;
+                          const pkgPrice = typeof pkg.price === 'number' ? pkg.price : parseMoney(pkg.price || pkg.originalPrice || service.price);
+                          return (
+                          <TabsContent key={pkgId} value={String(pkgId)} className="mt-0 space-y-4">
+                            {/* Package Price */}
+                            <div>
+                              <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                                £{pkgPrice.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            {/* Package Description */}
+                            {pkg.description && (
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                                {pkg.description}
+                              </p>
+                            )}
+                            
+                            {/* Package Features */}
+                            {pkg.features && Array.isArray(pkg.features) && pkg.features.length > 0 && (
+                              <div className="space-y-2">
+                                {pkg.features.map((feature: string, index: number) => (
+                                  <div key={index} className="flex items-start gap-2">
+                                    <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
+                                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                      {feature}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Quantity Input - Only for packages */}
+                            <div className="pt-2">
+                              <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
+                                Number of {service.priceUnit || 'unit'}
+                              </Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={quantity}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 1;
+                                  setQuantity(Math.max(1, val));
+                                }}
+                                className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                              />
+                            </div>
+                          </TabsContent>
+                          );
+                        })}
+                      </Tabs>
                       <Separator className="my-4" />
                     </div>
                   )}
                   
-                  {/* Price Section - Moved to top */}
-                  <div className="mb-4">
-                    <div className="flex items-baseline gap-2 mb-2">
-                      {originalPrice && (
-                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] line-through">
-                          £{originalPrice}
+                  {/* Price Section - Show for non-package services or as fallback */}
+                  {(!service.packages || service.packages.length === 0) && (
+                    <div className="mb-4">
+                      <div className="flex items-baseline gap-2 mb-2">
+                        {originalPrice && (
+                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] line-through">
+                            £{originalPrice}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-['Poppins',sans-serif] text-[32px] text-[#FE8A0F]">
+                          £{basePrice}
                         </span>
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          / {service.priceUnit}
+                        </span>
+                      </div>
+                      {originalPrice && (
+                        <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] mt-2">
+                          Save £{(originalPrice - basePrice).toFixed(0)}
+                        </Badge>
                       )}
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-['Poppins',sans-serif] text-[32px] text-[#FE8A0F]">
-                        £{basePrice}
-                      </span>
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        / {selectedPackage ? selectedPackage.priceUnit : service.priceUnit}
-                      </span>
-                    </div>
-                    {originalPrice && (
-                      <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] mt-2">
-                        Save £{(originalPrice - basePrice).toFixed(0)}
-                      </Badge>
-                    )}
-                  </div>
+                  )}
 
                   <Separator className="my-6" />
 
-                  {/* Service Highlights */}
-                  <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                    <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
-                      {selectedPackage ? "What's Included" : "Service Highlights"}
-                    </h3>
-                    <div className="space-y-2.5">
-                      {highlights.map((highlight, index) => (
-                        <div key={index} className="flex items-start gap-2.5">
-                          <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
-                            {highlight}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Package Features - Only show if package selected */}
-                  {selectedPackage && selectedPackage.features && selectedPackage.features.length > 0 && (
+                  {/* Service Highlights - Only show if no package selected */}
+                  {(!selectedPackage || !service.packages || service.packages.length === 0) && (
                     <div className="mb-6 pb-6 border-b-2 border-gray-100">
                       <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
-                        Package Features
+                        Service Highlights
                       </h3>
                       <div className="space-y-2.5">
-                        {selectedPackage.features.map((feature, index) => (
+                        {highlights.map((highlight, index) => (
                           <div key={index} className="flex items-start gap-2.5">
-                            <Check className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
-                              {feature}
+                            <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
+                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                              {highlight}
                             </span>
                           </div>
                         ))}

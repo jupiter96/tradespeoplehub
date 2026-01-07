@@ -2064,30 +2064,79 @@ export default function ServicesPage() {
 
                       {/* Price Section */}
                       <div className="mb-2 md:mb-2.5">
-                        <div className="flex items-baseline gap-2">
-                        <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                          {service.originalPrice || service.price}
-                        </span>
-                          {service.originalPrice && (
-                            <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                              Was: {service.price}
-                            </span>
-                          )}
-                        </div>
-                        {/* Discount and Limited Time Offer - Below Price */}
-                        {service.originalPrice && (
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
-                            <span 
-                              className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
-                              style={{ backgroundColor: '#CC0C39' }}
-                            >
-                              {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                            </span>
-                            <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
-                              Limited Time Offer
-                            </span>
-                          </div>
-                        )}
+                        {(() => {
+                          // Helper function to calculate price range when packages exist
+                          const getPriceRange = (service: any) => {
+                            if (!service.packages || service.packages.length === 0) {
+                              return null;
+                            }
+                            
+                            // Get base price (originalPrice if exists, otherwise price)
+                            const basePrice = parseFloat(String(service.originalPrice || service.price).replace('£', '').replace(/,/g, '')) || 0;
+                            
+                            // Find the most expensive package price
+                            let maxPackagePrice = 0;
+                            service.packages.forEach((pkg: any) => {
+                              const pkgPrice = parseFloat(String(pkg.price || pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                              if (pkgPrice > maxPackagePrice) {
+                                maxPackagePrice = pkgPrice;
+                              }
+                            });
+                            
+                            if (maxPackagePrice === 0) {
+                              return null;
+                            }
+                            
+                            const maxPrice = basePrice + maxPackagePrice;
+                            return {
+                              min: basePrice,
+                              max: maxPrice,
+                              formatted: `£${basePrice.toFixed(2)} - £${maxPrice.toFixed(2)}`
+                            };
+                          };
+                          
+                          const priceRange = getPriceRange(service);
+                          if (priceRange) {
+                            // Show price range when packages exist
+                            return (
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                                  {priceRange.formatted}
+                                </span>
+                              </div>
+                            );
+                          } else {
+                            // Show regular price when no packages
+                            return (
+                              <>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                                    {service.originalPrice || service.price}
+                                  </span>
+                                  {service.originalPrice && (
+                                    <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
+                                      Was: {service.price}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Discount and Limited Time Offer - Below Price */}
+                                {service.originalPrice && (
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                    <span 
+                                      className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                      style={{ backgroundColor: '#CC0C39' }}
+                                    >
+                                      {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                    </span>
+                                    <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                      Limited Time Offer
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          }
+                        })()}
                       </div>
 
                       {/* Category Badge - Below Price */}

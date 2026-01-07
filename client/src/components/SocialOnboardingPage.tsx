@@ -21,12 +21,14 @@ import { useAccount } from "./AccountContext";
 import AddressAutocomplete from "./AddressAutocomplete";
 import API_BASE_URL from "../config/api";
 import SEOHead from "./SEOHead";
+import { toast } from "sonner";
 
 export default function SocialOnboardingPage() {
   const navigate = useNavigate();
   const {
     fetchPendingSocialProfile,
     sendSocialPhoneCode,
+    resendSocialPhoneCode,
     verifySocialPhone,
     isLoggedIn,
   } = useAccount();
@@ -37,6 +39,7 @@ export default function SocialOnboardingPage() {
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [phoneCode, setPhoneCode] = useState("");
   const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
+  const [isResendingPhoneCode, setIsResendingPhoneCode] = useState(false);
   const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
   const [registrationData, setRegistrationData] = useState<any>(null);
 
@@ -183,6 +186,24 @@ export default function SocialOnboardingPage() {
       setError("Failed to send verification code");
     } finally {
       setIsSendingPhoneCode(false);
+    }
+  };
+
+  const handleResendPhoneCode = async () => {
+    if (isResendingPhoneCode) return;
+    
+    setIsResendingPhoneCode(true);
+    setError(null);
+    
+    try {
+      await resendSocialPhoneCode();
+      toast.success('Verification code resent to your phone');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to resend code';
+      toast.error(errorMessage);
+      setError(errorMessage);
+    } finally {
+      setIsResendingPhoneCode(false);
     }
   };
 
@@ -713,6 +734,26 @@ export default function SocialOnboardingPage() {
                     >
                       {isVerifyingPhone ? "Verifying..." : "Verify & Complete Registration"}
                     </Button>
+
+                    {error && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">
+                        {error}
+                      </p>
+                    )}
+
+                    <div className="text-center">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        Didn't receive the code?{" "}
+                        <button
+                          type="button"
+                          onClick={handleResendPhoneCode}
+                          disabled={isResendingPhoneCode}
+                          className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isResendingPhoneCode ? "Resending..." : "Resend"}
+                        </button>
+                      </p>
+                    </div>
 
                     <button
                       type="button"

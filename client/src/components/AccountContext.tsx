@@ -112,6 +112,7 @@ interface AccountContextType {
   completeRegistration: (code: string, email?: string) => Promise<UserInfo>;
   fetchPendingSocialProfile: () => Promise<PendingSocialProfile | null>;
   sendSocialPhoneCode: (phone: string) => Promise<{ message: string; phoneCode?: string }>;
+  resendSocialPhoneCode: () => Promise<{ message: string; phoneCode?: string }>;
   verifySocialPhone: (code: string, registrationData: SocialRegistrationPayload) => Promise<UserInfo>;
   completeSocialRegistration: (payload: SocialRegistrationPayload) => Promise<UserInfo>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<UserInfo>;
@@ -278,6 +279,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const data = await requestJson("/api/auth/social/send-phone-code", {
         method: "POST",
         body: JSON.stringify({ phone }),
+      });
+      return data;
+    },
+    [requestJson]
+  );
+
+  const resendSocialPhoneCode = useCallback(
+    async () => {
+      const data = await requestJson("/api/auth/social/resend-phone-code", {
+        method: "POST",
       });
       return data;
     },
@@ -534,6 +545,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         completeRegistration,
         fetchPendingSocialProfile,
         sendSocialPhoneCode,
+        resendSocialPhoneCode,
         verifySocialPhone,
         completeSocialRegistration,
         updateProfile,
@@ -586,6 +598,7 @@ export function useAccount() {
     completeRegistration: async () => err(),
     fetchPendingSocialProfile: async () => err(),
     sendSocialPhoneCode: async () => err(),
+    resendSocialPhoneCode: async () => err(),
     verifySocialPhone: async () => err(),
     completeSocialRegistration: async () => err(),
     updateProfile: async () => err(),
