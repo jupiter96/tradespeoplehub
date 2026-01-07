@@ -155,7 +155,19 @@ export default function AdminVerificationModal({
         throw new Error(error.error || "Failed to update verification status");
       }
 
+      const responseData = await response.json();
+      
+      // Update local state immediately with the response data
+      if (responseData.verification) {
+        setVerificationData((prev: any) => ({
+          ...prev,
+          [type]: responseData.verification,
+        }));
+      }
+
       toast.success("Verification status updated successfully");
+      
+      // Also refetch to ensure we have the latest data from the server
       await fetchVerificationData();
       // Clear the status and reason for this type only
       setNewStatus(prev => {

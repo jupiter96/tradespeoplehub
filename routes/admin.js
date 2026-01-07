@@ -1622,11 +1622,21 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
       user.verification[type].rejectionReason = undefined;
     }
 
+    // Mark the nested object as modified so Mongoose properly saves the changes
+    user.markModified(`verification.${type}`);
+    
     await user.save();
 
-    // Prepare response data
+    // Reload user from database to ensure we have the latest data
+    const updatedUser = await User.findById(id);
+    
+    if (!updatedUser || !updatedUser.verification || !updatedUser.verification[type]) {
+      return res.status(500).json({ error: 'Failed to retrieve updated verification data' });
+    }
+    
+    // Prepare response data with the latest verification data
     const responseData = { 
-      verification: user.verification[type],
+      verification: updatedUser.verification[type],
       message: `Verification status updated to ${status}`
     };
 
