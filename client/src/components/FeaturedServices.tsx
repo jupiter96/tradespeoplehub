@@ -153,7 +153,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
       {/* Pane View - Grid Container */}
       {viewMode === 'pane' && (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 lg:gap-6 justify-items-center">
-          {services.slice(0, visibleCount).map((service) => {
+          {services.slice(0, visibleCount).map((service, index) => {
             const uniqueId = `${sectionId}-${service.slug || service._id || service.id}`;
             const bestSeller = isBestSeller(service);
             const purchaseStatsText = getPurchaseStats(service);
@@ -161,6 +161,19 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
             const isLiked = likedServices.has(service.id);
             const verified = isVerified(service);
             const topRated = hasTopRated(service);
+            
+            // STEP 6: Log during Grid View rendering
+            if (index === 0) {
+              console.log('[FeaturedServices] STEP 6 - Grid View Rendering:', {
+                sectionId,
+                serviceId: service._id,
+                townCity: service.townCity,
+                townCityType: typeof service.townCity,
+                serviceCategory: service.serviceCategory,
+                hasTownCity: 'townCity' in service,
+                fullService: service
+              });
+            }
             
             // Truncate trading name to 10 characters
             const displayTradingName = service.tradingName.length > 10 
@@ -352,7 +365,19 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                         <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                          {service.townCity || "Location not available"}
+                          {(() => {
+                            // STEP 7: Log during location display in Grid View
+                            if (index === 0) {
+                              console.log('[FeaturedServices] STEP 7 - Grid View Location Display:', {
+                                serviceId: service._id,
+                                townCity: service.townCity,
+                                townCityType: typeof service.townCity,
+                                displayValue: service.townCity || "Location not available",
+                                willShowFallback: !service.townCity
+                              });
+                            }
+                            return service.townCity || "Location not available";
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -373,7 +398,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
       {/* List View */}
       {viewMode === 'list' && (
         <div className="space-y-3">
-          {services.slice(0, visibleCount).map((service) => {
+          {services.slice(0, visibleCount).map((service, index) => {
             const uniqueId = `${sectionId}-list-${service.id}`;
             const bestSeller = isBestSeller(service);
             const purchaseStatsText = getPurchaseStats(service);
@@ -381,6 +406,19 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
             const isLiked = likedServices.has(service.id);
             const verified = isVerified(service);
             const topRated = hasTopRated(service);
+            
+            // STEP 8: Log during List View rendering
+            if (index === 0) {
+              console.log('[FeaturedServices] STEP 8 - List View Rendering:', {
+                sectionId,
+                serviceId: service._id,
+                townCity: service.townCity,
+                townCityType: typeof service.townCity,
+                serviceCategory: service.serviceCategory,
+                hasTownCity: 'townCity' in service,
+                fullService: service
+              });
+            }
             
             // Truncate trading name to 10 characters
             const displayTradingName = service.tradingName.length > 10 
@@ -531,7 +569,19 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                         <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                          {service.townCity || "Location not available"}
+                          {(() => {
+                            // STEP 9: Log during location display in List View
+                            if (index === 0) {
+                              console.log('[FeaturedServices] STEP 9 - List View Location Display:', {
+                                serviceId: service._id,
+                                townCity: service.townCity,
+                                townCityType: typeof service.townCity,
+                                displayValue: service.townCity || "Location not available",
+                                willShowFallback: !service.townCity
+                              });
+                            }
+                            return service.townCity || "Location not available";
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -594,13 +644,26 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
           className="w-full"
         >
           <CarouselContent className="-ml-2 md:-ml-3 pr-2 md:pr-0">
-            {services.map((service) => {
+            {services.map((service, index) => {
               const bestSeller = isBestSeller(service);
               const purchaseStatsText = getPurchaseStats(service);
               const categoryTag = getCategoryTag(service);
               const isLiked = likedServices.has(service.id);
               const verified = isVerified(service);
               const topRated = hasTopRated(service);
+              
+              // STEP 10: Log during Carousel rendering
+              if (index === 0) {
+                console.log('[FeaturedServices] STEP 10 - Carousel Rendering:', {
+                  sectionId,
+                  serviceId: service._id,
+                  townCity: service.townCity,
+                  townCityType: typeof service.townCity,
+                  serviceCategory: service.serviceCategory,
+                  hasTownCity: 'townCity' in service,
+                  fullService: service
+                });
+              }
               
               // Truncate trading name to 10 characters
               const displayTradingName = service.tradingName.length > 10 
@@ -793,7 +856,19 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                           <div className="flex items-center gap-1">
                             <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                             <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                              {service.townCity || "Location not available"}
+                              {(() => {
+                                // STEP 11: Log during location display in Carousel
+                                if (index === 0) {
+                                  console.log('[FeaturedServices] STEP 11 - Carousel Location Display:', {
+                                    serviceId: service._id,
+                                    townCity: service.townCity,
+                                    townCityType: typeof service.townCity,
+                                    displayValue: service.townCity || "Location not available",
+                                    willShowFallback: !service.townCity
+                                  });
+                                }
+                                return service.townCity || "Location not available";
+                              })()}
                             </p>
                           </div>
                         </div>
@@ -835,120 +910,141 @@ export default function FeaturedServices() {
         
         if (response.ok) {
           const data = await response.json();
-          // Debug: Check if professional is populated
-          // if (data.services && data.services.length > 0) {
-          //   const sampleService = data.services[0];
-          //   console.log('[FeaturedServices] Sample service:', {
-          //     serviceId: sampleService._id,
-          //     professional: sampleService.professional,
-          //     professionalType: typeof sampleService.professional,
-          //     professionalIsObject: typeof sampleService.professional === 'object',
-          //     professionalIsNull: sampleService.professional === null,
-          //     townCity: sampleService.professional?.townCity,
-          //     allProfessionalKeys: sampleService.professional ? Object.keys(sampleService.professional) : []
-          //   });
-          // }
-          const transformed = (data.services || []).map((s: any) => ({
-            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
-            _id: s._id,
-            slug: s.slug,
-            image: s.images?.[0] || s.portfolioImages?.[0] || "",
-            providerName: typeof s.professional === 'object' 
-              ? `${s.professional.firstName} ${s.professional.lastName}` 
-              : "",
-            tradingName: typeof s.professional === 'object' 
-              ? s.professional.tradingName || ""
-              : "",
-            providerImage: typeof s.professional === 'object' 
-              ? s.professional.avatar || ""
-              : "",
-            providerRating: typeof s.professional === 'object' 
-              ? s.professional.rating || 0
-              : 0,
-            providerReviewCount: typeof s.professional === 'object' 
-              ? s.professional.reviewCount || 0
-              : 0,
-            providerIsVerified: (() => {
-              if (typeof s.professional !== 'object') {
-                return false;
-              }
-              
-              return s.professional.isVerified || false;
-            })(),
-            description: s.title || "",
-            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
-              ? s.serviceCategory.sector.name || ""
-              : "",
-            subcategory: typeof s.serviceCategory === 'object' && s.serviceCategory
-              ? s.serviceCategory.name || ""
-              : "",
-            serviceCategory: s.serviceCategory, // Keep original serviceCategory object for debugging
-            detailedSubcategory: typeof s.serviceSubCategory === 'object'
-              ? s.serviceSubCategory.name || ""
-              : undefined,
-            rating: s.rating || 0,
-            reviewCount: s.reviewCount || 0,
-            completedTasks: s.completedTasks || 0,
-            price: `£${s.price?.toFixed(2) || '0.00'}`,
-            // Only treat originalPrice as active discount if it is set and still within its valid date range
-            originalPrice: (s.originalPrice && (
-              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
-              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
-            ))
-              ? `£${s.originalPrice.toFixed(2)}`
-              : undefined,
-            priceUnit: s.priceUnit || "fixed",
-            badges: s.badges || [],
-            deliveryType: s.deliveryType || "standard",
-            postcode: s.postcode || "",
-            location: s.location || "",
-            townCity: (() => {
-              // Check if professional is populated as an object
-              if (s.professional && typeof s.professional === 'object' && s.professional !== null) {
-                // Get townCity value (even if it's empty string, null, or undefined)
-                const townCityValue = s.professional.townCity;
-                // Return the value if it exists (including empty string), otherwise return empty string
-                return townCityValue !== undefined && townCityValue !== null ? String(townCityValue) : "";
-              }
-              // If professional is not populated, return empty string
-              return "";
-            })(),
-            latitude: s.latitude,
-            longitude: s.longitude,
-            highlights: s.highlights || [],
-            addons: s.addons?.map((a: any) => ({
-              id: a.id || a._id,
-              name: a.name,
-              description: a.description || "",
-              price: a.price,
-            })) || [],
-            idealFor: s.idealFor || [],
-            specialization: "",
-            packages: s.packages?.map((p: any) => ({
-              id: p.id || p._id,
-              name: p.name,
-              price: `£${p.price?.toFixed(2) || '0.00'}`,
-              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
-              priceUnit: "fixed",
-              description: p.description || "",
-              highlights: [],
-              features: p.features || [],
-              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
-              revisions: p.revisions || "",
-            })) || [],
-            skills: s.skills || [],
-            responseTime: s.responseTime || "",
-            portfolioImages: s.portfolioImages || [],
-          }));
           
-          // Debug: Verify townCity is preserved after transform
+          // STEP 1: Log raw API response
+          console.log('[FeaturedServices] STEP 1 - Raw API Response:', {
+            totalServices: data.services?.length || 0,
+            firstService: data.services?.[0] ? {
+              _id: data.services[0]._id,
+              professional: data.services[0].professional,
+              professionalType: typeof data.services[0].professional,
+              professionalIsObject: typeof data.services[0].professional === 'object',
+              professionalIsNull: data.services[0].professional === null,
+              professionalKeys: data.services[0].professional ? Object.keys(data.services[0].professional) : [],
+              townCity: data.services[0].professional?.townCity,
+              townCityType: typeof data.services[0].professional?.townCity,
+              townCityValue: data.services[0].professional?.townCity,
+              fullProfessional: data.services[0].professional
+            } : null
+          });
+          
+          const transformed = (data.services || []).map((s: any) => {
+            // STEP 2: Log each service during transformation
+            const townCityValue = (() => {
+              if (s.professional && typeof s.professional === 'object' && s.professional !== null) {
+                const value = s.professional.townCity;
+                return value !== undefined && value !== null ? String(value) : "";
+              }
+              return "";
+            })();
+            
+            // Log first service transformation details
+            if (data.services.indexOf(s) === 0) {
+              console.log('[FeaturedServices] STEP 2 - During Transformation:', {
+                serviceId: s._id,
+                professional: s.professional,
+                professionalTownCity: s.professional?.townCity,
+                extractedTownCity: townCityValue,
+                professionalType: typeof s.professional,
+                professionalKeys: s.professional ? Object.keys(s.professional) : []
+              });
+            }
+            
+            return {
+              id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+              _id: s._id,
+              slug: s.slug,
+              image: s.images?.[0] || s.portfolioImages?.[0] || "",
+              providerName: typeof s.professional === 'object' 
+                ? `${s.professional.firstName} ${s.professional.lastName}` 
+                : "",
+              tradingName: typeof s.professional === 'object' 
+                ? s.professional.tradingName || ""
+                : "",
+              providerImage: typeof s.professional === 'object' 
+                ? s.professional.avatar || ""
+                : "",
+              providerRating: typeof s.professional === 'object' 
+                ? s.professional.rating || 0
+                : 0,
+              providerReviewCount: typeof s.professional === 'object' 
+                ? s.professional.reviewCount || 0
+                : 0,
+              providerIsVerified: (() => {
+                if (typeof s.professional !== 'object') {
+                  return false;
+                }
+                
+                return s.professional.isVerified || false;
+              })(),
+              description: s.title || "",
+              category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
+                ? s.serviceCategory.sector.name || ""
+                : "",
+              subcategory: typeof s.serviceCategory === 'object' && s.serviceCategory
+                ? s.serviceCategory.name || ""
+                : "",
+              serviceCategory: s.serviceCategory, // Keep original serviceCategory object for debugging
+              detailedSubcategory: typeof s.serviceSubCategory === 'object'
+                ? s.serviceSubCategory.name || ""
+                : undefined,
+              rating: s.rating || 0,
+              reviewCount: s.reviewCount || 0,
+              completedTasks: s.completedTasks || 0,
+              price: `£${s.price?.toFixed(2) || '0.00'}`,
+              // Only treat originalPrice as active discount if it is set and still within its valid date range
+              originalPrice: (s.originalPrice && (
+                (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+                (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+              ))
+                ? `£${s.originalPrice.toFixed(2)}`
+                : undefined,
+              priceUnit: s.priceUnit || "fixed",
+              badges: s.badges || [],
+              deliveryType: s.deliveryType || "standard",
+              postcode: s.postcode || "",
+              location: s.location || "",
+              townCity: townCityValue,
+              latitude: s.latitude,
+              longitude: s.longitude,
+              highlights: s.highlights || [],
+              addons: s.addons?.map((a: any) => ({
+                id: a.id || a._id,
+                name: a.name,
+                description: a.description || "",
+                price: a.price,
+              })) || [],
+              idealFor: s.idealFor || [],
+              specialization: "",
+              packages: s.packages?.map((p: any) => ({
+                id: p.id || p._id,
+                name: p.name,
+                price: `£${p.price?.toFixed(2) || '0.00'}`,
+                originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+                priceUnit: "fixed",
+                description: p.description || "",
+                highlights: [],
+                features: p.features || [],
+                deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+                revisions: p.revisions || "",
+              })) || [],
+              skills: s.skills || [],
+              responseTime: s.responseTime || "",
+              portfolioImages: s.portfolioImages || [],
+            };
+          });
+          
+          // STEP 3: Log after transformation
           if (transformed.length > 0) {
             const sampleTransformed = transformed[0];
-            console.log('[FeaturedServices] After transform - townCity:', {
+            console.log('[FeaturedServices] STEP 3 - After Transformation:', {
               serviceId: sampleTransformed._id,
               townCity: sampleTransformed.townCity,
+              townCityType: typeof sampleTransformed.townCity,
               hasTownCity: 'townCity' in sampleTransformed,
-              allKeys: Object.keys(sampleTransformed).filter(k => k.includes('town') || k.includes('location') || k.includes('city'))
+              allLocationKeys: Object.keys(sampleTransformed).filter(k => k.includes('town') || k.includes('location') || k.includes('city')),
+              serviceCategory: sampleTransformed.serviceCategory,
+              fullService: sampleTransformed
             });
           }
           
@@ -978,9 +1074,10 @@ export default function FeaturedServices() {
   };
 
   // Get featured services - random 4 from all approved services
-  const featuredServices: Service[] = shuffleArray(allServices)
-    .slice(0, 4)
-    .map(s => ({
+  const featuredServices: Service[] = useMemo(() => {
+    const shuffled = shuffleArray(allServices);
+    const sliced = shuffled.slice(0, 4);
+    const mapped = sliced.map(s => ({
       id: s.id,
       _id: s._id,
       slug: s.slug,
@@ -1005,6 +1102,24 @@ export default function FeaturedServices() {
       serviceCategory: s.serviceCategory,
       packages: s.packages,
     }));
+    
+    // STEP 4: Log after featuredServices creation
+    if (mapped.length > 0) {
+      console.log('[FeaturedServices] STEP 4 - After Featured Services Creation:', {
+        count: mapped.length,
+        firstService: {
+          serviceId: mapped[0]._id,
+          townCity: mapped[0].townCity,
+          townCityType: typeof mapped[0].townCity,
+          serviceCategory: mapped[0].serviceCategory,
+          hasTownCity: 'townCity' in mapped[0],
+          fullService: mapped[0]
+        }
+      });
+    }
+    
+    return mapped;
+  }, [allServices]);
   // Get popular/best sellers services - sorted by actual sales/performance metrics
   const popularServices: Service[] = useMemo(() => {
     // Sort by best seller criteria: soldCount > completedTasks > rating > reviewCount
@@ -1025,7 +1140,7 @@ export default function FeaturedServices() {
     });
     
     // Take top 4 and map to service format
-    return sorted.slice(0, 4).map(s => ({
+    const mapped = sorted.slice(0, 4).map(s => ({
       id: s.id,
       _id: s._id,
       slug: s.slug,
@@ -1050,6 +1165,23 @@ export default function FeaturedServices() {
       serviceCategory: s.serviceCategory,
       packages: s.packages,
     }));
+    
+    // STEP 5: Log after popularServices creation
+    if (mapped.length > 0) {
+      console.log('[FeaturedServices] STEP 5 - After Popular Services Creation:', {
+        count: mapped.length,
+        firstService: {
+          serviceId: mapped[0]._id,
+          townCity: mapped[0].townCity,
+          townCityType: typeof mapped[0].townCity,
+          serviceCategory: mapped[0].serviceCategory,
+          hasTownCity: 'townCity' in mapped[0],
+          fullService: mapped[0]
+        }
+      });
+    }
+    
+    return mapped;
   }, [allServices]);
 
   return (
