@@ -837,9 +837,15 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
       return res.status(404).json({ error: 'Service not found' });
     }
 
+    // Verify session and user
+    if (!req.user || !req.user.id) {
+      console.log('[Service] Update - No user in request. Session may have expired.');
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
     // Verify ownership
     const serviceProfessionalId = getRefId(service.professional);
-    console.log('[Service] Update - Checking ownership. Service Professional ID:', serviceProfessionalId, 'Request User ID:', req.user.id);
+    console.log('[Service] Update - Checking ownership. Service Professional ID:', serviceProfessionalId, 'Request User ID:', req.user.id, 'Service Status:', service.status);
     if (serviceProfessionalId !== req.user.id) {
       console.log('[Service] Update - Ownership verification failed. Service belongs to:', serviceProfessionalId, 'but request from:', req.user.id);
       return res.status(403).json({ error: 'You can only update your own services' });

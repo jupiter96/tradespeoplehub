@@ -256,6 +256,19 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     )}
                   </div>
 
+                  {/* Category Badge - Below Price */}
+                  {(() => {
+                    const categoryName = service.serviceCategory?.name || null;
+                    console.log('[FeaturedServices Grid] Category Badge Debug:',service.serviceCategory?.name);
+                    return categoryName ? (
+                      <div className="mb-2 md:mb-2.5">
+                        <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
+                          {categoryName}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Purchase Stats */}
                   {purchaseStatsText && (
                     <p className="text-[10px] md:text-[11px] text-[#666] mb-2 md:mb-2.5">
@@ -464,6 +477,19 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     )}
                   </div>
 
+                  {/* Category Badge - Below Price */}
+                  {(() => {
+                    const categoryName = service.serviceCategory?.name || null;
+                    console.log('[FeaturedServices List] Category Badge Debug:',service.serviceCategory?.name);
+                    return categoryName ? (
+                      <div className="mb-2">
+                        <span className="inline-block bg-gray-100 text-[#2c353f] text-[9px] md:text-[10px] px-2 py-0.5 rounded-md">
+                          {categoryName}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Provider Info */}
                   <div className="flex items-center gap-2 mb-2 pt-2 border-t border-gray-100 mt-auto">
                     <Avatar className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0">
@@ -671,6 +697,19 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                         )}
                       </div>
 
+                      {/* Category Badge - Below Price */}
+                      {(() => {
+                        const categoryName = service.serviceCategory?.name || null;
+                        console.log('[FeaturedServices Carousel] Category Badge Debug:',service.serviceCategory?.name);
+                        return categoryName ? (
+                          <div className="mb-2 md:mb-2.5">
+                            <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
+                              {categoryName}
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
+
                       {/* Purchase Stats */}
                       {purchaseStatsText && (
                         <p className="text-[10px] md:text-[11px] text-[#666] mb-2 md:mb-2.5">
@@ -840,9 +879,10 @@ export default function FeaturedServices() {
             category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
               ? s.serviceCategory.sector.name || ""
               : "",
-            subcategory: typeof s.serviceCategory === 'object'
+            subcategory: typeof s.serviceCategory === 'object' && s.serviceCategory
               ? s.serviceCategory.name || ""
               : "",
+            serviceCategory: s.serviceCategory, // Keep original serviceCategory object for debugging
             detailedSubcategory: typeof s.serviceSubCategory === 'object'
               ? s.serviceSubCategory.name || ""
               : undefined,
@@ -962,6 +1002,7 @@ export default function FeaturedServices() {
       deliveryType: s.deliveryType,
       addons: s.addons,
       townCity: s.townCity,
+      serviceCategory: s.serviceCategory,
       packages: s.packages,
     }));
   // Get popular/best sellers services - sorted by actual sales/performance metrics
@@ -1006,6 +1047,7 @@ export default function FeaturedServices() {
       deliveryType: s.deliveryType,
       addons: s.addons,
       townCity: s.townCity,
+      serviceCategory: s.serviceCategory,
       packages: s.packages,
     }));
   }, [allServices]);

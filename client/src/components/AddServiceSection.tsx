@@ -1995,7 +1995,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       const formData = new FormData();
       formData.append("avatar", file);
 
-      const response = await fetch(`${resolveApiUrl()}/api/auth/profile/avatar`, {
+      const response = await fetch(resolveApiUrl("/api/auth/profile/avatar"), {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -2969,15 +2969,30 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
           })),
       };
 
+      // Verify session before proceeding
+      if (!userInfo?.id) {
+        toast.error("Your session has expired. Please refresh the page and try again.");
+        return;
+      }
+
       // Call API to create or update service
-      // If we have a draftId, update the draft; otherwise create new
-      const url = draftId
-        ? resolveApiUrl(`/api/services/${draftId}`)
-        : isEditMode && initialService?._id
+      // If we have a draftId and it's in edit mode, update the draft; otherwise create new
+      // For new services, always use POST even if draftId exists (to avoid ownership issues)
+      const isUpdatingExisting = isEditMode && initialService?._id;
+      const url = isUpdatingExisting
         ? resolveApiUrl(`/api/services/${initialService._id}`)
         : resolveApiUrl("/api/services");
 
-      const method = (draftId || isEditMode) ? "PUT" : "POST";
+      const method = isUpdatingExisting ? "PUT" : "POST";
+      
+      console.log('[Service Publish] Publishing service:', {
+        isEditMode,
+        isUpdatingExisting,
+        draftId,
+        method,
+        url,
+        userId: userInfo?.id
+      });
       
       const response = await fetch(url, {
         method,
@@ -2990,6 +3005,13 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
       if (!response.ok) {
         const error = await response.json();
+        // Check if it's a session/authentication error
+        if (response.status === 401 || response.status === 403) {
+          if (error.error?.includes('session') || error.error?.includes('expired') || error.error?.includes('You can only update')) {
+            toast.error("Your session may have expired. Please refresh the page and try again.");
+            return;
+          }
+        }
         throw new Error(error.error || `Failed to ${isEditMode ? 'update' : 'create'} service`);
       }
 

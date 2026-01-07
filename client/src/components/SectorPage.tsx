@@ -805,9 +805,10 @@ export default function SectorPage() {
             category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
               ? s.serviceCategory.sector.name || ""
               : "",
-            subcategory: typeof s.serviceCategory === 'object'
+            subcategory: typeof s.serviceCategory === 'object' && s.serviceCategory
               ? s.serviceCategory.name || ""
               : "",
+            serviceCategory: s.serviceCategory, // Keep original serviceCategory object for debugging
             detailedSubcategory: typeof s.serviceSubCategory === 'object'
               ? s.serviceSubCategory.name || ""
               : undefined,
@@ -2326,6 +2327,19 @@ export default function SectorPage() {
                                 </div>
                               )}
                             </div>
+
+                            {/* Category Badge - Below Price */}
+                            {(() => {
+                              const categoryName = service.serviceCategory?.name || null;
+                              console.log('[SectorPage Grid] Category Badge Debug:',service.serviceCategory?.name);
+                              return categoryName ? (
+                                <div className="mb-2 md:mb-2.5">
+                                  <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
+                                    {categoryName}
+                                  </span>
+                                </div>
+                              ) : null;
+                            })()}
 
                             {/* Purchase Stats */}
                             {purchaseStatsText && (
