@@ -1058,6 +1058,15 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     }
 
     service.status = nextStatus;
+    
+    // Automatically set isActive based on status
+    if (nextStatus === 'approved') {
+      service.isActive = true;
+    } else if (['denied', 'required_modification', 'paused', 'inactive'].includes(nextStatus)) {
+      service.isActive = false;
+    }
+    // For 'pending' status, keep current isActive value unchanged
+    
     await service.save();
 
     await service.populate([
@@ -1162,6 +1171,14 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
     if (service.status !== 'required_modification') {
       service.modificationReason = null;
     }
+
+    // Automatically set isActive based on status
+    if (service.status === 'approved') {
+      service.isActive = true;
+    } else if (['denied', 'required_modification', 'paused', 'inactive'].includes(service.status)) {
+      service.isActive = false;
+    }
+    // For 'pending' status, keep current isActive value unchanged
 
     await service.save();
 

@@ -951,10 +951,10 @@ export default function FeaturedServices() {
     return shuffled;
   };
 
-  // Get featured services - random 4 from all approved services
+  // Get featured services - random 8 from all approved services
   const featuredServices: Service[] = useMemo(() => {
     const shuffled = shuffleArray(allServices);
-    const sliced = shuffled.slice(0, 4);
+    const sliced = shuffled.slice(0, 8);
     const mapped = sliced.map(s => ({
       id: s.id,
       _id: s._id,
@@ -1002,8 +1002,8 @@ export default function FeaturedServices() {
       return b.reviewCount - a.reviewCount;
     });
     
-    // Take top 4 and map to service format
-    const mapped = sorted.slice(0, 4).map(s => ({
+    // Take top 8 and map to service format
+    const mapped = sorted.slice(0, 8).map(s => ({
       id: s.id,
       _id: s._id,
       slug: s.slug,
@@ -1038,7 +1038,7 @@ export default function FeaturedServices() {
         title="Featured Services" 
         services={featuredServices} 
         sectionId="featured"
-        initialCount={4}
+        initialCount={8}
       />
       
       {/* Services Banner Section */}
