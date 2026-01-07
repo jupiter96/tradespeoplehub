@@ -259,7 +259,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Category Badge - Below Price */}
                   {(() => {
                     const categoryName = service.serviceCategory?.name || null;
-                    console.log('[FeaturedServices Grid] Category Badge Debug:',service.serviceCategory?.name);
+                    console.log('[FeaturedServices Grid] Category Badge Debug:',service);
                     return categoryName ? (
                       <div className="mb-2 md:mb-2.5">
                         <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
