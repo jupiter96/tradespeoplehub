@@ -166,6 +166,18 @@ router.get('/public', async (req, res) => {
       if (service.professional && service.professional._id) {
         const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
         
+        // Debug: Log first service's professional data to check townCity
+        if (services.indexOf(service) === 0) {
+          console.log('[API /services/public] First service professional data:', {
+            serviceId: service._id,
+            professionalId: service.professional._id,
+            professionalKeys: Object.keys(service.professional),
+            townCity: service.professional.townCity,
+            townCityType: typeof service.professional.townCity,
+            professionalFull: service.professional
+          });
+        }
+        
         // Check if verification object exists
         if (!service.professional.verification) {
           return {
@@ -174,7 +186,9 @@ router.get('/public', async (req, res) => {
               ...service.professional,
               rating: stats.rating,
               reviewCount: stats.reviewCount,
-              isVerified: false
+              isVerified: false,
+              // Explicitly preserve townCity
+              townCity: service.professional.townCity || ""
             }
           };
         }
@@ -204,7 +218,9 @@ router.get('/public', async (req, res) => {
             ...service.professional,
             rating: stats.rating,
             reviewCount: stats.reviewCount,
-            isVerified: isVerified
+            isVerified: isVerified,
+            // Explicitly preserve townCity
+            townCity: service.professional.townCity || ""
           }
         };
       }
@@ -391,6 +407,18 @@ router.get('/', async (req, res) => {
       if (service.professional && service.professional._id) {
         const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
         
+        // Debug: Log first service's professional data to check townCity
+        if (services.indexOf(service) === 0) {
+          console.log('[API /services] First service professional data:', {
+            serviceId: service._id,
+            professionalId: service.professional._id,
+            professionalKeys: Object.keys(service.professional),
+            townCity: service.professional.townCity,
+            townCityType: typeof service.professional.townCity,
+            professionalFull: service.professional
+          });
+        }
+        
         // Check if verification object exists
         if (!service.professional.verification) {
           return {
@@ -399,7 +427,9 @@ router.get('/', async (req, res) => {
               ...service.professional,
               rating: stats.rating,
               reviewCount: stats.reviewCount,
-              isVerified: false
+              isVerified: false,
+              // Explicitly preserve townCity
+              townCity: service.professional.townCity || ""
             }
           };
         }
@@ -429,7 +459,9 @@ router.get('/', async (req, res) => {
             ...service.professional,
             rating: stats.rating,
             reviewCount: stats.reviewCount,
-            isVerified: isVerified
+            isVerified: isVerified,
+            // Explicitly preserve townCity
+            townCity: service.professional.townCity || ""
           }
         };
       }
