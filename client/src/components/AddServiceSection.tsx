@@ -1698,9 +1698,30 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         setGalleryImages(initialService.portfolioImages);
       }
       
-      // Set packages
+      // Set packages - convert deliveryDays from number to string for UI
       if (initialService.packages && Array.isArray(initialService.packages) && initialService.packages.length > 0) {
-        setPackages(initialService.packages);
+        const mappedPackages = initialService.packages.map((pkg: any) => {
+          let deliveryDaysStr = "standard";
+          if (typeof pkg.deliveryDays === "number") {
+            if (pkg.deliveryDays === 0) {
+              deliveryDaysStr = "same-day";
+            } else {
+              // If it's a number, keep it as string representation for UI
+              // But for now, map common values
+              deliveryDaysStr = pkg.deliveryDays <= 1 ? "same-day" : "standard";
+            }
+          } else if (typeof pkg.deliveryDays === "string") {
+            deliveryDaysStr = pkg.deliveryDays;
+          }
+          
+          return {
+            ...pkg,
+            deliveryDays: deliveryDaysStr,
+            price: pkg.price?.toString() || "",
+            originalPrice: pkg.originalPrice?.toString() || "",
+          };
+        });
+        setPackages(mappedPackages);
         setOfferPackages(true);
       }
       
@@ -2610,7 +2631,26 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
 
       if (packages && packages.length > 0) {
-        draftData.packages = packages;
+        // Convert deliveryDays to number for draft
+        draftData.packages = packages.map((pkg) => {
+          let deliveryDaysNum = 0;
+          if (pkg.deliveryDays === "same-day") {
+            deliveryDaysNum = 0;
+          } else if (pkg.deliveryDays === "standard") {
+            deliveryDaysNum = 7;
+          } else if (typeof pkg.deliveryDays === "string" && !isNaN(parseFloat(pkg.deliveryDays))) {
+            deliveryDaysNum = parseFloat(pkg.deliveryDays);
+          } else if (typeof pkg.deliveryDays === "number") {
+            deliveryDaysNum = pkg.deliveryDays;
+          } else {
+            deliveryDaysNum = 7;
+          }
+          
+          return {
+            ...pkg,
+            deliveryDays: deliveryDaysNum,
+          };
+        });
       }
 
       const addonsArray = extraServices
@@ -3057,18 +3097,33 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         priceUnit: priceUnit || "fixed",
         images: galleryImages,
         portfolioImages: galleryImages,
-        packages: offerPackages ? packages.map((pkg) => ({
-          id: pkg.id,
-          name: pkg.name,
-          description: pkg.description || "",
-          price: pkg.price ? parseFloat(String(pkg.price)) : 0,
-          originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
-          deliveryDays: pkg.deliveryDays || "standard",
-          deliveryType: pkg.deliveryDays === "same-day" ? "same-day" : "standard",
-          revisions: pkg.revisions || "",
-          features: Array.isArray(pkg.features) ? pkg.features : [],
-          order: pkg.order || 0,
-        })) : [],
+        packages: offerPackages ? packages.map((pkg) => {
+          // Convert deliveryDays string to number
+          let deliveryDaysNum = 0;
+          if (pkg.deliveryDays === "same-day") {
+            deliveryDaysNum = 0; // Same day = 0 days
+          } else if (pkg.deliveryDays === "standard") {
+            deliveryDaysNum = 7; // Standard = 7 days (default)
+          } else if (typeof pkg.deliveryDays === "string" && !isNaN(parseFloat(pkg.deliveryDays))) {
+            deliveryDaysNum = parseFloat(pkg.deliveryDays);
+          } else if (typeof pkg.deliveryDays === "number") {
+            deliveryDaysNum = pkg.deliveryDays;
+          } else {
+            deliveryDaysNum = 7; // Default to 7 days if invalid
+          }
+          
+          return {
+            id: pkg.id,
+            name: pkg.name,
+            description: pkg.description || "",
+            price: pkg.price ? parseFloat(String(pkg.price)) : 0,
+            originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
+            deliveryDays: deliveryDaysNum,
+            revisions: pkg.revisions || "",
+            features: Array.isArray(pkg.features) ? pkg.features : [],
+            order: pkg.order || 0,
+          };
+        }) : [],
         addons: extraServices
           .filter(e => e.title && e.price)
           .map((e, index) => ({
