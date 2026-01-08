@@ -7,7 +7,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Loader2, CreditCard, Building2, Plus, Trash2, Check } from "lucide-react";
-import API_BASE_URL from "../config/api";
+import { resolveApiUrl } from "../config/api";
 import PaymentMethodModal from "./PaymentMethodModal";
 
 interface PaymentMethod {
@@ -49,7 +49,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
   const fetchPublishableKey = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/publishable-key`, {
+      const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -64,7 +64,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
   const fetchPaymentMethods = async () => {
     setLoadingMethods(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment-methods`, {
+      const response = await fetch(resolveApiUrl("/api/payment-methods"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -98,7 +98,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wallet/fund/stripe`, {
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/stripe"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -147,7 +147,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     const poll = setInterval(async () => {
       attempts++;
       try {
-        const response = await fetch(`${API_BASE_URL}/api/wallet/fund/stripe/confirm`, {
+        const response = await fetch(resolveApiUrl("/api/wallet/fund/stripe/confirm"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -185,7 +185,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wallet/fund/manual`, {
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/manual"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +220,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
   const handleSetDefault = async (paymentMethodId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment-methods/set-default`, {
+      const response = await fetch(resolveApiUrl("/api/payment-methods/set-default"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -244,7 +244,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment-methods/${paymentMethodId}`, {
+      const response = await fetch(resolveApiUrl(`/api/payment-methods/${paymentMethodId}`), {
         method: "DELETE",
         credentials: "include",
       });

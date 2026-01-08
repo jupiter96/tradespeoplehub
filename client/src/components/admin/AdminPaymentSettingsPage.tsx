@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Loader2, Save, CreditCard, Building2 } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
-import API_BASE_URL from "../../config/api";
+import API_BASE_URL, { resolveApiUrl } from "../../config/api";
 
 export default function AdminPaymentSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export default function AdminPaymentSettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/payment-settings`, {
+      const response = await fetch(resolveApiUrl("/api/admin/payment-settings"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -67,7 +67,7 @@ export default function AdminPaymentSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/payment-settings`, {
+      const response = await fetch(resolveApiUrl("/api/admin/payment-settings"), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -80,6 +80,8 @@ export default function AdminPaymentSettingsPage() {
 
       if (response.ok) {
         toast.success("Payment settings saved successfully");
+        // Reload settings to ensure UI is in sync
+        await fetchSettings();
       } else {
         toast.error(data.error || "Failed to save payment settings");
       }

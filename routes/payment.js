@@ -12,9 +12,22 @@ const router = express.Router();
 router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
-    if (!settings.isActive || !settings.stripePublishableKey) {
-      return res.status(400).json({ error: 'Stripe is not configured' });
+    
+    // Check if Stripe is configured
+    if (!settings.stripePublishableKey) {
+      return res.status(400).json({ 
+        error: 'Stripe is not configured',
+        details: 'Stripe publishable key is missing. Please configure it in admin payment settings.'
+      });
     }
+    
+    if (!settings.isActive) {
+      return res.status(400).json({ 
+        error: 'Stripe is not active',
+        details: 'Stripe payment is disabled. Please enable it in admin payment settings.'
+      });
+    }
+    
     res.json({ publishableKey: settings.stripePublishableKey });
   } catch (error) {
     console.error('Error fetching publishable key:', error);
