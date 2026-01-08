@@ -677,6 +677,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       addons,
       highlights,
       idealFor,
+      faqs,
       deliveryType,
       responseTime,
       experienceYears,

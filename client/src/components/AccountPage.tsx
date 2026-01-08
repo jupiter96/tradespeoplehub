@@ -6069,13 +6069,7 @@ function ServicesSection() {
 
                     // Debug logging for draft services
                     if (service.status === 'draft') {
-                      console.log('Draft service found:', {
-                        title: service.title,
-                        status: service.status,
-                        filterStatus: filterStatus,
-                        matchesStatus: matchesStatus,
-                        willShow: matchesSearch && matchesStatus
-                      });
+                      console.log('Draft service found');
                     }
 
                     return matchesSearch && matchesStatus;
