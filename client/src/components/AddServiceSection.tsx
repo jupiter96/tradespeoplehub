@@ -1455,6 +1455,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   const { sectors } = useSectors(false, false);
   const { serviceCategoriesBySector, loading: categoriesLoading } = useAllServiceCategories(sectors, {
     includeSubCategories: true,
+    includeSubCategories: true,
   });
   
   // Service Details Tab
@@ -1507,22 +1508,64 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   }, [currentServiceCategory]);
 
   // Get all service attributes from the selected service category's subcategories
-  const availableServiceAttributes = useMemo(() => {
-    if (!currentServiceCategory || !currentServiceCategory.subCategories) {
-      return [];
-    }
-
-    // Collect all serviceAttributes from all subcategories
-    const allAttributes: string[] = [];
-    currentServiceCategory.subCategories.forEach((subCat: ServiceSubCategory) => {
-      if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
-        allAttributes.push(...subCat.serviceAttributes);
+  const [availableServiceAttributes, setAvailableServiceAttributes] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const fetchServiceAttributes = async () => {
+      if (!selectedCategoryId) {
+        setAvailableServiceAttributes([]);
+        return;
       }
-    });
 
-    // Remove duplicates and return unique attributes
-    return Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
-  }, [currentServiceCategory]);
+      try {
+        // First, try to get attributes from currentServiceCategory if it has subCategories
+        if (currentServiceCategory?.subCategories && Array.isArray(currentServiceCategory.subCategories)) {
+          const allAttributes: string[] = [];
+          currentServiceCategory.subCategories.forEach((subCat: ServiceSubCategory) => {
+            if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
+              allAttributes.push(...subCat.serviceAttributes);
+            }
+          });
+          
+          if (allAttributes.length > 0) {
+            const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
+            setAvailableServiceAttributes(uniqueAttributes);
+            return;
+          }
+        }
+
+        // If no attributes from currentServiceCategory, fetch all subcategories for this category
+        const { resolveApiUrl } = await import("../config/api");
+        const response = await fetch(
+          resolveApiUrl(`/api/service-subcategories?serviceCategoryId=${selectedCategoryId}&activeOnly=true&limit=1000`),
+          { credentials: 'include' }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const subCategories = data.serviceSubCategories || [];
+          
+          // Collect all serviceAttributes from all subcategories
+          const allAttributes: string[] = [];
+          subCategories.forEach((subCat: ServiceSubCategory) => {
+            if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
+              allAttributes.push(...subCat.serviceAttributes);
+            }
+          });
+
+          // Remove duplicates and return unique attributes
+          const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
+          setAvailableServiceAttributes(uniqueAttributes);
+        } else {
+          setAvailableServiceAttributes([]);
+        }
+      } catch (error) {
+        setAvailableServiceAttributes([]);
+      }
+    };
+
+    fetchServiceAttributes();
+  }, [selectedCategoryId, currentServiceCategory]);
   
   // Set default sector when sectors are loaded (only if user has a registered sector)
   useEffect(() => {
@@ -3835,212 +3878,218 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                   )}
                 </div>
 
-                {/* Service Highlights */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                    What's Included
-                  </Label>
-                  <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
-                    {dynamicServiceAttributes.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {dynamicServiceAttributes.map((attribute, index) => {
-                          const attributeId = `dynamic-attr-${index}`;
-                          const isSelected = serviceHighlights.includes(attributeId);
-                          const canSelect = serviceHighlights.length < 6 || isSelected;
+                {/* Service Highlights - Only show for single services, not package services */}
+                {!isPackageService && (
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                      What's Included
+                    </Label>
+                    <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
+                      {dynamicServiceAttributes.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {dynamicServiceAttributes.map((attribute, index) => {
+                            const attributeId = `dynamic-attr-${index}`;
+                            const isSelected = serviceHighlights.includes(attributeId);
+                            const canSelect = serviceHighlights.length < 6 || isSelected;
 
-                          return (
-                            <div
-                              key={attributeId}
-                              className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
-                            >
-                              <Checkbox
-                                id={attributeId}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    if (serviceHighlights.length < 6) {
-                                      setServiceHighlights([...serviceHighlights, attributeId]);
-                                    }
-                                  } else {
-                                    setServiceHighlights(serviceHighlights.filter(id => id !== attributeId));
-                                  }
-                                }}
-                                disabled={!canSelect}
-                                className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                              />
-                              <label
-                                htmlFor={attributeId}
-                                className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
-                                  isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
-                                }`}
+                            return (
+                              <div
+                                key={attributeId}
+                                className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
                               >
-                                {attribute}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          No service attributes available for this category. Please select a subcategory or contact admin to add attributes.
+                                <Checkbox
+                                  id={attributeId}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      if (serviceHighlights.length < 6) {
+                                        setServiceHighlights([...serviceHighlights, attributeId]);
+                                      }
+                                    } else {
+                                      setServiceHighlights(serviceHighlights.filter(id => id !== attributeId));
+                                    }
+                                  }}
+                                  disabled={!canSelect}
+                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                                />
+                                <label
+                                  htmlFor={attributeId}
+                                  className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
+                                    isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
+                                  }`}
+                                >
+                                  {attribute}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            No service attributes available for this category. Please select a subcategory or contact admin to add attributes.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {serviceHighlights.length > 0 && (
+                      <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
+                          Selected Highlights:
                         </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                          {serviceHighlights.map((id) => {
+                            // Check if it's a dynamic attribute
+                            if (id.startsWith('dynamic-attr-')) {
+                              const index = parseInt(id.replace('dynamic-attr-', ''));
+                              const attribute = dynamicServiceAttributes[index];
+                              return attribute ? (
+                                <div key={id} className="flex items-start gap-2">
+                                  <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                                    {attribute}
+                                  </span>
+                                </div>
+                              ) : null;
+                            }
+                            return null;
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
-                  {serviceHighlights.length > 0 && (
-                    <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
-                        Selected Highlights:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        {serviceHighlights.map((id) => {
-                          // Check if it's a dynamic attribute
-                          if (id.startsWith('dynamic-attr-')) {
-                            const index = parseInt(id.replace('dynamic-attr-', ''));
-                            const attribute = dynamicServiceAttributes[index];
-                            return attribute ? (
-                              <div key={id} className="flex items-start gap-2">
-                                <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
-                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
-                                  {attribute}
-                                </span>
-                              </div>
-                            ) : null;
-                          }
-                          return null;
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
 
-                {/* Delivery Type */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Delivery Type
-                  </Label>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryType("standard")}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
-                        deliveryType === "standard"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
-                          : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
-                      }`}
-                    >
-                      <Clock className="w-4 h-4" />
-                      <span className="font-['Poppins',sans-serif] text-[13px]">
-                        Standard Delivery
-                      </span>
-                      {deliveryType === "standard" && (
-                        <CheckCircle className="w-4 h-4 ml-1" />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryType("same-day")}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
-                        deliveryType === "same-day"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
-                          : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
-                      }`}
-                    >
-                      <TrendingUp className="w-4 h-4" />
-                      <span className="font-['Poppins',sans-serif] text-[13px]">
-                        Same-Day Service
-                      </span>
-                      {deliveryType === "same-day" && (
-                        <CheckCircle className="w-4 h-4 ml-1" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Pricing */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Delivery Type - Only show for single services, not package services */}
+                {!isPackageService && (
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Your Price (£) <span className="text-red-500">*</span>
+                      Delivery Type
                     </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={basePrice}
-                      onChange={(e) => setBasePrice(e.target.value)}
-                      placeholder="0.00"
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                    />
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryType("standard")}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
+                          deliveryType === "standard"
+                            ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                            : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
+                        }`}
+                      >
+                        <Clock className="w-4 h-4" />
+                        <span className="font-['Poppins',sans-serif] text-[13px]">
+                          Standard Delivery
+                        </span>
+                        {deliveryType === "standard" && (
+                          <CheckCircle className="w-4 h-4 ml-1" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryType("same-day")}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
+                          deliveryType === "same-day"
+                            ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                            : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
+                        }`}
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                        <span className="font-['Poppins',sans-serif] text-[13px]">
+                          Same-Day Service
+                        </span>
+                        {deliveryType === "same-day" && (
+                          <CheckCircle className="w-4 h-4 ml-1" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Sale / Discounted Price (£) (Optional)
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={originalPrice}
-                      onChange={(e) => setOriginalPrice(e.target.value)}
-                      onFocus={() => setShowSaleValidDatePicker(true)}
-                      placeholder="0.00"
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                    />
-                    {showSaleValidDatePicker && (
-                      <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm space-y-3">
-                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
-                          Valid Date Range (optional)
-                        </Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
-                              From
-                            </Label>
-                            <Input
-                              type="date"
-                              value={saleValidFrom}
-                              onChange={(e) => setSaleValidFrom(e.target.value)}
-                              min={new Date().toISOString().split("T")[0]}
-                              className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
-                            />
+                )}
+
+                {/* Pricing - Only show for single services, not package services */}
+                {!isPackageService && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Your Price (£) <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={basePrice}
+                        onChange={(e) => setBasePrice(e.target.value)}
+                        placeholder="0.00"
+                        className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Sale / Discounted Price (£) (Optional)
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={originalPrice}
+                        onChange={(e) => setOriginalPrice(e.target.value)}
+                        onFocus={() => setShowSaleValidDatePicker(true)}
+                        placeholder="0.00"
+                        className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                      />
+                      {showSaleValidDatePicker && (
+                        <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm space-y-3">
+                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
+                            Valid Date Range (optional)
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                                From
+                              </Label>
+                              <Input
+                                type="date"
+                                value={saleValidFrom}
+                                onChange={(e) => setSaleValidFrom(e.target.value)}
+                                min={new Date().toISOString().split("T")[0]}
+                                className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
+                              />
+                            </div>
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                                To
+                              </Label>
+                              <Input
+                                type="date"
+                                value={saleValidUntil}
+                                onChange={(e) => {
+                                  setSaleValidUntil(e.target.value);
+                                  // Validate that "to" date is not before "from" date
+                                  if (saleValidFrom && e.target.value < saleValidFrom) {
+                                    toast.error("End date must be after start date");
+                                  }
+                                }}
+                                min={saleValidFrom || new Date().toISOString().split("T")[0]}
+                                className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
-                              To
-                            </Label>
-                            <Input
-                              type="date"
-                              value={saleValidUntil}
-                              onChange={(e) => {
-                                setSaleValidUntil(e.target.value);
-                                // Validate that "to" date is not before "from" date
-                                if (saleValidFrom && e.target.value < saleValidFrom) {
-                                  toast.error("End date must be after start date");
-                                }
-                              }}
-                              min={saleValidFrom || new Date().toISOString().split("T")[0]}
-                              className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
-                            />
-                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowSaleValidDatePicker(false);
+                            }}
+                            className="w-full text-[11px] h-7"
+                          >
+                            Close
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowSaleValidDatePicker(false);
-                          }}
-                          className="w-full text-[11px] h-7"
-                        >
-                          Close
-                        </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 {currentServiceCategory && priceUnitOptions.length > 0 && (
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
@@ -4157,32 +4206,37 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                             />
                           </div>
 
-                          {/* Checkboxes - Features (Service Attributes) */}
+                          {/* What's Included - Service Attributes (above Delivery Type) */}
                           <div className="space-y-2">
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                              What's Included
+                            </Label>
                             {availableServiceAttributes.length > 0 ? (
-                              availableServiceAttributes.map((attribute, idx) => {
-                                const featureKey = `feature-${idx}`;
-                                const isChecked = pkg.features?.includes(attribute) || false;
-                                return (
-                                  <div key={featureKey} className="flex items-center gap-2">
-                                    <Checkbox 
-                                      id={`${pkg.id}-${featureKey}`}
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const currentFeatures = pkg.features || [];
-                                        if (checked) {
-                                          updatePackage(pkg.id, "features", [...currentFeatures, attribute]);
-                                        } else {
-                                          updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== attribute));
-                                        }
-                                      }}
-                                    />
-                                    <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
-                                      {attribute}
-                                    </Label>
-                                  </div>
-                                );
-                              })
+                              <div className="space-y-2 max-h-[200px] overflow-y-auto border border-gray-200 rounded-md p-3">
+                                {availableServiceAttributes.map((attribute, idx) => {
+                                  const featureKey = `feature-${idx}`;
+                                  const isChecked = pkg.features?.includes(attribute) || false;
+                                  return (
+                                    <div key={featureKey} className="flex items-center gap-2">
+                                      <Checkbox 
+                                        id={`${pkg.id}-${featureKey}`}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => {
+                                          const currentFeatures = pkg.features || [];
+                                          if (checked) {
+                                            updatePackage(pkg.id, "features", [...currentFeatures, attribute]);
+                                          } else {
+                                            updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== attribute));
+                                          }
+                                        }}
+                                      />
+                                      <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
+                                        {attribute}
+                                      </Label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             ) : (
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">
                                 {selectedCategoryId ? "No attributes available for this service category" : "Please select a service category first"}

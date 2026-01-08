@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import { fileURLToPath } from 'url';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
@@ -416,7 +417,7 @@ router.post('/conversations/:conversationId/upload', requireAuth, (req, res, nex
     // Delete uploaded file if message creation fails
     if (req.file) {
       try {
-        fs.unlinkSync(req.file.path);
+        fsSync.unlinkSync(req.file.path);
       } catch (unlinkError) {
         console.error('Error deleting file:', unlinkError);
       }
@@ -432,7 +433,7 @@ router.get('/attachments/:filename', requireAuth, async (req, res) => {
     const filePath = path.join(attachmentsDir, filename);
 
     // Check if file exists
-    if (!fs.existsSync(filePath)) {
+    if (!fsSync.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -457,8 +458,31 @@ router.get('/attachments/:filename', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Send file
-    res.download(filePath, message.fileName || filename);
+    // Determine content type based on file extension
+    const ext = path.extname(filename).toLowerCase();
+    const contentTypes = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.txt': 'text/plain',
+    };
+    
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+    
+    // Set appropriate headers for images
+    if (ext.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(message.fileName || filename)}"`);
+      res.sendFile(filePath);
+    } else {
+      // For other files, use download
+      res.download(filePath, message.fileName || filename);
+    }
   } catch (error) {
     console.error('Error downloading file:', error);
     res.status(500).json({ error: 'Failed to download file' });
