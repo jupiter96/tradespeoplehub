@@ -51,9 +51,11 @@ const getPriceRange = (service: any) => {
     return null;
   }
   
-  // For package services, find min and max package prices directly
+  // For package services, find min and max package prices with their names
   let minPackagePrice = Infinity;
   let maxPackagePrice = 0;
+  let minPackageName = '';
+  let maxPackageName = '';
   
   service.packages.forEach((pkg: any) => {
     // Use originalPrice if available (discounted), otherwise use price
@@ -61,9 +63,11 @@ const getPriceRange = (service: any) => {
     if (pkgPrice > 0) {
       if (pkgPrice < minPackagePrice) {
         minPackagePrice = pkgPrice;
+        minPackageName = pkg.name || '';
       }
       if (pkgPrice > maxPackagePrice) {
         maxPackagePrice = pkgPrice;
+        maxPackageName = pkg.name || '';
       }
     }
   });
@@ -81,10 +85,13 @@ const getPriceRange = (service: any) => {
     };
   }
   
+  // Format: "basic package price to premium package price"
+  const minName = minPackageName.toLowerCase() || 'basic';
+  const maxName = maxPackageName.toLowerCase() || 'premium';
   return {
     min: minPackagePrice,
     max: maxPackagePrice,
-    formatted: `£${minPackagePrice.toFixed(2)} - £${maxPackagePrice.toFixed(2)}`
+    formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`
   };
 };
 
@@ -369,16 +376,18 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                   {/* Provider Info - Pushed to bottom */}
                   <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
-                    <Avatar className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0 self-center">
-                      <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                      <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                        {service.tradingName.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                      <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center cursor-pointer hover:opacity-80 transition-opacity">
+                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                          {service.tradingName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div className="flex flex-col gap-1 min-w-0 flex-1">
                       {/* First Row: Trading name and badges */}
                       <div className="flex items-center justify-between gap-1.5 min-w-0">
-                        <Link to={`/profile/117`} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none" onClick={(e) => e.stopPropagation()}>
+                        <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none" onClick={(e) => e.stopPropagation()}>
                           <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
                             by <span className="inline">{displayTradingName}</span>
                           </p>
@@ -571,17 +580,21 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                   {/* Provider Info */}
                   <div className="flex items-center gap-2 mb-2 pt-2 border-t border-gray-100 mt-auto">
-                    <Avatar className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0">
-                      <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                      <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                        {service.tradingName.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                      <Avatar className="w-6 h-6 md:w-7 md:h-7 cursor-pointer hover:opacity-80 transition-opacity">
+                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                          {service.tradingName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1.5 min-w-0">
-                        <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
-                          by {displayTradingName}
-                        </p>
+                        <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                          <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
+                            by {displayTradingName}
+                          </p>
+                        </Link>
                         {topRated && (
                           <div 
                             className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-0.5 rounded-md"
@@ -846,16 +859,18 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
 
                       {/* Provider Info - Pushed to bottom */}
                       <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
-                        <Avatar className="w-6 h-6 md:w-7 md:h-7 flex-shrink-0 self-center">
-                          <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                          <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                            {service.tradingName.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                          <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center cursor-pointer hover:opacity-80 transition-opacity">
+                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                              {service.tradingName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
                         <div className="flex flex-col gap-1 min-w-0 flex-1">
                           {/* First Row: Trading name and badges */}
                           <div className="flex items-center justify-between gap-1.5 min-w-0">
-                            <Link to={`/profile/117`} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none" onClick={(e) => e.stopPropagation()}>
+                            <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none" onClick={(e) => e.stopPropagation()}>
                               <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
                                 by <span className="inline">{displayTradingName}</span>
                               </p>
@@ -947,6 +962,9 @@ export default function FeaturedServices() {
             _id: s._id,
             slug: s.slug,
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            professionalId: typeof s.professional === 'object' 
+              ? (s.professional._id || s.professional.id || s.professional)
+              : (typeof s.professional === 'string' ? s.professional : null),
             providerName: typeof s.professional === 'object' 
               ? `${s.professional.firstName} ${s.professional.lastName}` 
               : "",

@@ -100,12 +100,20 @@ const serviceSchema = new mongoose.Schema(
         },
         price: {
           type: Number,
-          required: true,
+          required: false, // Not required for drafts, will be validated on publish
           min: 0,
+          default: 0, // Default to 0 for drafts
         },
         originalPrice: {
           type: Number,
           min: 0,
+        },
+        // Optional: discount/sale valid date range for package price
+        originalPriceValidFrom: {
+          type: Date,
+        },
+        originalPriceValidUntil: {
+          type: Date,
         },
         deliveryDays: {
           type: Number,

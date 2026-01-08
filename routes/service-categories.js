@@ -312,15 +312,38 @@ router.get('/:identifier', async (req, res) => {
     // console.log('GET service category - serviceIdealFor:', serviceCategoryData.serviceIdealFor);
     // console.log('GET service category - extraServices:', serviceCategoryData.extraServices);
 
-    // Include subcategories if requested
+    // Include subcategories if requested (recursively get all nested levels)
     if (includeSubCategories === 'true') {
-      const subCategories = await ServiceSubCategory.find({
-        serviceCategory: serviceCategory._id,
-        isActive: activeOnly === 'true' ? true : { $exists: true }
-      })
-        .sort({ order: 1, name: 1 })
-        .lean();
-      serviceCategoryData.subCategories = subCategories;
+      // Recursively fetch all subcategories at all levels
+      const fetchAllSubCategories = async (parentId, level = 2) => {
+        const query = level === 2
+          ? { serviceCategory: serviceCategory._id, parentSubCategory: null, level: 2 }
+          : { parentSubCategory: parentId };
+        
+        if (activeOnly === 'true') {
+          query.isActive = true;
+        }
+        
+        const subCategories = await ServiceSubCategory.find(query)
+          .sort({ order: 1, name: 1 })
+          .lean();
+        
+        // Recursively fetch nested subcategories for each subcategory
+        const subCategoriesWithNested = await Promise.all(
+          subCategories.map(async (subCat) => {
+            const nested = await fetchAllSubCategories(subCat._id, level + 1);
+            return {
+              ...subCat,
+              subCategories: nested.length > 0 ? nested : undefined
+            };
+          })
+        );
+        
+        return subCategoriesWithNested;
+      };
+      
+      const allSubCategories = await fetchAllSubCategories(null, 2);
+      serviceCategoryData.subCategories = allSubCategories;
     }
     
     return res.json({ serviceCategory: serviceCategoryData });

@@ -622,13 +622,65 @@ export default function AdminServicesPage({
                             </TableCell>
                             <TableCell className="text-black dark:text-white">
                               <div>
-                                <p className="font-medium">£{service.price.toFixed(2)}</p>
-                                {service.originalPrice && (
-                                  <p className="text-sm text-gray-500 dark:text-gray-400 line-through">£{service.originalPrice.toFixed(2)}</p>
-                                )}
-                                {service.priceUnit && service.priceUnit !== "fixed" && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
-                                )}
+                                {(() => {
+                                  // Check if service has packages (package service)
+                                  const hasPackages = service.packages && Array.isArray(service.packages) && service.packages.length > 0;
+                                  
+                                  if (hasPackages) {
+                                    // For package services, show price range
+                                    let minPrice = Infinity;
+                                    let maxPrice = 0;
+                                    
+                                    service.packages.forEach((pkg: any) => {
+                                      const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0)) || 0;
+                                      if (pkgPrice > 0) {
+                                        if (pkgPrice < minPrice) minPrice = pkgPrice;
+                                        if (pkgPrice > maxPrice) maxPrice = pkgPrice;
+                                      }
+                                    });
+                                    
+                                    if (minPrice === Infinity || maxPrice === 0) {
+                                      return <span className="text-gray-400">N/A</span>;
+                                    }
+                                    
+                                    if (minPrice === maxPrice) {
+                                      return (
+                                        <>
+                                          <p className="font-medium">£{minPrice.toFixed(2)}</p>
+                                          {service.priceUnit && service.priceUnit !== "fixed" && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                          )}
+                                        </>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <>
+                                        <p className="font-medium">£{minPrice.toFixed(2)} to £{maxPrice.toFixed(2)}</p>
+                                        {service.priceUnit && service.priceUnit !== "fixed" && (
+                                          <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                        )}
+                                      </>
+                                    );
+                                  } else {
+                                    // For single services, show regular price
+                                    if (service.price === undefined || service.price === null) {
+                                      return <span className="text-gray-400">N/A</span>;
+                                    }
+                                    
+                                    return (
+                                      <>
+                                        <p className="font-medium">£{Number(service.price).toFixed(2)}</p>
+                                        {service.originalPrice && (
+                                          <p className="text-sm text-gray-500 dark:text-gray-400 line-through">£{Number(service.originalPrice).toFixed(2)}</p>
+                                        )}
+                                        {service.priceUnit && service.priceUnit !== "fixed" && (
+                                          <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                        )}
+                                      </>
+                                    );
+                                  }
+                                })()}
                               </div>
                             </TableCell>
                             <TableCell className="text-black dark:text-white">

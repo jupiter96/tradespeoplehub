@@ -262,6 +262,9 @@ export default function ServiceDetailPage() {
             id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
             images: s.images || [],
+            professionalId: typeof s.professional === 'object' 
+              ? (s.professional._id || s.professional.id || s.professional)
+              : (typeof s.professional === 'string' ? s.professional : null),
             providerName: typeof s.professional === 'object' 
               ? `${s.professional.firstName} ${s.professional.lastName}` 
               : "",
@@ -1193,7 +1196,7 @@ export default function ServiceDetailPage() {
       <div className="md:hidden bg-white px-4 py-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <Link 
-            to={`/profile/${service.id}`}
+            to={service.professionalId ? `/profile/${service.professionalId}` : '#'}
             className="flex items-center gap-3 flex-1 cursor-pointer group"
           >
             <Avatar className="w-14 h-14 border-2 border-[#FE8A0F] flex-shrink-0 group-hover:border-[#FF9E2C] transition-colors">
@@ -1327,7 +1330,7 @@ export default function ServiceDetailPage() {
                   {/* Always Visible - Avatar, Name, Location and Toggle */}
                   <div className="flex items-center justify-between gap-6">
                     <Link 
-                      to={`/profile/${service.id}`}
+                      to={service.professionalId ? `/profile/${service.professionalId}` : '#'}
                       className="flex items-center gap-3 flex-1 cursor-pointer group"
                     >
                       <Avatar className="w-16 h-16 border-2 border-[#FE8A0F] flex-shrink-0 group-hover:border-[#FF9E2C] transition-colors">
@@ -1422,7 +1425,7 @@ export default function ServiceDetailPage() {
                             className="border-2 border-gray-300 font-['Poppins',sans-serif] text-[13px] h-10 px-4 w-full"
                             asChild
                           >
-                            <Link to={`/profile/${service.id}`}>
+                            <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'}>
                               View Profile
                             </Link>
                           </Button>
@@ -1878,18 +1881,25 @@ export default function ServiceDetailPage() {
                           <TabsContent key={pkgId} value={String(pkgId)} className="mt-0 space-y-4">
                             {/* Package Price */}
                             <div>
-                              {pkgDiscountedPrice && (
-                                <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] line-through mr-2">
-                                  £{pkgRegularPrice.toFixed(2)}
+                              <div className="flex items-baseline gap-2">
+                                {pkgDiscountedPrice && (
+                                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] line-through">
+                                    £{pkgRegularPrice.toFixed(2)}
+                                  </span>
+                                )}
+                                <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                                  £{pkgPrice.toFixed(2)}
                                 </span>
-                              )}
-                              <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                                £{pkgPrice.toFixed(2)}
-                              </span>
+                              </div>
                               {pkgDiscountedPrice && (
-                                <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] ml-2">
-                                  Save £{(pkgRegularPrice - pkgDiscountedPrice).toFixed(0)}
-                                </Badge>
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                  <span 
+                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                    style={{ backgroundColor: '#CC0C39' }}
+                                  >
+                                    {Math.round(((pkgRegularPrice - pkgDiscountedPrice) / pkgRegularPrice) * 100)}% off
+                                  </span>
+                                </div>
                               )}
                             </div>
                             
@@ -1957,9 +1967,14 @@ export default function ServiceDetailPage() {
                         </span>
                       </div>
                       {originalPrice && (
-                        <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] mt-2">
-                          Save £{(originalPrice - basePrice).toFixed(0)}
-                        </Badge>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span 
+                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                            style={{ backgroundColor: '#CC0C39' }}
+                          >
+                            {Math.round(((originalPrice - basePrice) / originalPrice) * 100)}% off
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -2287,9 +2302,14 @@ export default function ServiceDetailPage() {
                         </span>
                       </div>
                       {originalPrice && (
-                        <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] mt-2">
-                          Save £{(originalPrice - basePrice).toFixed(0)}
-                        </Badge>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span 
+                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                            style={{ backgroundColor: '#CC0C39' }}
+                          >
+                            {Math.round(((originalPrice - basePrice) / originalPrice) * 100)}% off
+                          </span>
+                        </div>
                       )}
                     </div>
 

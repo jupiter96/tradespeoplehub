@@ -681,6 +681,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       deliveryType,
       responseTime,
       experienceYears,
+      availability,
       skills,
       county,
       badges,
@@ -694,8 +695,27 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       return res.status(400).json({ error: 'Service category is required' });
     }
 
-    if (!title || !description || price === undefined) {
-      return res.status(400).json({ error: 'Title, description, and price are required' });
+    // For package services, price is not required (packages have their own prices)
+    // For single services, price is required
+    const hasPackages = packages && Array.isArray(packages) && packages.length > 0;
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
+    }
+    if (!hasPackages && price === undefined) {
+      return res.status(400).json({ error: 'Price is required for single services' });
+    }
+    
+    // Validate package prices for package services
+    if (hasPackages) {
+      for (let i = 0; i < packages.length; i++) {
+        const pkg = packages[i];
+        if (!pkg.name || !pkg.name.trim()) {
+          return res.status(400).json({ error: `Package ${i + 1}: Name is required` });
+        }
+        if (pkg.price === undefined || pkg.price === null || parseFloat(pkg.price) <= 0) {
+          return res.status(400).json({ error: `Package ${i + 1} (${pkg.name || 'unnamed'}): Price is required and must be greater than 0` });
+        }
+      }
     }
 
     // Validate title length (minimum 35 characters)
@@ -778,7 +798,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const finalSlug = await buildUniqueServiceSlug({ title });
 
     // Create service
-    const service = await Service.create({
+    const serviceData = {
       professional: req.user.id,
       serviceCategory: serviceCategoryId,
       serviceSubCategory: serviceSubCategoryId || null,
@@ -787,10 +807,6 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       slug: finalSlug,
       description: description.trim(),
       aboutMe: aboutMe?.trim() || undefined,
-      price: parseFloat(price),
-      originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
-      originalPriceValidFrom: originalPriceValidFrom ? new Date(originalPriceValidFrom) : undefined,
-      originalPriceValidUntil: originalPriceValidUntil ? new Date(originalPriceValidUntil) : undefined,
       priceUnit: priceUnit || 'fixed',
       images: images || [],
       portfolioImages: portfolioImages || [],
@@ -813,7 +829,25 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       // New services always start pending (awaiting admin review)
       status: 'pending',
       isActive: true,
-    });
+    };
+
+    // Price fields only for single services (when no packages)
+    if (!hasPackages) {
+      if (price !== undefined && price !== null) {
+        serviceData.price = parseFloat(price);
+      }
+      if (originalPrice) {
+        serviceData.originalPrice = parseFloat(originalPrice);
+      }
+      if (originalPriceValidFrom) {
+        serviceData.originalPriceValidFrom = new Date(originalPriceValidFrom);
+      }
+      if (originalPriceValidUntil) {
+        serviceData.originalPriceValidUntil = new Date(originalPriceValidUntil);
+      }
+    }
+
+    const service = await Service.create(serviceData);
 
     // Populate references
     await service.populate([

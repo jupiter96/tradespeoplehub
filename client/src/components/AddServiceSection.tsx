@@ -1254,6 +1254,8 @@ interface ServicePackage {
   description: string;
   price: string;
   originalPrice?: string;
+  originalPriceValidFrom?: string;
+  originalPriceValidUntil?: string;
   deliveryDays: string;
   revisions: string;
   features: string[];
@@ -1512,20 +1514,118 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   
   useEffect(() => {
     const fetchServiceAttributes = async () => {
+      console.log('🔍 [Attributes] Starting fetchServiceAttributes');
+      console.log('🔍 [Attributes] selectedCategoryId:', selectedCategoryId);
+      console.log('🔍 [Attributes] isPackageService:', isPackageService);
+      
       if (!selectedCategoryId) {
+        console.log('⚠️ [Attributes] No selectedCategoryId, clearing attributes');
         setAvailableServiceAttributes([]);
         return;
       }
 
       try {
-        // First, try to get attributes from currentServiceCategory if it has subCategories
+        // Fetch service category with all nested subcategories
+        const { resolveApiUrl } = await import("../config/api");
+        const apiUrl = resolveApiUrl(`/api/service-categories/${selectedCategoryId}?includeSubCategories=true`);
+        console.log('📡 [Attributes] Fetching from:', apiUrl);
+        
+        const response = await fetch(apiUrl, { credentials: 'include' });
+        console.log('📡 [Attributes] Response status:', response.status, response.ok);
+
+        if (response.ok) {
+          const data = await response.json();
+          const category = data.serviceCategory;
+          console.log('📦 [Attributes] Category received:', category ? 'Yes' : 'No');
+          console.log('📦 [Attributes] Category subCategories:', category?.subCategories?.length || 0);
+          
+          if (!category) {
+            console.log('⚠️ [Attributes] No category in response, clearing attributes');
+            setAvailableServiceAttributes([]);
+            return;
+          }
+          
+          // Collect all serviceAttributes from all subcategories (including nested ones)
+          const allAttributes: string[] = [];
+          
+          // Recursively collect attributes from all subcategories
+          const collectAttributes = (subCats: ServiceSubCategory[], level = 0) => {
+            if (!subCats || !Array.isArray(subCats)) {
+              console.log(`⚠️ [Attributes] Level ${level}: subCats is not an array`);
+              return;
+            }
+            console.log(`📋 [Attributes] Level ${level}: Processing ${subCats.length} subcategories`);
+            subCats.forEach((subCat: ServiceSubCategory, index: number) => {
+              console.log(`  📄 [Attributes] Level ${level}, SubCat ${index}:`, subCat.name, 'attributes:', subCat.serviceAttributes?.length || 0);
+              if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
+                console.log(`  ✅ [Attributes] Adding ${subCat.serviceAttributes.length} attributes from ${subCat.name}`);
+                allAttributes.push(...subCat.serviceAttributes);
+              }
+              // Recursively check nested subcategories
+              if (subCat.subCategories && Array.isArray(subCat.subCategories)) {
+                console.log(`  🔄 [Attributes] Recursing into ${subCat.subCategories.length} nested subcategories of ${subCat.name}`);
+                collectAttributes(subCat.subCategories, level + 1);
+              }
+            });
+          };
+          
+          if (category.subCategories && Array.isArray(category.subCategories)) {
+            console.log('🔄 [Attributes] Starting to collect attributes from', category.subCategories.length, 'top-level subcategories');
+            collectAttributes(category.subCategories);
+          } else {
+            console.log('⚠️ [Attributes] No subCategories array in category');
+          }
+
+          console.log('📊 [Attributes] Total attributes collected:', allAttributes.length);
+          console.log('📊 [Attributes] Raw attributes:', allAttributes);
+
+          // Remove duplicates and return unique attributes
+          const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
+          console.log('✨ [Attributes] Unique attributes after filtering:', uniqueAttributes.length);
+          console.log('✨ [Attributes] Final attributes:', uniqueAttributes);
+          setAvailableServiceAttributes(uniqueAttributes);
+        } else {
+          // Fallback: try to get attributes from currentServiceCategory if API fails
+          if (currentServiceCategory?.subCategories && Array.isArray(currentServiceCategory.subCategories)) {
+            const allAttributes: string[] = [];
+            const collectAttributes = (subCats: ServiceSubCategory[]) => {
+              subCats.forEach((subCat: ServiceSubCategory) => {
+                if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
+                  allAttributes.push(...subCat.serviceAttributes);
+                }
+                // Recursively check nested subcategories
+                if (subCat.subCategories && Array.isArray(subCat.subCategories)) {
+                  collectAttributes(subCat.subCategories);
+                }
+              });
+            };
+            collectAttributes(currentServiceCategory.subCategories);
+            
+            if (allAttributes.length > 0) {
+              const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
+              setAvailableServiceAttributes(uniqueAttributes);
+              return;
+            }
+          }
+          setAvailableServiceAttributes([]);
+        }
+      } catch (error) {
+        console.error("Error fetching service attributes:", error);
+        // Fallback: try to get attributes from currentServiceCategory if fetch fails
         if (currentServiceCategory?.subCategories && Array.isArray(currentServiceCategory.subCategories)) {
           const allAttributes: string[] = [];
-          currentServiceCategory.subCategories.forEach((subCat: ServiceSubCategory) => {
-            if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
-              allAttributes.push(...subCat.serviceAttributes);
-            }
-          });
+          const collectAttributes = (subCats: ServiceSubCategory[]) => {
+            subCats.forEach((subCat: ServiceSubCategory) => {
+              if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
+                allAttributes.push(...subCat.serviceAttributes);
+              }
+              // Recursively check nested subcategories
+              if (subCat.subCategories && Array.isArray(subCat.subCategories)) {
+                collectAttributes(subCat.subCategories);
+              }
+            });
+          };
+          collectAttributes(currentServiceCategory.subCategories);
           
           if (allAttributes.length > 0) {
             const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
@@ -1533,33 +1633,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             return;
           }
         }
-
-        // If no attributes from currentServiceCategory, fetch all subcategories for this category
-        const { resolveApiUrl } = await import("../config/api");
-        const response = await fetch(
-          resolveApiUrl(`/api/service-subcategories?serviceCategoryId=${selectedCategoryId}&activeOnly=true&limit=1000`),
-          { credentials: 'include' }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          const subCategories = data.serviceSubCategories || [];
-          
-          // Collect all serviceAttributes from all subcategories
-          const allAttributes: string[] = [];
-          subCategories.forEach((subCat: ServiceSubCategory) => {
-            if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
-              allAttributes.push(...subCat.serviceAttributes);
-            }
-          });
-
-          // Remove duplicates and return unique attributes
-          const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
-          setAvailableServiceAttributes(uniqueAttributes);
-        } else {
-          setAvailableServiceAttributes([]);
-        }
-      } catch (error) {
         setAvailableServiceAttributes([]);
       }
     };
@@ -1762,6 +1835,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             deliveryDays: deliveryDaysStr,
             price: pkg.price?.toString() || "",
             originalPrice: pkg.originalPrice?.toString() || "",
+            originalPriceValidFrom: pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom).toISOString().split("T")[0] : "",
+            originalPriceValidUntil: pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil).toISOString().split("T")[0] : "",
           };
         });
         setPackages(mappedPackages);
@@ -2492,7 +2567,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         toast.error("Please provide at least 100 characters description");
         return;
       }
-      if (!basePrice || parseFloat(basePrice) <= 0) {
+      // Price validation only for single services, not package services
+      if (!isPackageService && (!basePrice || parseFloat(basePrice) <= 0)) {
         toast.error("Please enter a valid base price");
         return;
       }
@@ -2603,19 +2679,22 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         draftData.aboutMe = aboutMe.trim();
       }
 
-      if (basePrice) {
-        draftData.price = parseFloat(basePrice);
-      }
+      // Price fields only for single services, not package services
+      if (!isPackageService) {
+        if (basePrice) {
+          draftData.price = parseFloat(basePrice);
+        }
 
-      if (originalPrice) {
-        draftData.originalPrice = parseFloat(originalPrice);
-      }
+        if (originalPrice) {
+          draftData.originalPrice = parseFloat(originalPrice);
+        }
 
-      if (saleValidFrom) {
-        draftData.originalPriceValidFrom = saleValidFrom;
-      }
-      if (saleValidUntil) {
-        draftData.originalPriceValidUntil = saleValidUntil;
+        if (saleValidFrom) {
+          draftData.originalPriceValidFrom = saleValidFrom;
+        }
+        if (saleValidUntil) {
+          draftData.originalPriceValidUntil = saleValidUntil;
+        }
       }
 
       if (priceUnit) {
@@ -2689,9 +2768,20 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             deliveryDaysNum = 7;
           }
           
+          // For draft, price can be empty, so set default to 0 if not provided
+          const pkgPrice = pkg.price && pkg.price.trim() !== "" 
+            ? parseFloat(String(pkg.price)) 
+            : 0;
+          
           return {
             ...pkg,
+            price: pkgPrice,
             deliveryDays: deliveryDaysNum,
+            originalPrice: pkg.originalPrice && pkg.originalPrice.trim() !== "" 
+              ? parseFloat(String(pkg.originalPrice)) 
+              : undefined,
+            originalPriceValidFrom: pkg.originalPriceValidFrom || undefined,
+            originalPriceValidUntil: pkg.originalPriceValidUntil || undefined,
           };
         });
       }
@@ -3078,7 +3168,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("service-details");
       return;
     }
-    if (!basePrice || parseFloat(basePrice) <= 0) {
+    // Price validation only for single services, not package services
+    if (!isPackageService && (!basePrice || parseFloat(basePrice) <= 0)) {
       toast.error("Please enter a valid base price");
       setActiveTab("service-details");
       return;
@@ -3133,10 +3224,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         title: serviceTitle.trim(),
         description: description.trim(),
         aboutMe: aboutMe.trim(),
-        price: parseFloat(basePrice),
-        originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
-        originalPriceValidFrom: saleValidFrom || undefined,
-        originalPriceValidUntil: saleValidUntil || undefined,
+        // For package services, price is not required (packages have their own prices)
+        // For single services, price is required
+        price: isPackageService ? undefined : (basePrice ? parseFloat(basePrice) : undefined),
+        originalPrice: isPackageService ? undefined : (originalPrice ? parseFloat(originalPrice) : undefined),
+        originalPriceValidFrom: isPackageService ? undefined : (saleValidFrom || undefined),
+        originalPriceValidUntil: isPackageService ? undefined : (saleValidUntil || undefined),
         priceUnit: priceUnit || "fixed",
         images: galleryImages,
         portfolioImages: galleryImages,
@@ -3161,6 +3254,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             description: pkg.description || "",
             price: pkg.price ? parseFloat(String(pkg.price)) : 0,
             originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
+            originalPriceValidFrom: pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom).toISOString() : undefined,
+            originalPriceValidUntil: pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil).toISOString() : undefined,
             deliveryDays: deliveryDaysNum,
             revisions: pkg.revisions || "",
             features: Array.isArray(pkg.features) ? pkg.features : [],
@@ -3257,6 +3352,16 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // console.log('[Service Publish] Updated Service Status:', updatedService?.status);
       // console.log('[Service Publish] Is Edit Mode:', isEditMode);
       // console.log('[Service Publish] Draft ID:', draftId);
+      
+      // Delete draft if it exists and we're creating a new service (not updating existing)
+      if (!isUpdatingExisting && draftId) {
+        try {
+          await deleteDraft();
+        } catch (error) {
+          // Log error but don't block the success flow
+          console.error("Error deleting draft after publish:", error);
+        }
+      }
       
       // Show appropriate message based on service status
       // If it's a draft being published or a new service, show approval message
@@ -4263,7 +4368,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           {/* Price Label and Input */}
                           <div>
                             <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
-                              Price / {priceUnit || "Hours"}
+                              Price / {priceUnit || "Hours"} <span className="text-red-500">*</span>
                             </Label>
                             <Input
                               type="number"
@@ -4274,6 +4379,88 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                               placeholder="0.00"
                               className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
                             />
+                          </div>
+
+                          {/* Sale / Discounted Price (Optional) */}
+                          <div className="relative">
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
+                              Sale / Discounted Price (£) (Optional)
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={pkg.originalPrice || ""}
+                              onChange={(e) => updatePackage(pkg.id, "originalPrice", e.target.value)}
+                              onFocus={() => {
+                                // Show date picker when focusing on discount price
+                                if (pkg.originalPrice && !pkg.originalPriceValidFrom) {
+                                  // Auto-set today as default start date if not set
+                                  const today = new Date().toISOString().split("T")[0];
+                                  updatePackage(pkg.id, "originalPriceValidFrom", today);
+                                }
+                              }}
+                              placeholder="0.00"
+                              className="font-['Poppins',sans-serif] text-[13px] border-gray-300"
+                            />
+                            {pkg.originalPrice && (
+                              <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm space-y-3">
+                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
+                                  Valid Date Range (optional)
+                                </Label>
+                                <div className="space-y-3">
+                                  <div>
+                                    <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                                      From
+                                    </Label>
+                                    <Input
+                                      type="date"
+                                      value={pkg.originalPriceValidFrom || ""}
+                                      onChange={(e) => {
+                                        updatePackage(pkg.id, "originalPriceValidFrom", e.target.value);
+                                        // Validate that "to" date is not before "from" date
+                                        if (pkg.originalPriceValidUntil && e.target.value > pkg.originalPriceValidUntil) {
+                                          toast.error("Start date must be before end date");
+                                        }
+                                      }}
+                                      min={new Date().toISOString().split("T")[0]}
+                                      className="font-['Poppins',sans-serif] text-[12px] border-gray-300 w-full"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                                      To
+                                    </Label>
+                                    <Input
+                                      type="date"
+                                      value={pkg.originalPriceValidUntil || ""}
+                                      onChange={(e) => {
+                                        updatePackage(pkg.id, "originalPriceValidUntil", e.target.value);
+                                        // Validate that "to" date is not before "from" date
+                                        if (pkg.originalPriceValidFrom && e.target.value < pkg.originalPriceValidFrom) {
+                                          toast.error("End date must be after start date");
+                                        }
+                                      }}
+                                      min={pkg.originalPriceValidFrom || new Date().toISOString().split("T")[0]}
+                                      className="font-['Poppins',sans-serif] text-[12px] border-gray-300 w-full"
+                                    />
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    updatePackage(pkg.id, "originalPrice", "");
+                                    updatePackage(pkg.id, "originalPriceValidFrom", "");
+                                    updatePackage(pkg.id, "originalPriceValidUntil", "");
+                                  }}
+                                  className="w-full text-[11px] h-7"
+                                >
+                                  Remove Discount
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
