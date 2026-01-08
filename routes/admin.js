@@ -15,6 +15,7 @@ import SubCategory from '../models/SubCategory.js';
 import ServiceCategory from '../models/ServiceCategory.js';
 import ServiceSubCategory from '../models/ServiceSubCategory.js';
 import Service from '../models/Service.js';
+import PaymentSettings from '../models/PaymentSettings.js';
 
 // Load environment variables
 dotenv.config();
@@ -2407,6 +2408,44 @@ router.post('/verification-reminders/trigger', requireAdmin, async (req, res) =>
   } catch (error) {
     // console.error('Trigger verification reminders error', error);
     return res.status(500).json({ error: 'Failed to trigger verification reminders' });
+  }
+});
+
+// Get payment settings (admin only)
+router.get('/payment-settings', requireAdmin, async (req, res) => {
+  try {
+    const settings = await PaymentSettings.getSettings();
+    res.json({ settings });
+  } catch (error) {
+    console.error('Error fetching payment settings:', error);
+    res.status(500).json({ error: 'Failed to fetch payment settings' });
+  }
+});
+
+// Update payment settings (admin only)
+router.put('/payment-settings', requireAdmin, async (req, res) => {
+  try {
+    const settings = await PaymentSettings.getSettings();
+    
+    // Update settings
+    Object.keys(req.body).forEach(key => {
+      if (key === 'bankAccountDetails') {
+        settings.bankAccountDetails = {
+          ...settings.bankAccountDetails,
+          ...req.body.bankAccountDetails,
+        };
+      } else if (key !== '_id' && key !== '__v' && key !== 'createdAt' && key !== 'updatedAt') {
+        settings[key] = req.body[key];
+      }
+    });
+    
+    settings.updatedBy = req.adminUser._id;
+    await settings.save();
+    
+    res.json({ message: 'Payment settings updated successfully', settings });
+  } catch (error) {
+    console.error('Error updating payment settings:', error);
+    res.status(500).json({ error: 'Failed to update payment settings' });
   }
 });
 
