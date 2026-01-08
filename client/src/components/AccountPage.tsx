@@ -5549,7 +5549,8 @@ function InviteSection() {
 
 // Services Section - Professional Only
 function ServicesSection() {
-  const [activeTab, setActiveTab] = useState<"myservices" | "servicepackages" | "reviews" | "analytics">("myservices");
+  const [activeTab, setActiveTab] = useState<"myservices" | "packageservice" | "reviews" | "analytics">("myservices");
+  const [isAddingPackageService, setIsAddingPackageService] = useState(false);
   const { userInfo } = useAccount();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -5659,6 +5660,7 @@ function ServicesSection() {
     if (userInfo?.isBlocked) {
       toast.error("Your account has been blocked. You cannot add services. Please contact support.");
       setIsAddServiceOpen(false);
+      setIsAddingPackageService(false);
       return;
     }
     
@@ -5680,6 +5682,7 @@ function ServicesSection() {
     } finally {
       setRefreshing(false);
       setIsAddServiceOpen(false);
+      setIsAddingPackageService(false);
     }
   };
 
@@ -5869,7 +5872,8 @@ function ServicesSection() {
       <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
         <div className="flex gap-2 pb-2 border-b-2 border-gray-100">
         {[
-          { id: "myservices", label: "My Services", icon: Briefcase },
+          { id: "myservices", label: "Single Service", icon: Briefcase },
+          { id: "packageservice", label: "Package Service", icon: Package },
           { id: "reviews", label: "Reviews", icon: Heart },
           { id: "analytics", label: "Analytics", icon: TrendingUp },
         ].map((tab) => {
@@ -5896,7 +5900,7 @@ function ServicesSection() {
         </div>
       </div>
 
-      {/* My Services Tab */}
+      {/* Single Service Tab */}
       {activeTab === "myservices" && (
         <div>
           {/* Show Add Service Section or Service List */}
@@ -5904,6 +5908,7 @@ function ServicesSection() {
             <AddServiceSection
               onClose={() => setIsAddServiceOpen(false)}
               onSave={handleAddService}
+              isPackageService={false}
             />
           ) : isEditServiceOpen && selectedService ? (
             <AddServiceSection
@@ -5913,6 +5918,7 @@ function ServicesSection() {
               }}
               onSave={handleUpdateService}
               initialService={selectedService}
+              isPackageService={selectedService.packages && Array.isArray(selectedService.packages) && selectedService.packages.length > 0}
             />
           ) : (
             <>
@@ -6378,6 +6384,302 @@ function ServicesSection() {
       )}
 
       {/* Reviews Tab */}
+      {/* Package Service Tab */}
+      {activeTab === "packageservice" && (
+        <div>
+          {/* Show Add Service Section or Service List */}
+          {isAddingPackageService ? (
+            <AddServiceSection
+              onClose={() => setIsAddingPackageService(false)}
+              onSave={handleAddService}
+              isPackageService={true}
+            />
+          ) : isEditServiceOpen && selectedService ? (
+            <AddServiceSection
+              onClose={() => {
+                setIsEditServiceOpen(false);
+                setSelectedService(null);
+              }}
+              onSave={handleUpdateService}
+              initialService={selectedService}
+              isPackageService={true}
+            />
+          ) : (
+            <>
+          {/* Action Bar */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" />
+              <Input
+                placeholder="Search package services..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10 font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F]"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={(value) => {
+              setFilterStatus(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="required_modification">Required Modification</SelectItem>
+                <SelectItem value="denied">Denied</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              onClick={() => {
+                if (userInfo?.isBlocked) {
+                  toast.error("Your account has been blocked. You cannot add services. Please contact support.");
+                  return;
+                }
+                setIsAddingPackageService(true);
+              }}
+              disabled={userInfo?.isBlocked}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Add Package Service
+            </Button>
+          </div>
+
+          {/* Info Message */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+              <strong>Package Service:</strong> Create services with multiple package options. The package step is required as the 2nd step in the creation process.
+            </p>
+          </div>
+
+          {/* Filter services that have packages */}
+          {(() => {
+            const packageServices = myServices.filter((service) => 
+              service.packages && Array.isArray(service.packages) && service.packages.length > 0
+            );
+            
+            // Apply search and filter
+            const filteredServices = packageServices.filter((service) => {
+              const matchesSearch = !searchQuery || 
+                service.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                service.description?.toLowerCase().includes(searchQuery.toLowerCase());
+              const matchesStatus = filterStatus === "all" || 
+                (service.status?.toLowerCase() === filterStatus.toLowerCase());
+              return matchesSearch && matchesStatus;
+            });
+
+            // Sort services
+            const sortedServices = [...filteredServices].sort((a, b) => {
+              let aValue: any, bValue: any;
+              switch (sortField) {
+                case "title":
+                  aValue = a.title?.toLowerCase() || "";
+                  bValue = b.title?.toLowerCase() || "";
+                  break;
+                case "price":
+                  aValue = parseFloat(a.price) || 0;
+                  bValue = parseFloat(b.price) || 0;
+                  break;
+                case "date":
+                  aValue = new Date(a.createdAt).getTime();
+                  bValue = new Date(b.createdAt).getTime();
+                  break;
+                default:
+                  return 0;
+              }
+              if (sortDirection === "asc") {
+                return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+              } else {
+                return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+              }
+            });
+
+            // Pagination
+            const entriesPerPageNum = parseInt(entriesPerPage);
+            const startIndex = (currentPage - 1) * entriesPerPageNum;
+            const endIndex = startIndex + entriesPerPageNum;
+            const paginatedServices = sortedServices.slice(startIndex, endIndex);
+            const totalPages = Math.ceil(sortedServices.length / entriesPerPageNum);
+
+            return (
+              <>
+                {/* Table Controls - Rows per page */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Show</span>
+                    <Select value={entriesPerPage} onValueChange={(value) => {
+                      setEntriesPerPage(value);
+                      setCurrentPage(1);
+                    }}>
+                      <SelectTrigger className="w-[80px] h-9 font-['Poppins',sans-serif] text-[14px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">entries</span>
+                  </div>
+                </div>
+
+                {/* Services Table */}
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50">
+                      <TableRow className="border-b border-gray-200/50">
+                        <TableHead className="font-['Poppins',sans-serif]">Active</TableHead>
+                        <TableHead 
+                          className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100/70 transition-all duration-200 shadow-sm"
+                          onClick={() => handleSort("title")}
+                        >
+                          <div className="flex items-center gap-2">
+                            Service Name
+                            <ArrowUpDown className="w-4 h-4 text-[#6b6b6b]" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="font-['Poppins',sans-serif]">Packages</TableHead>
+                        <TableHead className="font-['Poppins',sans-serif]">Category</TableHead>
+                        <TableHead 
+                          className="font-['Poppins',sans-serif] cursor-pointer hover:bg-gray-100/70 transition-all duration-200 shadow-sm"
+                          onClick={() => handleSort("price")}
+                        >
+                          <div className="flex items-center gap-2">
+                            Price
+                            <ArrowUpDown className="w-4 h-4 text-[#6b6b6b]" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
+                        <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8">
+                            <div className="flex items-center justify-center">
+                              <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F] mr-2" />
+                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading services...</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : paginatedServices.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8">
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              No package services found. Click "Add Package Service" to create your first package service.
+                            </p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedServices.map((service) => (
+                          <TableRow key={service._id} className="hover:bg-gray-50/50 transition-colors">
+                            <TableCell>
+                              <Switch
+                                checked={service.isActive !== false}
+                                onCheckedChange={() => handleToggleServiceDisable(service._id, service.isActive !== false)}
+                                disabled={refreshing}
+                              />
+                            </TableCell>
+                            <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              <div className="max-w-xs">
+                                <p className="font-medium truncate">{service.title || "Untitled"}</p>
+                                <p className="text-[12px] text-[#6b6b6b] line-clamp-2 mt-1">
+                                  {service.description || "No description"}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              <Badge variant="outline" className="font-['Poppins',sans-serif]">
+                                {service.packages?.length || 0} packages
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              {service.serviceCategory?.name || "N/A"}
+                            </TableCell>
+                            <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-nowrap">
+                              £{service.price?.toFixed(2) || "0.00"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`font-['Poppins',sans-serif] text-[11px] ${getStatusBadge(service.status)}`}>
+                                {getStatusLabel(service.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditService(service)}
+                                  disabled={refreshing || userInfo?.isBlocked}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteService(service._id)}
+                                  disabled={refreshing}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      Showing {startIndex + 1} to {Math.min(endIndex, sortedServices.length)} of {sortedServices.length} package services
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1 || loading}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif]"
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages || loading}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif]"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+            </>
+          )}
+        </div>
+      )}
+
       {activeTab === "reviews" && (
         <div>
           {/* Reviews content will be implemented here */}

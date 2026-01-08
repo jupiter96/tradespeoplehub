@@ -59,6 +59,7 @@ interface AddServiceSectionProps {
   onClose: () => void;
   onSave: (serviceData: any) => void;
   initialService?: any; // For editing existing service
+  isPackageService?: boolean; // If true, packages step is required as 2nd step
 }
 
 // Complete category tree structure with Service Types and Attributes
@@ -1427,7 +1428,7 @@ function SubCategoryLevelDisplay({
   );
 }
 
-export default function AddServiceSection({ onClose, onSave, initialService }: AddServiceSectionProps) {
+export default function AddServiceSection({ onClose, onSave, initialService, isPackageService = false }: AddServiceSectionProps) {
   const { userInfo } = useAccount();
 
   // Check if user is a professional
@@ -1547,7 +1548,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       try {
         const { resolveApiUrl } = await import("../config/api");
         const response = await fetch(
-          resolveApiUrl("/api/services?status=draft&limit=1&sort=-updatedAt"),
+          resolveApiUrl("/api/services?status=draft&limit=100&sort=-updatedAt"),
           {
             credentials: "include",
           }
@@ -1556,12 +1557,21 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
         if (response.ok) {
           const data = await response.json();
           if (data.services && data.services.length > 0) {
-            const draft = data.services[0];
+            // Filter drafts based on service type
+            // For package service: only drafts with packages
+            // For single service: only drafts without packages (or empty packages)
+            const filteredDrafts = data.services.filter((draft: any) => {
+              const hasPackages = draft.packages && Array.isArray(draft.packages) && draft.packages.length > 0;
+              return isPackageService ? hasPackages : !hasPackages;
+            });
 
-            // Ask user if they want to continue with the draft
-            const shouldContinue = window.confirm(
-              `You have an unfinished service draft "${draft.title || 'Untitled Draft'}". Would you like to continue editing it?`
-            );
+            if (filteredDrafts.length > 0) {
+              const draft = filteredDrafts[0]; // Get the most recent matching draft
+
+              // Ask user if they want to continue with the draft
+              const shouldContinue = window.confirm(
+                `You have an unfinished ${isPackageService ? 'package ' : ''}service draft "${draft.title || 'Untitled Draft'}". Would you like to continue editing it?`
+              );
 
             if (shouldContinue) {
               // Load draft data into form
@@ -1614,6 +1624,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
 
               setLastSaved(new Date(draft.updatedAt));
             }
+            }
           }
         }
       } catch (error) {
@@ -1625,7 +1636,7 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     };
 
     loadLatestDraft();
-  }, [userInfo?.id, isEditMode, draftLoaded]);
+  }, [userInfo?.id, isEditMode, draftLoaded, isPackageService]);
 
   // Initialize form with existing service data when editing
   useEffect(() => {
@@ -1889,6 +1900,13 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
   // Packages Tab
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [offerPackages, setOfferPackages] = useState(false);
+  
+  // Auto-enable packages if this is a package service
+  useEffect(() => {
+    if (isPackageService && !offerPackages) {
+      setOfferPackages(true);
+    }
+  }, [isPackageService]);
   
   // Initialize packages with BASIC, STANDARD, PREMIUM if offerPackages is enabled
   useEffect(() => {
@@ -2302,27 +2320,45 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
     }
   };
 
-  // Tab order for navigation
-  const TAB_ORDER = [
-    "service-details",
-    "packages",
-    "extra-service",
-    "gallery",
-    "faqs",
-    "availability",
-    "profile"
-  ];
+  // Tab order for navigation - conditionally include packages step
+  const TAB_ORDER = isPackageService
+    ? [
+        "service-details",
+        "packages",
+        "extra-service",
+        "gallery",
+        "faqs",
+        "availability",
+        "profile"
+      ]
+    : [
+        "service-details",
+        "extra-service",
+        "gallery",
+        "faqs",
+        "availability",
+        "profile"
+      ];
 
-  // Step configuration with icons
-  const STEPS = [
-    { id: "service-details", label: "Service Details", icon: FileText },
-    { id: "packages", label: "Package", icon: Package },
-    { id: "extra-service", label: "Extra Service", icon: Settings },
-    { id: "gallery", label: "Gallery", icon: ImagePlus },
-    { id: "faqs", label: "FAQs", icon: MessageSquare },
-    { id: "availability", label: "Availability", icon: CalendarDays },
-    { id: "profile", label: "Profile", icon: UserCircle },
-  ];
+  // Step configuration with icons - conditionally include packages step
+  const STEPS = isPackageService
+    ? [
+        { id: "service-details", label: "Service Details", icon: FileText },
+        { id: "packages", label: "Package", icon: Package },
+        { id: "extra-service", label: "Extra Service", icon: Settings },
+        { id: "gallery", label: "Gallery", icon: ImagePlus },
+        { id: "faqs", label: "FAQs", icon: MessageSquare },
+        { id: "availability", label: "Availability", icon: CalendarDays },
+        { id: "profile", label: "Profile", icon: UserCircle },
+      ]
+    : [
+        { id: "service-details", label: "Service Details", icon: FileText },
+        { id: "extra-service", label: "Extra Service", icon: Settings },
+        { id: "gallery", label: "Gallery", icon: ImagePlus },
+        { id: "faqs", label: "FAQs", icon: MessageSquare },
+        { id: "availability", label: "Availability", icon: CalendarDays },
+        { id: "profile", label: "Profile", icon: UserCircle },
+      ];
 
   const getCurrentTabIndex = () => TAB_ORDER.indexOf(activeTab);
   const isLastTab = () => getCurrentTabIndex() === TAB_ORDER.length - 1;
@@ -2380,7 +2416,21 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
       }
       toast.success("Service details saved!");
     } else if (activeTab === "packages") {
-      // Optional, just save
+      // For package service, packages are required
+      if (isPackageService) {
+        if (!offerPackages || !packages || packages.length === 0) {
+          toast.error("Please add at least one package for package service");
+          return;
+        }
+        // Validate each package has required fields
+        const invalidPackages = packages.filter(pkg => 
+          !pkg.name || !pkg.description || !pkg.price || parseFloat(pkg.price) <= 0
+        );
+        if (invalidPackages.length > 0) {
+          toast.error("Please fill in all required fields for all packages (name, description, and price)");
+          return;
+        }
+      }
       toast.success("Packages saved!");
     } else if (activeTab === "extra-service") {
       // Optional, just save
@@ -3984,19 +4034,31 @@ export default function AddServiceSection({ onClose, onSave, initialService }: A
                     </Select>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Offer Packages
-                    </Label>
-                    <Switch
-                      checked={offerPackages}
-                      onCheckedChange={setOfferPackages}
-                    />
-                  </div>
+                  {!isPackageService && (
+                    <div className="flex items-center justify-between pt-2">
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        Offer Packages
+                      </Label>
+                      <Switch
+                        checked={offerPackages}
+                        onCheckedChange={setOfferPackages}
+                      />
+                    </div>
+                  )}
+                  {isPackageService && (
+                    <div className="pt-2 pb-2">
+                      <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <Package className="w-4 h-4 text-blue-600" />
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
+                          Packages are required for package services
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Packages Section */}
-                {offerPackages && (
+                {(offerPackages || isPackageService) && (
                   <div className="space-y-4">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                       Packages
