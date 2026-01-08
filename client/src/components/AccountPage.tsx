@@ -222,7 +222,7 @@ export default function AccountPage() {
 
     const attemptFetchAndShow = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/auth/verification`, { credentials: "include" });
+        const res = await fetch(resolveApiUrl("/api/auth/verification"), { credentials: "include" });
         if (!res.ok) {
           // Session/cookie might not be ready right after login redirect; retry a few times.
           if (verificationModalRetryRef.current < 5) {
@@ -498,7 +498,7 @@ export default function AccountPage() {
                   onVerificationStatusChange={() => {
                     // Refresh verification status when status changes
                     if (userRole === "professional" && isLoggedIn) {
-                      fetch(`${API_BASE_URL}/api/auth/verification`, {
+                      fetch(resolveApiUrl("/api/auth/verification"), {
                         credentials: "include",
                       })
                         .then(res => res.json())
@@ -2594,7 +2594,7 @@ function BillingSection() {
 
   const fetchWalletBalance = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wallet/balance`, {
+      const response = await fetch(resolveApiUrl("/api/wallet/balance"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -2611,7 +2611,7 @@ function BillingSection() {
   const fetchTransactions = async () => {
     setLoadingTransactions(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wallet/transactions?limit=20`, {
+      const response = await fetch(resolveApiUrl("/api/wallet/transactions?limit=20"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -2644,7 +2644,7 @@ function BillingSection() {
 
   const fetchPublishableKey = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment/publishable-key`, {
+      const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -2658,7 +2658,7 @@ function BillingSection() {
 
   const handleSetDefault = async (paymentMethodId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment-methods/set-default`, {
+      const response = await fetch(resolveApiUrl("/api/payment-methods/set-default"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -2685,7 +2685,7 @@ function BillingSection() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/payment-methods/${paymentMethodId}`, {
+      const response = await fetch(resolveApiUrl(`/api/payment-methods/${paymentMethodId}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -3003,7 +3003,7 @@ function TransactionHistoryTab() {
       if (filters.status && filters.status !== "all") params.append("status", filters.status);
       if (filters.type && filters.type !== "all") params.append("type", filters.type);
 
-      const response = await fetch(`${API_BASE_URL}/api/wallet/transactions?${params}`, {
+      const response = await fetch(resolveApiUrl(`/api/wallet/transactions?${params}`), {
         credentials: "include",
       });
 
