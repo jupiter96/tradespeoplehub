@@ -1870,14 +1870,27 @@ export default function ServiceDetailPage() {
                         
                         {service.packages.map((pkg: any) => {
                           const pkgId = pkg.id || pkg._id || String(pkg._id) || `pkg-${Date.now()}`;
-                          const pkgPrice = typeof pkg.price === 'number' ? pkg.price : parseMoney(pkg.price || pkg.originalPrice || service.price);
+                          // Use originalPrice (discounted) if available, otherwise use price
+                          const pkgRegularPrice = typeof pkg.price === 'number' ? pkg.price : parseMoney(pkg.price || 0);
+                          const pkgDiscountedPrice = pkg.originalPrice ? (typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseMoney(pkg.originalPrice)) : null;
+                          const pkgPrice = pkgDiscountedPrice || pkgRegularPrice;
                           return (
                           <TabsContent key={pkgId} value={String(pkgId)} className="mt-0 space-y-4">
                             {/* Package Price */}
                             <div>
+                              {pkgDiscountedPrice && (
+                                <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] line-through mr-2">
+                                  £{pkgRegularPrice.toFixed(2)}
+                                </span>
+                              )}
                               <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
                                 £{pkgPrice.toFixed(2)}
                               </span>
+                              {pkgDiscountedPrice && (
+                                <Badge className="bg-[#10B981] text-white font-['Poppins',sans-serif] text-[11px] ml-2">
+                                  Save £{(pkgRegularPrice - pkgDiscountedPrice).toFixed(0)}
+                                </Badge>
+                              )}
                             </div>
                             
                             {/* Package Description */}
@@ -2115,7 +2128,7 @@ export default function ServiceDetailPage() {
                       {/* Base price */}
                       <div className="flex items-center justify-between">
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          Service {quantity > 1 ? `(${quantity} × £${service.price})` : ''}
+                          {selectedPackage ? `${selectedPackage.name} Package` : 'Service'} {quantity > 1 ? `(${quantity} × £${basePrice.toFixed(2)})` : ''}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           £{(basePrice * quantity).toFixed(2)}

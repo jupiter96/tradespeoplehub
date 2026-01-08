@@ -1505,6 +1505,24 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
     return options;
   }, [currentServiceCategory]);
+
+  // Get all service attributes from the selected service category's subcategories
+  const availableServiceAttributes = useMemo(() => {
+    if (!currentServiceCategory || !currentServiceCategory.subCategories) {
+      return [];
+    }
+
+    // Collect all serviceAttributes from all subcategories
+    const allAttributes: string[] = [];
+    currentServiceCategory.subCategories.forEach((subCat: ServiceSubCategory) => {
+      if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
+        allAttributes.push(...subCat.serviceAttributes);
+      }
+    });
+
+    // Remove duplicates and return unique attributes
+    return Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
+  }, [currentServiceCategory]);
   
   // Set default sector when sectors are loaded (only if user has a registered sector)
   useEffect(() => {
@@ -2665,6 +2683,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     county,
     packages,
     extraServices,
+    faqs,
+    availability,
+    aboutMe,
     draftId
   ]);
 
@@ -3076,8 +3097,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         county: county || userInfo?.county || "",
         badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
         status: "pending", // Set to pending when publishing
-        faqs: faqs
-          .filter((f) => f.question.trim() && f.answer.trim())
+        faqs: (faqs || [])
+          .filter((f) => f && f.question && f.answer && f.question.trim() && f.answer.trim())
           .map((f, index) => ({
             id: f.id || `faq-${index}`,
             question: f.question.trim(),
@@ -4081,35 +4102,37 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                             />
                           </div>
 
-                          {/* Checkboxes - Features */}
+                          {/* Checkboxes - Features (Service Attributes) */}
                           <div className="space-y-2">
-                            {[
-                              "Fake Text Generator Lorem Ipsum Online",
-                              "What does Lorem ipsum dolor mean?",
-                              "The most used version of Lorem Ipsum?"
-                            ].map((featureText, idx) => {
-                              const featureKey = `feature-${idx + 1}`;
-                              const isChecked = pkg.features?.includes(featureText) || false;
-                              return (
-                                <div key={featureKey} className="flex items-center gap-2">
-                                  <Checkbox 
-                                    id={`${pkg.id}-${featureKey}`}
-                                    checked={isChecked}
-                                    onCheckedChange={(checked) => {
-                                      const currentFeatures = pkg.features || [];
-                                      if (checked) {
-                                        updatePackage(pkg.id, "features", [...currentFeatures, featureText]);
-                                      } else {
-                                        updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== featureText));
-                                      }
-                                    }}
-                                  />
-                                  <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
-                                    {featureText}
-                                  </Label>
-                                </div>
-                              );
-                            })}
+                            {availableServiceAttributes.length > 0 ? (
+                              availableServiceAttributes.map((attribute, idx) => {
+                                const featureKey = `feature-${idx}`;
+                                const isChecked = pkg.features?.includes(attribute) || false;
+                                return (
+                                  <div key={featureKey} className="flex items-center gap-2">
+                                    <Checkbox 
+                                      id={`${pkg.id}-${featureKey}`}
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        const currentFeatures = pkg.features || [];
+                                        if (checked) {
+                                          updatePackage(pkg.id, "features", [...currentFeatures, attribute]);
+                                        } else {
+                                          updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== attribute));
+                                        }
+                                      }}
+                                    />
+                                    <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
+                                      {attribute}
+                                    </Label>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">
+                                {selectedCategoryId ? "No attributes available for this service category" : "Please select a service category first"}
+                              </p>
+                            )}
                           </div>
 
                           {/* Delivery Dropdown */}

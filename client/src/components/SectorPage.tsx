@@ -2568,27 +2568,40 @@ export default function SectorPage() {
                                     return null;
                                   }
                                   
-                                  // Get base price (originalPrice if exists, otherwise price)
-                                  const basePrice = parseFloat(String(service.originalPrice || service.price).replace('£', '').replace(/,/g, '')) || 0;
-                                  
-                                  // Find the most expensive package price
+                                  // For package services, find min and max package prices directly
+                                  let minPackagePrice = Infinity;
                                   let maxPackagePrice = 0;
+                                  
                                   service.packages.forEach((pkg: any) => {
-                                    const pkgPrice = parseFloat(String(pkg.price || pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
-                                    if (pkgPrice > maxPackagePrice) {
-                                      maxPackagePrice = pkgPrice;
+                                    // Use originalPrice if available (discounted), otherwise use price
+                                    const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                    if (pkgPrice > 0) {
+                                      if (pkgPrice < minPackagePrice) {
+                                        minPackagePrice = pkgPrice;
+                                      }
+                                      if (pkgPrice > maxPackagePrice) {
+                                        maxPackagePrice = pkgPrice;
+                                      }
                                     }
                                   });
                                   
-                                  if (maxPackagePrice === 0) {
+                                  if (minPackagePrice === Infinity || maxPackagePrice === 0) {
                                     return null;
                                   }
                                   
-                                  const maxPrice = basePrice + maxPackagePrice;
+                                  // If all packages have the same price, show single price
+                                  if (minPackagePrice === maxPackagePrice) {
+                                    return {
+                                      min: minPackagePrice,
+                                      max: maxPackagePrice,
+                                      formatted: `£${minPackagePrice.toFixed(2)}`
+                                    };
+                                  }
+                                  
                                   return {
-                                    min: basePrice,
-                                    max: maxPrice,
-                                    formatted: `£${basePrice.toFixed(2)} - £${maxPrice.toFixed(2)}`
+                                    min: minPackagePrice,
+                                    max: maxPackagePrice,
+                                    formatted: `£${minPackagePrice.toFixed(2)} - £${maxPackagePrice.toFixed(2)}`
                                   };
                                 };
                                 
