@@ -1275,6 +1275,9 @@ function SubCategoryLevelDisplay({
   selectedAttributes,
   setSelectedAttributes,
   attributeTypeLabels,
+  isPackageService = false,
+  selectedLastLevelSubCategories = [],
+  setSelectedLastLevelSubCategories,
 }: {
   parentSubCategoryId: string;
   levelIndex: number;
@@ -1287,6 +1290,9 @@ function SubCategoryLevelDisplay({
   selectedAttributes: Record<string, string>;
   setSelectedAttributes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   attributeTypeLabels: Record<string, string>;
+  isPackageService?: boolean;
+  selectedLastLevelSubCategories?: string[];
+  setSelectedLastLevelSubCategories?: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
   const currentLevelSubCats = nestedSubCategories[parentSubCategoryId] || [];
   const isLoading = loadingSubCategories[parentSubCategoryId];
@@ -1325,6 +1331,24 @@ function SubCategoryLevelDisplay({
     }
   }, [parentSubCategoryId]);
 
+  // Check if this is the last level (no nested subcategories exist for any current level subcategory)
+  const isLastLevel = useMemo(() => {
+    if (!isPackageService) return false;
+    // Check if any of the current level subcategories have nested subcategories
+    for (const subCat of currentLevelSubCats) {
+      if (nestedSubCategories[subCat._id] && nestedSubCategories[subCat._id].length > 0) {
+        return false; // This is not the last level
+      }
+    }
+    // Also check if they're still loading
+    for (const subCat of currentLevelSubCats) {
+      if (loadingSubCategories[subCat._id]) {
+        return false; // Still loading, can't determine yet
+      }
+    }
+    return currentLevelSubCats.length > 0; // This is the last level
+  }, [currentLevelSubCats, nestedSubCategories, loadingSubCategories, isPackageService]);
+
   // Group subcategories by attributeType
   const subCategoriesByAttributeType = currentLevelSubCats.reduce((acc, subCat) => {
     const attrType = subCat.attributeType || 'other';
@@ -1354,6 +1378,28 @@ function SubCategoryLevelDisplay({
       }
     });
     setSelectedAttributes(newAttributes);
+    
+    // Clear last level selections when path changes (not at last level)
+    if (!isLastLevel && setSelectedLastLevelSubCategories) {
+      setSelectedLastLevelSubCategories([]);
+    }
+  };
+
+  const handleLastLevelCheckboxChange = (subCatId: string, checked: boolean) => {
+    if (!setSelectedLastLevelSubCategories) return;
+    
+    setSelectedLastLevelSubCategories(prev => {
+      if (checked) {
+        // Add to selection if not already present
+        if (!prev.includes(subCatId)) {
+          return [...prev, subCatId];
+        }
+        return prev;
+      } else {
+        // Remove from selection
+        return prev.filter(id => id !== subCatId);
+      }
+    });
   };
 
   if (isLoading) {
@@ -1378,6 +1424,66 @@ function SubCategoryLevelDisplay({
         // Get selected value for this level (check if any subcat in this group is selected)
         const selectedInThisGroup = sortedSubCats.find(sc => selectedSubCategoryPath[levelIndex] === sc._id)?._id || "";
 
+        // If this is the last level and package service, use checkboxes
+        if (isLastLevel && isPackageService) {
+          const selectedCount = selectedLastLevelSubCategories?.length || 0;
+          return (
+            <div key={attrType} className="space-y-2">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] block">
+                  {label} <span className="text-red-500">*</span>
+                </Label>
+                <span className={`font-['Poppins',sans-serif] text-[12px] ${
+                  selectedCount >= 3 ? 'text-green-600' : 'text-red-500'
+                }`}>
+                  {selectedCount} / 3 minimum required
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {sortedSubCats.map((subCat) => {
+                  const isSelected = selectedLastLevelSubCategories?.includes(subCat._id) || false;
+                  return (
+                    <label
+                      key={subCat._id}
+                      htmlFor={`${groupName}_${subCat._id}`}
+                      className={`
+                        flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+                        ${isSelected 
+                          ? 'border-[#FE8A0F] bg-[#FFF5EB] shadow-md' 
+                          : 'border-gray-200 bg-white hover:border-[#FE8A0F]/50 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <Checkbox
+                          id={`${groupName}_${subCat._id}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleLastLevelCheckboxChange(subCat._id, checked as boolean)}
+                          className="shrink-0"
+                        />
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium truncate">
+                          {subCat.name || "Unnamed Option"}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FE8A0F] ml-2 shrink-0">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+              {selectedCount < 3 && (
+                <p className="font-['Poppins',sans-serif] text-[12px] text-red-500 mt-1">
+                  Please select at least 3 items from {label}
+                </p>
+              )}
+            </div>
+          );
+        }
+
+        // Regular single-select with radio buttons
         return (
           <div key={attrType} className="space-y-2">
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
@@ -1472,30 +1578,58 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   const [selectedSubCategoryPath, setSelectedSubCategoryPath] = useState<string[]>([]); // Path of selected subcategory IDs (one per level)
   const [nestedSubCategories, setNestedSubCategories] = useState<Record<string, ServiceSubCategory[]>>({}); // Nested subcategories by parent ID
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({}); // Selected attribute values by level (single select)
+  const [selectedLastLevelSubCategories, setSelectedLastLevelSubCategories] = useState<string[]>([]); // Selected last-level subcategories for package services (multiple select)
   const [loadingSubCategories, setLoadingSubCategories] = useState<Record<string, boolean>>({});
   const [selectedSubCategoryTitles, setSelectedSubCategoryTitles] = useState<string[]>([]); // Titles for the selected subcategory
   const [loadingTitles, setLoadingTitles] = useState<boolean>(false);
   
   // Resolve currently selected service category (for dynamic price unit options)
   const currentServiceCategory = useMemo(() => {
-    if (!selectedSectorId || !selectedCategoryId) return null;
+    if (!selectedSectorId || !selectedCategoryId) {
+      console.log('[PriceUnit] Missing selectedSectorId or selectedCategoryId:', { selectedSectorId, selectedCategoryId });
+      return null;
+    }
     const categoriesForSector = serviceCategoriesBySector[selectedSectorId] || [];
-    return categoriesForSector.find((c) => c._id === selectedCategoryId) || null;
+    console.log('[PriceUnit] Categories for sector:', categoriesForSector.length, 'categories');
+    const found = categoriesForSector.find((c) => c._id === selectedCategoryId) || null;
+    if (found) {
+      console.log('[PriceUnit] Found category:', found.name, 'pricePerUnit:', found.pricePerUnit);
+    } else {
+      console.log('[PriceUnit] Category not found in serviceCategoriesBySector');
+    }
+    return found;
   }, [serviceCategoriesBySector, selectedSectorId, selectedCategoryId]);
 
   const priceUnitOptions = useMemo(() => {
     // Only use units explicitly configured on the selected service category.
-    if (
-      !currentServiceCategory ||
-      !currentServiceCategory.pricePerUnit?.enabled ||
-      !Array.isArray(currentServiceCategory.pricePerUnit.units)
-    ) {
+    if (!currentServiceCategory) {
+      console.log('[PriceUnit] No currentServiceCategory found');
+      return [] as { value: string; label: string }[];
+    }
+
+    // Check if pricePerUnit exists
+    if (!currentServiceCategory.pricePerUnit) {
+      console.log('[PriceUnit] No pricePerUnit found in category:', currentServiceCategory.name);
+      return [] as { value: string; label: string }[];
+    }
+
+    // If enabled is false, return empty
+    if (currentServiceCategory.pricePerUnit.enabled === false) {
+      console.log('[PriceUnit] pricePerUnit.enabled is false for category:', currentServiceCategory.name);
+      return [] as { value: string; label: string }[];
+    }
+
+    // Check if units array exists
+    if (!Array.isArray(currentServiceCategory.pricePerUnit.units)) {
+      console.log('[PriceUnit] pricePerUnit.units is not an array for category:', currentServiceCategory.name);
       return [] as { value: string; label: string }[];
     }
 
     const units = [...currentServiceCategory.pricePerUnit.units].sort(
       (a, b) => (a.order || 0) - (b.order || 0)
     );
+
+    console.log('[PriceUnit] Found units for category:', currentServiceCategory.name, units);
 
     const options: { value: string; label: string }[] = [];
     for (const unit of units) {
@@ -1506,11 +1640,14 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
     }
 
+    console.log('[PriceUnit] Final options:', options);
     return options;
   }, [currentServiceCategory]);
 
   // Get all service attributes from the selected service category's subcategories
   const [availableServiceAttributes, setAvailableServiceAttributes] = useState<string[]>([]);
+  // Store attributes for each last-level subcategory (for package services)
+  const [lastLevelSubCategoryAttributes, setLastLevelSubCategoryAttributes] = useState<Record<string, string[]>>({});
   
   useEffect(() => {
     const fetchServiceAttributes = async () => {
@@ -2065,6 +2202,105 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     }
   }, [isPackageService]);
   
+  // Helper function to get subcategory name by ID from nestedSubCategories
+  const getSubCategoryNameById = useCallback((subCategoryId: string): string => {
+    // First, check the last level parent's children (most likely location)
+    if (selectedSubCategoryPath.length > 0) {
+      const lastParentId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+      const lastLevelSubCats = nestedSubCategories[lastParentId] || [];
+      const found = lastLevelSubCats.find(sc => sc._id === subCategoryId);
+      if (found) {
+        return found.name || "";
+      }
+    }
+    
+    // Search through all nested subcategories as fallback
+    for (const parentId in nestedSubCategories) {
+      const subCats = nestedSubCategories[parentId] || [];
+      const found = subCats.find(sc => sc._id === subCategoryId);
+      if (found) {
+        return found.name || "";
+      }
+    }
+    return "";
+  }, [nestedSubCategories, selectedSubCategoryPath]);
+
+  // Fetch attributes for each selected last-level subcategory (for package services)
+  useEffect(() => {
+    const fetchLastLevelSubCategoryAttributes = async () => {
+      if (!isPackageService || selectedLastLevelSubCategories.length === 0) {
+        setLastLevelSubCategoryAttributes({});
+        return;
+      }
+
+      try {
+        const { resolveApiUrl } = await import("../config/api");
+        const attributesMap: Record<string, string[]> = {};
+
+        // Fetch attributes from each selected last-level subcategory
+        for (const subCategoryId of selectedLastLevelSubCategories) {
+          try {
+            const response = await fetch(
+              resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
+              { credentials: 'include' }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              const subCategory = data.serviceSubCategory;
+
+              if (subCategory) {
+                const subCategoryName = subCategory.name || "";
+                const attributes = subCategory.serviceAttributes && Array.isArray(subCategory.serviceAttributes)
+                  ? subCategory.serviceAttributes.filter((attr: string) => attr && attr.trim() !== '')
+                  : [];
+                
+                // Store attributes by both ID and name for easy lookup
+                attributesMap[subCategoryId] = attributes;
+                attributesMap[subCategoryName] = attributes;
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching subcategory ${subCategoryId}:`, error);
+          }
+        }
+
+        setLastLevelSubCategoryAttributes(attributesMap);
+      } catch (error) {
+        console.error("Error fetching last-level subcategory attributes:", error);
+        setLastLevelSubCategoryAttributes({});
+      }
+    };
+
+    fetchLastLevelSubCategoryAttributes();
+  }, [isPackageService, selectedLastLevelSubCategories]);
+
+  // Auto-fill package descriptions with selected last-level subcategories
+  useEffect(() => {
+    if (isPackageService && selectedLastLevelSubCategories.length >= 3 && packages.length > 0) {
+      // Get names for selected subcategories
+      const subCategoryNames = selectedLastLevelSubCategories
+        .map(id => getSubCategoryNameById(id))
+        .filter(name => name !== "");
+      
+      // Only update if we have enough names
+      if (subCategoryNames.length >= 3) {
+        setPackages(prevPackages => {
+          // For package services, always auto-fill from selected subcategories
+          // Map each package to its corresponding subcategory name by index
+          const updatedPackages = prevPackages.map((pkg, index) => {
+            if (index < subCategoryNames.length) {
+              return { ...pkg, description: subCategoryNames[index] };
+            }
+            return pkg;
+          });
+          
+          return updatedPackages;
+        });
+      }
+    }
+  }, [isPackageService, selectedLastLevelSubCategories, packages.length, getSubCategoryNameById]);
+
   // Initialize packages with BASIC, STANDARD, PREMIUM if offerPackages is enabled
   useEffect(() => {
     if (offerPackages && packages.length === 0) {
@@ -2553,6 +2789,11 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
       if (availableSubCategories.length > 0 && selectedSubCategoryPath.length === 0) {
         toast.error("Please select a service sub category");
+        return;
+      }
+      // Validate last level subcategory selection for package services
+      if (isPackageService && selectedLastLevelSubCategories.length < 3) {
+        toast.error("Please select at least 3 items from the last level subcategories");
         return;
       }
       if (!serviceTitle) {
@@ -3153,6 +3394,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("service-details");
       return;
     }
+    // Validate last level subcategory selection for package services
+    if (isPackageService && selectedLastLevelSubCategories.length < 3) {
+      toast.error("Please select at least 3 items from the last level subcategories");
+      setActiveTab("service-details");
+      return;
+    }
     if (!serviceTitle) {
       toast.error("Please enter a service title");
       setActiveTab("service-details");
@@ -3221,6 +3468,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         serviceCategoryId: selectedCategoryId,
         serviceSubCategoryId: selectedSubCategoryPath[selectedSubCategoryPath.length - 1] || selectedSubCategoryId || undefined,
         serviceSubCategoryPath: selectedSubCategoryPath,
+        selectedLastLevelSubCategories: isPackageService ? selectedLastLevelSubCategories : undefined,
         title: serviceTitle.trim(),
         description: description.trim(),
         aboutMe: aboutMe.trim(),
@@ -3713,6 +3961,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                               setSelectedSubCategoryId("");
                               setSelectedSubCategoryPath([]);
                               setSelectedAttributes({});
+                              setSelectedLastLevelSubCategories([]);
                               // Clear previously selected price unit when category changes
                               setPriceUnit("");
                             }
@@ -3752,6 +4001,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                               setSelectedSubCategoryId(value);
                               // Clear deeper selections
                               setSelectedAttributes({});
+                              setSelectedLastLevelSubCategories([]);
                             }
                           }}
                           className="grid grid-cols-2 gap-3"
@@ -3822,6 +4072,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                               'model': 'Model',
                               'brand': 'Brand',
                             }}
+                            isPackageService={isPackageService}
+                            selectedLastLevelSubCategories={selectedLastLevelSubCategories}
+                            setSelectedLastLevelSubCategories={setSelectedLastLevelSubCategories}
                           />
                         </div>
                       );
@@ -4195,23 +4448,31 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     </div>
                   </div>
                 )}
-                {currentServiceCategory && priceUnitOptions.length > 0 && (
+                {!isPackageService && selectedCategoryId && (
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Price Unit
                     </Label>
-                    <Select value={priceUnit} onValueChange={setPriceUnit}>
-                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                        <SelectValue placeholder="Select price unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {priceUnitOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {priceUnitOptions.length > 0 ? (
+                      <Select value={priceUnit} onValueChange={setPriceUnit}>
+                        <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
+                          <SelectValue placeholder="Select price unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {priceUnitOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500 italic">
+                        {currentServiceCategory 
+                          ? "No price units configured for this service category. Please configure them in admin settings."
+                          : "Loading price units..."}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -4244,25 +4505,25 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     </h3>
                   </div>
                   
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      How do you charge?
-                    </Label>
-                    <Select value={priceUnit} onValueChange={setPriceUnit}>
-                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300 w-full">
-                        <SelectValue placeholder="Please Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Hours">Hours</SelectItem>
-                        <SelectItem value="Service">Service</SelectItem>
-                        {priceUnitOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {currentServiceCategory && priceUnitOptions.length > 0 && (
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        How do you charge?
+                      </Label>
+                      <Select value={priceUnit} onValueChange={setPriceUnit}>
+                        <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300 w-full">
+                          <SelectValue placeholder="Please Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {priceUnitOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   {!isPackageService && (
                     <div className="flex items-center justify-between pt-2">
@@ -4303,11 +4564,27 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           
                           {/* Description Textarea */}
                           <div>
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
+                              Detail <span className="text-red-500">*</span>
+                              {isPackageService && (
+                                <span className="ml-2 text-[11px] text-gray-500 font-normal">
+                                  (Auto-filled from first step selection)
+                                </span>
+                              )}
+                            </Label>
                             <Textarea
                               value={pkg.description}
-                              onChange={(e) => updatePackage(pkg.id, "description", e.target.value)}
-                              placeholder="Describe the details of your offering."
-                              className="font-['Poppins',sans-serif] text-[13px] border-gray-300 min-h-[100px]"
+                              onChange={(e) => {
+                                if (!isPackageService) {
+                                  updatePackage(pkg.id, "description", e.target.value);
+                                }
+                              }}
+                              placeholder={isPackageService ? "Auto-filled from selected subcategories" : "Describe the details of your offering."}
+                              className={`font-['Poppins',sans-serif] text-[13px] border-gray-300 min-h-[100px] ${
+                                isPackageService ? 'bg-gray-100 cursor-not-allowed' : ''
+                              }`}
+                              disabled={isPackageService}
+                              readOnly={isPackageService}
                             />
                           </div>
 
@@ -4316,37 +4593,58 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                             <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
                               What's Included
                             </Label>
-                            {availableServiceAttributes.length > 0 ? (
-                              <div className="space-y-2 max-h-[200px] overflow-y-auto border border-gray-200 rounded-md p-3">
-                                {availableServiceAttributes.map((attribute, idx) => {
-                                  const featureKey = `feature-${idx}`;
-                                  const isChecked = pkg.features?.includes(attribute) || false;
-                                  return (
-                                    <div key={featureKey} className="flex items-center gap-2">
-                                      <Checkbox 
-                                        id={`${pkg.id}-${featureKey}`}
-                                        checked={isChecked}
-                                        onCheckedChange={(checked) => {
-                                          const currentFeatures = pkg.features || [];
-                                          if (checked) {
-                                            updatePackage(pkg.id, "features", [...currentFeatures, attribute]);
-                                          } else {
-                                            updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== attribute));
-                                          }
-                                        }}
-                                      />
-                                      <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
-                                        {attribute}
-                                      </Label>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">
-                                {selectedCategoryId ? "No attributes available for this service category" : "Please select a service category first"}
-                              </p>
-                            )}
+                            {(() => {
+                              // For package services, get attributes for this specific package's subcategory
+                              let attributesToShow: string[] = [];
+                              
+                              if (isPackageService && pkg.description) {
+                                // Get attributes for this package's description (subcategory name)
+                                attributesToShow = lastLevelSubCategoryAttributes[pkg.description] || [];
+                              } else {
+                                // For single services, show all available attributes
+                                attributesToShow = availableServiceAttributes;
+                              }
+
+                              if (attributesToShow.length > 0) {
+                                return (
+                                  <div className="space-y-2 max-h-[200px] overflow-y-auto border border-gray-200 rounded-md p-3">
+                                    {attributesToShow.map((attribute, idx) => {
+                                      const featureKey = `feature-${idx}`;
+                                      const isChecked = pkg.features?.includes(attribute) || false;
+                                      return (
+                                        <div key={featureKey} className="flex items-center gap-2">
+                                          <Checkbox 
+                                            id={`${pkg.id}-${featureKey}`}
+                                            checked={isChecked}
+                                            onCheckedChange={(checked) => {
+                                              const currentFeatures = pkg.features || [];
+                                              if (checked) {
+                                                updatePackage(pkg.id, "features", [...currentFeatures, attribute]);
+                                              } else {
+                                                updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== attribute));
+                                              }
+                                            }}
+                                          />
+                                          <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
+                                            {attribute}
+                                          </Label>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">
+                                    {isPackageService && pkg.description
+                                      ? `No attributes available for "${pkg.description}"`
+                                      : selectedCategoryId
+                                      ? "No attributes available for this service category"
+                                      : "Please select a service category first"}
+                                  </p>
+                                );
+                              }
+                            })()}
                           </div>
 
                           {/* Delivery Dropdown */}
@@ -4384,7 +4682,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           {/* Sale / Discounted Price (Optional) */}
                           <div className="relative">
                             <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">
-                              Sale / Discounted Price (£) (Optional)
+                              Sale / Discounted Price {priceUnit ? `(${priceUnit})` : '(£)'} (Optional)
                             </Label>
                             <Input
                               type="number"

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle } from "lucide-react@0.487.0";
+import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle, X } from "lucide-react@0.487.0";
 import { toast } from "sonner@2.0.3";
 import BookingModal from "./BookingModal";
 import AddToCartModal from "./AddToCartModal";
@@ -1521,6 +1521,94 @@ export default function ServiceDetailPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Package Comparison Table - Only for package services */}
+                {hasPackages && service.packages && service.packages.length > 0 && (() => {
+                  // Collect all unique attributes from all packages
+                  const allAttributes = new Set<string>();
+                  service.packages.forEach((pkg: any) => {
+                    if (pkg.features && Array.isArray(pkg.features)) {
+                      pkg.features.forEach((feature: string) => {
+                        if (feature && feature.trim()) {
+                          allAttributes.add(feature.trim());
+                        }
+                      });
+                    }
+                  });
+                  const uniqueAttributes = Array.from(allAttributes).sort();
+
+                  return (
+                    <Card className="border-2 border-gray-200">
+                      <CardContent className="p-6">
+                        <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-6">
+                          Compare packages
+                        </h2>
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr>
+                                <th className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] text-left p-3 border-b border-gray-200 bg-gray-50">
+                                  Features
+                                </th>
+                                {service.packages.map((pkg: any) => {
+                                  const pkgPrice = parseMoney(pkg.price || pkg.originalPrice || 0);
+                                  return (
+                                    <th key={pkg.id || pkg._id} className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] text-center p-3 border-b border-gray-200 bg-gray-50 min-w-[120px]">
+                                      <div className="font-semibold mb-1">{pkg.name || "Package"}</div>
+                                      <div className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
+                                        £{pkgPrice.toFixed(2)}
+                                      </div>
+                                    </th>
+                                  );
+                                })}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {/* Delivery Time Row */}
+                              <tr className="border-b border-gray-100">
+                                <td className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] p-3">
+                                  Delivery Time
+                                </td>
+                                {service.packages.map((pkg: any) => {
+                                  const deliveryText = pkg.deliveryDays === 0 || pkg.deliveryDays === "same-day" || pkg.deliveryDays === "0"
+                                    ? "Same Day"
+                                    : typeof pkg.deliveryDays === "number"
+                                    ? `${pkg.deliveryDays} days`
+                                    : "Standard";
+                                  return (
+                                    <td key={pkg.id || pkg._id} className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] text-center p-3">
+                                      {deliveryText}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                              {/* Attributes Rows */}
+                              {uniqueAttributes.map((attribute, idx) => (
+                                <tr key={idx} className="border-b border-gray-100">
+                                  <td className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] p-3">
+                                    {attribute}
+                                  </td>
+                                  {service.packages.map((pkg: any) => {
+                                    const hasAttribute = pkg.features && Array.isArray(pkg.features) && pkg.features.includes(attribute);
+                                    return (
+                                      <td key={pkg.id || pkg._id} className="text-center p-3">
+                                        {hasAttribute ? (
+                                          <Check className="w-5 h-5 text-[#10B981] mx-auto" />
+                                        ) : (
+                                          <X className="w-5 h-5 text-gray-400 mx-auto" />
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
                 {/* Trust Badges */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
