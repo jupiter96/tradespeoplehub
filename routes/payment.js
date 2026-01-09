@@ -452,13 +452,51 @@ router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) =
   }
 });
 
+// Get user reference ID and generate deposit reference for manual transfer
+router.get('/wallet/fund/manual/reference', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.referenceId) {
+      return res.status(400).json({ error: 'User reference ID not found. Please contact support.' });
+    }
+
+    // Generate deposit reference: {emailPrefix}-{referenceId}
+    const emailPrefix = user.email.split('@')[0];
+    const reference = `${emailPrefix}-${user.referenceId}`;
+
+    res.json({ 
+      reference,
+      referenceId: user.referenceId,
+    });
+  } catch (error) {
+    console.error('Error generating deposit reference:', error);
+    res.status(500).json({ error: 'Failed to generate deposit reference' });
+  }
+});
+
 // Create manual transfer request
 router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
   try {
-    const { amount, reference } = req.body;
+    const { amount, reference, fullName, dateOfDeposit } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
+    }
+    
+    if (!reference || !reference.trim()) {
+      return res.status(400).json({ error: 'Deposit reference is required' });
+    }
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    if (!dateOfDeposit) {
+      return res.status(400).json({ error: 'Date of deposit is required' });
     }
     
     const settings = await PaymentSettings.getSettings();
@@ -481,7 +519,12 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
       balance: 0, // Will be updated after admin approval
       status: 'pending',
       paymentMethod: 'manual_transfer',
-      description: `Manual transfer request - £${amount}${reference ? ` (Ref: ${reference})` : ''}`,
+      description: `Manual transfer request - £${amount} (Ref: ${reference.trim()})`,
+      metadata: {
+        reference: reference.trim(),
+        fullName: fullName.trim(),
+        dateOfDeposit: dateOfDeposit,
+      },
     });
     await transaction.save();
     

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Loader2, CreditCard, Building2, Plus, Trash2, Check } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import PaymentMethodModal from "./PaymentMethodModal";
+import { useAccount } from "./AccountContext";
 
 interface PaymentMethod {
   paymentMethodId: string;
@@ -30,15 +31,32 @@ interface WalletFundModalProps {
 }
 
 export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFundModalProps) {
+  const { userInfo } = useAccount();
   const [activeTab, setActiveTab] = useState<"stripe" | "manual">("stripe");
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [dateOfDeposit, setDateOfDeposit] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingReference, setLoadingReference] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [loadingMethods, setLoadingMethods] = useState(false);
+
+  // Generate deposit reference when manual tab is opened
+  useEffect(() => {
+    if (isOpen && activeTab === "manual") {
+      generateDepositReference();
+      // Set full name from user info
+      if (userInfo?.firstName && userInfo?.lastName) {
+        setFullName(`${userInfo.firstName} ${userInfo.lastName}`);
+      } else if (userInfo?.name) {
+        setFullName(userInfo.name);
+      }
+    }
+  }, [isOpen, activeTab, userInfo]);
 
   useEffect(() => {
     if (isOpen && activeTab === "stripe") {
@@ -46,6 +64,39 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       fetchPublishableKey();
     }
   }, [isOpen, activeTab]);
+
+  const generateDepositReference = async () => {
+    setLoadingReference(true);
+    try {
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/manual/reference"), {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReference(data.reference || "");
+      } else {
+        // Fallback: generate reference from user info if available
+        if (userInfo?.email && userInfo?.referenceId) {
+          const emailPrefix = userInfo.email.split('@')[0];
+          setReference(`${emailPrefix}-${userInfo.referenceId}`);
+        } else {
+          setReference("");
+        }
+      }
+    } catch (error) {
+      // Fallback: generate reference from user info if available
+      if (userInfo?.email && userInfo?.referenceId) {
+        const emailPrefix = userInfo.email.split('@')[0];
+        setReference(`${emailPrefix}-${userInfo.referenceId}`);
+      } else {
+        setReference("");
+      }
+    } finally {
+      setLoadingReference(false);
+    }
+  };
 
   const fetchPublishableKey = async () => {
     try {
@@ -183,6 +234,22 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       return;
     }
 
+    if (!fullName || !fullName.trim()) {
+      toast.error("Please enter your full name");
+      return;
+    }
+
+    if (!dateOfDeposit) {
+      toast.error("Please select the date of deposit");
+      return;
+    }
+
+    if (!reference || !reference.trim()) {
+      toast.error("Deposit reference is missing. Please try again.");
+      await generateDepositReference();
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(resolveApiUrl("/api/wallet/fund/manual"), {
@@ -194,6 +261,8 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
         body: JSON.stringify({
           amount: parseFloat(amount),
           reference: reference.trim(),
+          fullName: fullName.trim(),
+          dateOfDeposit: dateOfDeposit,
         }),
       });
 
@@ -203,7 +272,12 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
         throw new Error(data.error || "Failed to create transfer request");
       }
 
-      toast.success("Transfer request created. Please complete the bank transfer and wait for admin approval.");
+      toast.success("Transfer request submitted successfully. We will credit your wallet once we receive your payment.");
+      // Reset form
+      setAmount("");
+      setFullName("");
+      setDateOfDeposit("");
+      setReference("");
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -290,7 +364,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
               </TabsTrigger>
               <TabsTrigger value="manual" className="font-['Poppins',sans-serif]">
                 <Building2 className="w-4 h-4 mr-2" />
-                Manual Transfer
+                Bank Transfer
               </TabsTrigger>
             </TabsList>
 
@@ -443,59 +517,140 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
               </div>
             </TabsContent>
 
-            <TabsContent value="manual" className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="manual-amount" className="font-['Poppins',sans-serif]">
-                  Amount (£)
-                </Label>
-                <Input
-                  id="manual-amount"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount"
-                  className="mt-2 font-['Poppins',sans-serif]"
-                  min="10"
-                  step="0.01"
-                />
+            <TabsContent value="manual" className="space-y-6 mt-4">
+              {/* Bank Information Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
+                <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-4">
+                  Our bank information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Account Name:</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">Tradespeoplehub LTD</p>
+                  </div>
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Bank Name:</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">NatWest</p>
+                  </div>
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Sort Code:</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">60-02-12</p>
+                  </div>
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Account Number:</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">65837347</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Reference ID:</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                      {userInfo?.referenceId || "Loading..."}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <Label htmlFor="reference" className="font-['Poppins',sans-serif]">
-                  Reference (Optional)
-                </Label>
-                <Input
-                  id="reference"
-                  type="text"
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                  placeholder="Enter payment reference"
-                  className="mt-2 font-['Poppins',sans-serif]"
-                />
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800 mb-2">
-                  <strong>Important:</strong> After making the bank transfer, your wallet will be credited once an admin approves your request.
+              {/* Instructions Section */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 space-y-3">
+                <h4 className="font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f]">
+                  What to do next
+                </h4>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] leading-relaxed">
+                  Log in to your bank account and follow the bank's instructions to make a transfer. Copy our above banking information into the bank's forms. Please make sure to add your reference ID into your bank's payment description.
                 </p>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-yellow-700">
-                  Please include the reference number in your bank transfer for faster processing.
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] leading-relaxed">
+                  When you're done with the bank transfer come back here, fill in below detail and click submit. We will credit your Tradespeoplehub's wallet once we have received your payment.
+                </p>
+              </div>
+
+              {/* Form Fields */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="manual-amount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    Amount:
+                  </Label>
+                  <Input
+                    id="manual-amount"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="mt-2 font-['Poppins',sans-serif]"
+                    min="10"
+                    step="0.01"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="full-name" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    Full name:
+                  </Label>
+                  <Input
+                    id="full-name"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="mt-2 font-['Poppins',sans-serif]"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="date-of-deposit" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    Date of deposit:
+                  </Label>
+                  <Input
+                    id="date-of-deposit"
+                    type="date"
+                    value={dateOfDeposit}
+                    onChange={(e) => setDateOfDeposit(e.target.value)}
+                    className="mt-2 font-['Poppins',sans-serif]"
+                    max={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="deposit-reference" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    Deposit reference (receipt or reference number):
+                  </Label>
+                  <Input
+                    id="deposit-reference"
+                    type="text"
+                    value={loadingReference ? "Generating..." : reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    placeholder="Enter deposit reference"
+                    className="mt-2 font-['Poppins',sans-serif] bg-gray-50"
+                    readOnly
+                    disabled
+                  />
+                  {loadingReference && (
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                      Generating reference...
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Note Section */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800">
+                  <strong>Note:</strong> Any transaction fees charged by your bank will be deducted from the total transfer amount. Funds will be credited to your balance on the next business day after the funds are received by bank. If you have any questions please{" "}
+                  <a href="/contact" className="text-blue-600 hover:underline">contact us</a>.
                 </p>
               </div>
 
               <div className="flex gap-3">
                 <Button
                   onClick={handleManualTransfer}
-                  disabled={loading || !amount}
-                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                  disabled={loading || !amount || !fullName || !dateOfDeposit || !reference}
+                  className="flex-1 bg-[#3D78CB] hover:bg-[#2c5aa0] text-white font-['Poppins',sans-serif]"
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating Request...
+                      Submitting...
                     </>
                   ) : (
-                    "Create Transfer Request"
+                    "Submit"
                   )}
                 </Button>
                 <Button

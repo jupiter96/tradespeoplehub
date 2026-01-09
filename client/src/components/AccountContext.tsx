@@ -22,6 +22,7 @@ interface UserInfo {
   postcode?: string;
   travelDistance?: string;
   referralCode?: string;
+  referenceId?: string;
   sector?: string;
   sectors?: string[];
   services?: string[];

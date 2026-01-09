@@ -213,6 +213,32 @@ const cookieOptions = {
 const CODE_LENGTH = 4;
 const CODE_EXPIRATION_MINUTES = 10;
 const registrationSessionKey = 'pendingRegistrationId';
+
+// Generate unique 6-digit reference ID
+const generateReferenceId = async () => {
+  let referenceId;
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 100;
+
+  while (!isUnique && attempts < maxAttempts) {
+    // Generate 6-digit number (100000 to 999999)
+    referenceId = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Check if it's unique
+    const existingUser = await User.findOne({ referenceId });
+    if (!existingUser) {
+      isUnique = true;
+    }
+    attempts++;
+  }
+
+  if (!isUnique) {
+    throw new Error('Failed to generate unique reference ID after multiple attempts');
+  }
+
+  return referenceId;
+};
 const socialSessionKey = 'pendingSocialProfile';
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5000';
 const SOCIAL_SUCCESS_REDIRECT =
@@ -1752,6 +1778,11 @@ router.post('/register/verify-phone', async (req, res) => {
     //   travelDistance: userData.travelDistance,
     // });
 
+    // Generate and assign reference ID
+    if (!userData.referenceId) {
+      userData.referenceId = await generateReferenceId();
+    }
+
     // Create user instance and explicitly save to ensure all fields are persisted
     const user = new User(userData);
     await user.save();
@@ -2163,6 +2194,11 @@ router.post('/social/verify-phone', async (req, res) => {
       userData.townCity = townCity.trim();
     }
 
+    // Generate and assign reference ID
+    if (!userData.referenceId) {
+      userData.referenceId = await generateReferenceId();
+    }
+
     const user = await User.create(userData);
 
     req.session.userId = user._id.toString();
@@ -2284,6 +2320,11 @@ router.post('/social/complete', async (req, res) => {
     }
     if (townCity && townCity.trim()) {
       userData.townCity = townCity.trim();
+    }
+
+    // Generate and assign reference ID
+    if (!userData.referenceId) {
+      userData.referenceId = await generateReferenceId();
     }
 
     const user = await User.create(userData);

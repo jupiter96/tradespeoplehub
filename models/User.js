@@ -53,6 +53,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    referenceId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      match: /^\d{6}$/, // 6-digit number
+    },
     avatar: {
       type: String,
       trim: true,

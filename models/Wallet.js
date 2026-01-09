@@ -64,6 +64,10 @@ const walletTransactionSchema = new mongoose.Schema(
     processedAt: {
       type: Date,
     },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,
