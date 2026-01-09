@@ -325,7 +325,7 @@ export default function ServiceDetailPage() {
               description: p.description || "",
               highlights: [],
               features: Array.isArray(p.features) ? p.features : [],
-              deliveryDays: p.deliveryDays || p.deliveryType || "standard",
+              deliveryDays: p.deliveryDays !== undefined && p.deliveryDays !== null ? p.deliveryDays : (p.deliveryType || "standard"),
               deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : (p.deliveryType === "same-day" ? "Same day" : undefined),
               revisions: p.revisions || "",
               order: p.order || 0,
@@ -1586,17 +1586,37 @@ export default function ServiceDetailPage() {
                                   Delivery Time
                                 </td>
                                 {service.packages.map((pkg: any) => {
-                                  // Check deliveryDays or deliveryType field
+                                  // Check deliveryDays - 7 means standard, 0 means same day
                                   const deliveryDays = pkg.deliveryDays;
-                                  const deliveryType = pkg.deliveryType;
                                   
                                   let deliveryText = "standard";
                                   
-                                  if (deliveryDays === 0 || deliveryDays === "same-day" || deliveryDays === "0" || 
-                                      deliveryType === "same-day" || deliveryType === "same day") {
+                                  // deliveryDays is a number: 0 = same day, 7 = standard
+                                  // IMPORTANT: Check for 0 first, as 0 is falsy in JavaScript
+                                  if (deliveryDays === 0 || deliveryDays === "0") {
                                     deliveryText = "same day";
-                                  } else if (deliveryDays === "standard" || deliveryType === "standard" || 
-                                             deliveryDays === 7 || (typeof deliveryDays === "number" && deliveryDays > 0)) {
+                                  } else if (deliveryDays === 7 || deliveryDays === "7") {
+                                    deliveryText = "standard";
+                                  } else if (typeof deliveryDays === "number") {
+                                    // For other numbers, default to standard
+                                    deliveryText = "standard";
+                                  } 
+                                  // If deliveryDays is a string, check for same-day patterns
+                                  else if (deliveryDays === "same-day" || deliveryDays === "same day") {
+                                    deliveryText = "same day";
+                                  } else if (deliveryDays === "standard") {
+                                    deliveryText = "standard";
+                                  }
+                                  // Fallback to deliveryType if deliveryDays is not set
+                                  else if (deliveryDays === undefined || deliveryDays === null) {
+                                    const deliveryType = pkg.deliveryType;
+                                    if (deliveryType === "same-day" || deliveryType === "same day") {
+                                      deliveryText = "same day";
+                                    } else {
+                                      deliveryText = "standard";
+                                    }
+                                  } else {
+                                    // Default to standard if deliveryDays has an unexpected value
                                     deliveryText = "standard";
                                   }
                                   
@@ -2023,19 +2043,43 @@ export default function ServiceDetailPage() {
                               </p>
                             )}
                             
-                            {/* Package Features */}
-                            {pkg.features && Array.isArray(pkg.features) && pkg.features.length > 0 && (
-                              <div className="space-y-2">
-                                {pkg.features.map((feature: string, index: number) => (
-                                  <div key={index} className="flex items-start gap-2">
-                                    <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
-                                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                      {feature}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            {/* Package Features - Filter out dummy data */}
+                            {pkg.features && Array.isArray(pkg.features) && pkg.features.length > 0 && (() => {
+                              // Filter out dummy/test data patterns
+                              const isDummyData = (text: string): boolean => {
+                                const lowerText = text.toLowerCase();
+                                const dummyPatterns = [
+                                  'lorem ipsum',
+                                  'fake text',
+                                  'dummy',
+                                  'test data',
+                                  'sample',
+                                  'placeholder',
+                                  'what does lorem',
+                                  'the most used version',
+                                ];
+                                return dummyPatterns.some(pattern => lowerText.includes(pattern));
+                              };
+
+                              const validFeatures = pkg.features.filter((feature: string) => 
+                                feature && feature.trim() && !isDummyData(feature.trim())
+                              );
+
+                              if (validFeatures.length === 0) return null;
+
+                              return (
+                                <div className="space-y-2">
+                                  {validFeatures.map((feature: string, index: number) => (
+                                    <div key={index} className="flex items-start gap-2">
+                                      <Check className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />
+                                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                        {feature}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                             
                             {/* Quantity Input - Only for packages */}
                             <div className="pt-2">
@@ -2114,17 +2158,55 @@ export default function ServiceDetailPage() {
                   )}
                   
                   <div className="space-y-3 mb-6">
-                    {selectedPackage && selectedPackage.deliveryTime && (
-                      <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          <Clock className="w-4 h-4 inline mr-1.5" />
-                          Delivery Time
-                        </span>
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          {selectedPackage.deliveryTime}
-                        </span>
-                      </div>
-                    )}
+                    {selectedPackage && (() => {
+                      // Calculate delivery time from deliveryDays - 7 means standard, 0 means same day
+                      const deliveryDays = selectedPackage.deliveryDays;
+                      
+                      let deliveryTimeText: string | null = null;
+                      
+                      // IMPORTANT: Check for 0 first, as 0 is falsy in JavaScript
+                      // deliveryDays: 0 = same day, 7 = standard
+                      if (deliveryDays === 0 || deliveryDays === "0") {
+                        deliveryTimeText = "same day";
+                      } else if (deliveryDays === 7 || deliveryDays === "7") {
+                        deliveryTimeText = "standard";
+                      } else if (typeof deliveryDays === "number") {
+                        // For other numbers, default to standard
+                        deliveryTimeText = "standard";
+                      } 
+                      // If deliveryDays is a string, check for same-day patterns
+                      else if (deliveryDays === "same-day" || deliveryDays === "same day") {
+                        deliveryTimeText = "same day";
+                      } else if (deliveryDays === "standard") {
+                        deliveryTimeText = "standard";
+                      }
+                      // Fallback to deliveryType if deliveryDays is not set
+                      else if (deliveryDays === undefined || deliveryDays === null) {
+                        const deliveryType = selectedPackage.deliveryType;
+                        if (deliveryType === "same-day" || deliveryType === "same day") {
+                          deliveryTimeText = "same day";
+                        } else {
+                          deliveryTimeText = "standard";
+                        }
+                      } else {
+                        // Default to standard if deliveryDays has an unexpected value
+                        deliveryTimeText = "standard";
+                      }
+
+                      if (!deliveryTimeText) return null;
+
+                      return (
+                        <div className="flex items-center justify-between">
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            <Clock className="w-4 h-4 inline mr-1.5" />
+                            Delivery Time
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            {deliveryTimeText}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {selectedPackage && selectedPackage.revisions && (
                       <div className="flex items-center justify-between">
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
@@ -2445,24 +2527,48 @@ export default function ServiceDetailPage() {
                       </div>
                     </div>
 
-                    {/* Package Features - Only show if package selected */}
-                    {selectedPackage && selectedPackage.features && selectedPackage.features.length > 0 && (
-                      <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                        <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
-                          Package Features
-                        </h3>
-                        <div className="space-y-2.5">
-                          {selectedPackage.features.map((feature, index) => (
-                            <div key={index} className="flex items-start gap-2.5">
-                              <Check className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
-                                {feature}
-                              </span>
-                            </div>
-                          ))}
+                    {/* Package Features - Only show if package selected - Filter out dummy data */}
+                    {selectedPackage && selectedPackage.features && Array.isArray(selectedPackage.features) && selectedPackage.features.length > 0 && (() => {
+                      // Filter out dummy/test data patterns
+                      const isDummyData = (text: string): boolean => {
+                        const lowerText = text.toLowerCase();
+                        const dummyPatterns = [
+                          'lorem ipsum',
+                          'fake text',
+                          'dummy',
+                          'test data',
+                          'sample',
+                          'placeholder',
+                          'what does lorem',
+                          'the most used version',
+                        ];
+                        return dummyPatterns.some(pattern => lowerText.includes(pattern));
+                      };
+
+                      const validFeatures = selectedPackage.features.filter((feature: string) => 
+                        feature && feature.trim() && !isDummyData(feature.trim())
+                      );
+
+                      if (validFeatures.length === 0) return null;
+
+                      return (
+                        <div className="mb-6 pb-6 border-b-2 border-gray-100">
+                          <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
+                            Package Features
+                          </h3>
+                          <div className="space-y-2.5">
+                            {validFeatures.map((feature, index) => (
+                              <div key={index} className="flex items-start gap-2.5">
+                                <Check className="w-4 h-4 text-[#FE8A0F] flex-shrink-0 mt-0.5" />
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                                  {feature}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                     
                     <div className="space-y-3 mb-6">
                       {selectedPackage && selectedPackage.deliveryTime && (
