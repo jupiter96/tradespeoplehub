@@ -351,15 +351,14 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
     
     const stripe = new Stripe(settings.stripeSecretKey);
     
-    // Calculate Stripe commission
+    // Calculate Stripe commission (fee is taken separately, full amount is deposited)
     const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
     const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
     const stripeCommission = (amount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
-    const amountAfterCommission = amount - stripeCommission;
     
-    // Create payment intent with saved payment method (charge full amount, commission deducted from user balance)
+    // Create payment intent with saved payment method (charge full amount)
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to pence
+      amount: Math.round(amount * 100), // Convert to pence - charge full amount user entered
       currency: 'gbp',
       customer: user.stripeCustomerId,
       payment_method: selectedPaymentMethod.paymentMethodId,
@@ -372,28 +371,28 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       },
     });
     
-    // Create pending wallet transaction
+    // Create pending wallet transaction (full amount deposited, fee stored separately)
     const transaction = new Wallet({
       userId: req.user.id,
       type: 'deposit',
-      amount: amountAfterCommission, // Amount after commission
+      amount: amount, // Full amount user entered (deposited to balance)
       balance: 0, // Will be updated after payment confirmation
       status: paymentIntent.status === 'succeeded' ? 'completed' : 'pending',
       paymentMethod: 'card',
       stripePaymentIntentId: paymentIntent.id,
       stripeChargeId: paymentIntent.latest_charge,
-      description: `Wallet funding via Card - £${amount} (Commission: £${stripeCommission.toFixed(2)})`,
+      description: `Card Deposit - Amount: £${amount.toFixed(2)}, Fee: £${stripeCommission.toFixed(2)}`,
       metadata: {
-        originalAmount: amount,
-        commission: stripeCommission,
-        commissionPercentage: stripeCommissionPercentage,
-        commissionFixed: stripeCommissionFixed,
+        depositAmount: amount, // Full amount deposited to user balance
+        fee: stripeCommission, // Fee taken by platform (separate)
+        feePercentage: stripeCommissionPercentage,
+        feeFixed: stripeCommissionFixed,
       },
     });
     
-    // If payment succeeded immediately, update balance with amount after commission
+    // If payment succeeded immediately, deposit full amount to balance
     if (paymentIntent.status === 'succeeded') {
-      user.walletBalance = (user.walletBalance || 0) + amountAfterCommission;
+      user.walletBalance = (user.walletBalance || 0) + amount; // Deposit full amount
       await user.save();
       transaction.balance = user.walletBalance;
       transaction.status = 'completed';
@@ -535,16 +534,28 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
       });
     }
     
-    // Create pending transaction
+    // Calculate bank processing fee
+    // amount = deposit amount (what user wants in their wallet)
+    // fee = commission taken by platform
+    // totalAmount = deposit amount + fee (what user should transfer)
+    const bankProcessingFeePercentage = settings.bankProcessingFeePercentage || 2.00;
+    const depositAmount = amount; // Amount user wants deposited to their wallet
+    const fee = (depositAmount * bankProcessingFeePercentage / 100);
+    const totalAmount = depositAmount + fee; // Total amount user should transfer
+    
+    // Create pending transaction (amount = totalAmount, depositAmount and fee stored separately)
     const transaction = new Wallet({
       userId: req.user.id,
       type: 'deposit',
-      amount,
+      amount: totalAmount, // Total amount (deposit amount + fee)
       balance: 0, // Will be updated after admin approval
       status: 'pending',
       paymentMethod: 'manual_transfer',
-      description: `Manual transfer request - £${amount} (Ref: ${reference.trim()})`,
+      description: `Bank Transfer - Total: £${totalAmount.toFixed(2)} (Deposit: £${depositAmount.toFixed(2)}, Fee: £${fee.toFixed(2)})`,
       metadata: {
+        depositAmount: depositAmount, // Amount to be deposited to user balance
+        fee: fee, // Fee taken by platform (separate)
+        feePercentage: bankProcessingFeePercentage,
         reference: reference.trim(),
         fullName: fullName.trim(),
         dateOfDeposit: dateOfDeposit,
@@ -585,18 +596,19 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Calculate bank processing fee
+    // Get fee information from metadata (already calculated when request was created)
+    // transaction.amount = totalAmount (depositAmount + fee)
+    // metadata.depositAmount = amount to deposit to user balance
+    // metadata.fee = commission taken by platform
     const settings = await PaymentSettings.getSettings();
-    const bankProcessingFeePercentage = settings.bankProcessingFeePercentage || 2.00;
-    const originalAmount = transaction.amount;
-    const bankProcessingFee = (originalAmount * bankProcessingFeePercentage / 100);
-    const amountAfterFee = originalAmount - bankProcessingFee;
+    const depositAmount = transaction.metadata?.depositAmount || (transaction.amount / (1 + ((transaction.metadata?.feePercentage || settings.bankProcessingFeePercentage || 2.00) / 100)));
+    const fee = transaction.metadata?.fee || (transaction.amount - depositAmount);
     
-    user.walletBalance = (user.walletBalance || 0) + amountAfterFee;
+    // Deposit only depositAmount to user balance (fee is taken separately by platform)
+    user.walletBalance = (user.walletBalance || 0) + depositAmount;
     await user.save();
     
-    // Update transaction with fee information
-    transaction.amount = amountAfterFee; // Update amount to reflect fee deduction
+    // Update transaction status (amount already contains totalAmount = depositAmount + fee)
     transaction.status = 'completed';
     transaction.balance = user.walletBalance;
     transaction.processedBy = req.user.id;
@@ -604,13 +616,13 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
     if (adminNotes) {
       transaction.adminNotes = adminNotes;
     }
-    // Store fee information in metadata
+    // Ensure fee information is in metadata
     if (!transaction.metadata) {
       transaction.metadata = {};
     }
-    transaction.metadata.bankProcessingFee = bankProcessingFee;
-    transaction.metadata.bankProcessingFeePercentage = bankProcessingFeePercentage;
-    transaction.metadata.originalAmount = originalAmount;
+    transaction.metadata.depositAmount = depositAmount;
+    transaction.metadata.fee = fee;
+    transaction.metadata.feePercentage = settings.bankProcessingFeePercentage || 2.00;
     await transaction.save();
     
     res.json({ 
@@ -728,33 +740,41 @@ router.get('/admin/bank-transfer-requests', authenticateToken, requireRole(['adm
     const total = await Wallet.countDocuments(query);
     
     // Format transactions for frontend
-    const formattedRequests = transactions.map((t) => ({
-      _id: t._id,
-      id: t._id.toString(),
-      userId: t.userId?._id || null,
-      user: t.userId ? {
-        firstName: t.userId.firstName || '',
-        lastName: t.userId.lastName || '',
-        email: t.userId.email || '',
-        name: `${t.userId.firstName || ''} ${t.userId.lastName || ''}`.trim() || t.userId.email,
-      } : null,
-      amount: t.amount,
-      commission: t.amount * 0.02, // 2% commission
-      userAmount: t.amount * 0.98, // Amount after commission
-      city: t.userId?.townCity || '',
-      bankAccountName: t.metadata?.fullName || '',
-      dateOfDeposit: t.metadata?.dateOfDeposit || '',
-      referenceNumber: t.metadata?.reference || '',
-      status: t.status,
-      createdAt: t.createdAt,
-      processedBy: t.processedBy ? {
-        firstName: t.processedBy.firstName || '',
-        lastName: t.processedBy.lastName || '',
-        name: `${t.processedBy.firstName || ''} ${t.processedBy.lastName || ''}`.trim(),
-      } : null,
-      processedAt: t.processedAt,
-      adminNotes: t.adminNotes,
-    }));
+    // t.amount = totalAmount (depositAmount + fee)
+    // t.metadata.depositAmount = amount to deposit to user balance
+    // t.metadata.fee = commission taken by platform
+    const formattedRequests = transactions.map((t) => {
+      const depositAmount = t.metadata?.depositAmount || (t.amount / (1 + ((t.metadata?.feePercentage || 2.00) / 100)));
+      const fee = t.metadata?.fee || (t.amount - depositAmount);
+      
+      return {
+        _id: t._id,
+        id: t._id.toString(),
+        userId: t.userId?._id || null,
+        user: t.userId ? {
+          firstName: t.userId.firstName || '',
+          lastName: t.userId.lastName || '',
+          email: t.userId.email || '',
+          name: `${t.userId.firstName || ''} ${t.userId.lastName || ''}`.trim() || t.userId.email,
+        } : null,
+        amount: t.amount, // Total amount (depositAmount + fee)
+        commission: fee, // Fee taken by platform
+        userAmount: depositAmount, // Amount deposited to user balance
+        city: t.userId?.townCity || '',
+        bankAccountName: t.metadata?.fullName || '',
+        dateOfDeposit: t.metadata?.dateOfDeposit || '',
+        referenceNumber: t.metadata?.reference || '',
+        status: t.status,
+        createdAt: t.createdAt,
+        processedBy: t.processedBy ? {
+          firstName: t.processedBy.firstName || '',
+          lastName: t.processedBy.lastName || '',
+          name: `${t.processedBy.firstName || ''} ${t.processedBy.lastName || ''}`.trim(),
+        } : null,
+        processedAt: t.processedAt,
+        adminNotes: t.adminNotes,
+      };
+    });
     
     res.json({
       requests: formattedRequests,
