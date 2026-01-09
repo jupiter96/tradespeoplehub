@@ -90,14 +90,14 @@ app.use(
     store: MongoStore.create({
       mongoUrl: MONGODB_URI,
       collectionName: 'sessions',
-      ttl: 60 * 60 * 24 * 30, // 30 days
-      touchAfter: 24 * 3600, // Lazy session update - only touch once per 24 hours
+      ttl: 60 * 60 * 24, // 24 hours
+      touchAfter: 12 * 3600, // Lazy session update - only touch once per 12 hours
     }),
     cookie: {
       httpOnly: true,
       sameSite: isProduction ? 'none' : 'lax',
       secure: isProduction,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // Default 7 days (can be overridden in login)
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours
     },
   })
 );

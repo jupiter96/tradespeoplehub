@@ -150,6 +150,9 @@ router.post('/login', async (req, res) => {
     req.session.adminId = admin._id.toString();
     req.session.role = admin.role;
 
+    // Set cookie maxAge to 24 hours
+    req.session.cookie.maxAge = 1000 * 60 * 60 * 24; // 24 hours
+
     return res.json({
       message: 'Login successful',
       user: admin.toSafeObject(),

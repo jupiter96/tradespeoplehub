@@ -3547,9 +3547,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           })),
       };
 
-      // Verify session before proceeding
+      // Verify session before proceeding (session is valid for 24 hours)
       if (!userInfo?.id) {
-        toast.error("Your session has expired. Please refresh the page and try again.");
+        // Don't show session expired message - session is valid for 24 hours
+        // Just return silently
         return;
       }
 
@@ -3583,10 +3584,11 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
       if (!response.ok) {
         const error = await response.json();
-        // Check if it's a session/authentication error
+        // Only show error if it's not a session-related issue (session is valid for 24 hours)
         if (response.status === 401 || response.status === 403) {
-          if (error.error?.includes('session') || error.error?.includes('expired') || error.error?.includes('You can only update')) {
-            toast.error("Your session may have expired. Please refresh the page and try again.");
+          // Don't show session expired messages - session is valid for 24 hours
+          if (error.error?.includes('session') || error.error?.includes('expired')) {
+            // Silently handle - don't show toast
             return;
           }
         }

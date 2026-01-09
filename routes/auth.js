@@ -627,6 +627,9 @@ const handleSocialCallback = (provider) => (req, res, next) => {
       req.session.role = result.role;
       req.session.userId = result._id ? result._id.toString() : result.id;
       
+      // Set cookie maxAge to 24 hours
+      req.session.cookie.maxAge = 1000 * 60 * 60 * 24; // 24 hours
+      
       // Save session before redirecting to ensure session is persisted
       req.session.save(async (saveErr) => {
         if (saveErr) {
@@ -3414,10 +3417,8 @@ router.post('/login', async (req, res) => {
     req.session.userId = user._id.toString();
     req.session.role = user.role;
 
-    // Set cookie maxAge
-    req.session.cookie.maxAge = rememberMe
-      ? 1000 * 60 * 60 * 24 * 30 // 30 days
-      : 1000 * 60 * 60 * 24 * 7; // 7 days (increased from 4 hours)
+    // Set cookie maxAge to 24 hours (regardless of rememberMe)
+    req.session.cookie.maxAge = 1000 * 60 * 60 * 24; // 24 hours
 
     // Save session explicitly before responding
     return await new Promise((resolve, reject) => {
