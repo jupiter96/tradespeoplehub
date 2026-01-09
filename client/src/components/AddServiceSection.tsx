@@ -3243,12 +3243,21 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   // Fetch titles for the selected subcategory
   useEffect(() => {
     const fetchSubCategoryTitles = async () => {
-      // Get the last selected subcategory ID from the path
-      const lastSubCategoryId = selectedSubCategoryPath.length > 0 
-        ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
-        : selectedSubCategoryId;
+      let targetSubCategoryId: string | null = null;
 
-      if (!lastSubCategoryId) {
+      if (isPackageService) {
+        // For package services, use the first selected last-level subcategory
+        if (selectedLastLevelSubCategories && selectedLastLevelSubCategories.length > 0) {
+          targetSubCategoryId = selectedLastLevelSubCategories[0];
+        }
+      } else {
+        // For single services, use the last selected subcategory ID from the path
+        targetSubCategoryId = selectedSubCategoryPath.length > 0 
+          ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
+          : selectedSubCategoryId;
+      }
+
+      if (!targetSubCategoryId) {
         setSelectedSubCategoryTitles([]);
         return;
       }
@@ -3256,7 +3265,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       try {
         setLoadingTitles(true);
         const response = await fetch(
-          resolveApiUrl(`/api/service-subcategories/${lastSubCategoryId}?includeServiceCategory=false&activeOnly=false`),
+          resolveApiUrl(`/api/service-subcategories/${targetSubCategoryId}?includeServiceCategory=false&activeOnly=false`),
           { credentials: 'include' }
         );
 
@@ -3265,8 +3274,13 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           const subCategory = data.serviceSubCategory;
 
           // Extract service title suggestions from the subcategory
-          if (subCategory?.serviceTitleSuggestions && Array.isArray(subCategory.serviceTitleSuggestions)) {
-            const titles = subCategory.serviceTitleSuggestions
+          // For package services, use packageServiceTitleSuggestions; otherwise use serviceTitleSuggestions
+          const titleSuggestions = isPackageService 
+            ? (subCategory?.packageServiceTitleSuggestions || [])
+            : (subCategory?.serviceTitleSuggestions || []);
+          
+          if (Array.isArray(titleSuggestions) && titleSuggestions.length > 0) {
+            const titles = titleSuggestions
               .filter((title: string) => title && title.trim() !== "");
             setSelectedSubCategoryTitles(titles);
           } else {
@@ -3284,7 +3298,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     };
 
     fetchSubCategoryTitles();
-  }, [selectedSubCategoryPath, selectedSubCategoryId]);
+  }, [selectedSubCategoryPath, selectedSubCategoryId, isPackageService, selectedLastLevelSubCategories]);
 
   // Add package
   const addPackage = () => {

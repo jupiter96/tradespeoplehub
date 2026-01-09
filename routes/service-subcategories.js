@@ -540,6 +540,7 @@ router.post('/', async (req, res) => {
       attributeType,
       categoryLevel,
       serviceTitleSuggestions,
+      packageServiceTitleSuggestions,
     } = req.body;
     
     if (!serviceCategory) {
@@ -705,6 +706,7 @@ router.post('/', async (req, res) => {
       attributeType: finalAttributeType,
       categoryLevel: finalCategoryLevel,
       serviceTitleSuggestions: serviceTitleSuggestions || [],
+      packageServiceTitleSuggestions: packageServiceTitleSuggestions || [],
     });
     
     // Populate service category for response
@@ -893,6 +895,7 @@ router.put('/:id', async (req, res) => {
       categoryLevel,
       titles,
       serviceTitleSuggestions,
+      packageServiceTitleSuggestions,
     } = req.body;
     
     const serviceSubCategory = await ServiceSubCategory.findById(id);
@@ -946,6 +949,16 @@ router.put('/:id', async (req, res) => {
         updateData.serviceTitleSuggestions = filteredTitles;
       } else {
         updateData.serviceTitleSuggestions = [];
+      }
+    }
+    if (packageServiceTitleSuggestions !== undefined) {
+      if (Array.isArray(packageServiceTitleSuggestions)) {
+        const filteredTitles = packageServiceTitleSuggestions
+          .map(title => typeof title === 'string' ? title.trim() : String(title))
+          .filter(title => title.length > 0);
+        updateData.packageServiceTitleSuggestions = filteredTitles;
+      } else {
+        updateData.packageServiceTitleSuggestions = [];
       }
     }
     if (titles !== undefined) {
