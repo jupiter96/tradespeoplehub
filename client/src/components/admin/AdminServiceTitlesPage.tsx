@@ -239,6 +239,13 @@ export default function AdminServiceTitlesPage() {
           ? validTitles.filter(title => typeof title === 'string' && title.trim().length > 0)
           : [];
         
+        // Don't send request if titlesToSave is empty (shouldn't happen due to validation above, but double-check)
+        if (titlesToSave.length === 0) {
+          toast.error("No valid titles to save");
+          setIsSaving(false);
+          return;
+        }
+        
         // Determine which field to update based on active tab
         const updateBody = activeTab === 'package'
           ? { packageServiceTitleSuggestions: titlesToSave }

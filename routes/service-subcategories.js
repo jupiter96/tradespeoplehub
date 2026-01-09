@@ -956,8 +956,10 @@ router.put('/:id', async (req, res) => {
         const filteredTitles = packageServiceTitleSuggestions
           .map(title => typeof title === 'string' ? title.trim() : String(title))
           .filter(title => title.length > 0);
+        // Always set the field, even if it's an empty array (to clear existing titles)
         updateData.packageServiceTitleSuggestions = filteredTitles;
       } else {
+        // If not an array, set to empty array
         updateData.packageServiceTitleSuggestions = [];
       }
     }
