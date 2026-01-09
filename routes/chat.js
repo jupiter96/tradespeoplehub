@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
-import fsSync from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import { fileURLToPath } from 'url';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
@@ -417,7 +417,7 @@ router.post('/conversations/:conversationId/upload', requireAuth, (req, res, nex
     // Delete uploaded file if message creation fails
     if (req.file) {
       try {
-        fsSync.unlinkSync(req.file.path);
+        unlinkSync(req.file.path);
       } catch (unlinkError) {
         console.error('Error deleting file:', unlinkError);
       }
@@ -433,7 +433,7 @@ router.get('/attachments/:filename', requireAuth, async (req, res) => {
     const filePath = path.join(attachmentsDir, filename);
 
     // Check if file exists
-    if (!fsSync.existsSync(filePath)) {
+    if (!existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
