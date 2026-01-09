@@ -1662,7 +1662,7 @@ export const allServices: Service[] = [
             id: 2, 
             title: "Premium payment gateway", 
             price: 200,
-            description: "Stripe, PayPal, and Apple Pay integration",
+            description: "Card, PayPal, and Apple Pay integration",
             deliveryTime: "3 days"
           },
           { 

@@ -2804,7 +2804,7 @@ function BillingSection() {
                   >
                     <div className="flex-1">
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {transaction.description || `${transaction.type} - £${transaction.amount}`}
+                        {(transaction.description || `${transaction.type} - £${transaction.amount}`).replace(/Stripe/gi, "Card").replace(/stripe/gi, "card")}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
                         {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.status}
@@ -3262,7 +3262,7 @@ function TransactionHistoryTab() {
                     </td>
                     <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                       <span className="capitalize">
-                        {transaction.paymentMethod?.replace("_", " ") || "N/A"}
+                        {transaction.paymentMethod?.replace("_", " ").replace(/stripe/gi, "card") || "N/A"}
                       </span>
                     </td>
                     <td className="py-3 px-4 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] max-w-xs">

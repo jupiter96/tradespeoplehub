@@ -65,7 +65,7 @@ export default function PaymentMethodModal({
         }
       }
     } catch (error) {
-      console.error("Error loading Stripe:", error);
+      console.error("Error loading Card payment:", error);
       toast.error("Failed to load payment form");
     }
   };

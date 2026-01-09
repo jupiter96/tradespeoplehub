@@ -373,10 +373,10 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       amount: amountAfterCommission, // Amount after commission
       balance: 0, // Will be updated after payment confirmation
       status: paymentIntent.status === 'succeeded' ? 'completed' : 'pending',
-      paymentMethod: 'stripe',
+      paymentMethod: 'card',
       stripePaymentIntentId: paymentIntent.id,
       stripeChargeId: paymentIntent.latest_charge,
-      description: `Wallet funding via Stripe - £${amount} (Commission: £${stripeCommission.toFixed(2)})`,
+      description: `Wallet funding via Card - £${amount} (Commission: £${stripeCommission.toFixed(2)})`,
       metadata: {
         originalAmount: amount,
         commission: stripeCommission,
