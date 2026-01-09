@@ -1524,12 +1524,28 @@ export default function ServiceDetailPage() {
 
                 {/* Package Comparison Table - Only for package services */}
                 {hasPackages && service.packages && service.packages.length > 0 && (() => {
-                  // Collect all unique attributes from all packages
+                  // Filter out dummy/test data patterns
+                  const isDummyData = (text: string): boolean => {
+                    const lowerText = text.toLowerCase();
+                    const dummyPatterns = [
+                      'lorem ipsum',
+                      'fake text',
+                      'dummy',
+                      'test data',
+                      'sample',
+                      'placeholder',
+                      'what does lorem',
+                      'the most used version',
+                    ];
+                    return dummyPatterns.some(pattern => lowerText.includes(pattern));
+                  };
+
+                  // Collect all unique attributes from all packages (only real data from database)
                   const allAttributes = new Set<string>();
                   service.packages.forEach((pkg: any) => {
                     if (pkg.features && Array.isArray(pkg.features)) {
                       pkg.features.forEach((feature: string) => {
-                        if (feature && feature.trim()) {
+                        if (feature && feature.trim() && !isDummyData(feature.trim())) {
                           allAttributes.add(feature.trim());
                         }
                       });
