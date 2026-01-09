@@ -1297,7 +1297,7 @@ function SubCategoryLevelDisplay({
   const currentLevelSubCats = nestedSubCategories[parentSubCategoryId] || [];
   const isLoading = loadingSubCategories[parentSubCategoryId];
 
-  // Fetch nested subcategories when needed
+  // Fetch nested subcategories when needed (recursively for package services to determine last level)
   useEffect(() => {
     const fetchNestedSubCategories = async (parentId: string) => {
       if (nestedSubCategories[parentId] || loadingSubCategories[parentId]) {
@@ -1318,6 +1318,19 @@ function SubCategoryLevelDisplay({
             sc?._id && sc._id.trim() !== ""
           );
           setNestedSubCategories(prev => ({ ...prev, [parentId]: subCats }));
+          
+          // For package services, recursively fetch nested subcategories to determine last level
+          if (isPackageService && subCats.length > 0) {
+            // Fetch children of each subcategory to check if there are deeper levels
+            for (const subCat of subCats) {
+              if (!nestedSubCategories[subCat._id] && !loadingSubCategories[subCat._id]) {
+                // Trigger fetch for children (will be handled by this same effect)
+                setTimeout(() => {
+                  fetchNestedSubCategories(subCat._id);
+                }, 100); // Small delay to avoid too many simultaneous requests
+              }
+            }
+          }
         }
       } catch (error) {
         // console.error(`Error fetching nested subcategories for ${parentId}:`, error);
@@ -1329,24 +1342,37 @@ function SubCategoryLevelDisplay({
     if (parentSubCategoryId) {
       fetchNestedSubCategories(parentSubCategoryId);
     }
-  }, [parentSubCategoryId]);
+  }, [parentSubCategoryId, isPackageService, nestedSubCategories, loadingSubCategories]);
 
-  // Check if this is the last level (no nested subcategories exist for any current level subcategory)
+  // Check if this is the last level (only check direct children, not recursively)
+  // For package services, we need to check if any current level subcategory has direct children
+  // If any has children, this is NOT the last level - continue showing radio buttons
+  // If none have children, this IS the last level - show checkboxes for multiple selection
   const isLastLevel = useMemo(() => {
     if (!isPackageService) return false;
-    // Check if any of the current level subcategories have nested subcategories
-    for (const subCat of currentLevelSubCats) {
-      if (nestedSubCategories[subCat._id] && nestedSubCategories[subCat._id].length > 0) {
-        return false; // This is not the last level
-      }
+    
+    if (currentLevelSubCats.length === 0) {
+      return false; // No subcategories at this level
     }
-    // Also check if they're still loading
+
+    // Check if any of the current level subcategories have DIRECT children (not recursive)
+    // If any subcategory is still loading, we can't determine yet - assume it's not the last level
     for (const subCat of currentLevelSubCats) {
+      // If still loading, we can't determine yet - wait for it to load
       if (loadingSubCategories[subCat._id]) {
-        return false; // Still loading, can't determine yet
+        return false; // Still loading, can't determine yet - show radio buttons for now
+      }
+
+      // Check if this subcategory has direct children (only check immediate children, not recursive)
+      const children = nestedSubCategories[subCat._id];
+      if (children && children.length > 0) {
+        return false; // This subcategory has direct children, so this is NOT the last level
       }
     }
-    return currentLevelSubCats.length > 0; // This is the last level
+
+    // All subcategories at this level have no direct children
+    // This means we've reached the actual last level - show checkboxes for multiple selection
+    return true; // This is the last level
   }, [currentLevelSubCats, nestedSubCategories, loadingSubCategories, isPackageService]);
 
   // Group subcategories by attributeType
