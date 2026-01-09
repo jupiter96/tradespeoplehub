@@ -44,9 +44,15 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
 // Get user wallet balance
 router.get('/wallet/balance', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('walletBalance');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    // Use user object from middleware if available, otherwise fetch from DB
+    let user;
+    if (req.user.userObject && req.user.userObject.walletBalance !== undefined) {
+      user = req.user.userObject;
+    } else {
+      user = await User.findById(req.user.id).select('walletBalance');
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
     }
     
     res.json({ balance: user.walletBalance || 0 });

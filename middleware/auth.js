@@ -27,7 +27,7 @@ export const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const user = await User.findById(req.session.userId);
+    const user = await User.findById(req.session.userId).select('walletBalance role email isDeleted');
     if (!user) {
       req.session.destroy(() => {});
       return res.status(401).json({ error: 'User not found' });
@@ -39,12 +39,13 @@ export const authenticateToken = async (req, res, next) => {
       return res.status(403).json({ error: 'This account has been deleted' });
     }
 
-    // Attach user to request
+    // Attach user to request (include full user object for efficiency)
     req.user = {
       id: user._id.toString(),
       role: user.role,
       isAdmin: false,
       email: user.email, // Add email for debugging
+      userObject: user, // Store full user object to avoid redundant DB queries
     };
 
     next();
