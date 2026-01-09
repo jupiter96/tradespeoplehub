@@ -16,6 +16,7 @@ import ServiceCategory from '../models/ServiceCategory.js';
 import ServiceSubCategory from '../models/ServiceSubCategory.js';
 import Service from '../models/Service.js';
 import PaymentSettings from '../models/PaymentSettings.js';
+import Wallet from '../models/Wallet.js';
 
 // Load environment variables
 dotenv.config();
@@ -1312,6 +1313,22 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       verifiedProfessionals: verifiedProfessionals || 0,
       totalSector: totalSector || 0,
       totalSectorDailyChange: totalSectorDailyChange || 0,
+      
+      // Bank transfer requests
+      bankTransferRequests: await Wallet.countDocuments({
+        type: 'deposit',
+        paymentMethod: 'manual_transfer',
+      }) || 0,
+      bankTransferRequestsPending: await Wallet.countDocuments({
+        type: 'deposit',
+        paymentMethod: 'manual_transfer',
+        status: 'pending',
+      }) || 0,
+      bankTransferRequestsNew: await Wallet.countDocuments({
+        type: 'deposit',
+        paymentMethod: 'manual_transfer',
+        status: 'pending',
+      }) || 0, // New = pending (for badge)
     };
 
     return res.json({ statistics });

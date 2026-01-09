@@ -32,12 +32,22 @@ const paymentSettingsSchema = new mongoose.Schema(
     // Minimum and maximum amounts
     minDepositAmount: {
       type: Number,
-      default: 10,
+      default: 1,
       min: 0,
     },
     maxDepositAmount: {
       type: Number,
       default: 10000,
+      min: 0,
+    },
+    minWithdrawAmount: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
+    maxWithdrawAmount: {
+      type: Number,
+      default: 5000,
       min: 0,
     },
     
@@ -57,6 +67,98 @@ const paymentSettingsSchema = new mongoose.Schema(
       bankName: { type: String, trim: true },
       iban: { type: String, trim: true },
       swift: { type: String, trim: true },
+    },
+    
+    // Commission settings
+    adminCommissionPercentage: {
+      type: Number,
+      default: 3.5,
+      min: 0,
+      max: 100,
+    },
+    stripeCommissionPercentage: {
+      type: Number,
+      default: 1.55,
+      min: 0,
+      max: 100,
+    },
+    stripeCommissionFixed: {
+      type: Number,
+      default: 0.29,
+      min: 0,
+    },
+    paypalCommissionPercentage: {
+      type: Number,
+      default: 3.00,
+      min: 0,
+      max: 100,
+    },
+    paypalCommissionFixed: {
+      type: Number,
+      default: 0.30,
+      min: 0,
+    },
+    bankProcessingFeePercentage: {
+      type: Number,
+      default: 2.00,
+      min: 0,
+      max: 100,
+    },
+    
+    // Other settings
+    creditAmountForChatBid: {
+      type: Number,
+      default: 2.50,
+      min: 0,
+    },
+    closedProjectDays: {
+      type: Number,
+      default: 7,
+      min: 0,
+    },
+    waitingTimeInDays: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
+    feedbackReviewValidityDays: {
+      type: Number,
+      default: 90,
+      min: 0,
+    },
+    inviteToReview: {
+      type: String,
+      enum: ['Activated', 'Deactivated'],
+      default: 'Activated',
+    },
+    waitingTimeToAcceptOffer: {
+      type: Number,
+      default: 2,
+      min: 0,
+    },
+    stepInAmount: {
+      type: Number,
+      default: 5.00,
+      min: 0,
+    },
+    stepInDays: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
+    arbitrationFeeDeadlineDays: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
+    searchApiKey: {
+      type: String,
+      trim: true,
+    },
+    serviceFees: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     
     // Updated by

@@ -44,11 +44,18 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [loadingMethods, setLoadingMethods] = useState(false);
+  const [bankAccountDetails, setBankAccountDetails] = useState({
+    accountName: "",
+    accountNumber: "",
+    sortCode: "",
+    bankName: "",
+  });
 
   // Generate deposit reference when manual tab is opened
   useEffect(() => {
     if (isOpen && activeTab === "manual") {
       generateDepositReference();
+      fetchBankAccountDetails();
       // Set full name from user info
       if (userInfo?.firstName && userInfo?.lastName) {
         setFullName(`${userInfo.firstName} ${userInfo.lastName}`);
@@ -57,6 +64,27 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       }
     }
   }, [isOpen, activeTab, userInfo]);
+
+  const fetchBankAccountDetails = async () => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.bankAccountDetails) {
+          setBankAccountDetails({
+            accountName: data.bankAccountDetails.accountName || "",
+            accountNumber: data.bankAccountDetails.accountNumber || "",
+            sortCode: data.bankAccountDetails.sortCode || "",
+            bankName: data.bankAccountDetails.bankName || "",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching bank account details:", error);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && activeTab === "stripe") {
@@ -526,19 +554,27 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Account Name:</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">Tradespeoplehub LTD</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                      {bankAccountDetails.accountName || "Loading..."}
+                    </p>
                   </div>
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Bank Name:</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">NatWest</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                      {bankAccountDetails.bankName || "Loading..."}
+                    </p>
                   </div>
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Sort Code:</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">60-02-12</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                      {bankAccountDetails.sortCode || "Loading..."}
+                    </p>
                   </div>
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Account Number:</p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">65837347</p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                      {bankAccountDetails.accountNumber || "Loading..."}
+                    </p>
                   </div>
                   <div className="md:col-span-2">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Reference ID:</p>
@@ -604,7 +640,6 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     value={dateOfDeposit}
                     onChange={(e) => setDateOfDeposit(e.target.value)}
                     className="mt-2 font-['Poppins',sans-serif]"
-                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
 

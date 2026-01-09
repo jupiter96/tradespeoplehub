@@ -20,8 +20,10 @@ export default function AdminPaymentSettingsPage() {
     stripeWebhookSecret: "",
     environment: "test",
     isActive: false,
-    minDepositAmount: 10,
+    minDepositAmount: 1,
     maxDepositAmount: 10000,
+    minWithdrawAmount: 1,
+    maxWithdrawAmount: 5000,
     manualTransferEnabled: true,
     manualTransferInstructions: "",
     bankAccountDetails: {
@@ -32,6 +34,23 @@ export default function AdminPaymentSettingsPage() {
       iban: "",
       swift: "",
     },
+    adminCommissionPercentage: 3.5,
+    stripeCommissionPercentage: 1.55,
+    stripeCommissionFixed: 0.29,
+    paypalCommissionPercentage: 3.00,
+    paypalCommissionFixed: 0.30,
+    bankProcessingFeePercentage: 2.00,
+    creditAmountForChatBid: 2.50,
+    closedProjectDays: 7,
+    waitingTimeInDays: 1,
+    feedbackReviewValidityDays: 90,
+    inviteToReview: "Activated",
+    waitingTimeToAcceptOffer: 2,
+    stepInAmount: 5.00,
+    stepInDays: 1,
+    arbitrationFeeDeadlineDays: 1,
+    searchApiKey: "",
+    serviceFees: 0,
   });
 
   useEffect(() => {
@@ -114,7 +133,7 @@ export default function AdminPaymentSettingsPage() {
     return (
       <AdminPageLayout
         title="Payment Settings"
-        description="Manage Stripe payment gateway credentials and manual transfer settings"
+        description="Manage Stripe payment gateway credentials and bank transfer settings"
       >
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
@@ -132,7 +151,9 @@ export default function AdminPaymentSettingsPage() {
         <Tabs defaultValue="stripe" className="space-y-6">
           <TabsList>
             <TabsTrigger value="stripe">Stripe Settings</TabsTrigger>
-            <TabsTrigger value="manual">Manual Transfer</TabsTrigger>
+            <TabsTrigger value="manual">Bank Transfer</TabsTrigger>
+            <TabsTrigger value="commissions">Commissions & Fees</TabsTrigger>
+            <TabsTrigger value="other">Other Settings</TabsTrigger>
           </TabsList>
 
           {/* Stripe Settings Tab */}
@@ -216,56 +237,26 @@ export default function AdminPaymentSettingsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="minDepositAmount" className="font-['Poppins',sans-serif]">
-                      Minimum Deposit Amount (£)
-                    </Label>
-                    <Input
-                      id="minDepositAmount"
-                      type="number"
-                      value={settings.minDepositAmount}
-                      onChange={(e) => updateField("minDepositAmount", parseFloat(e.target.value) || 0)}
-                      className="mt-2 font-['Poppins',sans-serif]"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="maxDepositAmount" className="font-['Poppins',sans-serif]">
-                      Maximum Deposit Amount (£)
-                    </Label>
-                    <Input
-                      id="maxDepositAmount"
-                      type="number"
-                      value={settings.maxDepositAmount}
-                      onChange={(e) => updateField("maxDepositAmount", parseFloat(e.target.value) || 0)}
-                      className="mt-2 font-['Poppins',sans-serif]"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Manual Transfer Tab */}
+          {/* Bank Transfer Tab */}
           <TabsContent value="manual" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building2 className="w-5 h-5" />
-                  Manual Transfer Settings
+                  Bank Transfer Settings
                 </CardTitle>
                 <CardDescription>
-                  Configure manual bank transfer options for wallet funding
+                  Configure bank transfer options for wallet funding
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="manualTransferEnabled" className="font-['Poppins',sans-serif]">
-                    Enable Manual Transfer
+                    Enable Bank Transfer
                   </Label>
                   <Switch
                     id="manualTransferEnabled"
@@ -282,7 +273,7 @@ export default function AdminPaymentSettingsPage() {
                     id="manualTransferInstructions"
                     value={settings.manualTransferInstructions}
                     onChange={(e) => updateField("manualTransferInstructions", e.target.value)}
-                    placeholder="Enter instructions for users on how to make manual transfers..."
+                    placeholder="Enter instructions for users on how to make bank transfers..."
                     className="mt-2 font-['Poppins',sans-serif] min-h-[100px]"
                   />
                 </div>
@@ -369,6 +360,441 @@ export default function AdminPaymentSettingsPage() {
                         onChange={(e) => updateBankField("swift", e.target.value)}
                         className="mt-2 font-['Poppins',sans-serif]"
                       />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Commissions & Fees Tab */}
+          <TabsContent value="commissions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  Commission & Fee Settings
+                </CardTitle>
+                <CardDescription className="font-['Poppins',sans-serif]">
+                  Configure commission rates and processing fees
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="maxWithdrawAmount" className="font-['Poppins',sans-serif]">
+                        Max Withdraw Amount:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="maxWithdrawAmount"
+                          type="number"
+                          value={settings.maxWithdrawAmount || 0}
+                          onChange={(e) => updateField("maxWithdrawAmount", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="maxDepositAmount" className="font-['Poppins',sans-serif]">
+                        Max Deposit Amount:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="maxDepositAmount"
+                          type="number"
+                          value={settings.maxDepositAmount || 0}
+                          onChange={(e) => updateField("maxDepositAmount", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="adminCommissionPercentage" className="font-['Poppins',sans-serif]">
+                        Admin Commission in percentage (For Tradesman):
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="adminCommissionPercentage"
+                          type="number"
+                          value={settings.adminCommissionPercentage || 0}
+                          onChange={(e) => updateField("adminCommissionPercentage", parseFloat(e.target.value) || 0)}
+                          className="pr-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">%</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="closedProjectDays" className="font-['Poppins',sans-serif]">
+                        Closed Project Day(s):
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="closedProjectDays"
+                          type="number"
+                          value={settings.closedProjectDays || 0}
+                          onChange={(e) => updateField("closedProjectDays", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="minWithdrawAmount" className="font-['Poppins',sans-serif]">
+                        Min Withdraw Amount:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="minWithdrawAmount"
+                          type="number"
+                          value={settings.minWithdrawAmount || 0}
+                          onChange={(e) => updateField("minWithdrawAmount", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="minDepositAmount" className="font-['Poppins',sans-serif]">
+                        Min Deposit Amount:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="minDepositAmount"
+                          type="number"
+                          value={settings.minDepositAmount || 0}
+                          onChange={(e) => updateField("minDepositAmount", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="creditAmountForChatBid" className="font-['Poppins',sans-serif]">
+                        Credit Amount for Chat/Bid(Pay as you go):
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="creditAmountForChatBid"
+                          type="number"
+                          value={settings.creditAmountForChatBid || 0}
+                          onChange={(e) => updateField("creditAmountForChatBid", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="waitingTimeInDays" className="font-['Poppins',sans-serif]">
+                        Waiting time in days(s):
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="waitingTimeInDays"
+                          type="number"
+                          value={settings.waitingTimeInDays || 0}
+                          onChange={(e) => updateField("waitingTimeInDays", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Commission Sections */}
+                <div className="pt-6 border-t space-y-6">
+                  <div>
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-4">
+                      Stripe Commission
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="stripeCommissionPercentage" className="font-['Poppins',sans-serif]">
+                          Stripe commission:
+                        </Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="stripeCommissionPercentage"
+                            type="number"
+                            value={settings.stripeCommissionPercentage || 0}
+                            onChange={(e) => updateField("stripeCommissionPercentage", parseFloat(e.target.value) || 0)}
+                            className="pr-8 font-['Poppins',sans-serif]"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="stripeCommissionFixed" className="font-['Poppins',sans-serif]">
+                          Fixed:
+                        </Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="stripeCommissionFixed"
+                            type="number"
+                            value={settings.stripeCommissionFixed || 0}
+                            onChange={(e) => updateField("stripeCommissionFixed", parseFloat(e.target.value) || 0)}
+                            className="pr-12 font-['Poppins',sans-serif]"
+                            min="0"
+                            step="0.01"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Fixed</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600 font-['Poppins',sans-serif]">
+                      Total commission will be: ({settings.stripeCommissionPercentage || 0}% + {settings.stripeCommissionFixed || 0})
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-4">
+                      PayPal Commission
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="paypalCommissionPercentage" className="font-['Poppins',sans-serif]">
+                          Paypal commission:
+                        </Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="paypalCommissionPercentage"
+                            type="number"
+                            value={settings.paypalCommissionPercentage || 0}
+                            onChange={(e) => updateField("paypalCommissionPercentage", parseFloat(e.target.value) || 0)}
+                            className="pr-8 font-['Poppins',sans-serif]"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="paypalCommissionFixed" className="font-['Poppins',sans-serif]">
+                          Fixed:
+                        </Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="paypalCommissionFixed"
+                            type="number"
+                            value={settings.paypalCommissionFixed || 0}
+                            onChange={(e) => updateField("paypalCommissionFixed", parseFloat(e.target.value) || 0)}
+                            className="pr-12 font-['Poppins',sans-serif]"
+                            min="0"
+                            step="0.01"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Fixed</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600 font-['Poppins',sans-serif]">
+                      Total commission will be: ({settings.paypalCommissionPercentage || 0}% + {settings.paypalCommissionFixed || 0})
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="bankProcessingFeePercentage" className="font-['Poppins',sans-serif]">
+                      Bank Processing fee(%)(For Homeowners):
+                    </Label>
+                    <div className="relative mt-2">
+                      <Input
+                        id="bankProcessingFeePercentage"
+                        type="number"
+                        value={settings.bankProcessingFeePercentage || 0}
+                        onChange={(e) => updateField("bankProcessingFeePercentage", parseFloat(e.target.value) || 0)}
+                        className="pr-8 font-['Poppins',sans-serif]"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">%</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Other Settings Tab */}
+          <TabsContent value="other" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  Other Settings
+                </CardTitle>
+                <CardDescription className="font-['Poppins',sans-serif]">
+                  Configure additional system settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="feedbackReviewValidityDays" className="font-['Poppins',sans-serif]">
+                        Feedback/Review validity(Days):
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="feedbackReviewValidityDays"
+                          type="number"
+                          value={settings.feedbackReviewValidityDays || 0}
+                          onChange={(e) => updateField("feedbackReviewValidityDays", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="inviteToReview" className="font-['Poppins',sans-serif]">
+                        Invite to review:
+                      </Label>
+                      <select
+                        id="inviteToReview"
+                        value={settings.inviteToReview || "Activated"}
+                        onChange={(e) => updateField("inviteToReview", e.target.value)}
+                        className="w-full mt-2 h-10 px-3 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F]"
+                      >
+                        <option value="Activated">Activated</option>
+                        <option value="Deactivated">Deactivated</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="stepInAmount" className="font-['Poppins',sans-serif]">
+                        Step In Amount:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="stepInAmount"
+                          type="number"
+                          value={settings.stepInAmount || 0}
+                          onChange={(e) => updateField("stepInAmount", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="arbitrationFeeDeadlineDays" className="font-['Poppins',sans-serif]">
+                        Arbitration fee deadline In Day(s):
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="arbitrationFeeDeadlineDays"
+                          type="number"
+                          value={settings.arbitrationFeeDeadlineDays || 0}
+                          onChange={(e) => updateField("arbitrationFeeDeadlineDays", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="waitingTimeToAcceptOffer" className="font-['Poppins',sans-serif]">
+                        Waiting time to accept offer:
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="waitingTimeToAcceptOffer"
+                          type="number"
+                          value={settings.waitingTimeToAcceptOffer || 0}
+                          onChange={(e) => updateField("waitingTimeToAcceptOffer", parseInt(e.target.value) || 0)}
+                          className="font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="stepInDays" className="font-['Poppins',sans-serif]">
+                        Step In Day(s):
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="stepInDays"
+                          type="number"
+                          value={settings.stepInDays || 0}
+                          onChange={(e) => updateField("stepInDays", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="searchApiKey" className="font-['Poppins',sans-serif]">
+                        Search API Key:
+                      </Label>
+                      <Input
+                        id="searchApiKey"
+                        type="text"
+                        value={settings.searchApiKey || ""}
+                        onChange={(e) => updateField("searchApiKey", e.target.value)}
+                        className="mt-2 font-['Poppins',sans-serif]"
+                        placeholder="KC89-MX72-WB81-YG55"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="serviceFees" className="font-['Poppins',sans-serif]">
+                        Service Fees:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="serviceFees"
+                          type="number"
+                          value={settings.serviceFees || 0}
+                          onChange={(e) => updateField("serviceFees", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

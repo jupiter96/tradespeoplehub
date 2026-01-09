@@ -28,7 +28,10 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
       });
     }
     
-    res.json({ publishableKey: settings.stripePublishableKey });
+    res.json({ 
+      publishableKey: settings.stripePublishableKey,
+      bankAccountDetails: settings.bankAccountDetails || {},
+    });
   } catch (error) {
     console.error('Error fetching publishable key:', error);
     res.status(500).json({ error: 'Failed to fetch publishable key' });
@@ -339,7 +342,13 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
     
     const stripe = new Stripe(settings.stripeSecretKey);
     
-    // Create payment intent with saved payment method
+    // Calculate Stripe commission
+    const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
+    const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
+    const stripeCommission = (amount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
+    const amountAfterCommission = amount - stripeCommission;
+    
+    // Create payment intent with saved payment method (charge full amount, commission deducted from user balance)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to pence
       currency: 'gbp',
@@ -358,18 +367,24 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
     const transaction = new Wallet({
       userId: req.user.id,
       type: 'deposit',
-      amount,
+      amount: amountAfterCommission, // Amount after commission
       balance: 0, // Will be updated after payment confirmation
       status: paymentIntent.status === 'succeeded' ? 'completed' : 'pending',
       paymentMethod: 'stripe',
       stripePaymentIntentId: paymentIntent.id,
       stripeChargeId: paymentIntent.latest_charge,
-      description: `Wallet funding via Stripe - £${amount}`,
+      description: `Wallet funding via Stripe - £${amount} (Commission: £${stripeCommission.toFixed(2)})`,
+      metadata: {
+        originalAmount: amount,
+        commission: stripeCommission,
+        commissionPercentage: stripeCommissionPercentage,
+        commissionFixed: stripeCommissionFixed,
+      },
     });
     
-    // If payment succeeded immediately, update balance
+    // If payment succeeded immediately, update balance with amount after commission
     if (paymentIntent.status === 'succeeded') {
-      user.walletBalance = (user.walletBalance || 0) + amount;
+      user.walletBalance = (user.walletBalance || 0) + amountAfterCommission;
       await user.save();
       transaction.balance = user.walletBalance;
       transaction.status = 'completed';
@@ -561,10 +576,18 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
       return res.status(404).json({ error: 'User not found' });
     }
     
-    user.walletBalance = (user.walletBalance || 0) + transaction.amount;
+    // Calculate bank processing fee
+    const settings = await PaymentSettings.getSettings();
+    const bankProcessingFeePercentage = settings.bankProcessingFeePercentage || 2.00;
+    const originalAmount = transaction.amount;
+    const bankProcessingFee = (originalAmount * bankProcessingFeePercentage / 100);
+    const amountAfterFee = originalAmount - bankProcessingFee;
+    
+    user.walletBalance = (user.walletBalance || 0) + amountAfterFee;
     await user.save();
     
-    // Update transaction
+    // Update transaction with fee information
+    transaction.amount = amountAfterFee; // Update amount to reflect fee deduction
     transaction.status = 'completed';
     transaction.balance = user.walletBalance;
     transaction.processedBy = req.user.id;
@@ -572,6 +595,13 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
     if (adminNotes) {
       transaction.adminNotes = adminNotes;
     }
+    // Store fee information in metadata
+    if (!transaction.metadata) {
+      transaction.metadata = {};
+    }
+    transaction.metadata.bankProcessingFee = bankProcessingFee;
+    transaction.metadata.bankProcessingFeePercentage = bankProcessingFeePercentage;
+    transaction.metadata.originalAmount = originalAmount;
     await transaction.save();
     
     res.json({ 
@@ -599,7 +629,7 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
       return res.status(400).json({ error: 'Transaction is not pending' });
     }
     
-    transaction.status = 'failed';
+    transaction.status = 'rejected';
     transaction.processedBy = req.user.id;
     transaction.processedAt = new Date();
     if (adminNotes) {
@@ -617,7 +647,122 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
   }
 });
 
-// Admin: Get pending manual transfers
+// Admin: Get bank transfer requests (with search, filter, sort)
+router.get('/admin/bank-transfer-requests', authenticateToken, requireRole(['admin', 'subadmin']), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 25;
+    const skip = (page - 1) * limit;
+    const status = req.query.status; // 'all', 'pending', 'completed', 'rejected'
+    const search = req.query.search; // Search by user name, email, or reference
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+    
+    const query = {
+      type: 'deposit',
+      paymentMethod: 'manual_transfer',
+    };
+    
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    
+    const sort = {};
+    sort[sortBy] = sortOrder;
+    
+    // If search is provided, find users by name, email, or reference
+    if (search) {
+      const users = await User.find({
+        $or: [
+          { email: { $regex: search, $options: 'i' } },
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+        ]
+      }).select('_id');
+      const userIds = users.map(u => u._id);
+      
+      // Also search in metadata.reference
+      const referenceMatches = await Wallet.find({
+        type: 'deposit',
+        paymentMethod: 'manual_transfer',
+        'metadata.reference': { $regex: search, $options: 'i' }
+      }).select('_id');
+      const referenceIds = referenceMatches.map(t => t._id);
+      
+      if (userIds.length > 0 || referenceIds.length > 0) {
+        query.$or = [
+          { userId: { $in: userIds } },
+          { _id: { $in: referenceIds } }
+        ];
+      } else {
+        // No matches found, return empty result
+        return res.json({
+          requests: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            pages: 0,
+          },
+        });
+      }
+    }
+    
+    const transactions = await Wallet.find(query)
+      .populate('userId', 'firstName lastName email townCity')
+      .populate('processedBy', 'firstName lastName')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+    
+    const total = await Wallet.countDocuments(query);
+    
+    // Format transactions for frontend
+    const formattedRequests = transactions.map((t) => ({
+      _id: t._id,
+      id: t._id.toString(),
+      userId: t.userId?._id || null,
+      user: t.userId ? {
+        firstName: t.userId.firstName || '',
+        lastName: t.userId.lastName || '',
+        email: t.userId.email || '',
+        name: `${t.userId.firstName || ''} ${t.userId.lastName || ''}`.trim() || t.userId.email,
+      } : null,
+      amount: t.amount,
+      commission: t.amount * 0.02, // 2% commission
+      userAmount: t.amount * 0.98, // Amount after commission
+      city: t.userId?.townCity || '',
+      bankAccountName: t.metadata?.fullName || '',
+      dateOfDeposit: t.metadata?.dateOfDeposit || '',
+      referenceNumber: t.metadata?.reference || '',
+      status: t.status,
+      createdAt: t.createdAt,
+      processedBy: t.processedBy ? {
+        firstName: t.processedBy.firstName || '',
+        lastName: t.processedBy.lastName || '',
+        name: `${t.processedBy.firstName || ''} ${t.processedBy.lastName || ''}`.trim(),
+      } : null,
+      processedAt: t.processedAt,
+      adminNotes: t.adminNotes,
+    }));
+    
+    res.json({
+      requests: formattedRequests,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching bank transfer requests:', error);
+    res.status(500).json({ error: 'Failed to fetch bank transfer requests' });
+  }
+});
+
+// Admin: Get pending manual transfers (kept for backward compatibility)
 router.get('/admin/wallet/pending-transfers', authenticateToken, requireRole(['admin', 'subadmin']), async (req, res) => {
   try {
     const transactions = await Wallet.find({

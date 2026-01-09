@@ -59,6 +59,7 @@ import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
 import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
+import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -332,6 +333,8 @@ export default function AdminDashboardPage() {
         return <AdminPaymentSettingsPage />;
       case "transaction-history":
         return <AdminTransactionHistoryPage />;
+      case "bank-transfer-request":
+        return <AdminBankTransferRequestPage />;
       default:
         return (
           <AdminGenericPage
@@ -404,6 +407,7 @@ export default function AdminDashboardPage() {
       "TOTAL JOB": "job-management",
       "TOTAL JOB IN DISPUTE": "dispute-management",
       "PENDING WITHDRAWAL REQUEST": "withdrawal-request",
+      "BANK TRANSFER REQUEST": "bank-transfer-request",
       "MESSAGE CENTER": "message-center",
       "ORDERS": "service-order",
       "APPROVAL PENDING SERVICE": "service",
@@ -485,6 +489,7 @@ export default function AdminDashboardPage() {
                 { title: "CLIENTS", icon: Users, color: "red" as const, value: statistics?.clients || 0, dailyChange: statistics?.clientsDailyChange, badge: statistics?.clientsNew, onClick: () => navigate("/admin/clients") },
                 { title: "TOTAL JOB IN DISPUTE", icon: Gavel, color: "red" as const, value: statistics?.totalJobInDispute || 0, dailyChange: statistics?.totalJobInDisputeDailyChange, badge: statistics?.totalJobInDisputeDailyChange, onClick: () => navigate("/admin/dispute-list") },
                 { title: "PENDING WITHDRAWAL REQUEST", icon: CreditCard, color: "red" as const, value: statistics?.pendingWithdrawalRequest || 0, dailyChange: statistics?.pendingWithdrawalRequestDailyChange, badge: statistics?.pendingWithdrawalRequestDailyChange, onClick: () => navigate("/admin/withdrawal-request") },
+                { title: "BANK TRANSFER REQUEST", icon: Banknote, color: "red" as const, value: statistics?.bankTransferRequestsPending || 0, dailyChange: undefined, badge: statistics?.bankTransferRequestsNew || 0, onClick: () => navigate("/admin/bank-transfer-request") },
                 { title: "MESSAGE CENTER", icon: MessageCircle, color: "red" as const, value: statistics?.messageCenter || 0, dailyChange: statistics?.messageCenterDailyChange, badge: statistics?.messageCenterNew || 0, onClick: () => navigate("/admin/message-center") },
                 { title: "CLIENT REFERRALS", icon: TrendingUp, color: "red" as const, value: statistics?.clientsReferrals || 0, dailyChange: statistics?.clientsReferralsDailyChange, badge: statistics?.clientsReferralsDailyChange, onClick: () => navigate("/admin/referrals-client") },
                 { title: "DELETED ACCOUNT", icon: Archive, color: "red" as const, value: statistics?.deletedAccount || 0, dailyChange: statistics?.deletedAccountDailyChange, badge: statistics?.deletedAccountNew || 0, onClick: () => navigate("/admin/delete-account") },
@@ -576,6 +581,7 @@ export default function AdminDashboardPage() {
                         { show: shouldShowCard("CLIENTS"), icon: Users, title: "CLIENTS", value: statistics?.clients || 0, color: "red" as const, dailyChange: statistics?.clientsDailyChange, badge: statistics?.clientsNew, onClick: () => navigate("/admin/clients") },
                         { show: shouldShowCard("TOTAL JOB IN DISPUTE"), icon: Gavel, title: "TOTAL JOB IN DISPUTE", value: statistics?.totalJobInDispute || 0, color: "red" as const, dailyChange: statistics?.totalJobInDisputeDailyChange, badge: statistics?.totalJobInDisputeDailyChange, onClick: () => navigate("/admin/dispute-list") },
                         { show: shouldShowCard("PENDING WITHDRAWAL REQUEST"), icon: CreditCard, title: "PENDING WITHDRAWAL REQUEST", value: statistics?.pendingWithdrawalRequest || 0, color: "red" as const, dailyChange: statistics?.pendingWithdrawalRequestDailyChange, badge: statistics?.pendingWithdrawalRequestDailyChange, onClick: () => navigate("/admin/withdrawal-request") },
+                        { show: shouldShowCard("BANK TRANSFER REQUEST"), icon: Banknote, title: "BANK TRANSFER REQUEST", value: statistics?.bankTransferRequestsPending || 0, color: "red" as const, dailyChange: undefined, badge: statistics?.bankTransferRequestsNew || 0, onClick: () => navigate("/admin/bank-transfer-request") },
                         { show: shouldShowCard("MESSAGE CENTER"), icon: MessageCircle, title: "MESSAGE CENTER", value: statistics?.messageCenter || 0, color: "red" as const, dailyChange: statistics?.messageCenterDailyChange, badge: statistics?.messageCenterNew || 0, onClick: () => navigate("/admin/message-center") },
                         { show: shouldShowCard("CLIENT REFERRALS"), icon: TrendingUp, title: "CLIENT REFERRALS", value: statistics?.clientsReferrals || 0, color: "red" as const, dailyChange: statistics?.clientsReferralsDailyChange, badge: statistics?.clientsReferralsDailyChange, onClick: () => navigate("/admin/referrals-client") },
                         { show: shouldShowCard("DELETED ACCOUNT"), icon: Archive, title: "DELETED ACCOUNT", value: statistics?.deletedAccount || 0, color: "red" as const, dailyChange: statistics?.deletedAccountDailyChange, badge: statistics?.deletedAccountNew || 0, onClick: () => navigate("/admin/delete-account") },
