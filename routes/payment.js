@@ -31,6 +31,9 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
     res.json({ 
       publishableKey: settings.stripePublishableKey,
       bankAccountDetails: settings.bankAccountDetails || {},
+      stripeCommissionPercentage: settings.stripeCommissionPercentage || 1.55,
+      stripeCommissionFixed: settings.stripeCommissionFixed || 0.29,
+      bankProcessingFeePercentage: settings.bankProcessingFeePercentage || 2.00,
     });
   } catch (error) {
     console.error('Error fetching publishable key:', error);

@@ -6,7 +6,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Loader2, CreditCard, Building2, Plus, Trash2, Check } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Loader2, CreditCard, Building2, Plus, Trash2, Check, Info } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import PaymentMethodModal from "./PaymentMethodModal";
 import { useAccount } from "./AccountContext";
@@ -50,6 +51,11 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     sortCode: "",
     bankName: "",
   });
+  const [paymentSettings, setPaymentSettings] = useState({
+    stripeCommissionPercentage: 1.55,
+    stripeCommissionFixed: 0.29,
+    bankProcessingFeePercentage: 2.00,
+  });
 
   // Generate deposit reference when manual tab is opened
   useEffect(() => {
@@ -80,6 +86,14 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
             bankName: data.bankAccountDetails.bankName || "",
           });
         }
+        // Also fetch payment settings for commission info
+        if (data.stripeCommissionPercentage !== undefined) {
+          setPaymentSettings({
+            stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
+            stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
+            bankProcessingFeePercentage: data.bankProcessingFeePercentage || 2.00,
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching bank account details:", error);
@@ -92,6 +106,33 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       fetchPublishableKey();
     }
   }, [isOpen, activeTab]);
+
+  // Fetch payment settings when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchPaymentSettings();
+    }
+  }, [isOpen]);
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.stripeCommissionPercentage !== undefined) {
+          setPaymentSettings({
+            stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
+            stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
+            bankProcessingFeePercentage: data.bankProcessingFeePercentage || 2.00,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching payment settings:", error);
+    }
+  };
 
   const generateDepositReference = async () => {
     setLoadingReference(true);
@@ -386,11 +427,11 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="stripe" className="font-['Poppins',sans-serif]">
+              <TabsTrigger value="stripe" className="font-['Poppins',sans-serif] flex items-center">
                 <CreditCard className="w-4 h-4 mr-2" />
-                Stripe Payment
+                Card Payment
               </TabsTrigger>
-              <TabsTrigger value="manual" className="font-['Poppins',sans-serif]">
+              <TabsTrigger value="manual" className="font-['Poppins',sans-serif] flex items-center">
                 <Building2 className="w-4 h-4 mr-2" />
                 Bank Transfer
               </TabsTrigger>
@@ -520,7 +561,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                 </p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <Button
                   onClick={handleStripePayment}
                   disabled={loading || !amount || paymentMethods.length === 0}
@@ -535,6 +576,28 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     "Fund Wallet"
                   )}
                 </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative z-[9999] pointer-events-auto">
+                      <Info 
+                        className="w-4 h-4 text-blue-500 hover:text-blue-600 cursor-help transition-all duration-200 hover:scale-110" 
+                        style={{ 
+                          filter: 'drop-shadow(0 2px 4px rgba(59, 130, 246, 0.4)) drop-shadow(0 1px 2px rgba(59, 130, 246, 0.2))',
+                          textShadow: '0 1px 2px rgba(59, 130, 246, 0.3)'
+                        }} 
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    className="bg-white border border-gray-200 text-gray-800 shadow-lg p-3 max-w-xs" 
+                    style={{ zIndex: 99999 }}
+                  >
+                    <p className="font-['Poppins',sans-serif] text-[13px] leading-relaxed">
+                      Card charges ({paymentSettings.stripeCommissionPercentage}%+{paymentSettings.stripeCommissionFixed}) processing fee
+                      and processes your payment immediately.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
                 <Button
                   onClick={onClose}
                   variant="outline"
@@ -673,7 +736,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                 </p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <Button
                   onClick={handleManualTransfer}
                   disabled={loading || !amount || !fullName || !dateOfDeposit || !reference}
@@ -688,6 +751,29 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     "Submit"
                   )}
                 </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative z-[9999] pointer-events-auto">
+                      <Info 
+                        className="w-4 h-4 text-blue-500 hover:text-blue-600 cursor-help transition-all duration-200 hover:scale-110" 
+                        style={{ 
+                          filter: 'drop-shadow(0 2px 4px rgba(59, 130, 246, 0.4)) drop-shadow(0 1px 2px rgba(59, 130, 246, 0.2))',
+                          textShadow: '0 1px 2px rgba(59, 130, 246, 0.3)'
+                        }} 
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    className="bg-white border border-gray-200 text-gray-800 shadow-lg p-3 max-w-xs" 
+                    style={{ zIndex: 99999 }}
+                  >
+                    <p className="font-['Poppins',sans-serif] text-[13px] leading-relaxed">
+                      We charge {paymentSettings.bankProcessingFeePercentage}% processing fee and
+                      process your payment within 1-2 working
+                      days.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
                 <Button
                   onClick={onClose}
                   variant="outline"
