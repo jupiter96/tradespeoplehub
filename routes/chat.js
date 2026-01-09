@@ -426,40 +426,48 @@ router.post('/conversations/:conversationId/upload', requireAuth, (req, res, nex
   }
 });
 
-// Download file attachment
-router.get('/attachments/:filename', requireAuth, async (req, res) => {
+// Download file attachment (PUBLIC - no authentication required)
+router.get('/attachments/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(attachmentsDir, filename);
-
-    // Check if file exists
-    if (!existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+    
+    // Sanitize filename to prevent directory traversal
+    const sanitizedFilename = path.basename(filename);
+    if (sanitizedFilename !== filename) {
+      console.error('❌ Invalid filename detected:', filename);
+      return res.status(400).json({ error: 'Invalid filename' });
     }
-
-    // Verify user has access to this file (must be participant in conversation that contains this file)
-    const message = await Message.findOne({ fileUrl: `/api/chat/attachments/${filename}` });
-    if (!message) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-
-    const mongoose = (await import('mongoose')).default;
-    const userIdObj = new mongoose.Types.ObjectId(req.user.id);
-
-    const conversation = await Conversation.findById(message.conversation);
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    const isParticipant = conversation.participants.some(
-      (p) => p.toString() === userIdObj.toString()
-    );
-    if (!isParticipant) {
+    
+    // Use path.resolve to ensure absolute path
+    const filePath = path.resolve(attachmentsDir, sanitizedFilename);
+    
+    // Verify the resolved path is within attachmentsDir (prevent directory traversal)
+    const resolvedAttachmentsDir = path.resolve(attachmentsDir);
+    if (!filePath.startsWith(resolvedAttachmentsDir)) {
+      console.error('❌ Directory traversal attempt detected:', filePath);
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // Check if file exists
+    if (!existsSync(filePath)) {
+      console.error('❌ File not found:', filePath);
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Try to get original filename from database (optional, for better download name)
+    let originalFileName = sanitizedFilename;
+    try {
+      const message = await Message.findOne({ fileUrl: `/api/chat/attachments/${sanitizedFilename}` });
+      if (message && message.fileName) {
+        originalFileName = message.fileName;
+      }
+    } catch (dbError) {
+      // If database lookup fails, just use the sanitized filename
+      console.log('⚠️ Could not fetch original filename from DB, using sanitized filename');
+    }
+
     // Determine content type based on file extension
-    const ext = path.extname(filename).toLowerCase();
+    const ext = path.extname(sanitizedFilename).toLowerCase();
     const contentTypes = {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
@@ -474,18 +482,37 @@ router.get('/attachments/:filename', requireAuth, async (req, res) => {
     
     const contentType = contentTypes[ext] || 'application/octet-stream';
     
+    console.log('✅ Serving public file:', sanitizedFilename);
+    
     // Set appropriate headers for images
     if (ext.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(message.fileName || filename)}"`);
-      res.sendFile(filePath);
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(originalFileName)}"`);
+      // Use absolute path for sendFile
+      res.sendFile(filePath, (err) => {
+        if (err) {
+          console.error('❌ Error sending file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to send file' });
+          }
+        }
+      });
     } else {
       // For other files, use download
-      res.download(filePath, message.fileName || filename);
+      res.download(filePath, originalFileName, (err) => {
+        if (err) {
+          console.error('❌ Error downloading file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to download file' });
+          }
+        }
+      });
     }
   } catch (error) {
-    console.error('Error downloading file:', error);
-    res.status(500).json({ error: 'Failed to download file' });
+    console.error('❌ Error downloading file:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download file', details: error.message });
+    }
   }
 });
 
