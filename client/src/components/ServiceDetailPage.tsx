@@ -1586,11 +1586,20 @@ export default function ServiceDetailPage() {
                                   Delivery Time
                                 </td>
                                 {service.packages.map((pkg: any) => {
-                                  const deliveryText = pkg.deliveryDays === 0 || pkg.deliveryDays === "same-day" || pkg.deliveryDays === "0"
-                                    ? "Same Day"
-                                    : typeof pkg.deliveryDays === "number"
-                                    ? `${pkg.deliveryDays} days`
-                                    : "Standard";
+                                  // Check deliveryDays or deliveryType field
+                                  const deliveryDays = pkg.deliveryDays;
+                                  const deliveryType = pkg.deliveryType;
+                                  
+                                  let deliveryText = "standard";
+                                  
+                                  if (deliveryDays === 0 || deliveryDays === "same-day" || deliveryDays === "0" || 
+                                      deliveryType === "same-day" || deliveryType === "same day") {
+                                    deliveryText = "same day";
+                                  } else if (deliveryDays === "standard" || deliveryType === "standard" || 
+                                             deliveryDays === 7 || (typeof deliveryDays === "number" && deliveryDays > 0)) {
+                                    deliveryText = "standard";
+                                  }
+                                  
                                   return (
                                     <td key={pkg.id || pkg._id} className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] text-center p-3">
                                       {deliveryText}
