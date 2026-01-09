@@ -1560,95 +1560,91 @@ export default function ServiceDetailPage() {
                           Compare packages
                         </h2>
                         <div className="overflow-x-auto">
-                          <table className="w-full border-collapse">
-                            <thead>
-                              <tr>
-                                <th className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] text-left p-3 border-b border-gray-200 bg-gray-50">
-                                  Features
-                                </th>
-                                {service.packages.map((pkg: any) => {
-                                  const pkgPrice = parseMoney(pkg.price || pkg.originalPrice || 0);
-                                  return (
-                                    <th key={pkg.id || pkg._id} className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] text-center p-3 border-b border-gray-200 bg-gray-50 min-w-[120px]">
-                                      <div className="font-semibold mb-1">{pkg.name || "Package"}</div>
-                                      <div className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
-                                        £{pkgPrice.toFixed(2)}
+                          <div className="grid grid-cols-3 gap-4">
+                            {service.packages.map((pkg: any) => {
+                              const pkgPrice = parseMoney(pkg.price || pkg.originalPrice || 0);
+                              
+                              // Get delivery text
+                              const deliveryDays = pkg.deliveryDays;
+                              let deliveryText = "standard";
+                              if (deliveryDays === 0 || deliveryDays === "0") {
+                                deliveryText = "same day";
+                              } else if (deliveryDays === 7 || deliveryDays === "7") {
+                                deliveryText = "standard";
+                              } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
+                                deliveryText = "same day";
+                              } else if (deliveryDays === undefined || deliveryDays === null) {
+                                const deliveryType = pkg.deliveryType;
+                                if (deliveryType === "same-day" || deliveryType === "same day") {
+                                  deliveryText = "same day";
+                                } else {
+                                  deliveryText = "standard";
+                                }
+                              }
+                              
+                              // Get package attributes (filter out dummy data)
+                              const packageAttributes = (pkg.features || [])
+                                .filter((feature: string) => feature && feature.trim() && !isDummyData(feature.trim()))
+                                .map((feature: string) => feature.trim());
+                              
+                              return (
+                                <div key={pkg.id || pkg._id} className="bg-white border border-gray-200 rounded-lg">
+                                  {/* Package Name */}
+                                  <div className="bg-gray-50 border-b border-gray-200 p-3">
+                                    <div className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] uppercase text-center">
+                                      {pkg.name || "Package"}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Price */}
+                                  <div className="p-4 border-b border-gray-200">
+                                    <div className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] font-semibold text-center">
+                                      £{pkgPrice.toFixed(2)}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Description */}
+                                  {pkg.description && (
+                                    <div className="p-3 border-b border-gray-200">
+                                      <div className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] text-center">
+                                        {pkg.description}
                                       </div>
-                                    </th>
-                                  );
-                                })}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {/* Delivery Time Row */}
-                              <tr className="border-b border-gray-100">
-                                <td className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] p-3">
-                                  Delivery Time
-                                </td>
-                                {service.packages.map((pkg: any) => {
-                                  // Check deliveryDays - 7 means standard, 0 means same day
-                                  const deliveryDays = pkg.deliveryDays;
+                                    </div>
+                                  )}
                                   
-                                  let deliveryText = "standard";
-                                  
-                                  // deliveryDays is a number: 0 = same day, 7 = standard
-                                  // IMPORTANT: Check for 0 first, as 0 is falsy in JavaScript
-                                  if (deliveryDays === 0 || deliveryDays === "0") {
-                                    deliveryText = "same day";
-                                  } else if (deliveryDays === 7 || deliveryDays === "7") {
-                                    deliveryText = "standard";
-                                  } else if (typeof deliveryDays === "number") {
-                                    // For other numbers, default to standard
-                                    deliveryText = "standard";
-                                  } 
-                                  // If deliveryDays is a string, check for same-day patterns
-                                  else if (deliveryDays === "same-day" || deliveryDays === "same day") {
-                                    deliveryText = "same day";
-                                  } else if (deliveryDays === "standard") {
-                                    deliveryText = "standard";
-                                  }
-                                  // Fallback to deliveryType if deliveryDays is not set
-                                  else if (deliveryDays === undefined || deliveryDays === null) {
-                                    const deliveryType = pkg.deliveryType;
-                                    if (deliveryType === "same-day" || deliveryType === "same day") {
-                                      deliveryText = "same day";
-                                    } else {
-                                      deliveryText = "standard";
-                                    }
-                                  } else {
-                                    // Default to standard if deliveryDays has an unexpected value
-                                    deliveryText = "standard";
-                                  }
-                                  
-                                  return (
-                                    <td key={pkg.id || pkg._id} className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] text-center p-3">
+                                  {/* Delivery Days */}
+                                  <div className="p-3 border-b border-gray-200">
+                                    <div className="font-['Poppins',sans-serif] text-[12px] text-[#5b5b5b] text-center">
                                       {deliveryText}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                              {/* Attributes Rows */}
-                              {uniqueAttributes.map((attribute, idx) => (
-                                <tr key={idx} className="border-b border-gray-100">
-                                  <td className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] p-3">
-                                    {attribute}
-                                  </td>
-                                  {service.packages.map((pkg: any) => {
-                                    const hasAttribute = pkg.features && Array.isArray(pkg.features) && pkg.features.includes(attribute);
-                                    return (
-                                      <td key={pkg.id || pkg._id} className="text-center p-3">
-                                        {hasAttribute ? (
-                                          <Check className="w-5 h-5 text-[#10B981] mx-auto" />
-                                        ) : (
-                                          <X className="w-5 h-5 text-gray-400 mx-auto" />
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Attributes - One per row */}
+                                  {packageAttributes.length > 0 && (
+                                    <div className="divide-y divide-gray-100">
+                                      {packageAttributes.map((attribute: string, idx: number) => (
+                                        <div key={idx} className="p-3 flex items-center">
+                                          <Check className="w-4 h-4 text-[#10B981] ml-2 shrink-0" />
+                                          <div className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] text-center flex-1">
+                                            {attribute}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Show message if no attributes */}
+                                  {packageAttributes.length === 0 && (
+                                    <div className="p-3 text-center">
+                                      <div className="font-['Poppins',sans-serif] text-[12px] text-gray-400">
+                                        No attributes
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
