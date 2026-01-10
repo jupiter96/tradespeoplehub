@@ -2752,11 +2752,11 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       ]
     : [
         "service-details",
-        "extra-service",
-        "gallery",
-        "faqs",
-        "availability",
-        "profile"
+    "extra-service",
+    "gallery",
+    "faqs",
+    "availability",
+    "profile"
   ];
 
   // Step configuration with icons - conditionally include packages step
@@ -2772,11 +2772,11 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       ]
     : [
         { id: "service-details", label: "Service Details", icon: FileText },
-        { id: "extra-service", label: "Extra Service", icon: Settings },
-        { id: "gallery", label: "Gallery", icon: ImagePlus },
-        { id: "faqs", label: "FAQs", icon: MessageSquare },
-        { id: "availability", label: "Availability", icon: CalendarDays },
-        { id: "profile", label: "Profile", icon: UserCircle },
+    { id: "extra-service", label: "Extra Service", icon: Settings },
+    { id: "gallery", label: "Gallery", icon: ImagePlus },
+    { id: "faqs", label: "FAQs", icon: MessageSquare },
+    { id: "availability", label: "Availability", icon: CalendarDays },
+    { id: "profile", label: "Profile", icon: UserCircle },
   ];
 
   const getCurrentTabIndex = () => TAB_ORDER.indexOf(activeTab);
@@ -3283,43 +3283,43 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       } else {
         // For single services, use the last selected subcategory ID from the path
         const targetSubCategoryId = selectedSubCategoryPath.length > 0 
-          ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
-          : selectedSubCategoryId;
+        ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
+        : selectedSubCategoryId;
 
         if (!targetSubCategoryId) {
-          setSelectedSubCategoryTitles([]);
-          return;
-        }
+        setSelectedSubCategoryTitles([]);
+        return;
+      }
 
-        try {
-          setLoadingTitles(true);
-          const response = await fetch(
+      try {
+        setLoadingTitles(true);
+        const response = await fetch(
             resolveApiUrl(`/api/service-subcategories/${targetSubCategoryId}?includeServiceCategory=false&activeOnly=false`),
-            { credentials: 'include' }
-          );
+          { credentials: 'include' }
+        );
 
-          if (response.ok) {
-            const data = await response.json();
-            const subCategory = data.serviceSubCategory;
+        if (response.ok) {
+          const data = await response.json();
+          const subCategory = data.serviceSubCategory;
 
-            // Extract service title suggestions from the subcategory
+          // Extract service title suggestions from the subcategory
             const titleSuggestions = subCategory?.serviceTitleSuggestions || [];
             
             if (Array.isArray(titleSuggestions) && titleSuggestions.length > 0) {
               const titles = titleSuggestions
-                .filter((title: string) => title && title.trim() !== "");
-              setSelectedSubCategoryTitles(titles);
-            } else {
-              setSelectedSubCategoryTitles([]);
-            }
+              .filter((title: string) => title && title.trim() !== "");
+            setSelectedSubCategoryTitles(titles);
           } else {
             setSelectedSubCategoryTitles([]);
           }
-        } catch (error) {
-          // console.error('Error fetching subcategory titles:', error);
+        } else {
           setSelectedSubCategoryTitles([]);
-        } finally {
-          setLoadingTitles(false);
+        }
+      } catch (error) {
+        // console.error('Error fetching subcategory titles:', error);
+        setSelectedSubCategoryTitles([]);
+      } finally {
+        setLoadingTitles(false);
         }
       }
     };

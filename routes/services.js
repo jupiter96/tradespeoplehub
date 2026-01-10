@@ -481,7 +481,7 @@ router.get('/:id', async (req, res) => {
           { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
           { 
             path: 'serviceCategory', 
-            select: 'name slug icon bannerImage sector',
+            select: 'name slug icon bannerImage sector pricePerUnit',
             populate: {
               path: 'sector',
               select: 'name slug'
@@ -500,7 +500,7 @@ router.get('/:id', async (req, res) => {
           { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
           { 
             path: 'serviceCategory', 
-            select: 'name slug icon bannerImage sector',
+            select: 'name slug icon bannerImage sector pricePerUnit',
             populate: {
               path: 'sector',
               select: 'name slug'

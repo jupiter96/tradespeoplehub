@@ -69,7 +69,7 @@ export default function AdminServiceTitlesPage() {
         if (response.ok) {
           const data = await response.json();
           setServiceCategory(data.serviceCategory);
-          
+
           // Load package service titles from category if available
           if (data.serviceCategory?.packageServiceTitleSuggestions) {
             setCategoryPackageTitles(data.serviceCategory.packageServiceTitleSuggestions || []);
@@ -77,7 +77,7 @@ export default function AdminServiceTitlesPage() {
 
           // Automatically load Level 2 subcategories (only for single service tab)
           if (activeTab === 'single') {
-            await fetchSubCategoriesForLevel(data.serviceCategory._id, 2);
+          await fetchSubCategoriesForLevel(data.serviceCategory._id, 2);
           }
         } else {
           toast.error("Failed to load service category");
@@ -393,11 +393,11 @@ export default function AdminServiceTitlesPage() {
       setCategoryPackageTitles([...categoryPackageTitles, '']);
     } else {
       if (!subCategoryId) return;
-      const current = subCategoryTitles[subCategoryId] || [];
-      setSubCategoryTitles({
-        ...subCategoryTitles,
-        [subCategoryId]: [...current, '']
-      });
+    const current = subCategoryTitles[subCategoryId] || [];
+    setSubCategoryTitles({
+      ...subCategoryTitles,
+      [subCategoryId]: [...current, '']
+    });
     }
   };
 
@@ -410,12 +410,12 @@ export default function AdminServiceTitlesPage() {
       setCategoryPackageTitles(updated);
     } else {
       if (!subCategoryId) return;
-      const updated = [...(subCategoryTitles[subCategoryId] || [])];
-      updated[index] = value;
-      setSubCategoryTitles({
-        ...subCategoryTitles,
-        [subCategoryId]: updated
-      });
+    const updated = [...(subCategoryTitles[subCategoryId] || [])];
+    updated[index] = value;
+    setSubCategoryTitles({
+      ...subCategoryTitles,
+      [subCategoryId]: updated
+    });
     }
   };
 
@@ -427,11 +427,11 @@ export default function AdminServiceTitlesPage() {
       setCategoryPackageTitles(updated);
     } else {
       if (!subCategoryId) return;
-      const updated = (subCategoryTitles[subCategoryId] || []).filter((_, i) => i !== index);
-      setSubCategoryTitles({
-        ...subCategoryTitles,
-        [subCategoryId]: updated
-      });
+    const updated = (subCategoryTitles[subCategoryId] || []).filter((_, i) => i !== index);
+    setSubCategoryTitles({
+      ...subCategoryTitles,
+      [subCategoryId]: updated
+    });
     }
   };
 
@@ -620,7 +620,7 @@ export default function AdminServiceTitlesPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Title
               </Button>
-            </div>
+        </div>
 
             <div className="space-y-3">
               {categoryPackageTitles.length > 0 ? (

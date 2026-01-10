@@ -68,6 +68,7 @@ import {
   Download,
   Reply,
   ExternalLink,
+  Landmark
 } from "lucide-react";
 import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
@@ -2605,10 +2606,9 @@ const PayPalLogo = () => (
 );
 
 const BankLogo = () => (
-  <svg width="40" height="24" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-    <rect width="40" height="24" rx="4"/>
-    <path d="M20 6L26 10V18H22V12H18V18H14V10L20 6Z" fill="#1E40AF"/>
-  </svg>
+  <div className="w-10 h-6 flex items-center justify-center bg-white rounded shrink-0">
+    <Landmark className="w-5 h-5 text-blue-600" />
+  </div>
 );
 
 // Billing Section
@@ -3396,77 +3396,16 @@ function BillingSection() {
 
                       {expandedPaymentType === "bank" && (
                         <div className="border-t border-gray-200 p-4 bg-white space-y-4">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                            <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                              Our bank information
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-[#6b6b6b]">Account Name: </span>
-                                <span className="font-semibold text-[#2c353f]">{bankAccountDetails.accountName || "Loading..."}</span>
-                              </div>
-                              <div>
-                                <span className="text-[#6b6b6b]">Bank Name: </span>
-                                <span className="font-semibold text-[#2c353f]">{bankAccountDetails.bankName || "Loading..."}</span>
-                              </div>
-                              <div>
-                                <span className="text-[#6b6b6b]">Sort Code: </span>
-                                <span className="font-semibold text-[#2c353f]">{bankAccountDetails.sortCode || "Loading..."}</span>
-                              </div>
-                              <div>
-                                <span className="text-[#6b6b6b]">Account Number: </span>
-                                <span className="font-semibold text-[#2c353f]">{bankAccountDetails.accountNumber || "Loading..."}</span>
-                              </div>
-                              <div>
-                                <span className="text-[#6b6b6b]">Reference ID: </span>
-                                <span className="font-semibold text-[#2c353f]">{userInfo?.referenceId || "Loading..."}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div>
-                              <Label htmlFor="full-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                Full name:
-                              </Label>
-                              <Input
-                                id="full-name"
-                                type="text"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                placeholder="Enter your full name"
-                                className="mt-1 font-['Poppins',sans-serif]"
-                              />
-                            </div>
-
-                            <div>
-                              <Label htmlFor="date-of-deposit" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                Date of deposit:
-                              </Label>
-                              <Input
-                                id="date-of-deposit"
-                                type="date"
-                                value={dateOfDeposit}
-                                onChange={(e) => setDateOfDeposit(e.target.value)}
-                                className="mt-1 font-['Poppins',sans-serif]"
-                              />
-                            </div>
-
-                            <div>
-                              <Label htmlFor="deposit-reference" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                Deposit reference:
-                              </Label>
-                              <Input
-                                id="deposit-reference"
-                                type="text"
-                                value={loadingReference ? "Generating..." : reference}
-                                onChange={(e) => setReference(e.target.value)}
-                                placeholder="Enter deposit reference"
-                                className="mt-1 font-['Poppins',sans-serif] bg-gray-50"
-                                readOnly
-                                disabled
-                              />
-                            </div>
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900 leading-relaxed">
+                              Please click the "Confirm and pay" button to receive our bank details and a unique reference ID.
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900 mt-2 leading-relaxed">
+                              Note: For a fast and secure payment, please use the ID when transferring your money to us.
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900 mt-2 leading-relaxed">
+                              Note: Any transaction fees will be deducted from the total transfer amount. We'll credit your balance, once we receive the funds, on the next business day. If you have any questions, please contact us.
+                            </p>
                           </div>
                         </div>
                       )}
@@ -3553,7 +3492,7 @@ function BillingSection() {
                   {/* Confirm Button */}
                   <Button
                     onClick={handlePayment}
-                    disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && fundPaymentMethods.length === 0) || (selectedPaymentType === "bank" && (!fullName || !dateOfDeposit || !reference))}
+                    disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && fundPaymentMethods.length === 0)}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
                   >
                     {loading ? (
@@ -3585,7 +3524,7 @@ function BillingSection() {
               </p>
             ) : (
               <div className="space-y-3">
-                {transactions.map((transaction) => (
+                {transactions.slice(0, 5).map((transaction) => (
                   <div
                     key={transaction._id}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
@@ -3615,6 +3554,19 @@ function BillingSection() {
                     </div>
                   </div>
                 ))}
+                {transactions.length > 5 && (
+                  <div className="text-center pt-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      Showing 5 most recent transactions. View all transactions in the{" "}
+                      <button
+                        onClick={() => setBillingTab("history")}
+                        className="text-blue-600 hover:text-blue-700 underline font-medium"
+                      >
+                        History tab
+                      </button>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -3797,6 +3749,52 @@ function BillingSection() {
                     {userInfo?.referenceId || "Loading..."}
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Input Fields */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="modal-full-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  Full name:
+                </Label>
+                <Input
+                  id="modal-full-name"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="mt-1 font-['Poppins',sans-serif]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="modal-date-of-deposit" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  Date of deposit:
+                </Label>
+                <Input
+                  id="modal-date-of-deposit"
+                  type="date"
+                  value={dateOfDeposit}
+                  onChange={(e) => setDateOfDeposit(e.target.value)}
+                  className="mt-1 font-['Poppins',sans-serif]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="modal-deposit-reference" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  Deposit reference:
+                </Label>
+                <Input
+                  id="modal-deposit-reference"
+                  type="text"
+                  value={loadingReference ? "Generating..." : reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Enter deposit reference"
+                  className="mt-1 font-['Poppins',sans-serif] bg-gray-50"
+                  readOnly
+                  disabled
+                />
               </div>
             </div>
 

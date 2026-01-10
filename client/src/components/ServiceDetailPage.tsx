@@ -336,6 +336,7 @@ export default function ServiceDetailPage() {
             _id: s._id,
             _serviceCategory: s.serviceCategory,
             _serviceSubCategory: s.serviceSubCategory,
+            pricePerUnit: typeof s.serviceCategory === 'object' ? s.serviceCategory.pricePerUnit : null,
             status: s.status, // Store original status for pending check
             faqs: Array.isArray(s.faqs)
               ? s.faqs.map((f: any) => ({
@@ -1588,7 +1589,7 @@ export default function ServiceDetailPage() {
                                 .map((feature: string) => feature.trim());
                               
                               return (
-                                <div key={pkg.id || pkg._id} className="bg-white border border-gray-200 rounded-lg">
+                                <div key={pkg.id || pkg._id} className="bg-white border border-gray-200 rounded-lg flex flex-col h-full">
                                   {/* Package Name */}
                                   <div className="bg-gray-50 border-b border-gray-200 p-3">
                                     <div className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] uppercase text-center">
@@ -1612,35 +1613,37 @@ export default function ServiceDetailPage() {
                                     </div>
                                   )}
                                   
-                                  {/* Delivery Days */}
-                                  <div className="p-3 border-b border-gray-200">
-                                    <div className="font-['Poppins',sans-serif] text-[12px] text-[#5b5b5b] text-center">
-                                      {deliveryText}
-                                    </div>
+                                  {/* Attributes - One per row */}
+                                  <div className="flex-1">
+                                    {packageAttributes.length > 0 && (
+                                      <div className="divide-y divide-gray-100">
+                                        {packageAttributes.map((attribute: string, idx: number) => (
+                                          <div key={idx} className="p-3 flex items-center">
+                                            <Check className="w-4 h-4 text-[#10B981] ml-2 shrink-0" />
+                                            <div className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] text-center flex-1">
+                                              {attribute}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Show message if no attributes */}
+                                    {packageAttributes.length === 0 && (
+                                      <div className="p-3 text-center">
+                                        <div className="font-['Poppins',sans-serif] text-[12px] text-gray-400">
+                                          No attributes
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                   
-                                  {/* Attributes - One per row */}
-                                  {packageAttributes.length > 0 && (
-                                    <div className="divide-y divide-gray-100">
-                                      {packageAttributes.map((attribute: string, idx: number) => (
-                                        <div key={idx} className="p-3 flex items-center">
-                                          <Check className="w-4 h-4 text-[#10B981] ml-2 shrink-0" />
-                                          <div className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] text-center flex-1">
-                                            {attribute}
-                                          </div>
-                                        </div>
-                                      ))}
+                                  {/* Delivery Days - Fixed to bottom */}
+                                  <div className="p-3 border-t border-gray-200 mt-auto">
+                                    <div className="font-['Poppins',sans-serif] text-[12px] text-[#5b5b5b] text-center">
+                                      {deliveryText === "same day" ? "Same day delivery" : "Standard delivery"}
                                     </div>
-                                  )}
-                                  
-                                  {/* Show message if no attributes */}
-                                  {packageAttributes.length === 0 && (
-                                    <div className="p-3 text-center">
-                                      <div className="font-['Poppins',sans-serif] text-[12px] text-gray-400">
-                                        No attributes
-                                      </div>
-                                    </div>
-                                  )}
+                                  </div>
                                 </div>
                               );
                             })}
@@ -2006,6 +2009,9 @@ export default function ServiceDetailPage() {
                           const pkgRegularPrice = typeof pkg.price === 'number' ? pkg.price : parseMoney(pkg.price || 0);
                           const pkgDiscountedPrice = pkg.originalPrice ? (typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseMoney(pkg.originalPrice)) : null;
                           const pkgPrice = pkgDiscountedPrice || pkgRegularPrice;
+                          // Check if package has priceUnit (not "fixed" or empty)
+                          const pkgPriceUnit = pkg.priceUnit && pkg.priceUnit !== "fixed" ? pkg.priceUnit : null;
+                          const hasPackagePriceUnit = !!pkgPriceUnit;
                           return (
                           <TabsContent key={pkgId} value={String(pkgId)} className="mt-0 space-y-4">
                             {/* Package Price */}
@@ -2077,22 +2083,26 @@ export default function ServiceDetailPage() {
                               );
                             })()}
                             
-                            {/* Quantity Input - Only for packages */}
-                            <div className="pt-2">
-                              <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
-                                Number of {service.priceUnit || 'unit'}
-                              </Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={quantity}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value) || 1;
-                                  setQuantity(Math.max(1, val));
-                                }}
-                                className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                              />
-                            </div>
+                            {/* Quantity Input - Only show if package has priceUnit */}
+                            {hasPackagePriceUnit && (
+                              <div className="pt-2">
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
+                                  {service.pricePerUnit?.enabled 
+                                    ? `Number of ${pkgPriceUnit || service.priceUnit || 'unit'}`
+                                    : 'Quantity'}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={quantity}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    setQuantity(Math.max(1, val));
+                                  }}
+                                  className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                                />
+                              </div>
+                            )}
                           </TabsContent>
                           );
                         })}
@@ -2297,34 +2307,52 @@ export default function ServiceDetailPage() {
                   
                   <Separator className="my-4" />
                   
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center justify-between">
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Quantity
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={decrementQuantity}
-                          className="h-8 w-8 rounded-md border-2 border-gray-300 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
-                          {quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={incrementQuantity}
-                          className="h-8 w-8 rounded-md border-2 border-gray-300 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                  {/* Quantity Section - Only show if no package has priceUnit */}
+                  {(() => {
+                    // Check if any package has priceUnit (not "fixed" or empty)
+                    const hasAnyPackagePriceUnit = service.packages?.some((pkg: any) => {
+                      const pkgPriceUnit = pkg.priceUnit && pkg.priceUnit !== "fixed" ? pkg.priceUnit : null;
+                      return !!pkgPriceUnit;
+                    });
+                    
+                    // Only show this quantity section if no package has priceUnit
+                    if (hasAnyPackagePriceUnit) {
+                      return null;
+                    }
+                    
+                    return (
+                      <div className="space-y-3 mb-6">
+                        <div className="flex items-center justify-between">
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            {service.pricePerUnit?.enabled 
+                              ? `Number of ${service.priceUnit || 'unit'}`
+                              : 'Quantity'}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={decrementQuantity}
+                              className="h-8 w-8 rounded-md border-2 border-gray-300 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
+                              {quantity}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={incrementQuantity}
+                              className="h-8 w-8 rounded-md border-2 border-gray-300 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                   
                   <Separator className="my-4" />
                   
@@ -2672,71 +2700,88 @@ export default function ServiceDetailPage() {
 
                     <Separator className="my-4" />
                     
-                    {/* Quantity and Price Calculation */}
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          Quantity
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={decrementQuantity}
-                            disabled={quantity <= 1}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </Button>
-                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
-                            {quantity}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={incrementQuantity}
-                            disabled={quantity >= 10}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+                    {/* Quantity and Price Calculation - Only show if no package has priceUnit */}
+                    {(() => {
+                      // Check if any package has priceUnit (not "fixed" or empty)
+                      const hasAnyPackagePriceUnit = service.packages?.some((pkg: any) => {
+                        const pkgPriceUnit = pkg.priceUnit && pkg.priceUnit !== "fixed" ? pkg.priceUnit : null;
+                        return !!pkgPriceUnit;
+                      });
                       
-                      {/* Price Breakdown */}
-                      <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            Base price {quantity > 1 ? `(${quantity}x)` : ''}
-                          </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            £{(basePrice * quantity).toFixed(2)}
-                          </span>
-                        </div>
-                        
-                        {addonsTotal > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                              Extras {quantity > 1 ? `(${quantity}x)` : ''}
+                      // Only show this quantity section if no package has priceUnit
+                      if (hasAnyPackagePriceUnit) {
+                        return null;
+                      }
+                      
+                      return (
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              {service.pricePerUnit?.enabled 
+                                ? `Number of ${service.priceUnit || 'unit'}`
+                                : 'Quantity'}
                             </span>
-                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                              £{(addonsTotal * quantity).toFixed(2)}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={decrementQuantity}
+                                disabled={quantity <= 1}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </Button>
+                              <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
+                                {quantity}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={incrementQuantity}
+                                disabled={quantity >= 10}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                        )}
-                        
-                        {/* Total */}
-                        <Separator className="my-2" />
-                        <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
-                            Total
-                          </span>
-                          <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                            £{totalPrice.toFixed(2)}
-                          </span>
+                      
+                          {/* Price Breakdown */}
+                          <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                Base price {quantity > 1 ? `(${quantity}x)` : ''}
+                              </span>
+                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                £{(basePrice * quantity).toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            {addonsTotal > 0 && (
+                              <div className="flex items-center justify-between">
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                  Extras {quantity > 1 ? `(${quantity}x)` : ''}
+                                </span>
+                                <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                  £{(addonsTotal * quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Total */}
+                            <Separator className="my-2" />
+                            <div className="flex items-center justify-between">
+                              <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
+                                Total
+                              </span>
+                              <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
+                                £{totalPrice.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
                     
                     <Button 
                       onClick={handleAddToCart}
