@@ -2648,6 +2648,7 @@ function BillingSection() {
     stripeCommissionFixed: 0.29,
     bankProcessingFeePercentage: 2.00,
   });
+  const [showBankTransferConfirmModal, setShowBankTransferConfirmModal] = useState(false);
 
   useEffect(() => {
     if (billingTab === "wallet") {
@@ -2944,10 +2945,16 @@ function BillingSection() {
     if (selectedPaymentType === "card") {
       await handleStripePayment();
     } else if (selectedPaymentType === "bank") {
-      await handleManualTransfer();
+      // Show confirmation modal for bank transfer
+      setShowBankTransferConfirmModal(true);
     } else if (selectedPaymentType === "paypal") {
       toast.info("PayPal integration coming soon");
     }
+  };
+
+  const handleConfirmBankTransfer = async () => {
+    setShowBankTransferConfirmModal(false);
+    await handleManualTransfer();
   };
 
   const handleStripePayment = async () => {
@@ -3740,6 +3747,122 @@ function BillingSection() {
       {billingTab === "history" && (
         <TransactionHistoryTab />
       )}
+
+      {/* Bank Transfer Confirmation Modal */}
+      <Dialog open={showBankTransferConfirmModal} onOpenChange={setShowBankTransferConfirmModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Confirm Bank Transfer
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Please review the bank information and confirm your transfer request
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Bank Information */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
+              <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
+                Our bank information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Account Name:</p>
+                  <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    {bankAccountDetails.accountName || "Loading..."}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Bank Name:</p>
+                  <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    {bankAccountDetails.bankName || "Loading..."}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Sort Code:</p>
+                  <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    {bankAccountDetails.sortCode || "Loading..."}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Account Number:</p>
+                  <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    {bankAccountDetails.accountNumber || "Loading..."}
+                  </p>
+                </div>
+                <div className="md:col-span-2">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Reference ID:</p>
+                  <p className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    {userInfo?.referenceId || "Loading..."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Transfer Details */}
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <h4 className="font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f]">
+                Transfer Details
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Amount:</span>
+                  <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    £{parseFloat(amount || "0").toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Processing fee:</span>
+                  <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                    £{calculateFees().fee.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-300">
+                  <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">Total:</span>
+                  <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
+                    £{calculateFees().paymentDue.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Confirmation Message */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-800">
+                <strong>Important:</strong> Please make sure you have completed the bank transfer using the information above. 
+                Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. 
+                Once you confirm, we will process your request and credit your wallet once we receive your payment.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => setShowBankTransferConfirmModal(false)}
+                variant="outline"
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmBankTransfer}
+                disabled={loading || !fullName || !dateOfDeposit || !reference}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Confirm and Submit"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
