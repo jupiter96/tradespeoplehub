@@ -2986,11 +2986,11 @@ function BillingSection() {
 
       if (data.status === 'succeeded') {
         toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
-        await fetchWalletBalance();
-        await fetchTransactions();
+    await fetchWalletBalance();
+    await fetchTransactions();
         setAmount("20");
-        if (refreshUser) {
-          await refreshUser();
+    if (refreshUser) {
+      await refreshUser();
         }
       } else if (data.requiresAction) {
         toast.info("Please complete the authentication");
