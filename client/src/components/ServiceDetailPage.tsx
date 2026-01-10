@@ -2088,7 +2088,7 @@ export default function ServiceDetailPage() {
                               <div className="pt-2">
                                 <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
                                   {pkgPriceUnit || (service.priceUnit && service.priceUnit !== "fixed")
-                                    ? `Number of ${pkgPriceUnit || service.priceUnit || 'unit'}`
+                                    ? `How many ${pkgPriceUnit || service.priceUnit || 'unit'}`
                                     : 'Quantity'}
                                 </Label>
                                 <div className="relative">
@@ -2330,7 +2330,7 @@ export default function ServiceDetailPage() {
                         <div className="flex items-center justify-between">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                             {service.priceUnit && service.priceUnit !== "fixed"
-                              ? `Number of ${service.priceUnit}`
+                              ? `How many ${service.priceUnit}`
                               : 'Quantity'}
                           </span>
                           <div className="flex items-center gap-3">
@@ -2733,7 +2733,7 @@ export default function ServiceDetailPage() {
                           <div className="flex items-center justify-between mb-4">
                             <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                               {service.priceUnit && service.priceUnit !== "fixed"
-                                ? `Number of ${service.priceUnit}`
+                                ? `How many ${service.priceUnit}`
                                 : 'Quantity'}
                             </span>
                             <div className="flex items-center gap-3">
