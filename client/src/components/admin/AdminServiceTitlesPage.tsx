@@ -45,8 +45,10 @@ export default function AdminServiceTitlesPage() {
 
   // Stores title suggestions for each subcategory (for single service)
   const [subCategoryTitles, setSubCategoryTitles] = useState<Record<string, string[]>>({});
-  // Stores package service title suggestions for each subcategory
+  // Stores package service title suggestions for each subcategory (deprecated - now stored at category level)
   const [subCategoryPackageTitles, setSubCategoryPackageTitles] = useState<Record<string, string[]>>({});
+  // Stores package service title suggestions at service category level
+  const [categoryPackageTitles, setCategoryPackageTitles] = useState<string[]>([]);
   // Active tab: 'single' or 'package'
   const [activeTab, setActiveTab] = useState<'single' | 'package'>('single');
 
@@ -67,9 +69,16 @@ export default function AdminServiceTitlesPage() {
         if (response.ok) {
           const data = await response.json();
           setServiceCategory(data.serviceCategory);
+          
+          // Load package service titles from category if available
+          if (data.serviceCategory?.packageServiceTitleSuggestions) {
+            setCategoryPackageTitles(data.serviceCategory.packageServiceTitleSuggestions || []);
+          }
 
-          // Automatically load Level 2 subcategories
-          await fetchSubCategoriesForLevel(data.serviceCategory._id, 2);
+          // Automatically load Level 2 subcategories (only for single service tab)
+          if (activeTab === 'single') {
+            await fetchSubCategoriesForLevel(data.serviceCategory._id, 2);
+          }
         } else {
           toast.error("Failed to load service category");
           navigate("/admin/service-category");
@@ -82,7 +91,7 @@ export default function AdminServiceTitlesPage() {
     };
 
     fetchServiceCategory();
-  }, [categoryId, navigate]);
+  }, [categoryId, navigate, activeTab]);
 
   // Fetch subcategories for a specific level and load their titles
   const fetchSubCategoriesForLevel = useCallback(async (serviceCategoryId: string, level: number, parentSubCategoryId?: string) => {
@@ -187,6 +196,68 @@ export default function AdminServiceTitlesPage() {
       return;
     }
 
+    // For package service tab, save at category level
+    if (activeTab === 'package') {
+      const validTitles = categoryPackageTitles
+        .map(title => title.trim())
+        .filter(t => t.length > 0);
+
+      if (validTitles.length === 0) {
+        toast.error("Please add at least one title suggestion");
+        return;
+      }
+
+      // Validate minimum 50 characters for each title
+      const invalidTitles = validTitles.filter(t => t.length < 50);
+      if (invalidTitles.length > 0) {
+        toast.error(`Service titles must be at least 50 characters. ${invalidTitles.length} title(s) are too short.`);
+        return;
+      }
+
+      try {
+        setIsSaving(true);
+        
+        const titlesToSave = Array.isArray(validTitles) 
+          ? validTitles.filter(title => typeof title === 'string' && title.trim().length > 0)
+          : [];
+        
+        if (titlesToSave.length === 0) {
+          toast.error("No valid titles to save");
+          setIsSaving(false);
+          return;
+        }
+        
+        const response = await fetch(
+          resolveApiUrl(`/api/service-categories/${serviceCategory._id}`),
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ packageServiceTitleSuggestions: titlesToSave }),
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.serviceCategory?.packageServiceTitleSuggestions) {
+            setCategoryPackageTitles(data.serviceCategory.packageServiceTitleSuggestions || []);
+          }
+          toast.success(`Successfully saved package service title suggestions`);
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`Failed to save package service titles:`, errorData);
+          toast.error(`Failed to save package service title suggestions`);
+        }
+      } catch (error) {
+        console.error("Error saving package service title suggestions:", error);
+        toast.error("Failed to save package service title suggestions");
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // For single service tab, use existing subcategory logic
     // Find the deepest selected level to get the subcategory ID
     const maxLevel = serviceCategory.level || 7;
     let deepestLevel = 0;
@@ -205,10 +276,8 @@ export default function AdminServiceTitlesPage() {
       return;
     }
 
-    // Get titles for the selected subcategory (based on active tab)
-    const titles = activeTab === 'package' 
-      ? (subCategoryPackageTitles[selectedSubCategoryId] || [])
-      : (subCategoryTitles[selectedSubCategoryId] || []);
+    // Get titles for the selected subcategory
+    const titles = subCategoryTitles[selectedSubCategoryId] || [];
     const validTitles = titles
       .map(title => title.trim())
       .filter(t => t.length > 0);
@@ -246,40 +315,22 @@ export default function AdminServiceTitlesPage() {
           return;
         }
         
-        // Determine which field to update based on active tab
-        const updateBody = activeTab === 'package'
-          ? { packageServiceTitleSuggestions: titlesToSave }
-          : { serviceTitleSuggestions: titlesToSave };
-        
         const response = await fetch(
           resolveApiUrl(`/api/service-subcategories/${selectedSubCategoryId}`),
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify(updateBody),
+            body: JSON.stringify({ serviceTitleSuggestions: titlesToSave }),
           }
         );
         
         if (response.ok) {
           const data = await response.json();
-          // Update state with saved data (remove empty titles)
-          if (activeTab === 'package') {
-            if (data.serviceSubCategory?.packageServiceTitleSuggestions) {
-              const packageTitlesMap: Record<string, string[]> = {};
-              packageTitlesMap[selectedSubCategoryId] = data.serviceSubCategory.packageServiceTitleSuggestions;
-              setSubCategoryPackageTitles(prev => ({ ...prev, ...packageTitlesMap }));
-            } else {
-              const packageTitlesMap: Record<string, string[]> = {};
-              packageTitlesMap[selectedSubCategoryId] = titlesToSave;
-              setSubCategoryPackageTitles(prev => ({ ...prev, ...packageTitlesMap }));
-            }
+          if (data.serviceSubCategory?.serviceTitleSuggestions) {
+            filteredTitles[selectedSubCategoryId] = data.serviceSubCategory.serviceTitleSuggestions;
           } else {
-            if (data.serviceSubCategory?.serviceTitleSuggestions) {
-              filteredTitles[selectedSubCategoryId] = data.serviceSubCategory.serviceTitleSuggestions;
-            } else {
-              filteredTitles[selectedSubCategoryId] = titlesToSave;
-            }
+            filteredTitles[selectedSubCategoryId] = titlesToSave;
           }
           successCount++;
         } else {
@@ -293,8 +344,8 @@ export default function AdminServiceTitlesPage() {
         errorCount++;
       }
       
-      // Update state with saved data (remove empty titles) - only for single service titles
-      if (activeTab === 'single' && Object.keys(filteredTitles).length > 0) {
+      // Update state with saved data (remove empty titles)
+      if (Object.keys(filteredTitles).length > 0) {
         setSubCategoryTitles(prev => ({
           ...prev,
           ...filteredTitles
@@ -335,15 +386,13 @@ export default function AdminServiceTitlesPage() {
     }
   };
 
-  // Add title to subcategory
-  const addTitle = (subCategoryId: string) => {
+  // Add title to subcategory or category
+  const addTitle = (subCategoryId?: string) => {
     if (activeTab === 'package') {
-      const current = subCategoryPackageTitles[subCategoryId] || [];
-      setSubCategoryPackageTitles({
-        ...subCategoryPackageTitles,
-        [subCategoryId]: [...current, '']
-      });
+      // For package service, add to category level
+      setCategoryPackageTitles([...categoryPackageTitles, '']);
     } else {
+      if (!subCategoryId) return;
       const current = subCategoryTitles[subCategoryId] || [];
       setSubCategoryTitles({
         ...subCategoryTitles,
@@ -353,15 +402,14 @@ export default function AdminServiceTitlesPage() {
   };
 
   // Update title
-  const updateTitle = (subCategoryId: string, index: number, value: string) => {
+  const updateTitle = (subCategoryId: string | null, index: number, value: string) => {
     if (activeTab === 'package') {
-      const updated = [...(subCategoryPackageTitles[subCategoryId] || [])];
+      // For package service, update at category level
+      const updated = [...categoryPackageTitles];
       updated[index] = value;
-      setSubCategoryPackageTitles({
-        ...subCategoryPackageTitles,
-        [subCategoryId]: updated
-      });
+      setCategoryPackageTitles(updated);
     } else {
+      if (!subCategoryId) return;
       const updated = [...(subCategoryTitles[subCategoryId] || [])];
       updated[index] = value;
       setSubCategoryTitles({
@@ -372,14 +420,13 @@ export default function AdminServiceTitlesPage() {
   };
 
   // Remove title
-  const removeTitle = (subCategoryId: string, index: number) => {
+  const removeTitle = (subCategoryId: string | null, index: number) => {
     if (activeTab === 'package') {
-      const updated = (subCategoryPackageTitles[subCategoryId] || []).filter((_, i) => i !== index);
-      setSubCategoryPackageTitles({
-        ...subCategoryPackageTitles,
-        [subCategoryId]: updated
-      });
+      // For package service, remove from category level
+      const updated = categoryPackageTitles.filter((_, i) => i !== index);
+      setCategoryPackageTitles(updated);
     } else {
+      if (!subCategoryId) return;
       const updated = (subCategoryTitles[subCategoryId] || []).filter((_, i) => i !== index);
       setSubCategoryTitles({
         ...subCategoryTitles,
@@ -453,14 +500,21 @@ export default function AdminServiceTitlesPage() {
         </div>
 
         {/* Tabs for Single Service and Package Service Titles */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'single' | 'package')} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value as 'single' | 'package');
+          // When switching to single service tab, load subcategories if not already loaded
+          if (value === 'single' && serviceCategory && Object.keys(subCategoriesByLevel).length === 0) {
+            fetchSubCategoriesForLevel(serviceCategory._id, 2);
+          }
+        }} className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="single">Single Service Title</TabsTrigger>
             <TabsTrigger value="package">Package Service Title</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="space-y-6 mt-0">
-        {/* Cascading Level Selection */}
+        {/* Cascading Level Selection - Only for Single Service Tab */}
+        {activeTab === 'single' && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
           <Label className="text-sm font-semibold text-[#FE8A0F] mb-4 block">
             Select Subcategory Path
@@ -535,9 +589,78 @@ export default function AdminServiceTitlesPage() {
             })()}
           </div>
         </div>
+        )}
 
-        {/* Title Management for Selected Subcategory - Only Deepest Level */}
-        {(() => {
+        {/* Title Management - Package Service at Category Level, Single Service at Subcategory Level */}
+        {activeTab === 'package' ? (
+          /* Package Service Title Management at Category Level */
+          <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Label className="text-sm font-semibold text-[#FE8A0F]">
+                    Package Service Title Suggestions
+                  </Label>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    ({categoryPackageTitles.length} title{categoryPackageTitles.length !== 1 ? 's' : ''})
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Managing package service titles for: <span className="font-medium text-black dark:text-white">{serviceCategory.name}</span>
+                  <span className="block mt-2 text-xs text-orange-600 dark:text-orange-400">
+                    Note: Each title must be at least 50 characters long.
+                  </span>
+                </p>
+              </div>
+              <Button
+                onClick={() => addTitle()}
+                size="sm"
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Title
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {categoryPackageTitles.length > 0 ? (
+                categoryPackageTitles.map((title, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={title}
+                        onChange={(e) => updateTitle(null, index, e.target.value)}
+                        placeholder="e.g., Complete Home Electrical Package"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => removeTitle(null, index)}
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between px-1">
+                      <span className={`text-xs ${
+                        title.trim().length < 50 ? 'text-red-500' : 'text-green-600'
+                      }`}>
+                        {title.trim().length} / 50 characters {title.trim().length < 50 ? '(minimum required)' : '✓'}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                  No title suggestions yet. Click "Add Title" to create one.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+        /* Single Service Title Management at Subcategory Level */
+        (() => {
           // Find the deepest selected level (last/most nested level)
           const maxLevel = serviceCategory.level || 7;
           let deepestLevel = 0;
@@ -595,17 +718,17 @@ export default function AdminServiceTitlesPage() {
           }
 
           return (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Label className="text-sm font-semibold text-[#FE8A0F]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Label className="text-sm font-semibold text-[#FE8A0F]">
                         {activeTab === 'package' ? 'Package Service' : 'Single Service'} Title Suggestions - Level {deepestLevel} ({levelName})
-                      </Label>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        ({titles.length} title{titles.length !== 1 ? 's' : ''})
-                      </span>
-                    </div>
+                    </Label>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({titles.length} title{titles.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Managing titles for: <span className="font-medium text-black dark:text-white">{selectedSubCategory.name}</span>
                     {breadcrumb.length > 1 && (
@@ -665,7 +788,8 @@ export default function AdminServiceTitlesPage() {
               </div>
             </div>
           );
-        })()}
+        })()
+        )}
           </TabsContent>
         </Tabs>
       </div>

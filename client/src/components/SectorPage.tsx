@@ -2384,11 +2384,11 @@ export default function SectorPage() {
                             <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
                               <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                                 <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center cursor-pointer hover:opacity-80 transition-opacity">
-                                  <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                                  <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                                    {service.tradingName.slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                                <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                                  {service.tradingName.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
                               </Link>
                               <div className="flex flex-col gap-1 min-w-0 flex-1">
                                 {/* First Row: Trading name and badges */}
@@ -2482,17 +2482,17 @@ export default function SectorPage() {
                               <div className="flex items-center gap-1.5">
                                 <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                                   <Avatar className="w-5 h-5 cursor-pointer hover:opacity-80 transition-opacity">
-                                    <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                                    <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                                      {service.tradingName.slice(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
+                                  <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                                  <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                                    {service.tradingName.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
                                 </Link>
                                 <div className="flex items-center gap-1 flex-wrap">
                                   <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                    <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
-                                      {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
-                                    </span>
+                                  <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
+                                    {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
+                                  </span>
                                   </Link>
                                   {service.providerIsVerified && (
                                     <span className="inline-flex items-center px-1 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[7px] font-['Poppins',sans-serif] font-medium">
@@ -2591,8 +2591,8 @@ export default function SectorPage() {
                                         minPackagePrice = pkgPrice;
                                         minPackageName = pkg.name || '';
                                       }
-                                      if (pkgPrice > maxPackagePrice) {
-                                        maxPackagePrice = pkgPrice;
+                                    if (pkgPrice > maxPackagePrice) {
+                                      maxPackagePrice = pkgPrice;
                                         maxPackageName = pkg.name || '';
                                       }
                                     }
@@ -2604,7 +2604,7 @@ export default function SectorPage() {
                                   
                                   // If all packages have the same price, show single price
                                   if (minPackagePrice === maxPackagePrice) {
-                                    return {
+                                  return {
                                       min: minPackagePrice,
                                       max: maxPackagePrice,
                                       formatted: `£${minPackagePrice.toFixed(2)}`

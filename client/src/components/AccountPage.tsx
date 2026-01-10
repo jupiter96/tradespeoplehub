@@ -6050,13 +6050,13 @@ function ServicesSection() {
                   
                   if (singleServices.length === 0) {
                     return (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                             No single services found. Click "Add Service" to create your first service.
-                          </p>
-                        </TableCell>
-                      </TableRow>
+                      </p>
+                    </TableCell>
+                  </TableRow>
                     );
                   }
                   
@@ -6287,33 +6287,33 @@ function ServicesSection() {
             );
             
             return (
-              <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-4 mt-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
-                <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-3 md:p-4 rounded-xl border border-[#3B82F6]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
-                  <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Services</p>
+          <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-4 mt-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
+            <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-3 md:p-4 rounded-xl border border-[#3B82F6]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Services</p>
                   <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">{tabServices.length}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
-                  <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Approved Services</p>
-                  <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+            </div>
+            <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-3 md:p-4 rounded-xl border border-[#FE8A0F]/20 min-w-[200px] md:min-w-0 flex-shrink-0">
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Approved Services</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
                     {tabServices.filter(s => s.status === 'approved').length}
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[200px] md:min-w-0 flex-shrink-0">
-                  <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Bookings</p>
-                  <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+              </p>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-white p-3 md:p-4 rounded-xl border border-green-200 min-w-[200px] md:min-w-0 flex-shrink-0">
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Total Bookings</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
                     {tabServices.reduce((sum, s) => sum + (s.completedTasks || 0), 0)}
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-white p-3 md:p-4 rounded-xl border border-purple-200 min-w-[200px] md:min-w-0 flex-shrink-0">
-                  <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Rating</p>
-                  <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+              </p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-white p-3 md:p-4 rounded-xl border border-purple-200 min-w-[200px] md:min-w-0 flex-shrink-0">
+              <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#6b6b6b] mb-1">Avg Rating</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
                     {tabServices.length > 0 
                       ? (tabServices.reduce((sum, s) => sum + (s.rating || 0), 0) / tabServices.length).toFixed(1)
-                      : '0.0'
-                    } ★
-                  </p>
-                </div>
-              </div>
+                  : '0.0'
+                } ★
+              </p>
+            </div>
+          </div>
             );
           })()}
 

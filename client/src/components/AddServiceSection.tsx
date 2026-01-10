@@ -1865,10 +1865,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             if (filteredDrafts.length > 0) {
               const draft = filteredDrafts[0]; // Get the most recent matching draft
 
-              // Ask user if they want to continue with the draft
-              const shouldContinue = window.confirm(
+            // Ask user if they want to continue with the draft
+            const shouldContinue = window.confirm(
                 `You have an unfinished ${isPackageService ? 'package ' : ''}service draft "${draft.title || 'Untitled Draft'}". Would you like to continue editing it?`
-              );
+            );
 
             if (shouldContinue) {
               // Load draft data into form
@@ -2326,7 +2326,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
     }
   }, [isPackageService, selectedLastLevelSubCategories, packages.length, getSubCategoryNameById]);
-
+  
   // Initialize packages with BASIC, STANDARD, PREMIUM if offerPackages is enabled
   useEffect(() => {
     if (offerPackages && packages.length === 0) {
@@ -2742,13 +2742,13 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   // Tab order for navigation - conditionally include packages step
   const TAB_ORDER = isPackageService
     ? [
-        "service-details",
-        "packages",
-        "extra-service",
-        "gallery",
-        "faqs",
-        "availability",
-        "profile"
+    "service-details",
+    "packages",
+    "extra-service",
+    "gallery",
+    "faqs",
+    "availability",
+    "profile"
       ]
     : [
         "service-details",
@@ -2757,18 +2757,18 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         "faqs",
         "availability",
         "profile"
-      ];
+  ];
 
   // Step configuration with icons - conditionally include packages step
   const STEPS = isPackageService
     ? [
-        { id: "service-details", label: "Service Details", icon: FileText },
-        { id: "packages", label: "Package", icon: Package },
-        { id: "extra-service", label: "Extra Service", icon: Settings },
-        { id: "gallery", label: "Gallery", icon: ImagePlus },
-        { id: "faqs", label: "FAQs", icon: MessageSquare },
-        { id: "availability", label: "Availability", icon: CalendarDays },
-        { id: "profile", label: "Profile", icon: UserCircle },
+    { id: "service-details", label: "Service Details", icon: FileText },
+    { id: "packages", label: "Package", icon: Package },
+    { id: "extra-service", label: "Extra Service", icon: Settings },
+    { id: "gallery", label: "Gallery", icon: ImagePlus },
+    { id: "faqs", label: "FAQs", icon: MessageSquare },
+    { id: "availability", label: "Availability", icon: CalendarDays },
+    { id: "profile", label: "Profile", icon: UserCircle },
       ]
     : [
         { id: "service-details", label: "Service Details", icon: FileText },
@@ -2777,7 +2777,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         { id: "faqs", label: "FAQs", icon: MessageSquare },
         { id: "availability", label: "Availability", icon: CalendarDays },
         { id: "profile", label: "Profile", icon: UserCircle },
-      ];
+  ];
 
   const getCurrentTabIndex = () => TAB_ORDER.indexOf(activeTab);
   const isLastTab = () => getCurrentTabIndex() === TAB_ORDER.length - 1;
@@ -2948,19 +2948,19 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
       // Price fields only for single services, not package services
       if (!isPackageService) {
-        if (basePrice) {
-          draftData.price = parseFloat(basePrice);
-        }
+      if (basePrice) {
+        draftData.price = parseFloat(basePrice);
+      }
 
-        if (originalPrice) {
-          draftData.originalPrice = parseFloat(originalPrice);
-        }
+      if (originalPrice) {
+        draftData.originalPrice = parseFloat(originalPrice);
+      }
 
-        if (saleValidFrom) {
-          draftData.originalPriceValidFrom = saleValidFrom;
-        }
-        if (saleValidUntil) {
-          draftData.originalPriceValidUntil = saleValidUntil;
+      if (saleValidFrom) {
+        draftData.originalPriceValidFrom = saleValidFrom;
+      }
+      if (saleValidUntil) {
+        draftData.originalPriceValidUntil = saleValidUntil;
         }
       }
 
@@ -3240,65 +3240,92 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     return lastSelected && Array.isArray(lastSelected.attributes) ? lastSelected.attributes : [];
   }, [selectedSubCategoryPath, nestedSubCategories, availableSubCategories]);
 
-  // Fetch titles for the selected subcategory
+  // Fetch titles for the selected subcategory or category
   useEffect(() => {
     const fetchSubCategoryTitles = async () => {
-      let targetSubCategoryId: string | null = null;
-
       if (isPackageService) {
-        // For package services, use the first selected last-level subcategory
-        if (selectedLastLevelSubCategories && selectedLastLevelSubCategories.length > 0) {
-          targetSubCategoryId = selectedLastLevelSubCategories[0];
+        // For package services, fetch from service category
+        if (!selectedCategoryId) {
+          setSelectedSubCategoryTitles([]);
+          return;
         }
-      } else {
-        // For single services, use the last selected subcategory ID from the path
-        targetSubCategoryId = selectedSubCategoryPath.length > 0 
-          ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
-          : selectedSubCategoryId;
-      }
 
-      if (!targetSubCategoryId) {
-        setSelectedSubCategoryTitles([]);
-        return;
-      }
+        try {
+          setLoadingTitles(true);
+          const response = await fetch(
+            resolveApiUrl(`/api/service-categories/${selectedCategoryId}`),
+            { credentials: 'include' }
+          );
 
-      try {
-        setLoadingTitles(true);
-        const response = await fetch(
-          resolveApiUrl(`/api/service-subcategories/${targetSubCategoryId}?includeServiceCategory=false&activeOnly=false`),
-          { credentials: 'include' }
-        );
+          if (response.ok) {
+            const data = await response.json();
+            const serviceCategory = data.serviceCategory;
 
-        if (response.ok) {
-          const data = await response.json();
-          const subCategory = data.serviceSubCategory;
-
-          // Extract service title suggestions from the subcategory
-          // For package services, use packageServiceTitleSuggestions; otherwise use serviceTitleSuggestions
-          const titleSuggestions = isPackageService 
-            ? (subCategory?.packageServiceTitleSuggestions || [])
-            : (subCategory?.serviceTitleSuggestions || []);
-          
-          if (Array.isArray(titleSuggestions) && titleSuggestions.length > 0) {
-            const titles = titleSuggestions
-              .filter((title: string) => title && title.trim() !== "");
-            setSelectedSubCategoryTitles(titles);
+            // Extract package service title suggestions from the service category
+            const titleSuggestions = serviceCategory?.packageServiceTitleSuggestions || [];
+            
+            if (Array.isArray(titleSuggestions) && titleSuggestions.length > 0) {
+              const titles = titleSuggestions
+                .filter((title: string) => title && title.trim() !== "");
+              setSelectedSubCategoryTitles(titles);
+            } else {
+              setSelectedSubCategoryTitles([]);
+            }
           } else {
             setSelectedSubCategoryTitles([]);
           }
-        } else {
+        } catch (error) {
+          // console.error('Error fetching service category titles:', error);
           setSelectedSubCategoryTitles([]);
+        } finally {
+          setLoadingTitles(false);
         }
-      } catch (error) {
-        // console.error('Error fetching subcategory titles:', error);
-        setSelectedSubCategoryTitles([]);
-      } finally {
-        setLoadingTitles(false);
+      } else {
+        // For single services, use the last selected subcategory ID from the path
+        const targetSubCategoryId = selectedSubCategoryPath.length > 0 
+          ? selectedSubCategoryPath[selectedSubCategoryPath.length - 1]
+          : selectedSubCategoryId;
+
+        if (!targetSubCategoryId) {
+          setSelectedSubCategoryTitles([]);
+          return;
+        }
+
+        try {
+          setLoadingTitles(true);
+          const response = await fetch(
+            resolveApiUrl(`/api/service-subcategories/${targetSubCategoryId}?includeServiceCategory=false&activeOnly=false`),
+            { credentials: 'include' }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const subCategory = data.serviceSubCategory;
+
+            // Extract service title suggestions from the subcategory
+            const titleSuggestions = subCategory?.serviceTitleSuggestions || [];
+            
+            if (Array.isArray(titleSuggestions) && titleSuggestions.length > 0) {
+              const titles = titleSuggestions
+                .filter((title: string) => title && title.trim() !== "");
+              setSelectedSubCategoryTitles(titles);
+            } else {
+              setSelectedSubCategoryTitles([]);
+            }
+          } else {
+            setSelectedSubCategoryTitles([]);
+          }
+        } catch (error) {
+          // console.error('Error fetching subcategory titles:', error);
+          setSelectedSubCategoryTitles([]);
+        } finally {
+          setLoadingTitles(false);
+        }
       }
     };
 
     fetchSubCategoryTitles();
-  }, [selectedSubCategoryPath, selectedSubCategoryId, isPackageService, selectedLastLevelSubCategories]);
+  }, [selectedSubCategoryPath, selectedSubCategoryId, isPackageService, selectedCategoryId]);
 
   // Add package
   const addPackage = () => {
@@ -3537,17 +3564,17 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           }
           
           return {
-            id: pkg.id,
-            name: pkg.name,
-            description: pkg.description || "",
-            price: pkg.price ? parseFloat(String(pkg.price)) : 0,
-            originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description || "",
+          price: pkg.price ? parseFloat(String(pkg.price)) : 0,
+          originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
             originalPriceValidFrom: pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom).toISOString() : undefined,
             originalPriceValidUntil: pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil).toISOString() : undefined,
             deliveryDays: deliveryDaysNum,
-            revisions: pkg.revisions || "",
-            features: Array.isArray(pkg.features) ? pkg.features : [],
-            order: pkg.order || 0,
+          revisions: pkg.revisions || "",
+          features: Array.isArray(pkg.features) ? pkg.features : [],
+          order: pkg.order || 0,
           };
         }) : [],
         addons: extraServices
@@ -4280,215 +4307,215 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
                 {/* Service Highlights - Only show for single services, not package services */}
                 {!isPackageService && (
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                      What's Included
-                    </Label>
-                    <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
-                      {dynamicServiceAttributes.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {dynamicServiceAttributes.map((attribute, index) => {
-                            const attributeId = `dynamic-attr-${index}`;
-                            const isSelected = serviceHighlights.includes(attributeId);
-                            const canSelect = serviceHighlights.length < 6 || isSelected;
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                    What's Included
+                  </Label>
+                  <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
+                    {dynamicServiceAttributes.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {dynamicServiceAttributes.map((attribute, index) => {
+                          const attributeId = `dynamic-attr-${index}`;
+                          const isSelected = serviceHighlights.includes(attributeId);
+                          const canSelect = serviceHighlights.length < 6 || isSelected;
 
-                            return (
-                              <div
-                                key={attributeId}
-                                className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
-                              >
-                                <Checkbox
-                                  id={attributeId}
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      if (serviceHighlights.length < 6) {
-                                        setServiceHighlights([...serviceHighlights, attributeId]);
-                                      }
-                                    } else {
-                                      setServiceHighlights(serviceHighlights.filter(id => id !== attributeId));
+                          return (
+                            <div
+                              key={attributeId}
+                              className={`flex items-start space-x-2.5 ${!canSelect ? 'opacity-50' : ''}`}
+                            >
+                              <Checkbox
+                                id={attributeId}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    if (serviceHighlights.length < 6) {
+                                      setServiceHighlights([...serviceHighlights, attributeId]);
                                     }
-                                  }}
-                                  disabled={!canSelect}
-                                  className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
-                                />
-                                <label
-                                  htmlFor={attributeId}
-                                  className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
-                                    isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
-                                  }`}
-                                >
-                                  {attribute}
-                                </label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            No service attributes available for this category. Please select a subcategory or contact admin to add attributes.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    {serviceHighlights.length > 0 && (
-                      <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
-                          Selected Highlights:
+                                  } else {
+                                    setServiceHighlights(serviceHighlights.filter(id => id !== attributeId));
+                                  }
+                                }}
+                                disabled={!canSelect}
+                                className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F] data-[state=checked]:text-white"
+                              />
+                              <label
+                                htmlFor={attributeId}
+                                className={`font-['Poppins',sans-serif] text-[13px] leading-snug cursor-pointer ${
+                                  isSelected ? 'text-[#2c353f]' : 'text-[#6b6b6b]'
+                                }`}
+                              >
+                                {attribute}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          No service attributes available for this category. Please select a subcategory or contact admin to add attributes.
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                          {serviceHighlights.map((id) => {
-                            // Check if it's a dynamic attribute
-                            if (id.startsWith('dynamic-attr-')) {
-                              const index = parseInt(id.replace('dynamic-attr-', ''));
-                              const attribute = dynamicServiceAttributes[index];
-                              return attribute ? (
-                                <div key={id} className="flex items-start gap-2">
-                                  <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
-                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
-                                    {attribute}
-                                  </span>
-                                </div>
-                              ) : null;
-                            }
-                            return null;
-                          })}
-                        </div>
                       </div>
                     )}
                   </div>
+                  {serviceHighlights.length > 0 && (
+                    <div className="mt-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
+                        Selected Highlights:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {serviceHighlights.map((id) => {
+                          // Check if it's a dynamic attribute
+                          if (id.startsWith('dynamic-attr-')) {
+                            const index = parseInt(id.replace('dynamic-attr-', ''));
+                            const attribute = dynamicServiceAttributes[index];
+                            return attribute ? (
+                              <div key={id} className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-[#3D78CB] flex-shrink-0 mt-0.5" />
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
+                                  {attribute}
+                                </span>
+                              </div>
+                            ) : null;
+                          }
+                          return null;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 )}
 
                 {/* Delivery Type - Only show for single services, not package services */}
                 {!isPackageService && (
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Delivery Type
-                    </Label>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryType("standard")}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
-                          deliveryType === "standard"
-                            ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
-                            : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
-                        }`}
-                      >
-                        <Clock className="w-4 h-4" />
-                        <span className="font-['Poppins',sans-serif] text-[13px]">
-                          Standard Delivery
-                        </span>
-                        {deliveryType === "standard" && (
-                          <CheckCircle className="w-4 h-4 ml-1" />
-                        )}
-                      </button>
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Delivery Type
+                  </Label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryType("standard")}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
+                        deliveryType === "standard"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                          : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
+                      }`}
+                    >
+                      <Clock className="w-4 h-4" />
+                      <span className="font-['Poppins',sans-serif] text-[13px]">
+                        Standard Delivery
+                      </span>
+                      {deliveryType === "standard" && (
+                        <CheckCircle className="w-4 h-4 ml-1" />
+                      )}
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryType("same-day")}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
-                          deliveryType === "same-day"
-                            ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
-                            : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
-                        }`}
-                      >
-                        <TrendingUp className="w-4 h-4" />
-                        <span className="font-['Poppins',sans-serif] text-[13px]">
-                          Same-Day Service
-                        </span>
-                        {deliveryType === "same-day" && (
-                          <CheckCircle className="w-4 h-4 ml-1" />
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryType("same-day")}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
+                        deliveryType === "same-day"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                          : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
+                      }`}
+                    >
+                      <TrendingUp className="w-4 h-4" />
+                      <span className="font-['Poppins',sans-serif] text-[13px]">
+                        Same-Day Service
+                      </span>
+                      {deliveryType === "same-day" && (
+                        <CheckCircle className="w-4 h-4 ml-1" />
+                      )}
+                    </button>
                   </div>
+                </div>
                 )}
 
                 {/* Pricing - Only show for single services, not package services */}
                 {!isPackageService && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                        Your Price (£) <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={basePrice}
-                        onChange={(e) => setBasePrice(e.target.value)}
-                        placeholder="0.00"
-                        className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                      />
-                    </div>
-                    <div className="relative">
-                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                        Sale / Discounted Price (£) (Optional)
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={originalPrice}
-                        onChange={(e) => setOriginalPrice(e.target.value)}
-                        onFocus={() => setShowSaleValidDatePicker(true)}
-                        placeholder="0.00"
-                        className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                      />
-                      {showSaleValidDatePicker && (
-                        <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm space-y-3">
-                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
-                            Valid Date Range (optional)
-                          </Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
-                                From
-                              </Label>
-                              <Input
-                                type="date"
-                                value={saleValidFrom}
-                                onChange={(e) => setSaleValidFrom(e.target.value)}
-                                min={new Date().toISOString().split("T")[0]}
-                                className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
-                              />
-                            </div>
-                            <div>
-                              <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
-                                To
-                              </Label>
-                              <Input
-                                type="date"
-                                value={saleValidUntil}
-                                onChange={(e) => {
-                                  setSaleValidUntil(e.target.value);
-                                  // Validate that "to" date is not before "from" date
-                                  if (saleValidFrom && e.target.value < saleValidFrom) {
-                                    toast.error("End date must be after start date");
-                                  }
-                                }}
-                                min={saleValidFrom || new Date().toISOString().split("T")[0]}
-                                className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
-                              />
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setShowSaleValidDatePicker(false);
-                            }}
-                            className="w-full text-[11px] h-7"
-                          >
-                            Close
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Your Price (£) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={basePrice}
+                      onChange={(e) => setBasePrice(e.target.value)}
+                      placeholder="0.00"
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                    />
                   </div>
+                  <div className="relative">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Sale / Discounted Price (£) (Optional)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={originalPrice}
+                      onChange={(e) => setOriginalPrice(e.target.value)}
+                      onFocus={() => setShowSaleValidDatePicker(true)}
+                      placeholder="0.00"
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
+                    />
+                    {showSaleValidDatePicker && (
+                      <div className="mt-2 p-3 rounded-lg border border-gray-200 bg-white shadow-sm space-y-3">
+                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-1 block">
+                          Valid Date Range (optional)
+                        </Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                              From
+                            </Label>
+                            <Input
+                              type="date"
+                              value={saleValidFrom}
+                              onChange={(e) => setSaleValidFrom(e.target.value)}
+                              min={new Date().toISOString().split("T")[0]}
+                              className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
+                            />
+                          </div>
+                          <div>
+                            <Label className="font-['Poppins',sans-serif] text-[11px] text-gray-600 mb-1 block">
+                              To
+                            </Label>
+                            <Input
+                              type="date"
+                              value={saleValidUntil}
+                              onChange={(e) => {
+                                setSaleValidUntil(e.target.value);
+                                // Validate that "to" date is not before "from" date
+                                if (saleValidFrom && e.target.value < saleValidFrom) {
+                                  toast.error("End date must be after start date");
+                                }
+                              }}
+                              min={saleValidFrom || new Date().toISOString().split("T")[0]}
+                              className="font-['Poppins',sans-serif] text-[12px] border-gray-300"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowSaleValidDatePicker(false);
+                          }}
+                          className="w-full text-[11px] h-7"
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 )}
                 {!isPackageService && selectedCategoryId && (
                   <div>
@@ -4496,18 +4523,18 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                       Price Unit
                     </Label>
                     {priceUnitOptions.length > 0 ? (
-                      <Select value={priceUnit} onValueChange={setPriceUnit}>
-                        <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
-                          <SelectValue placeholder="Select price unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {priceUnitOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Select value={priceUnit} onValueChange={setPriceUnit}>
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
+                        <SelectValue placeholder="Select price unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priceUnitOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     ) : (
                       <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500 italic">
                         {currentServiceCategory 
@@ -4548,35 +4575,35 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                   </div>
                   
                   {currentServiceCategory && priceUnitOptions.length > 0 && (
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                        How do you charge?
-                      </Label>
-                      <Select value={priceUnit} onValueChange={setPriceUnit}>
-                        <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300 w-full">
-                          <SelectValue placeholder="Please Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {priceUnitOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      How do you charge?
+                    </Label>
+                    <Select value={priceUnit} onValueChange={setPriceUnit}>
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300 w-full">
+                        <SelectValue placeholder="Please Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priceUnitOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   )}
 
                   {!isPackageService && (
-                    <div className="flex items-center justify-between pt-2">
-                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        Offer Packages
-                      </Label>
-                      <Switch
-                        checked={offerPackages}
-                        onCheckedChange={setOfferPackages}
-                      />
-                    </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Offer Packages
+                    </Label>
+                    <Switch
+                      checked={offerPackages}
+                      onCheckedChange={setOfferPackages}
+                    />
+                  </div>
                   )}
                   {isPackageService && (
                     <div className="pt-2 pb-2">
@@ -4653,26 +4680,26 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                                     {attributesToShow.map((attribute, idx) => {
                                       const featureKey = `feature-${idx}`;
                                       const isChecked = pkg.features?.includes(attribute) || false;
-                                      return (
-                                        <div key={featureKey} className="flex items-center gap-2">
-                                          <Checkbox 
-                                            id={`${pkg.id}-${featureKey}`}
-                                            checked={isChecked}
-                                            onCheckedChange={(checked) => {
-                                              const currentFeatures = pkg.features || [];
-                                              if (checked) {
+                              return (
+                                <div key={featureKey} className="flex items-center gap-2">
+                                  <Checkbox 
+                                    id={`${pkg.id}-${featureKey}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      const currentFeatures = pkg.features || [];
+                                      if (checked) {
                                                 updatePackage(pkg.id, "features", [...currentFeatures, attribute]);
-                                              } else {
+                                      } else {
                                                 updatePackage(pkg.id, "features", currentFeatures.filter((f: string) => f !== attribute));
-                                              }
-                                            }}
-                                          />
-                                          <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
+                                      }
+                                    }}
+                                  />
+                                  <Label htmlFor={`${pkg.id}-${featureKey}`} className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] cursor-pointer">
                                             {attribute}
-                                          </Label>
-                                        </div>
-                                      );
-                                    })}
+                                  </Label>
+                                </div>
+                              );
+                            })}
                                   </div>
                                 );
                               } else {

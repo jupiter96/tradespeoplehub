@@ -50,8 +50,8 @@ router.get('/wallet/balance', authenticateToken, async (req, res) => {
       user = req.user.userObject;
     } else {
       user = await User.findById(req.user.id).select('walletBalance');
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
       }
     }
     

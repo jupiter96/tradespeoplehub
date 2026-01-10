@@ -190,6 +190,13 @@ const serviceCategorySchema = new mongoose.Schema(
       default: [],
       // Array of level mappings with full metadata: [{ level: 3, attributeType: 'serviceType', title: 'Service Type', thumbnail: '...', icon: '...', metadata: {...} }, ...]
     },
+    // Package service title suggestions for this service category
+    packageServiceTitleSuggestions: {
+      type: [String],
+      default: [],
+      // Array of suggested package service titles for this service category
+      // e.g., ['Complete Home Electrical Package', 'Commercial Wiring Package', 'Emergency Electrical Service Package']
+    },
   },
   { timestamps: true }
 );

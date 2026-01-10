@@ -2088,8 +2088,8 @@ export default function ServicesPage() {
                                   minPackagePrice = pkgPrice;
                                   minPackageName = pkg.name || '';
                                 }
-                                if (pkgPrice > maxPackagePrice) {
-                                  maxPackagePrice = pkgPrice;
+                              if (pkgPrice > maxPackagePrice) {
+                                maxPackagePrice = pkgPrice;
                                   maxPackageName = pkg.name || '';
                                 }
                               }
@@ -2101,7 +2101,7 @@ export default function ServicesPage() {
                             
                             // If all packages have the same price, show single price
                             if (minPackagePrice === maxPackagePrice) {
-                              return {
+                            return {
                                 min: minPackagePrice,
                                 max: maxPackagePrice,
                                 formatted: `£${minPackagePrice.toFixed(2)}`
@@ -2213,11 +2213,11 @@ export default function ServicesPage() {
                       <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
                         <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                           <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center cursor-pointer hover:opacity-80 transition-opacity">
-                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                            <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                              {service.tradingName.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                          <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                            {service.tradingName.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                         </Link>
                         <div className="flex flex-col gap-1 min-w-0 flex-1">
                           {/* First Row: Trading name and badges */}
@@ -2377,18 +2377,18 @@ export default function ServicesPage() {
                         <div className="flex items-center gap-2 mb-2 pt-2 border-t border-gray-100 mt-auto">
                           <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                             <Avatar className="w-6 h-6 md:w-7 md:h-7 cursor-pointer hover:opacity-80 transition-opacity">
-                              <AvatarImage src={service.providerImage} alt={service.tradingName} />
-                              <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                                {service.tradingName.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
+                              {service.tradingName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                           </Link>
                           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-1.5 min-w-0">
                               <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
-                                  by {displayTradingName}
-                                </p>
+                              <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
+                                by {displayTradingName}
+                              </p>
                               </Link>
                               {topRated && (
                                 <div 

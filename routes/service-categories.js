@@ -325,8 +325,8 @@ router.get('/:identifier', async (req, res) => {
         }
         
         const subCategories = await ServiceSubCategory.find(query)
-          .sort({ order: 1, name: 1 })
-          .lean();
+        .sort({ order: 1, name: 1 })
+        .lean();
         
         // Recursively fetch nested subcategories for each subcategory
         const subCategoriesWithNested = await Promise.all(
@@ -598,6 +598,16 @@ router.put('/:id', async (req, res) => {
     if (req.body.serviceIdealFor !== undefined) serviceCategory.serviceIdealFor = req.body.serviceIdealFor;
     if (req.body.extraServices !== undefined) serviceCategory.extraServices = req.body.extraServices;
     if (req.body.pricePerUnit !== undefined) serviceCategory.pricePerUnit = req.body.pricePerUnit;
+    if (req.body.packageServiceTitleSuggestions !== undefined) {
+      if (Array.isArray(req.body.packageServiceTitleSuggestions)) {
+        const filteredTitles = req.body.packageServiceTitleSuggestions
+          .map(title => typeof title === 'string' ? title.trim() : String(title))
+          .filter(title => title.length > 0);
+        serviceCategory.packageServiceTitleSuggestions = filteredTitles;
+      } else {
+        serviceCategory.packageServiceTitleSuggestions = [];
+      }
+    }
     
     await serviceCategory.save();
     

@@ -671,12 +671,12 @@ export default function AdminServicesPage({
                                     return (
                                       <>
                                         <p className="font-medium">£{Number(service.price).toFixed(2)}</p>
-                                        {service.originalPrice && (
+                                {service.originalPrice && (
                                           <p className="text-sm text-gray-500 dark:text-gray-400 line-through">£{Number(service.originalPrice).toFixed(2)}</p>
-                                        )}
-                                        {service.priceUnit && service.priceUnit !== "fixed" && (
-                                          <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
-                                        )}
+                                )}
+                                {service.priceUnit && service.priceUnit !== "fixed" && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                )}
                                       </>
                                     );
                                   }
