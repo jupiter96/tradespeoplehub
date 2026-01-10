@@ -2091,16 +2091,23 @@ export default function ServiceDetailPage() {
                                     ? `Number of ${pkgPriceUnit || service.priceUnit || 'unit'}`
                                     : 'Quantity'}
                                 </Label>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={quantity}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 1;
-                                    setQuantity(Math.max(1, val));
-                                  }}
-                                  className="font-['Poppins',sans-serif] text-[14px] border-gray-300"
-                                />
+                                <div className="relative">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={quantity}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 1;
+                                      setQuantity(Math.max(1, val));
+                                    }}
+                                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 pr-12"
+                                  />
+                                  {pkgPriceUnit && (
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] pointer-events-none">
+                                      {pkgPriceUnit}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </TabsContent>
@@ -2339,6 +2346,11 @@ export default function ServiceDetailPage() {
                             </Button>
                             <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
                               {quantity}
+                              {service.priceUnit && service.priceUnit !== "fixed" && (
+                                <span className="ml-1 text-[12px] text-[#6b6b6b]">
+                                  {service.priceUnit}
+                                </span>
+                              )}
                             </span>
                             <Button
                               variant="outline"
@@ -2733,6 +2745,11 @@ export default function ServiceDetailPage() {
                               </Button>
                               <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] min-w-[30px] text-center">
                                 {quantity}
+                                {service.priceUnit && service.priceUnit !== "fixed" && (
+                                  <span className="ml-1 text-[12px] text-[#6b6b6b]">
+                                    {service.priceUnit}
+                                  </span>
+                                )}
                               </span>
                               <Button
                                 variant="outline"
