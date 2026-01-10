@@ -30,7 +30,7 @@ const walletTransactionSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['stripe', 'card', 'manual_transfer', 'wallet'],
+      enum: ['stripe', 'card', 'paypal', 'manual_transfer', 'wallet'],
       required: true,
     },
     stripePaymentIntentId: {
@@ -38,6 +38,14 @@ const walletTransactionSchema = new mongoose.Schema(
       trim: true,
     },
     stripeChargeId: {
+      type: String,
+      trim: true,
+    },
+    paypalOrderId: {
+      type: String,
+      trim: true,
+    },
+    paypalCaptureId: {
       type: String,
       trim: true,
     },

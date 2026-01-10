@@ -16,6 +16,16 @@ const paymentSettingsSchema = new mongoose.Schema(
       trim: true,
     },
     
+    // PayPal API Keys
+    paypalPublicKey: {
+      type: String,
+      trim: true,
+    },
+    paypalSecretKey: {
+      type: String,
+      trim: true,
+    },
+    
     // Environment (test or live)
     environment: {
       type: String,

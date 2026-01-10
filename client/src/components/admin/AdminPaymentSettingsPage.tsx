@@ -7,7 +7,7 @@ import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Loader2, Save, CreditCard, Building2 } from "lucide-react";
+import { Loader2, Save, CreditCard, Building2, Wallet } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import API_BASE_URL, { resolveApiUrl } from "../../config/api";
 
@@ -18,6 +18,8 @@ export default function AdminPaymentSettingsPage() {
     stripePublishableKey: "",
     stripeSecretKey: "",
     stripeWebhookSecret: "",
+    paypalPublicKey: "",
+    paypalSecretKey: "",
     environment: "test",
     isActive: false,
     minDepositAmount: 1,
@@ -151,6 +153,7 @@ export default function AdminPaymentSettingsPage() {
         <Tabs defaultValue="stripe" className="space-y-6">
           <TabsList>
             <TabsTrigger value="stripe">Stripe Settings</TabsTrigger>
+            <TabsTrigger value="paypal">PayPal Settings</TabsTrigger>
             <TabsTrigger value="manual">Bank Transfer</TabsTrigger>
             <TabsTrigger value="commissions">Commissions & Fees</TabsTrigger>
             <TabsTrigger value="other">Other Settings</TabsTrigger>
@@ -237,6 +240,50 @@ export default function AdminPaymentSettingsPage() {
                   />
                 </div>
 
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PayPal Settings Tab */}
+          <TabsContent value="paypal" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  PayPal API Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure your PayPal payment gateway credentials
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="paypalPublicKey" className="font-['Poppins',sans-serif]">
+                    PayPal Public Key
+                  </Label>
+                  <Input
+                    id="paypalPublicKey"
+                    type="text"
+                    value={settings.paypalPublicKey || ""}
+                    onChange={(e) => updateField("paypalPublicKey", e.target.value)}
+                    placeholder="Enter PayPal Public Key"
+                    className="mt-2 font-['Poppins',sans-serif]"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="paypalSecretKey" className="font-['Poppins',sans-serif]">
+                    PayPal Secret Key
+                  </Label>
+                  <Input
+                    id="paypalSecretKey"
+                    type="password"
+                    value={settings.paypalSecretKey || ""}
+                    onChange={(e) => updateField("paypalSecretKey", e.target.value)}
+                    placeholder="Enter PayPal Secret Key"
+                    className="mt-2 font-['Poppins',sans-serif]"
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

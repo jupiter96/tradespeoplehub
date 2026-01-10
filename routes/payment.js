@@ -5,6 +5,7 @@ import PaymentSettings from '../models/PaymentSettings.js';
 import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Stripe from 'stripe';
+import paypal from '@paypal/checkout-server-sdk';
 
 const router = express.Router();
 
@@ -30,9 +31,12 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
     
     res.json({ 
       publishableKey: settings.stripePublishableKey,
+      paypalClientId: settings.paypalPublicKey, // PayPal uses Client ID as public key
       bankAccountDetails: settings.bankAccountDetails || {},
       stripeCommissionPercentage: settings.stripeCommissionPercentage || 1.55,
       stripeCommissionFixed: settings.stripeCommissionFixed || 0.29,
+      paypalCommissionPercentage: settings.paypalCommissionPercentage || 3.00,
+      paypalCommissionFixed: settings.paypalCommissionFixed || 0.30,
       bankProcessingFeePercentage: settings.bankProcessingFeePercentage || 2.00,
     });
   } catch (error) {
@@ -572,6 +576,174 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error creating manual transfer request:', error);
     res.status(500).json({ error: 'Failed to create manual transfer request' });
+  }
+});
+
+// Helper function to create PayPal client
+function createPayPalClient(settings) {
+  const environment = settings.environment === 'live' 
+    ? new paypal.core.LiveEnvironment(settings.paypalPublicKey, settings.paypalSecretKey)
+    : new paypal.core.SandboxEnvironment(settings.paypalPublicKey, settings.paypalSecretKey);
+  
+  return new paypal.core.PayPalHttpClient(environment);
+}
+
+// Create PayPal order for wallet funding
+router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+    
+    const settings = await PaymentSettings.getSettings();
+    
+    if (!settings.paypalPublicKey || !settings.paypalSecretKey) {
+      return res.status(400).json({ error: 'PayPal is not configured' });
+    }
+    
+    if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
+      return res.status(400).json({ 
+        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
+      });
+    }
+    
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Calculate PayPal commission (fee is taken separately, full amount is deposited)
+    const paypalCommissionPercentage = settings.paypalCommissionPercentage || 3.00;
+    const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
+    const paypalCommission = (amount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+    const totalAmount = amount + paypalCommission; // Total amount to charge
+    
+    // Create PayPal client
+    const client = createPayPalClient(settings);
+    
+    // Create PayPal order
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        amount: {
+          currency_code: 'GBP',
+          value: totalAmount.toFixed(2), // Total amount including fee
+        },
+        description: `Wallet Deposit - Amount: £${amount.toFixed(2)}, Fee: £${paypalCommission.toFixed(2)}`,
+      }],
+      application_context: {
+        brand_name: 'Sortars',
+        landing_page: 'NO_PREFERENCE',
+        user_action: 'PAY_NOW',
+        return_url: `${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}/account?tab=billing&paypal=success`,
+        cancel_url: `${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}/account?tab=billing&paypal=cancel`,
+      },
+    });
+    
+    const order = await client.execute(request);
+    
+    // Create pending wallet transaction
+    const transaction = new Wallet({
+      userId: req.user.id,
+      type: 'deposit',
+      amount: amount, // Full amount user entered (deposited to balance)
+      balance: 0, // Will be updated after payment confirmation
+      status: 'pending',
+      paymentMethod: 'paypal',
+      paypalOrderId: order.result.id,
+      description: `PayPal Deposit - Amount: £${amount.toFixed(2)}, Fee: £${paypalCommission.toFixed(2)}`,
+      metadata: {
+        depositAmount: amount, // Full amount deposited to user balance
+        fee: paypalCommission, // Fee taken by platform (separate)
+        feePercentage: paypalCommissionPercentage,
+        feeFixed: paypalCommissionFixed,
+        totalAmount: totalAmount, // Total amount charged
+      },
+    });
+    
+    await transaction.save();
+    
+    res.json({
+      orderId: order.result.id,
+      transactionId: transaction._id,
+      approvalUrl: order.result.links.find(link => link.rel === 'approve')?.href,
+    });
+  } catch (error) {
+    console.error('Error creating PayPal order:', error);
+    res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
+  }
+});
+
+// Capture PayPal payment and update wallet
+router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) => {
+  try {
+    const { orderId, transactionId } = req.body;
+    
+    if (!orderId || !transactionId) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    const settings = await PaymentSettings.getSettings();
+    if (!settings.paypalPublicKey || !settings.paypalSecretKey) {
+      return res.status(400).json({ error: 'PayPal is not configured' });
+    }
+    
+    // Verify transaction belongs to user
+    const transaction = await Wallet.findById(transactionId);
+    if (!transaction || transaction.userId.toString() !== req.user.id.toString()) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    if (transaction.status === 'completed') {
+      const user = await User.findById(req.user.id);
+      return res.json({ 
+        message: 'Transaction already processed', 
+        transaction,
+        balance: user?.walletBalance || 0,
+      });
+    }
+    
+    // Create PayPal client
+    const client = createPayPalClient(settings);
+    
+    // Capture the order
+    const request = new paypal.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+    
+    const capture = await client.execute(request);
+    
+    if (capture.result.status !== 'COMPLETED') {
+      return res.status(400).json({ error: 'Payment not completed' });
+    }
+    
+    // Update user wallet balance (deposit full amount, fee was already charged)
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const depositAmount = transaction.metadata?.depositAmount || transaction.amount;
+    user.walletBalance = (user.walletBalance || 0) + depositAmount;
+    await user.save();
+    
+    // Update transaction
+    transaction.status = 'completed';
+    transaction.balance = user.walletBalance;
+    transaction.paypalCaptureId = capture.result.id;
+    await transaction.save();
+    
+    res.json({ 
+      message: 'Wallet funded successfully',
+      balance: user.walletBalance,
+      transaction,
+    });
+  } catch (error) {
+    console.error('Error capturing PayPal payment:', error);
+    res.status(500).json({ error: error.message || 'Failed to capture PayPal payment' });
   }
 });
 

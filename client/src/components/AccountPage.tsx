@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner@2.0.3";
 import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import paypalLogo from "../assets/paypal-logo.png";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import {
   User,
   Heart,
@@ -2646,9 +2647,14 @@ function BillingSection() {
   const [paymentSettings, setPaymentSettings] = useState({
     stripeCommissionPercentage: 1.55,
     stripeCommissionFixed: 0.29,
+    paypalCommissionPercentage: 3.00,
+    paypalCommissionFixed: 0.30,
     bankProcessingFeePercentage: 2.00,
   });
   const [showBankTransferConfirmModal, setShowBankTransferConfirmModal] = useState(false);
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+  const [paypalTransactionId, setPaypalTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (billingTab === "wallet") {
@@ -2718,6 +2724,14 @@ function BillingSection() {
       if (response.ok) {
         const data = await response.json();
         setPublishableKey(data.publishableKey);
+        setPaypalClientId(data.paypalClientId || null);
+        setPaymentSettings({
+          stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
+          stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
+          paypalCommissionPercentage: data.paypalCommissionPercentage || 3.00,
+          paypalCommissionFixed: data.paypalCommissionFixed || 0.30,
+          bankProcessingFeePercentage: data.bankProcessingFeePercentage || 2.00,
+        });
       }
     } catch (error) {
       console.error("Error fetching publishable key:", error);
@@ -2948,7 +2962,8 @@ function BillingSection() {
       // Show confirmation modal for bank transfer
       setShowBankTransferConfirmModal(true);
     } else if (selectedPaymentType === "paypal") {
-      toast.info("PayPal integration coming soon");
+      // PayPal payment is handled by PayPalButtons component
+      // The button will trigger createOrder automatically
     }
   };
 
@@ -3050,6 +3065,74 @@ function BillingSection() {
         }
       }
     }, 2000);
+  };
+
+  const handlePayPalCreateOrder = async (): Promise<string> => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ 
+          amount: parseFloat(amount),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create PayPal order");
+      }
+
+      setPaypalOrderId(data.orderId);
+      setPaypalTransactionId(data.transactionId);
+      
+      return data.orderId;
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create PayPal order");
+      throw error;
+    }
+  };
+
+  const handlePayPalApprove = async (data: { orderID: string }) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal/capture"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          orderId: data.orderID,
+          transactionId: paypalTransactionId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to capture PayPal payment");
+      }
+
+      toast.success(`Wallet funded successfully! New balance: £${result.balance?.toFixed(2)}`);
+      await fetchWalletBalance();
+      await fetchTransactions();
+      setAmount("20");
+      setPaypalOrderId(null);
+      setPaypalTransactionId(null);
+      
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to process PayPal payment");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleManualTransfer = async () => {
@@ -3355,9 +3438,40 @@ function BillingSection() {
 
                       {expandedPaymentType === "paypal" && (
                         <div className="border-t border-gray-200 p-4 bg-white">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600">
-                            PayPal integration coming soon
-                          </p>
+                          {paypalClientId ? (
+                            <PayPalScriptProvider
+                              options={{
+                                clientId: paypalClientId,
+                                currency: "GBP",
+                                intent: "capture",
+                              }}
+                            >
+                              <PayPalButtons
+                                createOrder={handlePayPalCreateOrder}
+                                onApprove={handlePayPalApprove}
+                                onError={(err) => {
+                                  console.error("PayPal error:", err);
+                                  toast.error("PayPal payment failed. Please try again.");
+                                  setLoading(false);
+                                }}
+                                onCancel={() => {
+                                  toast.info("PayPal payment cancelled");
+                                  setPaypalOrderId(null);
+                                  setPaypalTransactionId(null);
+                                }}
+                                style={{
+                                  layout: "vertical",
+                                  color: "blue",
+                                  shape: "rect",
+                                  label: "paypal",
+                                }}
+                              />
+                            </PayPalScriptProvider>
+                          ) : (
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600">
+                              PayPal is not configured. Please contact support.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
