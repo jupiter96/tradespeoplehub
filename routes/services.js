@@ -856,6 +856,34 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       { path: 'serviceSubCategory', select: 'name slug icon' },
     ]);
 
+    // Send email notification when listing is submitted (status is pending)
+    if (service.status === 'pending' && service.professional?.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        await sendTemplatedEmail(
+          service.professional.email,
+          'listing-submitted',
+          {
+            firstName: service.professional.firstName || 'Professional',
+            lastName: service.professional.lastName || '',
+            serviceTitle: service.title,
+            serviceId: service._id.toString(),
+            serviceSlug: service.slug,
+            categoryName: service.serviceCategory?.name || 'Service',
+            submittedDate: new Date().toLocaleDateString('en-GB', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+          },
+          'listing'
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('Failed to send listing submitted email:', emailError);
+      }
+    }
+
     return res.status(201).json({ service });
   } catch (error) {
     // console.error('Create service error', error);
@@ -1224,6 +1252,89 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
       { path: 'serviceSubCategory', select: 'name slug icon' },
       { path: 'reviewedBy', select: 'firstName lastName email' },
     ]);
+
+    // Send email notifications based on status change
+    if (service.professional?.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        
+        if (service.status === 'approved') {
+          // Send approval email
+          await sendTemplatedEmail(
+            service.professional.email,
+            'listing-approved',
+            {
+              firstName: service.professional.firstName || 'Professional',
+              lastName: service.professional.lastName || '',
+              serviceTitle: service.title,
+              serviceId: service._id.toString(),
+              serviceSlug: service.slug,
+              categoryName: service.serviceCategory?.name || 'Service',
+              approvedDate: new Date().toLocaleDateString('en-GB', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              }),
+              reviewedBy: service.reviewedBy?.firstName 
+                ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
+                : 'Admin',
+            },
+            'listing'
+          );
+        } else if (service.status === 'denied') {
+          // Send rejection email
+          await sendTemplatedEmail(
+            service.professional.email,
+            'listing-rejected',
+            {
+              firstName: service.professional.firstName || 'Professional',
+              lastName: service.professional.lastName || '',
+              serviceTitle: service.title,
+              serviceId: service._id.toString(),
+              serviceSlug: service.slug,
+              categoryName: service.serviceCategory?.name || 'Service',
+              rejectionReason: service.modificationReason || 'Your listing did not meet our requirements. Please review our guidelines and try again.',
+              rejectedDate: new Date().toLocaleDateString('en-GB', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              }),
+              reviewedBy: service.reviewedBy?.firstName 
+                ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
+                : 'Admin',
+            },
+            'listing'
+          );
+        } else if (service.status === 'required_modification') {
+          // Send modification required email
+          await sendTemplatedEmail(
+            service.professional.email,
+            'listing-modification-required',
+            {
+              firstName: service.professional.firstName || 'Professional',
+              lastName: service.professional.lastName || '',
+              serviceTitle: service.title,
+              serviceId: service._id.toString(),
+              serviceSlug: service.slug,
+              categoryName: service.serviceCategory?.name || 'Service',
+              modificationReason: service.modificationReason || 'Your listing requires some modifications before it can be approved.',
+              modificationDate: new Date().toLocaleDateString('en-GB', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              }),
+              reviewedBy: service.reviewedBy?.firstName 
+                ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
+                : 'Admin',
+            },
+            'listing'
+          );
+        }
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('Failed to send listing status email:', emailError);
+      }
+    }
 
     return res.json({ service });
   } catch (error) {

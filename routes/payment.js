@@ -400,6 +400,66 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       await user.save();
       transaction.balance = user.walletBalance;
       transaction.status = 'completed';
+      
+      // Send email notification when card transaction is successful
+      if (user.email) {
+        try {
+          const { sendTemplatedEmail } = await import('../services/notifier.js');
+          await sendTemplatedEmail(
+            user.email,
+            'card-transaction-successful',
+            {
+              firstName: user.firstName || 'User',
+              lastName: user.lastName || '',
+              depositAmount: amount.toFixed(2),
+              fee: stripeCommission.toFixed(2),
+              totalAmount: (amount + stripeCommission).toFixed(2),
+              transactionId: transaction._id.toString(),
+              walletBalance: user.walletBalance.toFixed(2),
+              paymentDate: new Date().toLocaleDateString('en-GB', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+            },
+            'no-reply'
+          );
+        } catch (emailError) {
+          // Don't fail the request if email fails
+          console.error('Failed to send card transaction successful email:', emailError);
+        }
+      }
+    } else if (paymentIntent.status === 'requires_payment_method' || paymentIntent.status === 'canceled') {
+      // Send email notification when card transaction fails
+      if (user.email) {
+        try {
+          const { sendTemplatedEmail } = await import('../services/notifier.js');
+          await sendTemplatedEmail(
+            user.email,
+            'card-transaction-failed',
+            {
+              firstName: user.firstName || 'User',
+              lastName: user.lastName || '',
+              amount: amount.toFixed(2),
+              transactionId: transaction._id.toString(),
+              failedDate: new Date().toLocaleDateString('en-GB', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              failureReason: paymentIntent.last_payment_error?.message || 'Your payment could not be processed. Please check your payment method and try again.',
+            },
+            'no-reply'
+          );
+        } catch (emailError) {
+          // Don't fail the request if email fails
+          console.error('Failed to send card transaction failed email:', emailError);
+        }
+      }
     }
     
     await transaction.save();
@@ -467,6 +527,40 @@ router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) =
     transaction.balance = user.walletBalance;
     transaction.stripeChargeId = paymentIntent.latest_charge;
     await transaction.save();
+    
+    // Send email notification when card transaction is successful
+    if (user.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        const settings = await PaymentSettings.getSettings();
+        const stripeCommission = (transaction.amount * (settings.stripeCommissionPercentage || 1.55) / 100) + (settings.stripeCommissionFixed || 0.29);
+        
+        await sendTemplatedEmail(
+          user.email,
+          'card-transaction-successful',
+          {
+            firstName: user.firstName || 'User',
+            lastName: user.lastName || '',
+            depositAmount: transaction.amount.toFixed(2),
+            fee: stripeCommission.toFixed(2),
+            totalAmount: (transaction.amount + stripeCommission).toFixed(2),
+            transactionId: transaction._id.toString(),
+            walletBalance: user.walletBalance.toFixed(2),
+            paymentDate: new Date().toLocaleDateString('en-GB', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+          },
+          'no-reply'
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('Failed to send card transaction successful email:', emailError);
+      }
+    }
     
     res.json({ 
       message: 'Wallet funded successfully',
@@ -566,6 +660,37 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
       },
     });
     await transaction.save();
+    
+    // Send email notification when bank transfer is initiated
+    const user = await User.findById(req.user.id);
+    if (user?.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        await sendTemplatedEmail(
+          user.email,
+          'bank-transfer-initiated',
+          {
+            firstName: user.firstName || 'User',
+            lastName: user.lastName || '',
+            depositAmount: depositAmount.toFixed(2),
+            fee: fee.toFixed(2),
+            totalAmount: totalAmount.toFixed(2),
+            referenceNumber: reference.trim(),
+            requestDate: new Date().toLocaleDateString('en-GB', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+          },
+          'no-reply'
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('Failed to send bank transfer initiated email:', emailError);
+      }
+    }
     
     res.json({ 
       message: 'Manual transfer request created. Please transfer funds and wait for admin approval.',
@@ -797,6 +922,35 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
     transaction.metadata.feePercentage = settings.bankProcessingFeePercentage || 2.00;
     await transaction.save();
     
+    // Send email notification when bank transfer is approved
+    if (user.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        await sendTemplatedEmail(
+          user.email,
+          'bank-transfer-approved',
+          {
+            firstName: user.firstName || 'User',
+            lastName: user.lastName || '',
+            depositAmount: depositAmount.toFixed(2),
+            fee: fee.toFixed(2),
+            totalAmount: transaction.amount.toFixed(2),
+            referenceNumber: transaction.metadata?.reference || 'N/A',
+            walletBalance: user.walletBalance.toFixed(2),
+            approvedDate: new Date().toLocaleDateString('en-GB', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+          },
+          'no-reply'
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('Failed to send bank transfer approved email:', emailError);
+      }
+    }
+    
     res.json({ 
       message: 'Manual transfer approved successfully',
       transaction,
@@ -829,6 +983,34 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
       transaction.adminNotes = adminNotes;
     }
     await transaction.save();
+    
+    // Send email notification when bank transfer is rejected
+    const user = await User.findById(transaction.userId);
+    if (user?.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        await sendTemplatedEmail(
+          user.email,
+          'bank-transfer-rejected',
+          {
+            firstName: user.firstName || 'User',
+            lastName: user.lastName || '',
+            totalAmount: transaction.amount.toFixed(2),
+            referenceNumber: transaction.metadata?.reference || 'N/A',
+            rejectedDate: new Date().toLocaleDateString('en-GB', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+            rejectionReason: adminNotes || 'Your bank transfer request could not be approved. Please contact support for more information.',
+          },
+          'no-reply'
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('Failed to send bank transfer rejected email:', emailError);
+      }
+    }
     
     res.json({ 
       message: 'Manual transfer rejected',
@@ -1107,6 +1289,83 @@ router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }),
           transaction.balance = user.walletBalance;
           transaction.stripeChargeId = paymentIntent.latest_charge;
           await transaction.save();
+          
+          // Send email notification when card transaction is successful (via webhook)
+          if (user.email) {
+            try {
+              const { sendTemplatedEmail } = await import('../services/notifier.js');
+              const settings = await PaymentSettings.getSettings();
+              const stripeCommission = (transaction.amount * (settings.stripeCommissionPercentage || 1.55) / 100) + (settings.stripeCommissionFixed || 0.29);
+              
+              await sendTemplatedEmail(
+                user.email,
+                'card-transaction-successful',
+                {
+                  firstName: user.firstName || 'User',
+                  lastName: user.lastName || '',
+                  depositAmount: transaction.amount.toFixed(2),
+                  fee: stripeCommission.toFixed(2),
+                  totalAmount: (transaction.amount + stripeCommission).toFixed(2),
+                  transactionId: transaction._id.toString(),
+                  walletBalance: user.walletBalance.toFixed(2),
+                  paymentDate: new Date().toLocaleDateString('en-GB', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }),
+                },
+                'no-reply'
+              );
+            } catch (emailError) {
+              // Don't fail the request if email fails
+              console.error('Failed to send card transaction successful email:', emailError);
+            }
+          }
+        }
+      }
+    } else if (event.type === 'payment_intent.payment_failed') {
+      const paymentIntent = event.data.object;
+      
+      // Find transaction by payment intent ID
+      const transaction = await Wallet.findOne({
+        stripePaymentIntentId: paymentIntent.id,
+      });
+      
+      if (transaction && transaction.status === 'pending') {
+        // Update transaction status to failed
+        transaction.status = 'failed';
+        await transaction.save();
+        
+        // Send email notification when card transaction fails
+        const user = await User.findById(transaction.userId);
+        if (user?.email) {
+          try {
+            const { sendTemplatedEmail } = await import('../services/notifier.js');
+            await sendTemplatedEmail(
+              user.email,
+              'card-transaction-failed',
+              {
+                firstName: user.firstName || 'User',
+                lastName: user.lastName || '',
+                amount: transaction.amount.toFixed(2),
+                transactionId: transaction._id.toString(),
+                failedDate: new Date().toLocaleDateString('en-GB', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                failureReason: paymentIntent.last_payment_error?.message || 'Your payment could not be processed. Please check your payment method and try again.',
+              },
+              'no-reply'
+            );
+          } catch (emailError) {
+            // Don't fail the request if email fails
+            console.error('Failed to send card transaction failed email:', emailError);
+          }
         }
       }
     }

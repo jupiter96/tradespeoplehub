@@ -386,6 +386,558 @@ const defaultTemplates = [
     `,
     variables: ['firstName', 'verificationType', 'verificationStep', 'rejectionReason', 'logoUrl'],
   },
+  {
+    type: 'listing-submitted',
+    category: 'listing',
+    subject: '✅ Your Listing Has Been Submitted for Review',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing Submitted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">📋</div>
+      <h1 style="color: #3498db; margin-top: 0;">Thank You, {{firstName}}!</h1>
+    </div>
+    
+    <p>We've successfully received your listing submission for <strong>{{serviceTitle}}</strong>.</p>
+    
+    <div style="background-color: #e3f2fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #1565c0;">✓ Submission Status: Received</p>
+      <p style="margin: 5px 0 0 0; color: #1565c0;">Your listing is now in our review queue and will be processed shortly.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Listing Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Service:</strong> {{serviceTitle}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Category:</strong> {{categoryName}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Submitted:</strong> {{submittedDate}}</p>
+    </div>
+    
+    <p>Our team will review your listing to ensure it meets our quality standards. You'll receive an email notification once the review is complete, typically within 1-2 business days.</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d;"><strong>What happens next?</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #7f8c8d; font-size: 14px;">
+        <li>Our team will review your listing</li>
+        <li>You'll receive an email once the review is complete</li>
+        <li>If approved, your listing will go live immediately</li>
+        <li>If modifications are needed, we'll provide specific feedback</li>
+      </ul>
+    </div>
+    
+    <p>Thank you for choosing Sortars to showcase your services. We're excited to help you grow your business!</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'serviceTitle', 'serviceId', 'serviceSlug', 'categoryName', 'submittedDate', 'logoUrl'],
+  },
+  {
+    type: 'listing-approved',
+    category: 'listing',
+    subject: '🎉 Congratulations! Your Listing Has Been Approved',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing Approved</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">🎉</div>
+      <h1 style="color: #27ae60; margin-top: 0;">Great News, {{firstName}}!</h1>
+    </div>
+    
+    <p>We're thrilled to inform you that your listing <strong>{{serviceTitle}}</strong> has been approved and is now live on Sortars!</p>
+    
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #155724;">✓ Listing Status: Approved & Live</p>
+      <p style="margin: 5px 0 0 0; color: #155724;">Your listing is now visible to potential customers and ready to receive orders.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Listing Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Service:</strong> {{serviceTitle}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Category:</strong> {{categoryName}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Approved:</strong> {{approvedDate}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Reviewed by:</strong> {{reviewedBy}}</p>
+    </div>
+    
+    <p>Your listing is now live and visible to customers searching for services in your category. This is an exciting step toward growing your business on Sortars!</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d;"><strong>What you can do now:</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #7f8c8d; font-size: 14px;">
+        <li>Share your listing with your network</li>
+        <li>Respond promptly to customer inquiries</li>
+        <li>Keep your listing updated with current information</li>
+        <li>Collect reviews from satisfied customers</li>
+      </ul>
+    </div>
+    
+    <p>Thank you for being part of the Sortars community. We're here to support your success!</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'serviceTitle', 'serviceId', 'serviceSlug', 'categoryName', 'approvedDate', 'reviewedBy', 'logoUrl'],
+  },
+  {
+    type: 'listing-rejected',
+    category: 'listing',
+    subject: '⚠️ Your Listing Requires Attention',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing Rejected</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">⚠️</div>
+      <h1 style="color: #e67e22; margin-top: 0;">Hello {{firstName}},</h1>
+    </div>
+    
+    <p>We've reviewed your listing submission for <strong>{{serviceTitle}}</strong>, and unfortunately, we're unable to approve it at this time.</p>
+    
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #856404;">Listing Status: Not Approved</p>
+      <p style="margin: 5px 0 0 0; color: #856404;">Your listing did not meet our quality standards or guidelines.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border: 2px solid #e67e22; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Rejection Reason</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333; line-height: 1.8;">{{rejectionReason}}</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Listing Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Service:</strong> {{serviceTitle}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Category:</strong> {{categoryName}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Rejected:</strong> {{rejectedDate}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Reviewed by:</strong> {{reviewedBy}}</p>
+    </div>
+    
+    <p>We encourage you to review our listing guidelines and create a new listing that addresses the concerns mentioned above.</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d;"><strong>What to do next:</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #7f8c8d; font-size: 14px;">
+        <li>Review the rejection reason carefully</li>
+        <li>Review our listing guidelines and quality standards</li>
+        <li>Create a new listing that addresses the concerns</li>
+        <li>If you have questions, contact our support team for assistance</li>
+      </ul>
+    </div>
+    
+    <p>We're here to help you succeed on Sortars. If you have any questions about the rejection reason or need guidance on creating a compliant listing, please don't hesitate to reach out to our support team.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'serviceTitle', 'serviceId', 'serviceSlug', 'categoryName', 'rejectedDate', 'rejectionReason', 'reviewedBy', 'logoUrl'],
+  },
+  {
+    type: 'listing-modification-required',
+    category: 'listing',
+    subject: '📝 Action Required: Your Listing Needs Modifications',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing Modification Required</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">📝</div>
+      <h1 style="color: #f39c12; margin-top: 0;">Hello {{firstName}},</h1>
+    </div>
+    
+    <p>We've reviewed your listing submission for <strong>{{serviceTitle}}</strong>, and we need a few modifications before we can approve it.</p>
+    
+    <div style="background-color: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #856404;">Listing Status: Modifications Required</p>
+      <p style="margin: 5px 0 0 0; color: #856404;">Please make the requested changes and resubmit your listing for review.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border: 2px solid #f39c12; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Modification Request</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333; line-height: 1.8;">{{modificationReason}}</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Listing Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Service:</strong> {{serviceTitle}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Category:</strong> {{categoryName}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Requested:</strong> {{modificationDate}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Reviewed by:</strong> {{reviewedBy}}</p>
+    </div>
+    
+    <p>Please review the modification request above and update your listing accordingly. Once you've made the changes, your listing will be automatically resubmitted for review.</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d;"><strong>What to do next:</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #7f8c8d; font-size: 14px;">
+        <li>Review the modification request carefully</li>
+        <li>Edit your listing and make the necessary changes</li>
+        <li>Save your changes - your listing will be automatically resubmitted</li>
+        <li>You'll receive another email once the review is complete</li>
+      </ul>
+    </div>
+    
+    <p>We're here to help you create a successful listing. If you have any questions about the requested modifications or need assistance, please don't hesitate to contact our support team.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'serviceTitle', 'serviceId', 'serviceSlug', 'categoryName', 'modificationDate', 'modificationReason', 'reviewedBy', 'logoUrl'],
+  },
+  {
+    type: 'bank-transfer-approved',
+    category: 'no-reply',
+    subject: '✅ Your Bank Transfer Has Been Approved',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank Transfer Approved</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">✅</div>
+      <h1 style="color: #27ae60; margin-top: 0;">Great News, {{firstName}}!</h1>
+    </div>
+    
+    <p>We're pleased to inform you that your bank transfer has been approved and your wallet has been credited.</p>
+    
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #155724;">✓ Transfer Status: Approved</p>
+      <p style="margin: 5px 0 0 0; color: #155724;">Your funds have been successfully added to your wallet balance.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transaction Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Amount Deposited:</strong> £{{depositAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Processing Fee:</strong> £{{fee}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total Amount:</strong> £{{totalAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Reference Number:</strong> {{referenceNumber}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>New Wallet Balance:</strong> £{{walletBalance}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Approved Date:</strong> {{approvedDate}}</p>
+    </div>
+    
+    <p>Your wallet balance has been updated and you can now use these funds for your transactions on Sortars.</p>
+    
+    <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'depositAmount', 'fee', 'totalAmount', 'referenceNumber', 'walletBalance', 'approvedDate', 'logoUrl'],
+  },
+  {
+    type: 'bank-transfer-rejected',
+    category: 'no-reply',
+    subject: '⚠️ Your Bank Transfer Has Been Rejected',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank Transfer Rejected</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">⚠️</div>
+      <h1 style="color: #e67e22; margin-top: 0;">Hello {{firstName}},</h1>
+    </div>
+    
+    <p>We've reviewed your bank transfer request, and unfortunately, we're unable to approve it at this time.</p>
+    
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #856404;">Transfer Status: Rejected</p>
+      <p style="margin: 5px 0 0 0; color: #856404;">Your transfer request could not be processed.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transaction Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Amount:</strong> £{{totalAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Reference Number:</strong> {{referenceNumber}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Rejected Date:</strong> {{rejectedDate}}</p>
+    </div>
+    
+    {{#if rejectionReason}}
+    <div style="background-color: #ffffff; border: 2px solid #e67e22; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Rejection Reason</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333; line-height: 1.8;">{{rejectionReason}}</p>
+    </div>
+    {{/if}}
+    
+    <p>If you believe this is an error or have questions about the rejection, please contact our support team for assistance.</p>
+    
+    <p>You can submit a new transfer request once you've addressed any issues mentioned above.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'totalAmount', 'referenceNumber', 'rejectedDate', 'rejectionReason', 'logoUrl'],
+  },
+  {
+    type: 'card-transaction-successful',
+    category: 'no-reply',
+    subject: '✅ Card Payment Successful - Wallet Funded',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card Payment Successful</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">✅</div>
+      <h1 style="color: #27ae60; margin-top: 0;">Payment Successful, {{firstName}}!</h1>
+    </div>
+    
+    <p>Your card payment has been processed successfully and your wallet has been funded.</p>
+    
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #155724;">✓ Payment Status: Successful</p>
+      <p style="margin: 5px 0 0 0; color: #155724;">Your funds have been added to your wallet balance.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transaction Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Amount Deposited:</strong> £{{depositAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Processing Fee:</strong> £{{fee}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total Charged:</strong> £{{totalAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Transaction ID:</strong> {{transactionId}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>New Wallet Balance:</strong> £{{walletBalance}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Payment Date:</strong> {{paymentDate}}</p>
+    </div>
+    
+    <p>Your wallet balance has been updated and you can now use these funds for your transactions on Sortars.</p>
+    
+    <p>If you have any questions or notice any discrepancies, please contact our support team immediately.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'depositAmount', 'fee', 'totalAmount', 'transactionId', 'walletBalance', 'paymentDate', 'logoUrl'],
+  },
+  {
+    type: 'card-transaction-failed',
+    category: 'no-reply',
+    subject: '❌ Card Payment Failed',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card Payment Failed</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">❌</div>
+      <h1 style="color: #e74c3c; margin-top: 0;">Payment Failed, {{firstName}}</h1>
+    </div>
+    
+    <p>Unfortunately, your card payment could not be processed at this time.</p>
+    
+    <div style="background-color: #f8d7da; border-left: 4px solid #e74c3c; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #721c24;">Payment Status: Failed</p>
+      <p style="margin: 5px 0 0 0; color: #721c24;">Your wallet has not been funded. No charges were made to your card.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transaction Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Amount Attempted:</strong> £{{amount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Transaction ID:</strong> {{transactionId}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Failed Date:</strong> {{failedDate}}</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border: 2px solid #e74c3c; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Failure Reason</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333; line-height: 1.8;">{{failureReason}}</p>
+    </div>
+    
+    <p>Common reasons for payment failures include:</p>
+    <ul style="line-height: 2;">
+      <li>Insufficient funds in your account</li>
+      <li>Card has expired or been cancelled</li>
+      <li>Bank declined the transaction</li>
+      <li>Incorrect card details</li>
+    </ul>
+    
+    <p>Please check your payment method and try again. If the problem persists, please contact your bank or card issuer, or reach out to our support team for assistance.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'amount', 'transactionId', 'failedDate', 'failureReason', 'logoUrl'],
+  },
+  {
+    type: 'bank-transfer-initiated',
+    category: 'no-reply',
+    subject: '📋 Bank Transfer Request Received',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank Transfer Initiated</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">📋</div>
+      <h1 style="color: #3498db; margin-top: 0;">Thank You, {{firstName}}!</h1>
+    </div>
+    
+    <p>We've received your bank transfer request. Please complete the transfer using the details below.</p>
+    
+    <div style="background-color: #e3f2fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #1565c0;">Transfer Status: Pending</p>
+      <p style="margin: 5px 0 0 0; color: #1565c0;">Your request is awaiting your bank transfer and admin approval.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transfer Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Amount to Deposit:</strong> £{{depositAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Processing Fee:</strong> £{{fee}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total to Transfer:</strong> £{{totalAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Reference Number:</strong> {{referenceNumber}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Request Date:</strong> {{requestDate}}</p>
+    </div>
+    
+    <div style="background-color: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #856404;">Important: Use Your Reference Number</p>
+      <p style="margin: 5px 0 0 0; color: #856404;">Please include the reference number <strong>{{referenceNumber}}</strong> when making your bank transfer. This ensures your payment is processed quickly and accurately.</p>
+    </div>
+    
+    <p>Once you've completed the bank transfer, our team will review and approve your request. You'll receive an email notification once your wallet has been credited, typically within 1-2 business days.</p>
+    
+    <p>If you have any questions or need assistance, please contact our support team.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'depositAmount', 'fee', 'totalAmount', 'referenceNumber', 'requestDate', 'logoUrl'],
+  },
 ];
 
 async function createDefaultTemplates() {
@@ -396,7 +948,12 @@ async function createDefaultTemplates() {
     const logoUrl = process.env.EMAIL_LOGO_URL || 'https://res.cloudinary.com/drv3pneh8/image/upload/v1765138083/71632be70905a17fd389a8d053249645c4e8a4df_wvs6z6.png';
 
     for (const template of defaultTemplates) {
-      const existing = await EmailTemplate.findOne({ type: template.type });
+      // For listing templates, check by both type and category to avoid duplicates
+      const query = template.category 
+        ? { type: template.type, category: template.category }
+        : { type: template.type };
+      
+      const existing = await EmailTemplate.findOne(query);
       
       if (existing) {
         // Special handling for welcome template: update category to 'no-reply' if it's not already set
@@ -405,7 +962,7 @@ async function createDefaultTemplates() {
           await existing.save();
           // console.log(`Updated welcome template category to 'no-reply'`);
         } else {
-          // console.log(`Template ${template.type} already exists, skipping...`);
+          // console.log(`Template ${template.type} (category: ${template.category || 'default'}) already exists, skipping...`);
         }
         continue;
       }

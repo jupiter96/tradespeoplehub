@@ -437,6 +437,16 @@ export default function AdminEmailCampaignPage() {
       verificationStep: "email",
       rejectionReason: "Document quality is not clear",
       verificationLink: "https://example.com/verify",
+      serviceTitle: "Professional Service Example",
+      serviceId: "507f1f77bcf86cd799439011",
+      serviceSlug: "professional-service-example",
+      categoryName: "Home Services",
+      submittedDate: "15 January 2024",
+      approvedDate: "16 January 2024",
+      rejectedDate: "16 January 2024",
+      modificationDate: "16 January 2024",
+      modificationReason: "Please add more details to your service description",
+      reviewedBy: "Admin User",
     };
 
     Object.entries(sampleData).forEach(([key, value]) => {
