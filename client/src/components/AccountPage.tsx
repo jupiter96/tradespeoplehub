@@ -3438,40 +3438,9 @@ function BillingSection() {
 
                       {expandedPaymentType === "paypal" && (
                         <div className="border-t border-gray-200 p-4 bg-white">
-                          {paypalClientId ? (
-                            <PayPalScriptProvider
-                              options={{
-                                clientId: paypalClientId,
-                                currency: "GBP",
-                                intent: "capture",
-                              }}
-                            >
-                              <PayPalButtons
-                                createOrder={handlePayPalCreateOrder}
-                                onApprove={handlePayPalApprove}
-                                onError={(err) => {
-                                  console.error("PayPal error:", err);
-                                  toast.error("PayPal payment failed. Please try again.");
-                                  setLoading(false);
-                                }}
-                                onCancel={() => {
-                                  toast.info("PayPal payment cancelled");
-                                  setPaypalOrderId(null);
-                                  setPaypalTransactionId(null);
-                                }}
-                                style={{
-                                  layout: "vertical",
-                                  color: "blue",
-                                  shape: "rect",
-                                  label: "paypal",
-                                }}
-                              />
-                            </PayPalScriptProvider>
-                          ) : (
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600">
-                              PayPal is not configured. Please contact support.
-                            </p>
-                          )}
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600 mb-3">
+                            Choose your payment method below to complete your deposit.
+                          </p>
                         </div>
                       )}
                     </div>
@@ -3603,21 +3572,94 @@ function BillingSection() {
                     </div>
                   </div>
 
-                  {/* Confirm Button */}
-                  <Button
-                    onClick={handlePayment}
-                    disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && fundPaymentMethods.length === 0)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      `Confirm and pay £${calculateFees().paymentDue.toFixed(2)} GBP`
-                    )}
-                  </Button>
+                  {/* Payment Buttons - Conditional based on payment type */}
+                  {selectedPaymentType === "paypal" ? (
+                    <div className="space-y-3">
+                      {paypalClientId ? (
+                        <PayPalScriptProvider
+                          options={{
+                            clientId: paypalClientId,
+                            currency: "GBP",
+                            intent: "capture",
+                          }}
+                        >
+                          <PayPalButtons
+                            createOrder={handlePayPalCreateOrder}
+                            onApprove={handlePayPalApprove}
+                            onError={(err) => {
+                              console.error("PayPal error:", err);
+                              toast.error("PayPal payment failed. Please try again.");
+                              setLoading(false);
+                            }}
+                            onCancel={() => {
+                              toast.info("PayPal payment cancelled");
+                              setPaypalOrderId(null);
+                              setPaypalTransactionId(null);
+                            }}
+                            style={{
+                              layout: "vertical",
+                              color: "blue",
+                              shape: "rect",
+                              label: "paypal",
+                            }}
+                          />
+                        </PayPalScriptProvider>
+                      ) : (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800">
+                            PayPal is not configured. Please contact support.
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Debit or Credit Card Button */}
+                      <Button
+                        onClick={async () => {
+                          if (!amount || parseFloat(amount) <= 0) {
+                            toast.error("Please enter a valid amount");
+                            return;
+                          }
+                          
+                          if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
+                            toast.error("Please add a payment method first");
+                            setShowAddCardModal(true);
+                            return;
+                          }
+                          
+                          // Directly trigger card payment without changing selectedPaymentType
+                          await handleStripePayment();
+                        }}
+                        disabled={loading || !amount || parseFloat(amount) <= 0 || (!selectedPaymentMethod && fundPaymentMethods.length === 0)}
+                        className="w-full bg-gray-800 hover:bg-gray-900 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold flex items-center justify-center gap-2"
+                      >
+                        <CreditCard className="w-5 h-5" />
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          `Pay with Debit or Credit Card`
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    /* Confirm Button for Card and Bank Transfer */
+                    <Button
+                      onClick={handlePayment}
+                      disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && fundPaymentMethods.length === 0)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        `Confirm and pay £${calculateFees().paymentDue.toFixed(2)} GBP`
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
