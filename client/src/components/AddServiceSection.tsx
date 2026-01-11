@@ -3482,10 +3482,29 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("service-details");
       return;
     }
+    // Validate Keywords (mandatory)
+    const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
+    if (keywordArray.length === 0) {
+      toast.error("Please enter at least one positive keyword");
+      setActiveTab("service-details");
+      return;
+    }
+    // Validate Service Ideal For (mandatory)
+    if (dynamicServiceIdealFor.length > 0 && idealFor.length === 0) {
+      toast.error("Please select at least one option for 'What is the service ideal for?'");
+      setActiveTab("service-details");
+      return;
+    }
+    // Validate How do you charge? (mandatory if priceUnitOptions available)
+    if (currentServiceCategory && priceUnitOptions.length > 0 && !priceUnit) {
+      toast.error("Please select 'How do you charge?'");
+      setActiveTab("packages");
+      return;
+    }
     // Price validation only for single services, not package services
     if (!isPackageService && (!basePrice || parseFloat(basePrice) <= 0)) {
       toast.error("Please enter a valid base price");
-      setActiveTab("service-details");
+      setActiveTab("packages");
       return;
     }
     // Validate About Me (mandatory)
@@ -3501,8 +3520,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       return;
     }
 
-    const keywordArray = keywords.split(",").map(k => k.trim()).filter(k => k);
-
+    // Keywords already validated above, reuse the keywordArray
     setLoading(true);
     try {
       // First, update profile with About Me
@@ -4155,7 +4173,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 {/* Service Title */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Service Title
+                    Service Title <span className="text-red-500">*</span>
                   </Label>
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mb-2">
                     Choose from suggested titles, edit it or write your own title. (Minimum 50 characters)
@@ -4223,7 +4241,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 {/* Positive Keywords */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Positive Keywords
+                    Positive Keywords <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={keywords}
@@ -4248,7 +4266,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 {/* What is the service ideal for? */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    What is the service ideal for?
+                    What is the service ideal for? <span className="text-red-500">*</span>
                   </Label>
                   {dynamicServiceIdealFor.length === 0 ? (
                     <div className="border border-gray-300 rounded-md p-4 text-center text-gray-500">
@@ -4548,7 +4566,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 {/* About Your Service */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    About Your Service
+                    About Your Service <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
                     value={description}
@@ -4557,7 +4575,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
                   />
                   <p className={`font-['Poppins',sans-serif] text-[12px] mt-2 text-right ${description.length < 35 ? 'text-red-500' : 'text-green-600'}`}>
-                    {description.length} / 35 minimum characters
+                    {description.length} / 100 maximum characters
                   </p>
                 </div>
               </div>
@@ -4577,7 +4595,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                   {currentServiceCategory && priceUnitOptions.length > 0 && (
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      How do you charge?
+                      How do you charge? <span className="text-red-500">*</span>
                     </Label>
                     <Select value={priceUnit} onValueChange={setPriceUnit}>
                       <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300 w-full">

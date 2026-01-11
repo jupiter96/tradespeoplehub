@@ -58,7 +58,8 @@ const getPriceRange = (service: any) => {
   let maxPackageName = '';
   
   service.packages.forEach((pkg: any) => {
-    // Use originalPrice if available (discounted), otherwise use price
+    // Use originalPrice (discount price) if available, otherwise use price (original price)
+    // originalPrice = discount price (lower), price = original price (higher)
     const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
     if (pkgPrice > 0) {
       if (pkgPrice < minPackagePrice) {
@@ -284,12 +285,46 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       const priceRange = getPriceRange(service);
                       if (priceRange) {
                         // Show price range when packages exist
+                        // Get all packages with discounts
+                        // originalPrice = discount price (lower), price = original price (higher)
+                        const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                          if (!pkg || !pkg.originalPrice) return false;
+                          const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                          const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                          return discountPrice > 0 && originalPrice > discountPrice;
+                        }) || [];
+                        
                         return (
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                              {priceRange.formatted}
-                            </span>
-                          </div>
+                          <>
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                                {priceRange.formatted}
+                              </span>
+                            </div>
+                            {/* Show discount badges for all packages with discounts */}
+                            {packagesWithDiscounts.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                  // originalPrice = discount price (lower), price = original price (higher)
+                                  const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                  const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                  if (originalPrice > discountPrice && discountPrice > 0) {
+                                    const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                    return (
+                                      <span 
+                                        key={pkg._id || pkg.id || index}
+                                        className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                        style={{ backgroundColor: '#CC0C39' }}
+                                      >
+                                        {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
+                          </>
                         );
                       } else {
                         // Show regular price when no packages
@@ -528,12 +563,46 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       const priceRange = getPriceRange(service);
                       if (priceRange) {
                         // Show price range when packages exist
+                            // Get all packages with discounts
+                            // originalPrice = discount price (lower), price = original price (higher)
+                            const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                              if (!pkg || !pkg.originalPrice) return false;
+                              const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                              const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                              return discountPrice > 0 && originalPrice > discountPrice;
+                            }) || [];
+                        
                         return (
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
-                              {priceRange.formatted}
-                            </span>
-                          </div>
+                          <>
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
+                                {priceRange.formatted}
+                              </span>
+                            </div>
+                            {/* Show discount badges for all packages with discounts */}
+                            {packagesWithDiscounts.length > 0 && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                  // originalPrice = discount price (lower), price = original price (higher)
+                                  const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                  const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                  if (originalPrice > discountPrice && discountPrice > 0) {
+                                    const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                    return (
+                                      <span 
+                                        key={pkg._id || pkg.id || index}
+                                        className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                        style={{ backgroundColor: '#CC0C39' }}
+                                      >
+                                        {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
+                          </>
                         );
                       } else {
                         // Show regular price when no packages
@@ -767,12 +836,46 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                           const priceRange = getPriceRange(service);
                           if (priceRange) {
                             // Show price range when packages exist
+                            // Get all packages with discounts
+                            // originalPrice = discount price (lower), price = original price (higher)
+                            const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                              if (!pkg || !pkg.originalPrice) return false;
+                              const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                              const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                              return discountPrice > 0 && originalPrice > discountPrice;
+                            }) || [];
+                            
                             return (
-                              <div className="flex items-baseline gap-2">
-                                <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
-                                  {priceRange.formatted}
-                                </span>
-                              </div>
+                              <>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+                                    {priceRange.formatted}
+                                  </span>
+                                </div>
+                                {/* Show discount badges for all packages with discounts */}
+                                {packagesWithDiscounts.length > 0 && (
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                    {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                      // originalPrice = discount price (lower), price = original price (higher)
+                                      const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                      const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                      if (originalPrice > discountPrice && discountPrice > 0) {
+                                        const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                        return (
+                                          <span 
+                                            key={pkg._id || pkg.id || index}
+                                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                            style={{ backgroundColor: '#CC0C39' }}
+                                          >
+                                            {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
+                                          </span>
+                                        );
+                                      }
+                                      return null;
+                                    })}
+                                  </div>
+                                )}
+                              </>
                             );
                           } else {
                             // Show regular price when no packages

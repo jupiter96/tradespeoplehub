@@ -2081,7 +2081,7 @@ export default function ServicesPage() {
                             let maxPackageName = '';
                             
                             service.packages.forEach((pkg: any) => {
-                              // Use originalPrice if available (discounted), otherwise use price
+                              // Use originalPrice if available (discount price), otherwise use price (original price)
                               const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
                               if (pkgPrice > 0) {
                                 if (pkgPrice < minPackagePrice) {
@@ -2119,12 +2119,46 @@ export default function ServicesPage() {
                           const priceRange = getPriceRange(service);
                           if (priceRange) {
                             // Show price range when packages exist
+                            // Get all packages with discounts
+                            // originalPrice = discount price (lower), price = original price (higher)
+                            const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                              if (!pkg || !pkg.originalPrice) return false;
+                              const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                              const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                              return discountPrice > 0 && originalPrice > discountPrice;
+                            }) || [];
+                            
                             return (
-                              <div className="flex items-baseline gap-2">
-                                <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                                  {priceRange.formatted}
-                                    </span>
+                              <>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                                    {priceRange.formatted}
+                                  </span>
+                                </div>
+                                {/* Show discount badges for all packages with discounts */}
+                                {packagesWithDiscounts.length > 0 && (
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                    {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                      // originalPrice = discount price (lower), price = original price (higher)
+                                      const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                      const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                      if (originalPrice > discountPrice && discountPrice > 0) {
+                                        const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                        return (
+                                          <span 
+                                            key={pkg._id || pkg.id || index}
+                                            className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                            style={{ backgroundColor: '#CC0C39' }}
+                                          >
+                                            {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
+                                          </span>
+                                        );
+                                      }
+                                      return null;
+                                    })}
                                   </div>
+                                )}
+                              </>
                             );
                           } else {
                             // Show regular price when no packages
@@ -2338,28 +2372,121 @@ export default function ServicesPage() {
 
                             {/* Price Section */}
                         <div className="mb-2">
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
-                                {service.originalPrice || service.price}
-                                  </span>
-                            {service.originalPrice && (
-                              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#999] line-through">
-                                Was: {service.price}
+                          {(() => {
+                            // Helper function to calculate price range when packages exist
+                            const getPriceRange = (service: any) => {
+                              if (!service.packages || service.packages.length === 0) {
+                                return null;
+                              }
+                              
+                              let minPackagePrice = Infinity;
+                              let maxPackagePrice = 0;
+                              
+                              service.packages.forEach((pkg: any) => {
+                                  // originalPrice = discount price, price = original price
+                                  const pkgPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                if (pkgPrice > 0) {
+                                  if (pkgPrice < minPackagePrice) {
+                                    minPackagePrice = pkgPrice;
+                                  }
+                                  if (pkgPrice > maxPackagePrice) {
+                                    maxPackagePrice = pkgPrice;
+                                  }
+                                }
+                              });
+                              
+                              if (minPackagePrice === Infinity || maxPackagePrice === 0) {
+                                return null;
+                              }
+                              
+                              if (minPackagePrice === maxPackagePrice) {
+                                return {
+                                  min: minPackagePrice,
+                                  max: maxPackagePrice,
+                                  formatted: `£${minPackagePrice.toFixed(2)}`
+                                };
+                              }
+                              
+                              return {
+                                min: minPackagePrice,
+                                max: maxPackagePrice,
+                                formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`
+                              };
+                            };
+                            
+                            const priceRange = getPriceRange(service);
+                            if (priceRange) {
+                                // Get all packages with discounts
+                                // originalPrice = discount price (lower), price = original price (higher)
+                                const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                                  if (!pkg || !pkg.originalPrice) return false;
+                                  const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                                  const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                  return discountPrice > 0 && originalPrice > discountPrice;
+                                }) || [];
+                              
+                              return (
+                                <>
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
+                                      {priceRange.formatted}
                                     </span>
-                            )}
                                   </div>
-                          {/* Discount Badge */}
-                          {service.originalPrice && (
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <span 
-                                className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
-                                style={{ backgroundColor: '#CC0C39' }}
-                              >
-                                {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                              </span>
-                                </div>
-                              )}
-                            </div>
+                                  {/* Show discount badges for all packages with discounts */}
+                                  {packagesWithDiscounts.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                      {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                        // originalPrice = discount price (lower), price = original price (higher)
+                                        const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                        const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                        if (originalPrice > discountPrice && discountPrice > 0) {
+                                          const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                          return (
+                                            <span 
+                                              key={pkg._id || pkg.id || index}
+                                              className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                              style={{ backgroundColor: '#CC0C39' }}
+                                            >
+                                              {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            } else {
+                              // Show regular price when no packages
+                              return (
+                                <>
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
+                                      {service.originalPrice || service.price}
+                                    </span>
+                                    {service.originalPrice && (
+                                      <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#999] line-through">
+                                        Was: {service.price}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {/* Discount Badge */}
+                                  {service.originalPrice && (
+                                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                      <span 
+                                        className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                        style={{ backgroundColor: '#CC0C39' }}
+                                      >
+                                        {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            }
+                          })()}
+                        </div>
                             
                         {/* Category Badge - Below Price */}
                         {(() => {

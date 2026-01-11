@@ -819,7 +819,13 @@ export default function SectorPage() {
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
             price: `£${s.price?.toFixed(2) || '0.00'}`,
-            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            // Only use originalPrice if discount is still valid (within date range)
+            originalPrice: (s.originalPrice && (
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+            ))
+              ? `£${s.originalPrice.toFixed(2)}`
+              : undefined,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",
@@ -839,10 +845,26 @@ export default function SectorPage() {
             latitude: s.latitude,
             longitude: s.longitude,
             highlights: s.highlights || [],
-            addons: s.addons || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
             idealFor: s.idealFor || [],
             specialization: "",
-            packages: s.packages || [],
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
             skills: s.skills || [],
             responseTime: s.responseTime || "",
             portfolioImages: s.portfolioImages || [],
@@ -2305,30 +2327,131 @@ export default function SectorPage() {
 
                         {/* Price Section */}
                             <div className="mb-2 md:mb-2.5">
-                              <div className="flex items-baseline gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                            {service.originalPrice || service.price}
-                              </span>
-                                {service.originalPrice && (
-                                  <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                                    Was: {service.price}
-                                  </span>
-                                )}
-                          </div>
-                              {/* Discount and Limited Time Offer - Below Price */}
-                              {service.originalPrice && (
-                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
-                                  <span 
-                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
-                                    style={{ backgroundColor: '#CC0C39' }}
-                                  >
-                                    {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                              </span>
-                                  <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
-                                    Limited Time Offer
-                                </span>
-                              </div>
-                          )}
+                              {(() => {
+                                // Helper function to calculate price range when packages exist
+                                const getPriceRange = (service: any) => {
+                                  if (!service.packages || service.packages.length === 0) {
+                                    return null;
+                                  }
+                                  
+                                  // For package services, find min and max package prices with their names
+                                  let minPackagePrice = Infinity;
+                                  let maxPackagePrice = 0;
+                                  let minPackageName = '';
+                                  let maxPackageName = '';
+                                  
+                                  service.packages.forEach((pkg: any) => {
+                                    // Use originalPrice (discount price) if available, otherwise use price (original price)
+                                    const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                    if (pkgPrice > 0) {
+                                      if (pkgPrice < minPackagePrice) {
+                                        minPackagePrice = pkgPrice;
+                                        minPackageName = pkg.name || '';
+                                      }
+                                      if (pkgPrice > maxPackagePrice) {
+                                        maxPackagePrice = pkgPrice;
+                                        maxPackageName = pkg.name || '';
+                                      }
+                                    }
+                                  });
+                                  
+                                  if (minPackagePrice === Infinity || maxPackagePrice === 0) {
+                                    return null;
+                                  }
+                                  
+                                  // If all packages have the same price, show single price
+                                  if (minPackagePrice === maxPackagePrice) {
+                                    return {
+                                      min: minPackagePrice,
+                                      max: maxPackagePrice,
+                                      formatted: `£${minPackagePrice.toFixed(2)}`
+                                    };
+                                  }
+                                  
+                                  // Format: "basic package price to premium package price"
+                                  return {
+                                    min: minPackagePrice,
+                                    max: maxPackagePrice,
+                                    formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`
+                                  };
+                                };
+                                
+                                const priceRange = getPriceRange(service);
+                                if (priceRange) {
+                                  // Show price range when packages exist
+                                  // Get all packages with discounts
+                                  // originalPrice = discount price (lower), price = original price (higher)
+                                  const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                                    if (!pkg || !pkg.originalPrice) return false;
+                                    const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                                    const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                    return discountPrice > 0 && originalPrice > discountPrice;
+                                  }) || [];
+                                  
+                                  return (
+                                    <>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                                          {priceRange.formatted}
+                                        </span>
+                                      </div>
+                                      {/* Show discount badges for all packages with discounts */}
+                                      {packagesWithDiscounts.length > 0 && (
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                          {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                            // originalPrice = discount price (lower), price = original price (higher)
+                                            const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                            const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                            if (originalPrice > discountPrice && discountPrice > 0) {
+                                              const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                              return (
+                                                <span 
+                                                  key={pkg._id || pkg.id || index}
+                                                  className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                                  style={{ backgroundColor: '#CC0C39' }}
+                                                >
+                                                  {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
+                                                </span>
+                                              );
+                                            }
+                                            return null;
+                                          })}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                } else {
+                                  // Show regular price when no packages
+                                  return (
+                                    <>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                                          {service.originalPrice || service.price}
+                                        </span>
+                                        {service.originalPrice && (
+                                          <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
+                                            Was: {service.price}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {/* Discount and Limited Time Offer - Below Price */}
+                                      {service.originalPrice && (
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                          <span 
+                                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                            style={{ backgroundColor: '#CC0C39' }}
+                                          >
+                                            {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                          </span>
+                                          <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                            Limited Time Offer
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                }
+                              })()}
                         </div>
                         
                             {/* Category Badge - Below Price */}
@@ -2622,13 +2745,47 @@ export default function SectorPage() {
                                 const priceRange = getPriceRange(service);
                                 if (priceRange) {
                                   // Show price range when packages exist
+                                  // Get all packages with discounts
+                                  // originalPrice = discount price (lower), price = original price (higher)
+                                  const packagesWithDiscounts = service.packages?.filter((pkg: any) => {
+                                    if (!pkg || !pkg.originalPrice) return false;
+                                    const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice).replace('£', '').replace(/,/g, '')) || 0;
+                                    const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                    return discountPrice > 0 && originalPrice > discountPrice;
+                                  }) || [];
+                                  
                                   return (
-                                    <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
-                                      <span className="text-[14px] text-[#2c353f] font-medium">
-                                        {priceRange.formatted}
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                                        <span className="text-[14px] text-[#2c353f] font-medium">
+                                          {priceRange.formatted}
+                                        </span>
+                                        <span className="text-[9px]">/{service.priceUnit}</span>
                                       </span>
-                                      <span className="text-[9px]">/{service.priceUnit}</span>
-                                    </span>
+                                      {/* Show discount badges for all packages with discounts */}
+                                      {packagesWithDiscounts.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                                          {packagesWithDiscounts.map((pkg: any, index: number) => {
+                                            // originalPrice = discount price (lower), price = original price (higher)
+                                            const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                            const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                            if (originalPrice > discountPrice && discountPrice > 0) {
+                                              const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                              return (
+                                                <span 
+                                                  key={pkg._id || pkg.id || index}
+                                                  className="inline-block text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                                  style={{ backgroundColor: '#CC0C39' }}
+                                                >
+                                                  {pkg.name || `Pkg ${index + 1}`}: {discountPercent}% off
+                                                </span>
+                                              );
+                                            }
+                                            return null;
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
                                   );
                                 } else {
                                   // Show regular price when no packages

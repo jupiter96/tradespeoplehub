@@ -173,7 +173,13 @@ export default function ProfilePage() {
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
             price: `£${s.price?.toFixed(2) || '0.00'}`,
-            originalPrice: s.originalPrice ? `£${s.originalPrice.toFixed(2)}` : undefined,
+            // Only use originalPrice if discount is still valid (within date range)
+            originalPrice: (s.originalPrice && (
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+            ))
+              ? `£${s.originalPrice.toFixed(2)}`
+              : undefined,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",
@@ -182,10 +188,26 @@ export default function ProfilePage() {
             latitude: s.latitude,
             longitude: s.longitude,
             highlights: s.highlights || [],
-            addons: s.addons || [],
+            addons: s.addons?.map((a: any) => ({
+              id: a.id || a._id,
+              name: a.name,
+              description: a.description || "",
+              price: a.price,
+            })) || [],
             idealFor: s.idealFor || [],
             specialization: "",
-            packages: s.packages || [],
+            packages: s.packages?.map((p: any) => ({
+              id: p.id || p._id,
+              name: p.name,
+              price: `£${p.price?.toFixed(2) || '0.00'}`,
+              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              priceUnit: "fixed",
+              description: p.description || "",
+              highlights: [],
+              features: p.features || [],
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              revisions: p.revisions || "",
+            })) || [],
             skills: s.skills || [],
             responseTime: s.responseTime || "",
             portfolioImages: s.portfolioImages || [],
