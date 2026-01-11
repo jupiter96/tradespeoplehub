@@ -2087,9 +2087,7 @@ export default function ServiceDetailPage() {
                             {hasPackagePriceUnit && (
                               <div className="pt-2">
                                 <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 block">
-                                  {pkgPriceUnit || (service.priceUnit && service.priceUnit !== "fixed")
-                                    ? `How many ${pkgPriceUnit || service.priceUnit || 'unit'}`
-                                    : 'Quantity'}
+                                  Quantity
                                 </Label>
                                 <div className="relative">
                                   <Input
@@ -2100,7 +2098,7 @@ export default function ServiceDetailPage() {
                                       const val = parseInt(e.target.value) || 1;
                                       setQuantity(Math.max(1, val));
                                     }}
-                                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 pr-12 no-spinner"
+                                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 pr-16 no-spinner"
                                   />
                                   {pkgPriceUnit && (
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] pointer-events-none">
@@ -2329,9 +2327,7 @@ export default function ServiceDetailPage() {
                       <div className="space-y-3 mb-6">
                         <div className="flex items-center justify-between">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            {service.priceUnit && service.priceUnit !== "fixed"
-                              ? `How many ${service.priceUnit}`
-                              : 'Quantity'}
+                            Quantity
                           </span>
                           <div className="flex items-center gap-3">
                             <Button
@@ -2342,19 +2338,26 @@ export default function ServiceDetailPage() {
                             >
                               <Minus className="h-4 w-4" />
                             </Button>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={quantity}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 1;
-                                setQuantity(Math.max(1, val));
-                              }}
-                              className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] w-16 text-center border-gray-300 no-spinner"
-                              style={{
-                                MozAppearance: 'textfield',
-                              }}
-                            />
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={quantity}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 1;
+                                  setQuantity(Math.max(1, val));
+                                }}
+                                className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] w-20 text-center border-gray-300 no-spinner pr-8"
+                                style={{
+                                  MozAppearance: 'textfield',
+                                }}
+                              />
+                              {service.priceUnit && service.priceUnit !== "fixed" && (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] pointer-events-none">
+                                  {service.priceUnit}
+                                </span>
+                              )}
+                            </div>
                             <Button
                               variant="outline"
                               size="icon"
@@ -2732,9 +2735,7 @@ export default function ServiceDetailPage() {
                         <div className="mb-6">
                           <div className="flex items-center justify-between mb-4">
                             <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                              {service.priceUnit && service.priceUnit !== "fixed"
-                                ? `How many ${service.priceUnit}`
-                                : 'Quantity'}
+                              Quantity
                             </span>
                             <div className="flex items-center gap-3">
                               <Button
@@ -2746,19 +2747,26 @@ export default function ServiceDetailPage() {
                               >
                                 <Minus className="w-4 h-4" />
                               </Button>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={quantity}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value) || 1;
-                                  setQuantity(Math.max(1, val));
-                                }}
-                                className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] w-16 text-center border-gray-300 no-spinner"
-                                style={{
-                                  MozAppearance: 'textfield',
-                                }}
-                              />
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={quantity}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    setQuantity(Math.max(1, val));
+                                  }}
+                                  className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] w-20 text-center border-gray-300 no-spinner pr-8"
+                                  style={{
+                                    MozAppearance: 'textfield',
+                                  }}
+                                />
+                                {service.priceUnit && service.priceUnit !== "fixed" && (
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] pointer-events-none">
+                                    {service.priceUnit}
+                                  </span>
+                                )}
+                              </div>
                               <Button
                                 variant="outline"
                                 size="sm"
