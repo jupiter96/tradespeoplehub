@@ -2981,40 +2981,113 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   const handleSaveAndContinue = () => {
     // Validate current tab before proceeding
     if (activeTab === "service-details") {
+      // Validate sector
       if (!selectedSectorId) {
         toast.error("Please select a sector");
         return;
       }
+      
+      // Validate category
       if (!selectedCategoryId) {
         toast.error("Please select a service category");
         return;
       }
+      
+      // Validate subcategory path (Level 2, 3, etc.)
       if (availableSubCategories.length > 0 && selectedSubCategoryPath.length === 0) {
         toast.error("Please select a service sub category");
         return;
       }
-      // Validate last level subcategory selection for package services
-      if (isPackageService && selectedLastLevelSubCategories.length < 3) {
-        toast.error("Please select at least 3 items from the last level subcategories");
-        return;
+      
+      // Validate all nested levels are selected
+      // We need to check if there are more levels to select based on the current selection
+      if (selectedSubCategoryPath.length > 0) {
+        // Get the last selected subcategory ID
+        const lastSelectedId = selectedSubCategoryPath[selectedSubCategoryPath.length - 1];
+        
+        // Check if this subcategory has children (next level)
+        const nextLevelSubCats = nestedSubCategories[lastSelectedId] || [];
+        
+        if (nextLevelSubCats.length > 0) {
+          // There is a next level available
+          // Check if any of these subcategories have children
+          const hasGrandChildren = nextLevelSubCats.some(subCat => {
+            const children = nestedSubCategories[subCat._id];
+            return children && children.length > 0;
+          });
+          
+          // If this is the last level for package services, check checkbox selection
+          if (isPackageService && !hasGrandChildren) {
+            // This is the last level - must select at least 3 items via checkboxes
+            if (selectedLastLevelSubCategories.length < 3) {
+              const levelNames = ['Service Type', 'Size', 'Option', 'Detail'];
+              const currentLevelIndex = selectedSubCategoryPath.length;
+              const levelName = levelNames[currentLevelIndex] || `Level ${currentLevelIndex + 1}`;
+              toast.error(`Please select at least 3 items from ${levelName} category`);
+              return;
+            }
+          } else {
+            // Not the last level - must select one item from next level via radio
+            const levelNames = ['Service Type', 'Size', 'Option', 'Detail'];
+            const currentLevelIndex = selectedSubCategoryPath.length;
+            const missingLevel = levelNames[currentLevelIndex] || `Level ${currentLevelIndex + 1}`;
+            toast.error(`Please select ${missingLevel} category`);
+            return;
+          }
+        }
       }
+      
+      // Validate service title
       if (!serviceTitle) {
         toast.error("Please enter a service title");
         return;
       }
+      
       if (serviceTitle.trim().length < 50) {
         toast.error("Service title must be at least 50 characters");
         return;
       }
+      
+      // Validate keywords
+      const keywordArray = keywords.split(",").map((k) => k.trim()).filter((k) => k);
+      if (keywordArray.length === 0) {
+        toast.error("Please enter at least one keyword");
+        return;
+      }
+      
+      // Validate "What is the service ideal for?"
+      if (dynamicServiceIdealFor && dynamicServiceIdealFor.length > 0 && idealFor.length === 0) {
+        toast.error("Please select at least one option for 'What is the service ideal for?'");
+        return;
+      }
+      
+      // Validate "What's Included" (Service Highlights)
+      if (dynamicServiceAttributes && dynamicServiceAttributes.length > 0 && serviceHighlights.length === 0) {
+        toast.error("Please select at least one option for 'What's Included'");
+        return;
+      }
+      
+      // Validate description
       if (!description || description.length < 100) {
         toast.error("Please provide at least 100 characters description");
         return;
       }
+      
+      // Validate "How do you charge?" (Price Unit) if options are available
+      // Skip for package services as price unit is set per package
+      if (!isPackageService && priceUnitOptions && priceUnitOptions.length > 0) {
+        if (!priceUnit || priceUnit === 'fixed') {
+          toast.error("Please select how you charge (Price Unit)");
+          return;
+        }
+      }
+      
       // Price validation only for single services, not package services
       if (!isPackageService && (!basePrice || parseFloat(basePrice) <= 0)) {
         toast.error("Please enter a valid base price");
         return;
       }
+      
       toast.success("Service details saved!");
     } else if (activeTab === "packages") {
       // For package service, packages are required
@@ -4754,8 +4827,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     placeholder="Description"
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300 min-h-[200px]"
                   />
-                  <p className={`font-['Poppins',sans-serif] text-[12px] mt-2 text-right ${description.length < 35 ? 'text-red-500' : 'text-green-600'}`}>
-                    {description.length} / 100 maximum characters
+                  <p className={`font-['Poppins',sans-serif] text-[12px] mt-2 text-right ${description.length < 100 ? 'text-red-500' : 'text-green-600'}`}>
+                    {description.length} / 100 minimum characters
                   </p>
                 </div>
               </div>
