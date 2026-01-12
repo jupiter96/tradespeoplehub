@@ -2395,29 +2395,34 @@ export default function SectorPage() {
                                           {priceRange.formatted}
                                         </span>
                                       </div>
-                                      {/* Show discount badges for all packages with discounts */}
-                                      {packagesWithDiscounts.length > 0 && (
-                                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
-                                          {packagesWithDiscounts.map((pkg: any, index: number) => {
-                                            // originalPrice = discount price (lower), price = original price (higher)
-                                            const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
-                                            const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
-                                            if (originalPrice > discountPrice && discountPrice > 0) {
-                                              const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
-                                              return (
-                                                <span 
-                                                  key={pkg._id || pkg.id || index}
-                                                  className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
-                                                  style={{ backgroundColor: '#CC0C39' }}
-                                                >
-                                                  {pkg.name || `Package ${index + 1}`}: {discountPercent}% off
-                                                </span>
-                                              );
-                                            }
-                                            return null;
-                                          })}
-                                        </div>
-                                      )}
+                                      {/* Show discount badge range for packages with discounts */}
+                                      {packagesWithDiscounts.length > 0 && (() => {
+                                        // Calculate all discount percentages
+                                        const discountPercentages = packagesWithDiscounts.map((pkg: any) => {
+                                          const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                          const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                          if (originalPrice > discountPrice && discountPrice > 0) {
+                                            return Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                          }
+                                          return 0;
+                                        }).filter(percent => percent > 0);
+                                        
+                                        if (discountPercentages.length === 0) return null;
+                                        
+                                        const minDiscount = Math.min(...discountPercentages);
+                                        const maxDiscount = Math.max(...discountPercentages);
+                                        
+                                        return (
+                                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                            <span 
+                                              className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                              style={{ backgroundColor: '#CC0C39' }}
+                                            >
+                                              {minDiscount === maxDiscount ? `${minDiscount}% OFF` : `${minDiscount}% ~ ${maxDiscount}% OFF`}
+                                            </span>
+                                          </div>
+                                        );
+                                      })()}
                                     </>
                                   );
                                 } else {
@@ -2762,29 +2767,34 @@ export default function SectorPage() {
                                         </span>
                                         <span className="text-[9px]">/{service.priceUnit}</span>
                                       </span>
-                                      {/* Show discount badges for all packages with discounts */}
-                                      {packagesWithDiscounts.length > 0 && (
-                                        <div className="flex flex-wrap items-center gap-1 mt-1">
-                                          {packagesWithDiscounts.map((pkg: any, index: number) => {
-                                            // originalPrice = discount price (lower), price = original price (higher)
-                                            const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
-                                            const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
-                                            if (originalPrice > discountPrice && discountPrice > 0) {
-                                              const discountPercent = Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
-                                              return (
-                                                <span 
-                                                  key={pkg._id || pkg.id || index}
-                                                  className="inline-block text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                                                  style={{ backgroundColor: '#CC0C39' }}
-                                                >
-                                                  {pkg.name || `Pkg ${index + 1}`}: {discountPercent}% off
-                                                </span>
-                                              );
-                                            }
-                                            return null;
-                                          })}
-                                        </div>
-                                      )}
+                                      {/* Show discount badge range for packages with discounts */}
+                                      {packagesWithDiscounts.length > 0 && (() => {
+                                        // Calculate all discount percentages
+                                        const discountPercentages = packagesWithDiscounts.map((pkg: any) => {
+                                          const discountPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                          const originalPrice = typeof pkg.price === 'number' ? pkg.price : parseFloat(String(pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                          if (originalPrice > discountPrice && discountPrice > 0) {
+                                            return Math.round(((originalPrice - discountPrice) / originalPrice) * 100);
+                                          }
+                                          return 0;
+                                        }).filter(percent => percent > 0);
+                                        
+                                        if (discountPercentages.length === 0) return null;
+                                        
+                                        const minDiscount = Math.min(...discountPercentages);
+                                        const maxDiscount = Math.max(...discountPercentages);
+                                        
+                                        return (
+                                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                                            <span 
+                                              className="inline-block text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                              style={{ backgroundColor: '#CC0C39' }}
+                                            >
+                                              {minDiscount === maxDiscount ? `${minDiscount}% OFF` : `${minDiscount}% ~ ${maxDiscount}% OFF`}
+                                            </span>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   );
                                 } else {

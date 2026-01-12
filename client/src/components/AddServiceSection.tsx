@@ -3010,6 +3010,30 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         
         if (nextLevelSubCats.length > 0) {
           // There is a next level available
+          // Get the actual attribute type label from the next level subcategories
+          const nextLevelAttributeTypes = new Set(
+            nextLevelSubCats.map(subCat => subCat.attributeType).filter(Boolean)
+          );
+          
+          // Get the first attribute type as the level name
+          let levelName = 'Category';
+          if (nextLevelAttributeTypes.size > 0) {
+            const attrType = Array.from(nextLevelAttributeTypes)[0];
+            // Map attribute types to display labels
+            const attributeTypeLabels: Record<string, string> = {
+              'serviceType': 'Service Type',
+              'size': 'Size',
+              'frequency': 'Frequency',
+              'option': 'Option',
+              'detail': 'Detail',
+              'material': 'Material',
+              'style': 'Style',
+              'capacity': 'Capacity',
+              'duration': 'Duration',
+            };
+            levelName = attributeTypeLabels[attrType] || attrType;
+          }
+          
           // Check if any of these subcategories have children
           const hasGrandChildren = nextLevelSubCats.some(subCat => {
             const children = nestedSubCategories[subCat._id];
@@ -3020,18 +3044,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           if (isPackageService && !hasGrandChildren) {
             // This is the last level - must select at least 3 items via checkboxes
             if (selectedLastLevelSubCategories.length < 3) {
-              const levelNames = ['Service Type', 'Size', 'Option', 'Detail'];
-              const currentLevelIndex = selectedSubCategoryPath.length;
-              const levelName = levelNames[currentLevelIndex] || `Level ${currentLevelIndex + 1}`;
               toast.error(`Please select at least 3 items from ${levelName} category`);
               return;
             }
           } else {
             // Not the last level - must select one item from next level via radio
-            const levelNames = ['Service Type', 'Size', 'Option', 'Detail'];
-            const currentLevelIndex = selectedSubCategoryPath.length;
-            const missingLevel = levelNames[currentLevelIndex] || `Level ${currentLevelIndex + 1}`;
-            toast.error(`Please select ${missingLevel} category`);
+            toast.error(`Please select ${levelName} category`);
             return;
           }
         }
@@ -4580,7 +4598,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 {!isPackageService && (
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                    What's Included
+                    What's Included <span className="text-red-500">*</span>
                   </Label>
                   <div className="border border-gray-300 rounded-md p-4 max-h-[350px] overflow-y-auto">
                     {dynamicServiceAttributes.length > 0 ? (
@@ -4931,7 +4949,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           {/* What's Included - Service Attributes (above Delivery Type) */}
                           <div className="space-y-2">
                             <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                              What's Included
+                              What's Included <span className="text-red-500">*</span>
                             </Label>
                             {(() => {
                               // For package services, get attributes for this specific package's subcategory
@@ -5275,73 +5293,104 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               <div className="space-y-6">
                 <div>
                   <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-2">
-                    Gallery Images
+                    Gallery
                   </h3>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    Upload images of your previous work to showcase your skills. Recommended size: 1200x800px.
+                    Upload images and videos of your previous work to showcase your skills. Up to 6 images and 2 videos.
                   </p>
                 </div>
 
-                {/* Upload Area */}
+                {/* Unified Upload Area */}
                 <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  className={`
-                    relative border-2 border-dashed rounded-xl p-8 transition-all duration-200
-                    ${galleryImages.length >= 6 
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50' 
-                      : 'border-[#FE8A0F]/30 bg-[#FFF5EB]/30 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/50 cursor-pointer'
-                    }
-                  `}
-                  onClick={() => {
-                    if (galleryImages.length < 6 && fileInputRef.current) {
-                      fileInputRef.current.click();
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const files = e.dataTransfer.files;
+                    if (files) {
+                      const imageFiles: File[] = [];
+                      const videoFiles: File[] = [];
+                      
+                      Array.from(files).forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                          imageFiles.push(file);
+                        } else if (file.type.startsWith('video/')) {
+                          videoFiles.push(file);
+                        }
+                      });
+                      
+                      if (imageFiles.length > 0) {
+                        handleImageUpload(imageFiles as any);
+                      }
+                      if (videoFiles.length > 0) {
+                        handleVideoUpload(videoFiles as any);
+                      }
                     }
                   }}
+                  onDragOver={(e) => e.preventDefault()}
+                  className="relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 border-[#FE8A0F]/30 bg-[#FFF5EB]/30 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/50 cursor-pointer"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm';
+                    input.multiple = true;
+                    input.onchange = (e: any) => {
+                      const files = e.target.files;
+                      if (files) {
+                        const imageFiles: File[] = [];
+                        const videoFiles: File[] = [];
+                        
+                        Array.from(files).forEach((file: any) => {
+                          if (file.type.startsWith('image/')) {
+                            imageFiles.push(file);
+                          } else if (file.type.startsWith('video/')) {
+                            videoFiles.push(file);
+                          }
+                        });
+                        
+                        if (imageFiles.length > 0) {
+                          handleImageUpload(imageFiles as any);
+                        }
+                        if (videoFiles.length > 0) {
+                          handleVideoUpload(videoFiles as any);
+                        }
+                      }
+                    };
+                    input.click();
+                  }}
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                    multiple
-                    onChange={(e) => handleImageUpload(e.target.files)}
-                    className="hidden"
-                    disabled={galleryImages.length >= 6}
-                  />
                   <div className="flex flex-col items-center justify-center text-center">
                     <div className="w-16 h-16 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center mb-4">
                       <ImagePlus className="w-8 h-8 text-[#FE8A0F]" />
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-1">
-                      {galleryImages.length >= 6 
-                        ? 'Maximum images reached' 
-                        : 'Click or drag images to upload'
-                      }
+                      Click or drag media files to upload
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                      {galleryImages.length >= 6 
-                        ? 'Remove images to upload more' 
-                        : `Upload up to ${6 - galleryImages.length} more image(s). JPG, PNG, GIF, WEBP (Max 5MB each)`
-                      }
+                      Images: JPG, PNG, GIF, WEBP (Max 5MB each, up to 6 images)
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                      Videos: MP4, MPEG, MOV, AVI, WEBM (Max 50MB each, up to 2 videos)
                     </p>
                   </div>
                 </div>
 
-                {/* Gallery Grid */}
-                {galleryImages.length > 0 && (
+                {/* Unified Gallery Grid */}
+                {(galleryImages.length > 0 || galleryVideos.length > 0) && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                        Uploaded Images ({galleryImages.length}/6)
+                        Uploaded Media ({galleryImages.length + galleryVideos.length} items - {galleryImages.length} images, {galleryVideos.length} videos)
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        Drag to reorder
-                      </p>
+                      {galleryImages.length > 0 && (
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                          Drag images to reorder
+                        </p>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {/* Images */}
                       {galleryImages.map((image, index) => (
                         <div
-                          key={index}
+                          key={`image-${index}`}
                           draggable
                           onDragStart={() => handleDragStart(index)}
                           onDragOver={(e) => handleDragOver(e, index)}
@@ -5379,8 +5428,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                                 className="w-full h-full object-cover"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded-md font-['Poppins',sans-serif] text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                #{index + 1}
+                              <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-2 py-1 rounded-md font-['Poppins',sans-serif] text-[10px] font-medium">
+                                Image #{index + 1}
                               </div>
                               <button
                                 onClick={(e) => {
@@ -5402,112 +5451,55 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           )}
                         </div>
                       ))}
+                      
+                      {/* Videos */}
+                      {galleryVideos.map((video, index) => (
+                        <div
+                          key={`video-${index}`}
+                          className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-[#FE8A0F]/50 hover:shadow-md transition-all duration-200"
+                        >
+                          {uploadingVideos[index] ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-sm z-20 rounded-xl">
+                              <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-white text-center font-medium">
+                                Uploading video...
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <video 
+                                src={video.url} 
+                                className="w-full h-full object-cover"
+                                controls
+                                preload="metadata"
+                              />
+                              <div className="absolute top-2 left-2 bg-purple-500/90 text-white px-2 py-1 rounded-md font-['Poppins',sans-serif] text-[10px] font-medium">
+                                Video #{index + 1}
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveVideo(index);
+                                }}
+                                className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+                                title="Remove video"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                              {video.duration && (
+                                <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded-md">
+                                  <span className="font-['Poppins',sans-serif] text-[10px]">
+                                    {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
-
-                {/* Upload Videos Section */}
-                <div className="mt-8">
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-2">
-                    Gallery Videos
-                  </h3>
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                    Upload up to 2 videos showcasing your service. Videos help clients better understand your work.
-                  </p>
-
-                  {/* Video Upload Area */}
-                  <div 
-                    className={`
-                      relative border-2 border-dashed rounded-xl p-8 transition-all duration-200
-                      ${galleryVideos.length >= 2 
-                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50' 
-                        : 'border-[#FE8A0F]/30 bg-[#FFF5EB]/30 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/50 cursor-pointer'
-                      }
-                    `}
-                    onClick={() => {
-                      if (galleryVideos.length < 2) {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm';
-                        input.multiple = true;
-                        input.onchange = (e: any) => handleVideoUpload(e.target.files);
-                        input.click();
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col items-center justify-center text-center">
-                      <div className="w-16 h-16 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center mb-4">
-                        <Upload className="w-8 h-8 text-[#FE8A0F]" />
-                      </div>
-                      <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-1">
-                        {galleryVideos.length >= 2 
-                          ? 'Maximum videos reached' 
-                          : 'Click to upload videos'
-                        }
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        {galleryVideos.length >= 2 
-                          ? 'Remove videos to upload more' 
-                          : `Upload up to ${2 - galleryVideos.length} more video(s). MP4, MPEG, MOV, AVI, WEBM (Max 50MB each)`
-                        }
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Videos Grid */}
-                  {galleryVideos.length > 0 && (
-                    <div className="space-y-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                          Uploaded Videos ({galleryVideos.length}/2)
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {galleryVideos.map((video, index) => (
-                          <div
-                            key={index}
-                            className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-[#FE8A0F]/50 hover:shadow-md transition-all duration-200"
-                          >
-                            {uploadingVideos[index] ? (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-sm z-20 rounded-xl">
-                                <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
-                                <p className="font-['Poppins',sans-serif] text-[12px] text-white text-center font-medium">
-                                  Uploading video...
-                                </p>
-                              </div>
-                            ) : (
-                              <>
-                                <video 
-                                  src={video.url} 
-                                  className="w-full h-full object-cover"
-                                  controls
-                                  preload="metadata"
-                                />
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemoveVideo(index);
-                                  }}
-                                  className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
-                                  title="Remove video"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                                {video.duration && (
-                                  <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded-md">
-                                    <span className="font-['Poppins',sans-serif] text-[10px]">
-                                      {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
-                                    </span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </TabsContent>
 
