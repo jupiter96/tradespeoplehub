@@ -73,6 +73,24 @@ const serviceSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    videos: {
+      type: [{
+        url: {
+          type: String,
+          required: true,
+        },
+        thumbnail: {
+          type: String,
+        },
+        duration: {
+          type: Number, // in seconds
+        },
+        size: {
+          type: Number, // in bytes
+        },
+      }],
+      default: [],
+    },
     portfolioImages: {
       type: [String],
       default: [],

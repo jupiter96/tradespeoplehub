@@ -619,6 +619,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
     }
     if (priceUnit) draftServiceData.priceUnit = priceUnit;
     if (images && images.length > 0) draftServiceData.images = images;
+    if (videos && videos.length > 0) draftServiceData.videos = videos;
     if (portfolioImages && portfolioImages.length > 0) draftServiceData.portfolioImages = portfolioImages;
     if (packages && packages.length > 0) draftServiceData.packages = packages;
     if (addons && addons.length > 0) draftServiceData.addons = addons;
@@ -809,6 +810,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       aboutMe: aboutMe?.trim() || undefined,
       priceUnit: priceUnit || 'fixed',
       images: images || [],
+      videos: videos || [],
       portfolioImages: portfolioImages || [],
       packages: packages || [],
       addons: addons || [],

@@ -7,4 +7,5 @@ logs/
 build/
 client/node_modules/
 client/dist/
+uploads/
 

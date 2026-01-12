@@ -36,7 +36,12 @@ import {
   CalendarDays,
   UserCircle,
   ChevronRight,
-  Check
+  Check,
+  AlertCircle,
+  GripVertical,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { useSectors } from "../hooks/useSectorsAndCategories";
@@ -52,7 +57,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "./ui/dialog";
-import { AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface AddServiceSectionProps {
@@ -1892,6 +1896,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               if (draft.images && Array.isArray(draft.images)) {
                 setGalleryImages(draft.images);
               }
+              // Set gallery videos
+              if (draft.videos && Array.isArray(draft.videos)) {
+                setGalleryVideos(draft.videos);
+              }
 
               // Set packages
               if (draft.packages && Array.isArray(draft.packages) && draft.packages.length > 0) {
@@ -1975,6 +1983,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         setGalleryImages(initialService.images);
       } else if (initialService.portfolioImages && Array.isArray(initialService.portfolioImages)) {
         setGalleryImages(initialService.portfolioImages);
+      }
+      // Set gallery videos
+      if (initialService.videos && Array.isArray(initialService.videos)) {
+        setGalleryVideos(initialService.videos);
       }
       
       // Set packages - convert deliveryDays from number to string for UI
@@ -2374,7 +2386,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   
   // Gallery Tab
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryVideos, setGalleryVideos] = useState<Array<{url: string; thumbnail?: string; duration?: number; size?: number}>>([]);
   const [uploadingImages, setUploadingImages] = useState<Record<number, boolean>>({});
+  const [uploadingVideos, setUploadingVideos] = useState<Record<number, boolean>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2709,6 +2723,168 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     setGalleryImages(galleryImages.filter((_, i) => i !== index));
   };
 
+  // Video upload functions
+  const handleVideoUpload = async (files: FileList | null) => {
+    console.log('=== handleVideoUpload called ===');
+    console.log('Files:', files);
+    
+    if (!files || files.length === 0) {
+      console.log('No files provided');
+      return;
+    }
+
+    const filesArray = Array.from(files);
+    console.log('Files array:', filesArray.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    
+    const remainingSlots = 2 - galleryVideos.length; // Max 2 videos
+    const filesToUpload = filesArray.slice(0, remainingSlots);
+    console.log('Remaining slots:', remainingSlots);
+    console.log('Files to upload:', filesToUpload.length);
+
+    if (filesArray.length > remainingSlots) {
+      toast.error(`You can only upload ${remainingSlots} more video(s). Maximum 2 videos allowed.`);
+    }
+
+    const startIndex = galleryVideos.length;
+
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const file = filesToUpload[i];
+      const tempIndex = startIndex + i;
+      console.log(`\n=== Uploading video ${i + 1}/${filesToUpload.length} ===`);
+      console.log('File name:', file.name);
+      console.log('File size:', file.size, 'bytes');
+      console.log('File type:', file.type);
+
+      // Validate file type
+      const allowedTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+      if (!allowedTypes.includes(file.type)) {
+        console.error('Invalid file type:', file.type);
+        toast.error(`${file.name}: Unsupported file type. Please upload MP4, MPEG, MOV, AVI, or WEBM.`);
+        continue;
+      }
+      console.log('File type validation passed');
+
+      // Validate file size (50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        console.error('File too large:', file.size);
+        toast.error(`${file.name}: Video size must be less than 50MB`);
+        continue;
+      }
+      console.log('File size validation passed');
+
+      // Create a temporary preview
+      const tempPreviewUrl = URL.createObjectURL(file);
+      console.log('Temporary preview URL created:', tempPreviewUrl);
+      
+      setGalleryVideos(prev => {
+        const next = [...prev];
+        next[tempIndex] = { url: tempPreviewUrl, thumbnail: tempPreviewUrl };
+        console.log('Gallery videos updated with temporary preview');
+        return next;
+      });
+
+      setUploadingVideos(prev => ({ ...prev, [tempIndex]: true }));
+      console.log('Upload state set to true for index:', tempIndex);
+
+      try {
+        const formData = new FormData();
+        formData.append("portfolioVideo", file);
+        console.log('FormData created with video file');
+
+        const uploadPromise = (async () => {
+          console.log('Starting API call...');
+          const { resolveApiUrl } = await import("../config/api");
+          const apiUrl = resolveApiUrl("/api/auth/profile/portfolio/upload-video");
+          console.log('API URL:', apiUrl);
+          
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+          console.log('Response status:', response.status);
+          console.log('Response ok:', response.ok);
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Server error response:', errorData);
+            throw new Error(errorData.error || "Upload failed");
+          }
+
+          const data = await response.json();
+          console.log('Upload success! Response data:', data);
+          
+          // Convert relative URL to absolute URL for display
+          const baseUrl = apiUrl.replace('/api/auth/profile/portfolio/upload-video', '');
+          const fullVideoUrl = data.videoUrl.startsWith('http') ? data.videoUrl : `${baseUrl}${data.videoUrl}`;
+          const fullThumbnailUrl = data.thumbnail.startsWith('http') ? data.thumbnail : `${baseUrl}${data.thumbnail}`;
+          
+          return {
+            videoUrl: fullVideoUrl,
+            thumbnail: fullThumbnailUrl,
+            duration: data.duration,
+            size: data.size,
+          };
+        })();
+
+        toast.promise(uploadPromise, {
+          loading: `Uploading ${file.name}...`,
+          success: () => {
+            return `${file.name} uploaded successfully`;
+          },
+          error: (err: Error) => {
+            console.error('Toast error:', err);
+            return `${file.name}: ${err.message}`;
+          },
+        });
+
+        const videoData = await uploadPromise;
+        console.log('Video data received:', videoData);
+
+        setGalleryVideos(prev => {
+          const next = [...prev];
+          next[tempIndex] = {
+            url: videoData.videoUrl,
+            thumbnail: videoData.thumbnail,
+            duration: videoData.duration,
+            size: videoData.size,
+          };
+          console.log('Gallery videos updated with uploaded video data');
+          return next;
+        });
+
+        setUploadingVideos(prev => {
+          const updated = { ...prev };
+          delete updated[tempIndex];
+          console.log('Upload state cleared for index:', tempIndex);
+          return updated;
+        });
+
+        console.log(`=== Video ${i + 1} upload complete ===\n`);
+
+      } catch (error: any) {
+        console.error('=== Video upload error ===');
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Error object:', error);
+        
+        setGalleryVideos(prev => prev.filter((_, i) => i !== tempIndex));
+        setUploadingVideos(prev => {
+          const updated = { ...prev };
+          delete updated[tempIndex];
+          return updated;
+        });
+        console.log('Cleaned up failed upload');
+      }
+    }
+    
+    console.log('=== handleVideoUpload complete ===\n');
+  };
+
+  const handleRemoveVideo = (index: number) => {
+    setGalleryVideos(galleryVideos.filter((_, i) => i !== index));
+  };
+
   const handleDragStart = (index: number) => {
     setDragIndex(index);
   };
@@ -2971,6 +3147,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       if (galleryImages && galleryImages.length > 0) {
         draftData.images = galleryImages;
         draftData.portfolioImages = galleryImages;
+      }
+      if (galleryVideos && galleryVideos.length > 0) {
+        draftData.videos = galleryVideos;
       }
 
       if (serviceHighlights && serviceHighlights.length > 0) {
@@ -3566,6 +3745,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         priceUnit: priceUnit || "fixed",
         images: galleryImages,
         portfolioImages: galleryImages,
+        videos: galleryVideos,
         packages: offerPackages ? packages.map((pkg) => {
           // Convert deliveryDays string to number
           let deliveryDaysNum = 0;
@@ -5152,6 +5332,109 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     </div>
                   </div>
                 )}
+
+                {/* Upload Videos Section */}
+                <div className="mt-8">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-2">
+                    Gallery Videos
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                    Upload up to 2 videos showcasing your service. Videos help clients better understand your work.
+                  </p>
+
+                  {/* Video Upload Area */}
+                  <div 
+                    className={`
+                      relative border-2 border-dashed rounded-xl p-8 transition-all duration-200
+                      ${galleryVideos.length >= 2 
+                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50' 
+                        : 'border-[#FE8A0F]/30 bg-[#FFF5EB]/30 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/50 cursor-pointer'
+                      }
+                    `}
+                    onClick={() => {
+                      if (galleryVideos.length < 2) {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm';
+                        input.multiple = true;
+                        input.onchange = (e: any) => handleVideoUpload(e.target.files);
+                        input.click();
+                      }
+                    }}
+                  >
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <div className="w-16 h-16 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center mb-4">
+                        <Upload className="w-8 h-8 text-[#FE8A0F]" />
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-1">
+                        {galleryVideos.length >= 2 
+                          ? 'Maximum videos reached' 
+                          : 'Click to upload videos'
+                        }
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        {galleryVideos.length >= 2 
+                          ? 'Remove videos to upload more' 
+                          : `Upload up to ${2 - galleryVideos.length} more video(s). MP4, MPEG, MOV, AVI, WEBM (Max 50MB each)`
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Videos Grid */}
+                  {galleryVideos.length > 0 && (
+                    <div className="space-y-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                          Uploaded Videos ({galleryVideos.length}/2)
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {galleryVideos.map((video, index) => (
+                          <div
+                            key={index}
+                            className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-[#FE8A0F]/50 hover:shadow-md transition-all duration-200"
+                          >
+                            {uploadingVideos[index] ? (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-sm z-20 rounded-xl">
+                                <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-white text-center font-medium">
+                                  Uploading video...
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <video 
+                                  src={video.url} 
+                                  className="w-full h-full object-cover"
+                                  controls
+                                  preload="metadata"
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveVideo(index);
+                                  }}
+                                  className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+                                  title="Remove video"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                                {video.duration && (
+                                  <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded-md">
+                                    <span className="font-['Poppins',sans-serif] text-[10px]">
+                                      {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
 

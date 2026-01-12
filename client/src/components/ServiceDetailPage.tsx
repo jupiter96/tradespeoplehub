@@ -66,34 +66,80 @@ function SmartImageLayers({
 
 function ThumbnailButtons({
   images,
+  galleryItems,
   activeIndex,
   onSelect,
   className = "",
 }: {
-  images: string[];
+  images?: string[];
+  galleryItems?: Array<{type: 'image' | 'video', url: string, thumbnail?: string, duration?: number}>;
   activeIndex: number;
   onSelect: (idx: number) => void;
   className?: string;
 }) {
-  if (!images || images.length <= 1) return null;
+  // Use galleryItems if provided, otherwise fall back to images
+  const items = galleryItems || (images || []).map(url => ({ type: 'image' as const, url }));
+  
+  console.log('=== ThumbnailButtons Render ===');
+  console.log('galleryItems prop:', galleryItems);
+  console.log('items to display:', items);
+  console.log('items length:', items.length);
+  
+  if (!items || items.length <= 1) return null;
 
   return (
     <div className={`flex flex-wrap gap-2 ${className}`}>
-      {images.map((imgUrl, idx) => (
-        <button
-          key={`${imgUrl}-${idx}`}
-          type="button"
-          onClick={() => onSelect(idx)}
-          className={`relative h-[60px] w-[100px] overflow-hidden rounded-lg border-2 bg-gray-100 transition-all ${
-            idx === activeIndex
-              ? "border-[#FE8A0F] shadow-[0_0_0_3px_rgba(254,138,15,0.18)]"
-              : "border-transparent hover:border-[#FE8A0F]/50"
-          }`}
-          aria-label={`View image ${idx + 1}`}
-        >
-          <SmartImageLayers src={imgUrl} alt={`Service thumbnail ${idx + 1}`} mode="thumb" />
-        </button>
-      ))}
+      {items.map((item, idx) => {
+        console.log(`Rendering thumbnail ${idx}:`, item);
+        return (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => onSelect(idx)}
+            className={`relative h-[60px] w-[100px] overflow-hidden rounded-lg border-2 bg-gray-900 transition-all ${
+              idx === activeIndex
+                ? "border-[#FE8A0F] shadow-[0_0_0_3px_rgba(254,138,15,0.18)]"
+                : "border-transparent hover:border-[#FE8A0F]/50"
+            }`}
+            aria-label={`View ${item.type} ${idx + 1}`}
+          >
+            {item.type === 'video' ? (
+              <>
+                {/* Blurred background video */}
+                <video
+                  src={item.url}
+                  className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-70"
+                  muted
+                  playsInline
+                />
+                {/* Main video */}
+                <video
+                  src={item.url}
+                  className="absolute inset-0 h-full w-full object-contain"
+                  muted
+                  playsInline
+                />
+                {/* Play icon overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/50 rounded-full p-1.5">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+                {/* Duration badge */}
+                {item.duration && item.duration > 0 && (
+                  <div className="absolute bottom-1 right-1 bg-black/70 text-white px-1 py-0.5 rounded text-[8px]">
+                    {Math.floor(item.duration / 60)}:{String(Math.floor(item.duration % 60)).padStart(2, '0')}
+                  </div>
+                )}
+              </>
+            ) : (
+              <SmartImageLayers src={item.url} alt={`Service thumbnail ${idx + 1}`} mode="thumb" />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -257,11 +303,18 @@ export default function ServiceDetailPage() {
           const data = await response.json();
           const s = data.service;
           
+          console.log('=== Service Data Fetched ===');
+          console.log('Service ID:', s._id);
+          console.log('Service images:', s.images);
+          console.log('Service videos:', s.videos);
+          
           // Transform API data to match Service interface
           const transformedService = {
             id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
             images: s.images || [],
+            videos: s.videos || [],
+            videos: s.videos || [],
             professionalId: typeof s.professional === 'object' 
               ? (s.professional._id || s.professional.id || s.professional)
               : (typeof s.professional === 'string' ? s.professional : null),
@@ -436,10 +489,67 @@ export default function ServiceDetailPage() {
     return unique;
   }, [service]);
 
+  // Combine images and videos into gallery items
+  const galleryItems = useMemo(() => {
+    if (!service) return [];
+    const items: Array<{type: 'image' | 'video', url: string, thumbnail?: string, duration?: number}> = [];
+    
+    console.log('=== Building Gallery Items ===');
+    console.log('service.images:', service.images);
+    console.log('service.portfolioImages:', service.portfolioImages);
+    console.log('service.videos:', service.videos);
+    
+    // Add all images (from both images and portfolioImages)
+    const allImages = [
+      ...(Array.isArray(service.images) ? service.images : []),
+      ...(Array.isArray(service.portfolioImages) ? service.portfolioImages : []),
+    ].filter(Boolean);
+    
+    // Remove duplicates
+    const uniqueImages = allImages.filter((url, idx) => allImages.indexOf(url) === idx);
+    
+    console.log('Unique images count:', uniqueImages.length);
+    
+    uniqueImages.forEach((img: string) => {
+      items.push({ type: 'image', url: img });
+    });
+    
+    // Add videos
+    if (service.videos && Array.isArray(service.videos)) {
+      console.log('Adding videos count:', service.videos.length);
+      service.videos.forEach((video: any) => {
+        items.push({ 
+          type: 'video', 
+          url: video.url || video, 
+          thumbnail: video.thumbnail,
+          duration: video.duration
+        });
+      });
+    }
+    
+    console.log('Total gallery items:', items.length);
+    console.log('Gallery items:', items);
+    
+    return items;
+  }, [service]);
+
   const mainImageUrl = useMemo(() => {
-    if (serviceImages.length === 0) return service?.image || "";
-    return serviceImages[activeImageIndex] || serviceImages[0] || "";
-  }, [serviceImages, activeImageIndex, service]);
+    if (galleryItems.length === 0) return service?.image || "";
+    const currentItem = galleryItems[activeImageIndex];
+    if (!currentItem) return galleryItems[0]?.url || service?.image || "";
+    
+    // For videos, use thumbnail for main display, or video URL
+    if (currentItem.type === 'video') {
+      return currentItem.thumbnail || currentItem.url;
+    }
+    return currentItem.url;
+  }, [galleryItems, activeImageIndex, service]);
+
+  const isCurrentItemVideo = useMemo(() => {
+    if (galleryItems.length === 0) return false;
+    const currentItem = galleryItems[activeImageIndex];
+    return currentItem?.type === 'video';
+  }, [galleryItems, activeImageIndex]);
 
   useEffect(() => {
     // Reset to first image when service changes
@@ -1068,15 +1178,38 @@ export default function ServiceDetailPage() {
         <Nav />
       </header>
 
-      {/* Mobile Hero Section with Background Image */}
+      {/* Mobile Hero Section with Background Image or Video */}
       <div className="md:hidden relative w-full h-[400px] bg-gray-900">
-        {/* Background Image */}
+        {/* Background Image or Video */}
         <div className="absolute inset-0">
-          <SmartImageLayers
-            src={mainImageUrl || service.image}
-            alt={service.description}
-            mode="main"
-          />
+          {isCurrentItemVideo ? (
+            <>
+              {/* Blurred background video */}
+              <video
+                src={galleryItems[activeImageIndex]?.url}
+                className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-90"
+                muted
+                loop
+                playsInline
+              />
+              {/* Main video */}
+              <video
+                src={galleryItems[activeImageIndex]?.url}
+                className="absolute inset-0 h-full w-full object-contain"
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+            </>
+          ) : (
+            <SmartImageLayers
+              src={mainImageUrl || service.image}
+              alt={service.description}
+              mode="main"
+            />
+          )}
         </div>
 
         {/* Top Controls */}
@@ -1107,7 +1240,7 @@ export default function ServiceDetailPage() {
         <div className="absolute bottom-4 left-4 z-10">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
             <span className="text-white text-[13px] font-medium">
-              {Math.min(activeImageIndex + 1, serviceImages.length || 1)}/{serviceImages.length || 1}
+              {Math.min(activeImageIndex + 1, galleryItems.length || 1)}/{galleryItems.length || 1}
             </span>
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -1118,10 +1251,11 @@ export default function ServiceDetailPage() {
       </div>
 
       {/* Mobile Thumbnail Slider */}
-      {serviceImages.length > 1 && (
+      {galleryItems.length > 1 && (
         <div className="md:hidden bg-white px-4 py-3 border-b border-gray-100">
           <ThumbnailButtons
             images={serviceImages}
+            galleryItems={galleryItems}
             activeIndex={activeImageIndex}
             onSelect={setActiveImageIndex}
           />
@@ -1293,14 +1427,37 @@ export default function ServiceDetailPage() {
               </div>
             </div>
 
-            {/* Service Image - Desktop Only */}
+            {/* Service Image or Video - Desktop Only */}
             <div className="hidden md:block">
-              <div className="relative rounded-2xl overflow-hidden aspect-video bg-gray-100">
+              <div className="relative rounded-2xl overflow-hidden aspect-video bg-gray-900">
+                {isCurrentItemVideo ? (
+                  <>
+                    {/* Blurred background video */}
+                    <video
+                      src={galleryItems[activeImageIndex]?.url}
+                      className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-90"
+                      muted
+                      loop
+                      playsInline
+                    />
+                    {/* Main video with controls */}
+                    <video
+                      src={galleryItems[activeImageIndex]?.url}
+                      className="absolute inset-0 h-full w-full object-contain"
+                      controls
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  </>
+                ) : (
                   <SmartImageLayers
                     src={mainImageUrl || service.image}
                     alt={service.description}
                     mode="main"
                   />
+                )}
               {service.badges && service.badges.length > 0 && (
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                   {service.badges.map((badge, idx) => (
@@ -1313,10 +1470,11 @@ export default function ServiceDetailPage() {
               </div>
 
               {/* Thumbnail slider */}
-              {serviceImages.length > 1 && (
+              {galleryItems.length > 1 && (
                 <div className="mt-3">
                   <ThumbnailButtons
                     images={serviceImages}
+                    galleryItems={galleryItems}
                     activeIndex={activeImageIndex}
                     onSelect={setActiveImageIndex}
                   />

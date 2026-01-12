@@ -104,6 +104,9 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // MongoDB connection with serverless optimization
 // Cache connection to reuse across function invocations
 let cachedConnection = null;

@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
@@ -3382,6 +3384,135 @@ router.post('/profile/portfolio/upload', requireAuth, multer({ storage: multer.m
     // console.error('Portfolio image upload error', error);
     return res.status(500).json({ error: 'Failed to upload portfolio image' });
   }
+});
+
+// Upload portfolio video - Local storage (same as chat attachments)
+const videosDir = path.join(__dirname, '..', 'uploads', 'videos');
+// Create videos directory if it doesn't exist
+fs.mkdir(videosDir, { recursive: true }).catch(() => {
+  // Ignore errors - directory might already exist
+});
+
+const videoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, videosDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    // Sanitize filename
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const videoUpload = multer({
+  storage: videoStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only MP4, MPEG, MOV, AVI, and WEBM are allowed.'));
+    }
+  }
+});
+
+router.post('/profile/portfolio/upload-video', requireAuth, videoUpload.single('portfolioVideo'), async (req, res) => {
+  console.log('=== Video Upload Request Started ===');
+  console.log('User ID:', req.session?.userId);
+  console.log('File received:', req.file ? 'Yes' : 'No');
+  
+  try {
+    // Check user session
+    console.log('Fetching user from session...');
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      console.error('User not found in session:', req.session.userId);
+      // Delete uploaded file if user not found
+      if (req.file && req.file.path) {
+        fs.unlink(req.file.path).catch(err => console.error('Error deleting file:', err));
+      }
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+    console.log('User found:', user.email);
+
+    // Check file
+    if (!req.file) {
+      console.error('No video file provided in request');
+      return res.status(400).json({ error: 'No video file provided' });
+    }
+    console.log('File details:', {
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      originalname: req.file.originalname,
+      filename: req.file.filename,
+      path: req.file.path
+    });
+
+    // Get video URL (relative path for serving)
+    const videoUrl = `/api/auth/videos/${req.file.filename}`;
+    console.log('Video URL:', videoUrl);
+
+    // Generate thumbnail URL (we'll use a placeholder for now, or implement ffmpeg later)
+    const thumbnailUrl = `/api/auth/videos/thumbnail/${req.file.filename}`;
+    console.log('Thumbnail URL:', thumbnailUrl);
+
+    const responseData = { 
+      videoUrl: videoUrl,
+      thumbnail: thumbnailUrl,
+      duration: 0, // Can be calculated with ffmpeg if needed
+      size: req.file.size,
+    };
+    
+    console.log('Sending success response:', responseData);
+    return res.json(responseData);
+  } catch (error) {
+    console.error('=== Video Upload Error ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Delete uploaded file on error
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path).catch(err => console.error('Error deleting file:', err));
+    }
+    
+    return res.status(500).json({ error: 'Failed to upload portfolio video' });
+  }
+});
+
+// Serve video files
+router.get('/videos/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(videosDir, filename);
+  
+  console.log('Serving video:', filename);
+  
+  if (!existsSync(filePath)) {
+    console.error('Video file not found:', filePath);
+    return res.status(404).json({ error: 'Video not found' });
+  }
+  
+  res.sendFile(filePath);
+});
+
+// Serve video thumbnail (placeholder for now)
+router.get('/videos/thumbnail/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const videoPath = path.join(videosDir, filename);
+  
+  console.log('Serving video thumbnail for:', filename);
+  
+  if (!existsSync(videoPath)) {
+    console.error('Video file not found:', videoPath);
+    return res.status(404).json({ error: 'Video not found' });
+  }
+  
+  // For now, just serve the video file itself as thumbnail
+  // In production, you could use ffmpeg to generate actual thumbnails
+  res.sendFile(videoPath);
 });
 
 router.delete('/profile/avatar', requireAuth, async (req, res) => {
