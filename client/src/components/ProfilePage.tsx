@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap, Loader2 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import API_BASE_URL from "../config/api";
+import API_BASE_URL, { resolveApiUrl } from "../config/api";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useMessenger } from "./MessengerContext";
 import { useCategories, useSectors, useServiceCategories } from "../hooks/useSectorsAndCategories";
@@ -15,6 +15,7 @@ import { Skeleton } from "./ui/skeleton";
 import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
 import { SEOHead } from "./SEOHead";
+import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 
 // SmartImageLayers component for blur background effect
 function SmartImageLayers({
@@ -119,6 +120,8 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"about" | "services" | "portfolio" | "reviews">("about");
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [portfolioGalleryOpen, setPortfolioGalleryOpen] = useState(false);
+  const [portfolioGalleryIndex, setPortfolioGalleryIndex] = useState(0);
 
   const { serviceCategories } = useServiceCategories(undefined, undefined, true);
   const { sectors } = useSectors();
@@ -554,16 +557,36 @@ export default function ProfilePage() {
   }, [profile?.travelDistance, profile?.townCity, profile?.county, profile?.postcode]);
 
   const portfolioImages = useMemo(() => {
-    // Static placeholder portfolio (DB-provided portfolio images should come from API).
+    // Use actual portfolio from profile API if available
+    const portfolio = profile?.publicProfile?.portfolio || [];
+    if (portfolio.length > 0) {
+      return portfolio.map((item: any, index: number) => {
+        // Resolve media URL - handle both local paths and external URLs
+        const rawUrl = item.url || item.image;
+        const itemUrl = rawUrl && !rawUrl.startsWith('http') && rawUrl.startsWith('/') 
+          ? resolveApiUrl(rawUrl)
+          : rawUrl || serviceVector;
+        
+        return {
+          id: item.id || `p${index + 1}`,
+          url: itemUrl,
+          alt: item.title || `Portfolio item ${index + 1}`,
+          title: item.title,
+          description: item.description,
+          type: item.type || 'image',
+        };
+      });
+    }
+    // Fallback to static placeholder if no portfolio
     return [
-      { id: "p1", url: serviceVector, alt: "Project" },
-      { id: "p2", url: serviceVector, alt: "Project" },
-      { id: "p3", url: serviceVector, alt: "Project" },
-      { id: "p4", url: serviceVector, alt: "Project" },
-      { id: "p5", url: serviceVector, alt: "Project" },
-      { id: "p6", url: serviceVector, alt: "Project" },
+      { id: "p1", url: serviceVector, alt: "Project", title: undefined, description: undefined, type: 'image' },
+      { id: "p2", url: serviceVector, alt: "Project", title: undefined, description: undefined, type: 'image' },
+      { id: "p3", url: serviceVector, alt: "Project", title: undefined, description: undefined, type: 'image' },
+      { id: "p4", url: serviceVector, alt: "Project", title: undefined, description: undefined, type: 'image' },
+      { id: "p5", url: serviceVector, alt: "Project", title: undefined, description: undefined, type: 'image' },
+      { id: "p6", url: serviceVector, alt: "Project", title: undefined, description: undefined, type: 'image' },
     ];
-  }, []);
+  }, [profile?.publicProfile?.portfolio]);
 
   const reviews = useMemo(() => {
     const list = profile?.reviews || [];
@@ -1044,13 +1067,41 @@ export default function ProfilePage() {
 
             {activeTab === "portfolio" && (
               <div className="portfolio-grid">
-                {portfolioImages.map((img) => (
-                  <a key={img.id} className="portfolio-item" href={img.url} target="_blank" rel="noreferrer">
-                    <img src={img.url} alt={img.alt} loading="lazy" />
+                {portfolioImages.map((img, index) => (
+                  <div
+                    key={img.id}
+                    className="portfolio-item cursor-pointer"
+                    onClick={() => {
+                      setPortfolioGalleryIndex(index);
+                      setPortfolioGalleryOpen(true);
+                    }}
+                  >
+                    {img.type === 'video' ? (
+                      <video
+                        src={img.url}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img 
+                        src={img.url} 
+                        alt={img.alt} 
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== serviceVector) {
+                            target.src = serviceVector;
+                          }
+                        }}
+                      />
+                    )}
                     <div className="portfolio-overlay">
                       <span className="portfolio-label">View</span>
                     </div>
-                  </a>
+                  </div>
                 ))}
               </div>
             )}
@@ -1132,6 +1183,16 @@ export default function ProfilePage() {
         professionalId={profile.id}
         category={topCategory}
       />
+
+      {/* Portfolio Gallery Preview */}
+      {portfolioImages && portfolioImages.length > 0 && (
+        <PortfolioGalleryPreview
+          items={portfolioImages}
+          initialIndex={portfolioGalleryIndex}
+          open={portfolioGalleryOpen}
+          onClose={() => setPortfolioGalleryOpen(false)}
+        />
+      )}
     </div>
   );
 }

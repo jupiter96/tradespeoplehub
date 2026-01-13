@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Skeleton } from "./ui/skeleton";
 import { nameToSlug } from "./categoriesHierarchy";
 import { SEOHead } from "./SEOHead";
+import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 
 // Join URL path segments safely (prevents accidental double slashes)
 const joinPath = (...parts: Array<string | null | undefined>) => {
@@ -279,6 +280,8 @@ export default function ServiceDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isPendingService, setIsPendingService] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<string | null>(null);
+  const [portfolioGalleryOpen, setPortfolioGalleryOpen] = useState(false);
+  const [portfolioGalleryIndex, setPortfolioGalleryIndex] = useState(0);
 
   useEffect(() => {
     const fetchService = async () => {
@@ -2139,7 +2142,13 @@ export default function ServiceDetailPage() {
                               // First item - larger, fills full height
                               return (
                                 <div key={index} className="col-span-2 md:col-span-1 md:row-span-2">
-                                  <div className="relative h-full min-h-[300px] overflow-hidden rounded-xl group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300">
+                                  <div 
+                                    onClick={() => {
+                                      setPortfolioGalleryIndex(index);
+                                      setPortfolioGalleryOpen(true);
+                                    }}
+                                    className="relative h-full min-h-[300px] overflow-hidden rounded-xl group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+                                  >
                                     {isVideo ? (
                                       <>
                                         {/* Blurred background video */}
@@ -2189,7 +2198,14 @@ export default function ServiceDetailPage() {
                             
                             // Remaining items in grid
                             return (
-                              <div key={index} className="relative aspect-square overflow-hidden rounded-xl group cursor-pointer shadow-md hover:shadow-lg transition-all duration-300">
+                              <div 
+                                key={index} 
+                                onClick={() => {
+                                  setPortfolioGalleryIndex(index);
+                                  setPortfolioGalleryOpen(true);
+                                }}
+                                className="relative aspect-square overflow-hidden rounded-xl group cursor-pointer shadow-md hover:shadow-lg transition-all duration-300"
+                              >
                                 {isVideo ? (
                                   <>
                                     {/* Blurred background video */}
@@ -3301,6 +3317,16 @@ export default function ServiceDetailPage() {
         })) : []}
         serviceImage={service.image}
       />
+
+      {/* Portfolio Gallery Preview */}
+      {service?.providerPortfolio && service.providerPortfolio.length > 0 && (
+        <PortfolioGalleryPreview
+          items={service.providerPortfolio}
+          initialIndex={portfolioGalleryIndex}
+          open={portfolioGalleryOpen}
+          onClose={() => setPortfolioGalleryOpen(false)}
+        />
+      )}
     </div>
   );
 }
