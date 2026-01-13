@@ -2496,7 +2496,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     description?: string;
   }
   const [userPortfolio, setUserPortfolio] = useState<PortfolioItem[]>([]);
-  const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [newPortfolioTitle, setNewPortfolioTitle] = useState("");
   const [newPortfolioDescription, setNewPortfolioDescription] = useState("");
   const [newPortfolioFile, setNewPortfolioFile] = useState<File | null>(null);
@@ -3179,7 +3178,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setNewPortfolioFile(null);
       setNewPortfolioPreview(null);
       setNewPortfolioType('image');
-      setIsAddingPortfolio(false);
+      // Reset file input
+      const fileInput = document.getElementById('portfolio-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
       
       toast.success("Portfolio item added successfully");
     } catch (error) {
@@ -3281,8 +3282,21 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   const isFirstTab = () => getCurrentTabIndex() === 0;
 
   const handleTabChange = (newTab: string) => {
+    // In create mode (not edit mode), prevent direct tab navigation
+    // Users must use "Save and Continue" button to proceed
+    if (!isEditMode) {
+      const currentIndex = TAB_ORDER.indexOf(activeTab);
+      const newIndex = TAB_ORDER.indexOf(newTab);
+      
+      // Only allow moving to the next step (not backward or skipping)
+      if (newIndex !== currentIndex + 1) {
+        toast.error("Please complete the current step and click 'Save and Continue' to proceed");
+        return;
+      }
+    }
+    
     if (activeTab === "gallery" && TAB_ORDER.indexOf(newTab) > TAB_ORDER.indexOf("gallery")) {
-      if ((!galleryImages || galleryImages.length === 0) && (!galleryVideos || galleryVideos.length === 0)) {
+      if (galleryItems.length === 0) {
         toast.error("Please upload at least one image or video to continue");
         return;
       }
@@ -3450,7 +3464,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // Optional, just save
       toast.success("Extra services saved!");
     } else if (activeTab === "gallery") {
-      if ((!galleryImages || galleryImages.length === 0) && (!galleryVideos || galleryVideos.length === 0)) {
+      if (galleryItems.length === 0) {
         toast.error("Please upload at least one image or video to continue");
         return;
       }
@@ -4519,8 +4533,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     const stepIndex = TAB_ORDER.indexOf(step.id);
                     const isActive = activeTab === step.id;
                     const isCompleted = stepIndex < getCurrentTabIndex();
-                    // In edit mode, allow clicking any step. In create mode, only allow up to next step
-                    const isClickable = isEditMode ? true : stepIndex <= getCurrentTabIndex() + 1;
+                    // In create mode, disable direct navigation - only allow Save and Continue button
+                    // In edit mode, allow clicking any step
+                    const isClickable = isEditMode ? true : false;
 
                     return (
                       <div key={step.id} className="flex flex-col items-center flex-1 min-w-[80px] md:min-w-0">
@@ -5828,73 +5843,57 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
                 {/* Portfolio Section */}
                 <div className="border-t-2 border-gray-200 pt-6 mt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] flex items-center gap-2">
-                        Your Portfolio
-                        <span className="text-[12px] font-normal text-[#6b6b6b] bg-gray-100 px-2 py-0.5 rounded-full">Optional</span>
-                      </h3>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
-                        Showcase your previous work from your profile. These items are synced with your profile portfolio.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => setIsAddingPortfolio(true)}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Portfolio Item
-                    </Button>
+                  <div className="mb-4">
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] flex items-center gap-2">
+                      Your Portfolio
+                      <span className="text-[12px] font-normal text-[#6b6b6b] bg-gray-100 px-2 py-0.5 rounded-full">Optional</span>
+                    </h3>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
+                      Showcase your previous work from your profile. These items are synced with your profile portfolio.
+                    </p>
                   </div>
 
-                  {/* Add Portfolio Form */}
-                  {isAddingPortfolio && (
-                    <div className="bg-gray-50 rounded-xl p-5 mb-4 border-2 border-[#FE8A0F]/30">
-                      <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] mb-4">
-                        Add New Portfolio Item
-                      </h4>
-                      <div className="space-y-4">
-                        {/* File Upload */}
-                        <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                            Upload Image or Video
-                          </Label>
-                          <div className="flex items-center gap-4">
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
-                              onChange={handlePortfolioFileChange}
-                              className="hidden"
-                              id="portfolio-file-input"
-                            />
-                            <label
-                              htmlFor="portfolio-file-input"
-                              className="flex-1 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-[#FE8A0F] transition-colors"
-                            >
-                              {newPortfolioPreview ? (
-                                <div className="relative">
-                                  {newPortfolioType === 'video' ? (
-                                    <video src={newPortfolioPreview} className="w-full h-32 object-cover rounded-lg" />
-                                  ) : (
-                                    <img src={newPortfolioPreview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
-                                  )}
-                                  <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-[10px]">
-                                    {newPortfolioType === 'video' ? 'Video' : 'Image'}
-                                  </div>
-                                </div>
+                  {/* Add Portfolio Form - Always Visible */}
+                  <div className="bg-gray-50 rounded-xl p-4 mb-4 border-2 border-[#FE8A0F]/30">
+                    <div className="flex gap-4 items-start">
+                      {/* Left: File Upload */}
+                      <div className="flex-shrink-0 w-[200px]">
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
+                          onChange={handlePortfolioFileChange}
+                          className="hidden"
+                          id="portfolio-file-input"
+                        />
+                        <label
+                          htmlFor="portfolio-file-input"
+                          className="block border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-[#FE8A0F] transition-colors bg-white"
+                        >
+                          {newPortfolioPreview ? (
+                            <div className="relative">
+                              {newPortfolioType === 'video' ? (
+                                <video src={newPortfolioPreview} className="w-full h-32 object-cover rounded-lg" />
                               ) : (
-                                <div className="text-gray-500">
-                                  <ImagePlus className="w-8 h-8 mx-auto mb-2" />
-                                  <p className="font-['Poppins',sans-serif] text-[12px]">Click to select file</p>
-                                </div>
+                                <img src={newPortfolioPreview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
                               )}
-                            </label>
-                          </div>
-                        </div>
+                              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-[10px]">
+                                {newPortfolioType === 'video' ? 'Video' : 'Image'}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-gray-500">
+                              <ImagePlus className="w-8 h-8 mx-auto mb-2" />
+                              <p className="font-['Poppins',sans-serif] text-[12px]">Click to select</p>
+                            </div>
+                          )}
+                        </label>
+                      </div>
 
+                      {/* Right: Title, Description, and Buttons */}
+                      <div className="flex-1 space-y-3">
                         {/* Title */}
                         <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
                             Title <span className="text-red-500">*</span>
                           </Label>
                           <Input
@@ -5907,14 +5906,14 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
                         {/* Description */}
                         <div>
-                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
                             Description
                           </Label>
                           <Textarea
                             value={newPortfolioDescription}
                             onChange={(e) => setNewPortfolioDescription(e.target.value)}
                             placeholder="Brief description of this work..."
-                            className="font-['Poppins',sans-serif] text-[13px] min-h-[80px]"
+                            className="font-['Poppins',sans-serif] text-[13px] min-h-[60px]"
                           />
                         </div>
 
@@ -5923,15 +5922,17 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           <Button
                             variant="outline"
                             onClick={() => {
-                              setIsAddingPortfolio(false);
                               setNewPortfolioFile(null);
                               setNewPortfolioPreview(null);
                               setNewPortfolioTitle("");
                               setNewPortfolioDescription("");
+                              // Reset file input
+                              const fileInput = document.getElementById('portfolio-file-input') as HTMLInputElement;
+                              if (fileInput) fileInput.value = '';
                             }}
                             className="font-['Poppins',sans-serif] text-[13px]"
                           >
-                            Cancel
+                            Clear
                           </Button>
                           <Button
                             onClick={handleAddPortfolioItem}
@@ -5953,7 +5954,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Portfolio Grid */}
                   {userPortfolio.length > 0 ? (
@@ -6294,8 +6295,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
-            {/* Publish Changes Button - Always visible for direct submission */}
-            {!isLastTab() && (
+            {/* Publish Changes Button - Only visible in edit mode for approved services */}
+            {isEditMode && !isLastTab() && (
               <Button
                 onClick={handlePublish}
                 disabled={loading}
