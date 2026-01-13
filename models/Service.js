@@ -69,6 +69,31 @@ const serviceSchema = new mongoose.Schema(
       type: String,
       default: 'fixed', // 'fixed', 'per hour', 'per day', 'per item', etc.
     },
+    // Unified gallery array - images and videos in upload order
+    gallery: {
+      type: [{
+        type: {
+          type: String,
+          enum: ['image', 'video'],
+          required: true,
+        },
+        url: {
+          type: String,
+          required: true,
+        },
+        thumbnail: {
+          type: String,
+        },
+        duration: {
+          type: Number, // in seconds (for videos)
+        },
+        size: {
+          type: Number, // in bytes
+        },
+      }],
+      default: [],
+    },
+    // Legacy fields - kept for backward compatibility
     images: {
       type: [String],
       default: [],

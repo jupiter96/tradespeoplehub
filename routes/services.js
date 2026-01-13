@@ -607,6 +607,7 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       originalPriceValidFrom,
       originalPriceValidUntil,
       priceUnit,
+      gallery,
       images,
       videos,
       portfolioImages,
@@ -660,6 +661,10 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       draftServiceData.originalPriceValidUntil = new Date(originalPriceValidUntil);
     }
     if (priceUnit) draftServiceData.priceUnit = priceUnit;
+    // Use gallery array if provided (new format), otherwise fall back to images/videos (legacy)
+    if (gallery && Array.isArray(gallery) && gallery.length > 0) {
+      draftServiceData.gallery = gallery;
+    }
     if (images && images.length > 0) draftServiceData.images = images;
     if (videos && videos.length > 0) draftServiceData.videos = videos;
     if (portfolioImages && portfolioImages.length > 0) draftServiceData.portfolioImages = portfolioImages;
@@ -714,6 +719,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       originalPriceValidFrom,
       originalPriceValidUntil,
       priceUnit,
+      gallery,
       images,
       videos,
       portfolioImages,
@@ -852,6 +858,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       description: description.trim(),
       aboutMe: aboutMe?.trim() || undefined,
       priceUnit: priceUnit || 'fixed',
+      // Use gallery array if provided (new format), otherwise fall back to images/videos (legacy)
+      gallery: (gallery && Array.isArray(gallery) && gallery.length > 0) ? gallery : undefined,
       images: images || [],
       videos: videos || [],
       portfolioImages: portfolioImages || [],

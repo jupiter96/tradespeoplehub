@@ -302,8 +302,8 @@ export default function ServiceDetailPage() {
           const transformedService = {
             id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            gallery: s.gallery || [], // Unified gallery array (images and videos in order)
             images: s.images || [],
-            videos: s.videos || [],
             videos: s.videos || [],
             professionalId: typeof s.professional === 'object' 
               ? (s.professional._id || s.professional.id || s.professional)
@@ -489,12 +489,25 @@ export default function ServiceDetailPage() {
     return unique;
   }, [service]);
 
-  // Combine images and videos into gallery items
+  // Combine images and videos into gallery items - use gallery array if available (new format)
   const galleryItems = useMemo(() => {
     if (!service) return [];
     const items: Array<{type: 'image' | 'video', url: string, thumbnail?: string, duration?: number}> = [];
     
-    // Add all images (from both images and portfolioImages)
+    // Use gallery array if available (new format with preserved order)
+    if (service.gallery && Array.isArray(service.gallery)) {
+      service.gallery.forEach((item: any) => {
+        items.push({
+          type: item.type || 'image',
+          url: item.url,
+          thumbnail: item.thumbnail,
+          duration: item.duration,
+        });
+      });
+      return items;
+    }
+    
+    // Legacy format - images first, then videos
     const allImages = [
       ...(Array.isArray(service.images) ? service.images : []),
       ...(Array.isArray(service.portfolioImages) ? service.portfolioImages : []),

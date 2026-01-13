@@ -1855,14 +1855,39 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 setKeywords(draft.skills.join(", "));
               }
 
-              // Set gallery images
-              if (draft.images && Array.isArray(draft.images)) {
-                setGalleryImages(draft.images);
+              // Set gallery items (images and videos in order)
+              const draftItems: GalleryItem[] = [];
+              // Use gallery array if available (new format), otherwise fall back to images/videos (legacy)
+              if (draft.gallery && Array.isArray(draft.gallery)) {
+                draft.gallery.forEach((item: any) => {
+                  draftItems.push({
+                    type: item.type || 'image',
+                    url: item.url,
+                    thumbnail: item.thumbnail,
+                    duration: item.duration,
+                    size: item.size,
+                  });
+                });
+              } else {
+                // Legacy format - images first, then videos
+                if (draft.images && Array.isArray(draft.images)) {
+                  draft.images.forEach((url: string) => {
+                    draftItems.push({ type: 'image', url });
+                  });
+                }
+                if (draft.videos && Array.isArray(draft.videos)) {
+                  draft.videos.forEach((video: any) => {
+                    draftItems.push({
+                      type: 'video',
+                      url: video.url || video,
+                      thumbnail: video.thumbnail,
+                      duration: video.duration,
+                      size: video.size,
+                    });
+                  });
+                }
               }
-              // Set gallery videos
-              if (draft.videos && Array.isArray(draft.videos)) {
-                setGalleryVideos(draft.videos);
-              }
+              setGalleryItems(draftItems);
 
               // Set packages
               if (draft.packages && Array.isArray(draft.packages) && draft.packages.length > 0) {
@@ -1941,16 +1966,43 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         setServiceHighlights(highlightIds);
       }
       
-      // Set gallery images
-      if (initialService.images && Array.isArray(initialService.images)) {
-        setGalleryImages(initialService.images);
-      } else if (initialService.portfolioImages && Array.isArray(initialService.portfolioImages)) {
-        setGalleryImages(initialService.portfolioImages);
+      // Set gallery items (images and videos in order)
+      const serviceItems: GalleryItem[] = [];
+      // Use gallery array if available (new format), otherwise fall back to images/videos (legacy)
+      if (initialService.gallery && Array.isArray(initialService.gallery)) {
+        initialService.gallery.forEach((item: any) => {
+          serviceItems.push({
+            type: item.type || 'image',
+            url: item.url,
+            thumbnail: item.thumbnail,
+            duration: item.duration,
+            size: item.size,
+          });
+        });
+      } else {
+        // Legacy format - images first, then videos
+        const allImages = [
+          ...(Array.isArray(initialService.images) ? initialService.images : []),
+          ...(Array.isArray(initialService.portfolioImages) ? initialService.portfolioImages : []),
+        ].filter(Boolean);
+        // Remove duplicates
+        const uniqueImages = allImages.filter((url, idx) => allImages.indexOf(url) === idx);
+        uniqueImages.forEach((url: string) => {
+          serviceItems.push({ type: 'image', url });
+        });
+        if (initialService.videos && Array.isArray(initialService.videos)) {
+          initialService.videos.forEach((video: any) => {
+            serviceItems.push({
+              type: 'video',
+              url: video.url || video,
+              thumbnail: video.thumbnail,
+              duration: video.duration,
+              size: video.size,
+            });
+          });
+        }
       }
-      // Set gallery videos
-      if (initialService.videos && Array.isArray(initialService.videos)) {
-        setGalleryVideos(initialService.videos);
-      }
+      setGalleryItems(serviceItems);
       
       // Set packages - convert deliveryDays from number to string for UI
       if (initialService.packages && Array.isArray(initialService.packages) && initialService.packages.length > 0) {
@@ -2399,14 +2451,37 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   // Extra Services Tab
   const [extraServices, setExtraServices] = useState<ExtraService[]>([]);
   
-  // Gallery Tab
-  const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  const [galleryVideos, setGalleryVideos] = useState<Array<{url: string; thumbnail?: string; duration?: number; size?: number}>>([]);
-  const [uploadingImages, setUploadingImages] = useState<Record<number, boolean>>({});
-  const [uploadingVideos, setUploadingVideos] = useState<Record<number, boolean>>({});
+  // Gallery Tab - Unified gallery items (images and videos together)
+  interface GalleryItem {
+    type: 'image' | 'video';
+    url: string;
+    thumbnail?: string;
+    duration?: number;
+    size?: number;
+    uploading?: boolean;
+    uploadProgress?: number;
+  }
+  // galleryItems is the primary state - images and videos are managed together
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [uploadingItems, setUploadingItems] = useState<Record<number, boolean>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Derived states for backward compatibility and API calls
+  const galleryImages = useMemo(() => {
+    return galleryItems.filter(item => item.type === 'image' && !item.uploading).map(item => item.url);
+  }, [galleryItems]);
+  
+  const galleryVideos = useMemo(() => {
+    return galleryItems.filter(item => item.type === 'video' && !item.uploading).map(item => ({
+      url: item.url,
+      thumbnail: item.thumbnail,
+      duration: item.duration,
+      size: item.size,
+    }));
+  }, [galleryItems]);
   
   // Portfolio Section (from user profile)
   interface PortfolioItem {
@@ -2629,15 +2704,16 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     if (!files || files.length === 0) return;
 
     const filesArray = Array.from(files);
-    const remainingSlots = 6 - galleryImages.length;
+    const currentImageCount = galleryItems.filter(item => item.type === 'image' && !item.uploading).length;
+    const remainingSlots = 6 - currentImageCount;
     const filesToUpload = filesArray.slice(0, remainingSlots);
 
     if (filesArray.length > remainingSlots) {
       toast.error(`You can only upload ${remainingSlots} more image(s). Maximum 6 images allowed.`);
     }
 
-    // Base index so each uploading file reserves a fixed slot in the grid
-    const startIndex = galleryImages.length;
+    // Base index - add to end of galleryItems
+    const startIndex = galleryItems.length;
 
     for (let i = 0; i < filesToUpload.length; i++) {
       const file = filesToUpload[i];
@@ -2658,13 +2734,18 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
       // Create a temporary preview so the user immediately sees where this image will appear
       const tempPreviewUrl = URL.createObjectURL(file);
-      setGalleryImages(prev => {
+      setGalleryItems(prev => {
         const next = [...prev];
-        next[tempIndex] = tempPreviewUrl;
+        next[tempIndex] = {
+          type: 'image',
+          url: tempPreviewUrl,
+          uploading: true,
+          uploadProgress: 0,
+        };
         return next;
       });
 
-      setUploadingImages(prev => ({ ...prev, [tempIndex]: true }));
+      setUploadingItems(prev => ({ ...prev, [tempIndex]: true }));
       setUploadProgress(prev => ({ ...prev, [tempIndex]: 0 }));
 
       try {
@@ -2728,10 +2809,17 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         });
 
         const imageUrl = await uploadPromise;
-        // Replace the temporary preview with the final Cloudinary URL
-        setGalleryImages(prev => {
+        // Replace the temporary preview with the final URL
+        setGalleryItems(prev => {
           const next = [...prev];
-          next[tempIndex] = imageUrl;
+          if (next[tempIndex]) {
+            next[tempIndex] = {
+              ...next[tempIndex],
+              url: imageUrl,
+              uploading: false,
+              uploadProgress: 100,
+            };
+          }
           return next;
         });
         toast.success(`${file.name} uploaded successfully`);
@@ -2743,6 +2831,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             delete newState[tempIndex];
             return newState;
           });
+          setGalleryItems(prev => prev.map((item, idx) => 
+            idx === tempIndex ? { ...item, uploadProgress: undefined } : item
+          ));
         }, 500);
       } catch (error) {
         // console.error("Upload error:", error);
@@ -2752,8 +2843,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           delete newState[tempIndex];
           return newState;
         });
+        // Remove failed upload from galleryItems
+        setGalleryItems(prev => prev.filter((_, idx) => idx !== tempIndex));
       } finally {
-        setUploadingImages(prev => {
+        setUploadingItems(prev => {
           const newState = { ...prev };
           delete newState[tempIndex];
           return newState;
@@ -2763,7 +2856,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   };
 
   const handleRemoveImage = (index: number) => {
-    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+    // Remove directly from galleryItems
+    setGalleryItems(prev => prev.filter((_, i) => i !== index));
   };
 
   // Video upload functions
@@ -2774,15 +2868,16 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     }
 
     const filesArray = Array.from(files);
-    
-    const remainingSlots = 2 - galleryVideos.length; // Max 2 videos
+    const currentVideoCount = galleryItems.filter(item => item.type === 'video' && !item.uploading).length;
+    const remainingSlots = 2 - currentVideoCount; // Max 2 videos
     const filesToUpload = filesArray.slice(0, remainingSlots);
 
     if (filesArray.length > remainingSlots) {
       toast.error(`You can only upload ${remainingSlots} more video(s). Maximum 2 videos allowed.`);
     }
 
-    const startIndex = galleryVideos.length;
+    // Base index - add to end of galleryItems
+    const startIndex = galleryItems.length;
 
     for (let i = 0; i < filesToUpload.length; i++) {
       const file = filesToUpload[i];
@@ -2804,13 +2899,20 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // Create a temporary preview
       const tempPreviewUrl = URL.createObjectURL(file);
       
-      setGalleryVideos(prev => {
+      setGalleryItems(prev => {
         const next = [...prev];
-        next[tempIndex] = { url: tempPreviewUrl, thumbnail: tempPreviewUrl };
+        next[tempIndex] = {
+          type: 'video',
+          url: tempPreviewUrl,
+          thumbnail: tempPreviewUrl,
+          uploading: true,
+          uploadProgress: 0,
+        };
         return next;
       });
 
-      setUploadingVideos(prev => ({ ...prev, [tempIndex]: true }));
+      setUploadingItems(prev => ({ ...prev, [tempIndex]: true }));
+      setUploadProgress(prev => ({ ...prev, [tempIndex]: 0 }));
 
       try {
         const formData = new FormData();
@@ -2858,65 +2960,141 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
         const videoData = await uploadPromise;
 
-        setGalleryVideos(prev => {
+        setGalleryItems(prev => {
           const next = [...prev];
-          next[tempIndex] = {
-            url: videoData.videoUrl,
-            thumbnail: videoData.thumbnail,
-            duration: videoData.duration,
-            size: videoData.size,
-          };
+          if (next[tempIndex]) {
+            next[tempIndex] = {
+              ...next[tempIndex],
+              url: videoData.videoUrl,
+              thumbnail: videoData.thumbnail,
+              duration: videoData.duration,
+              size: videoData.size,
+              uploading: false,
+              uploadProgress: 100,
+            };
+          }
           return next;
         });
 
-        setUploadingVideos(prev => {
+        setUploadingItems(prev => {
           const updated = { ...prev };
           delete updated[tempIndex];
           return updated;
         });
+        
+        // Clear progress after a short delay
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newState = { ...prev };
+            delete newState[tempIndex];
+            return newState;
+          });
+          setGalleryItems(prev => prev.map((item, idx) => 
+            idx === tempIndex ? { ...item, uploadProgress: undefined } : item
+          ));
+        }, 500);
 
       } catch (error: any) {
-        setGalleryVideos(prev => prev.filter((_, i) => i !== tempIndex));
-        setUploadingVideos(prev => {
+        setGalleryItems(prev => prev.filter((_, i) => i !== tempIndex));
+        setUploadingItems(prev => {
           const updated = { ...prev };
           delete updated[tempIndex];
           return updated;
+        });
+        setUploadProgress(prev => {
+          const newState = { ...prev };
+          delete newState[tempIndex];
+          return newState;
         });
       }
     }
   };
 
   const handleRemoveVideo = (index: number) => {
-    setGalleryVideos(galleryVideos.filter((_, i) => i !== index));
+    // Remove directly from galleryItems
+    setGalleryItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDragStart = (index: number) => {
     setDragIndex(index);
+    setDragOverIndex(null);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (dragIndex === null || dragIndex === index) return;
+    e.stopPropagation();
+    if (dragIndex === null || dragIndex === index) {
+      setDragOverIndex(null);
+      return;
+    }
+    setDragOverIndex(index);
+  };
 
-    const newImages = [...galleryImages];
-    const draggedItem = newImages[dragIndex];
-    newImages.splice(dragIndex, 1);
-    newImages.splice(index, 0, draggedItem);
-    setGalleryImages(newImages);
-    setDragIndex(index);
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Only clear dragOverIndex if we're actually leaving the element
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newItems = [...galleryItems];
+    const draggedItem = newItems[dragIndex];
+    
+    // Remove dragged item from original position
+    newItems.splice(dragIndex, 1);
+    
+    // Insert at new position
+    const adjustedDropIndex = dragIndex < dropIndex ? dropIndex - 1 : dropIndex;
+    newItems.splice(adjustedDropIndex, 0, draggedItem);
+    
+    // Update galleryItems directly
+    setGalleryItems(newItems);
+    setDragIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleDragEnd = () => {
     setDragIndex(null);
+    setDragOverIndex(null);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragIndex(null);
     
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleImageUpload(files);
+      const imageFiles: File[] = [];
+      const videoFiles: File[] = [];
+      
+      Array.from(files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+          imageFiles.push(file);
+        } else if (file.type.startsWith('video/')) {
+          videoFiles.push(file);
+        }
+      });
+      
+      if (imageFiles.length > 0) {
+        handleImageUpload(imageFiles as any);
+      }
+      if (videoFiles.length > 0) {
+        handleVideoUpload(videoFiles as any);
+      }
     }
   };
 
@@ -3104,8 +3282,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
   const handleTabChange = (newTab: string) => {
     if (activeTab === "gallery" && TAB_ORDER.indexOf(newTab) > TAB_ORDER.indexOf("gallery")) {
-      if (!galleryImages || galleryImages.length === 0) {
-        toast.error("Please upload at least one image to continue");
+      if ((!galleryImages || galleryImages.length === 0) && (!galleryVideos || galleryVideos.length === 0)) {
+        toast.error("Please upload at least one image or video to continue");
         return;
       }
     }
@@ -3272,8 +3450,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // Optional, just save
       toast.success("Extra services saved!");
     } else if (activeTab === "gallery") {
-      if (!galleryImages || galleryImages.length === 0) {
-        toast.error("Please upload at least one image to continue");
+      if ((!galleryImages || galleryImages.length === 0) && (!galleryVideos || galleryVideos.length === 0)) {
+        toast.error("Please upload at least one image or video to continue");
         return;
       }
       toast.success("Gallery saved!");
@@ -3378,12 +3556,34 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         draftData.priceUnit = priceUnit;
       }
 
-      if (galleryImages && galleryImages.length > 0) {
-        draftData.images = galleryImages;
-        draftData.portfolioImages = galleryImages;
+      // Unified gallery array - preserve order from galleryItems (images and videos in upload order)
+      const draftGallery = galleryItems.filter(item => !item.uploading).map(item => ({
+        type: item.type,
+        url: item.url,
+        thumbnail: item.thumbnail,
+        duration: item.duration,
+        size: item.size,
+      }));
+      
+      if (draftGallery.length > 0) {
+        draftData.gallery = draftGallery;
       }
-      if (galleryVideos && galleryVideos.length > 0) {
-        draftData.videos = galleryVideos;
+      
+      // Legacy fields for backward compatibility
+      const draftImages = galleryItems.filter(item => item.type === 'image' && !item.uploading).map(item => item.url);
+      const draftVideos = galleryItems.filter(item => item.type === 'video' && !item.uploading).map(item => ({
+        url: item.url,
+        thumbnail: item.thumbnail,
+        duration: item.duration,
+        size: item.size,
+      }));
+      
+      if (draftImages.length > 0) {
+        draftData.images = draftImages;
+        draftData.portfolioImages = draftImages;
+      }
+      if (draftVideos.length > 0) {
+        draftData.videos = draftVideos;
       }
 
       if (serviceHighlights && serviceHighlights.length > 0) {
@@ -3981,9 +4181,23 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         originalPriceValidFrom: isPackageService ? undefined : (saleValidFrom || undefined),
         originalPriceValidUntil: isPackageService ? undefined : (saleValidUntil || undefined),
         priceUnit: priceUnit || "fixed",
-        images: galleryImages,
-        portfolioImages: galleryImages,
-        videos: galleryVideos,
+        // Unified gallery array - preserve order from galleryItems (images and videos in upload order)
+        gallery: galleryItems.filter(item => !item.uploading).map(item => ({
+          type: item.type,
+          url: item.url,
+          thumbnail: item.thumbnail,
+          duration: item.duration,
+          size: item.size,
+        })),
+        // Legacy fields for backward compatibility
+        images: galleryItems.filter(item => item.type === 'image' && !item.uploading).map(item => item.url),
+        portfolioImages: galleryItems.filter(item => item.type === 'image' && !item.uploading).map(item => item.url),
+        videos: galleryItems.filter(item => item.type === 'video' && !item.uploading).map(item => ({
+          url: item.url,
+          thumbnail: item.thumbnail,
+          duration: item.duration,
+          size: item.size,
+        })),
         packages: offerPackages ? packages.map((pkg) => {
           // Convert deliveryDays string to number
           let deliveryDaysNum = 0;
@@ -5442,29 +5656,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
                 {/* Unified Upload Area */}
                 <div
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const files = e.dataTransfer.files;
-                    if (files) {
-                      const imageFiles: File[] = [];
-                      const videoFiles: File[] = [];
-                      
-                      Array.from(files).forEach(file => {
-                        if (file.type.startsWith('image/')) {
-                          imageFiles.push(file);
-                        } else if (file.type.startsWith('video/')) {
-                          videoFiles.push(file);
-                        }
-                      });
-                      
-                      if (imageFiles.length > 0) {
-                        handleImageUpload(imageFiles as any);
-                      }
-                      if (videoFiles.length > 0) {
-                        handleVideoUpload(videoFiles as any);
-                      }
-                    }
-                  }}
+                  onDrop={handleFileDrop}
                   onDragOver={(e) => e.preventDefault()}
                   className="relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 border-[#FE8A0F]/30 bg-[#FFF5EB]/30 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/50 cursor-pointer"
                   onClick={() => {
@@ -5514,56 +5706,59 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 </div>
 
                 {/* Unified Gallery Grid */}
-                {(galleryImages.length > 0 || galleryVideos.length > 0) && (
+                {galleryItems.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                        Service Gallery ({galleryImages.length + galleryVideos.length} items - {galleryImages.length} images, {galleryVideos.length} videos)
+                        Service Gallery ({galleryItems.length} items - {galleryItems.filter(i => i.type === 'image').length} images, {galleryItems.filter(i => i.type === 'video').length} videos)
                       </p>
-                      {galleryImages.length > 0 && (
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                          Drag images to reorder
-                        </p>
-                      )}
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        Drag items to reorder
+                      </p>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {/* Images */}
-                      {galleryImages.map((image, index) => (
+                      {/* Unified Gallery Items (Images and Videos) */}
+                      {galleryItems.map((item, index) => (
                         <div
-                          key={`image-${index}`}
-                          draggable
-                          onDragStart={() => handleDragStart(index)}
-                          onDragOver={(e) => handleDragOver(e, index)}
+                          key={`${item.type}-${index}`}
+                          draggable={!item.uploading}
+                          onDragStart={() => !item.uploading && handleDragStart(index)}
+                          onDragOver={(e) => !item.uploading && handleDragOver(e, index)}
+                          onDragLeave={(e) => !item.uploading && handleDragLeave(e)}
+                          onDrop={(e) => !item.uploading && handleDrop(e, index)}
                           onDragEnd={handleDragEnd}
                           className={`
                             relative group aspect-video bg-gray-100 rounded-xl overflow-hidden border-2 transition-all duration-200
+                            ${item.uploading ? 'cursor-wait' : 'cursor-move'}
                             ${dragIndex === index 
-                              ? 'border-[#FE8A0F] scale-105 shadow-lg z-10' 
+                              ? 'border-[#FE8A0F] scale-105 shadow-lg z-10 opacity-50' 
+                              : dragOverIndex === index && dragIndex !== null
+                              ? 'border-[#FE8A0F] scale-105 shadow-lg z-10 ring-2 ring-[#FE8A0F] ring-offset-2'
                               : 'border-transparent hover:border-[#FE8A0F]/50 hover:shadow-md'
                             }
                           `}
                         >
-                          {uploadingImages[index] ? (
+                          {item.uploading ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-sm z-20 rounded-xl">
                               <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
                               <div className="w-full px-4">
                                 <div className="w-full bg-gray-700 rounded-full h-2 mb-2 overflow-hidden">
                                   <div 
                                     className="bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] h-2 rounded-full transition-all duration-300 ease-out relative"
-                                    style={{ width: `${uploadProgress[index] || 0}%` }}
+                                    style={{ width: `${item.uploadProgress || 0}%` }}
                                   >
                                     <div className="absolute inset-0 bg-white/20 animate-pulse" />
                                   </div>
                                 </div>
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-black text-center font-medium bg-white/90 px-2 py-1 rounded">
-                                  {uploadProgress[index] || 0}% - Uploading...
+                                  {item.uploadProgress || 0}% - Uploading...
                                 </p>
                               </div>
                             </div>
-                          ) : (
+                          ) : item.type === 'image' ? (
                             <>
                               <img 
-                                src={image} 
+                                src={item.url} 
                                 alt={`Gallery ${index + 1}`} 
                                 className="w-full h-full object-cover"
                               />
@@ -5588,27 +5783,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                                 </div>
                               </div>
                             </>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {/* Videos */}
-                      {galleryVideos.map((video, index) => (
-                        <div
-                          key={`video-${index}`}
-                          className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-[#FE8A0F]/50 hover:shadow-md transition-all duration-200"
-                        >
-                          {uploadingVideos[index] ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-sm z-20 rounded-xl">
-                              <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-white text-center font-medium">
-                                Uploading video...
-                              </p>
-                            </div>
                           ) : (
                             <>
                               <video 
-                                src={video.url} 
+                                src={item.url} 
                                 className="w-full h-full object-cover"
                                 controls
                                 preload="metadata"
@@ -5626,13 +5804,20 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                               >
                                 <X className="w-4 h-4" />
                               </button>
-                              {video.duration && (
+                              {item.duration && (
                                 <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded-md">
                                   <span className="font-['Poppins',sans-serif] text-[10px]">
-                                    {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                    {Math.floor(item.duration / 60)}:{String(Math.floor(item.duration % 60)).padStart(2, '0')}
                                   </span>
                                 </div>
                               )}
+                              <div className="absolute bottom-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="bg-white/90 backdrop-blur-sm rounded-md px-2 py-1">
+                                  <p className="font-['Poppins',sans-serif] text-[10px] text-[#2c353f] truncate">
+                                    Drag to reorder
+                                  </p>
+                                </div>
+                              </div>
                             </>
                           )}
                         </div>
