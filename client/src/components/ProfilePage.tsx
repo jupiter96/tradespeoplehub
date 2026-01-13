@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap, Loader2 } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
@@ -113,12 +113,21 @@ type ProfileData = {
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { startConversation } = useMessenger();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"about" | "services" | "portfolio" | "reviews">("about");
+
+  // Set active tab from location state if provided
+  useEffect(() => {
+    const state = location.state as { activeTab?: "about" | "services" | "portfolio" | "reviews" } | null;
+    if (state?.activeTab) {
+      setActiveTab(state.activeTab);
+    }
+  }, [location.state]);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [portfolioGalleryOpen, setPortfolioGalleryOpen] = useState(false);
   const [portfolioGalleryIndex, setPortfolioGalleryIndex] = useState(0);

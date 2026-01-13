@@ -2261,7 +2261,7 @@ export default function ServiceDetailPage() {
                             className="border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
                             onClick={() => {
                               if (service.professionalId) {
-                                navigate(`/profile/${service.professionalId}`);
+                                navigate(`/profile/${service.professionalId}`, { state: { activeTab: 'portfolio' } });
                               }
                             }}
                           >
