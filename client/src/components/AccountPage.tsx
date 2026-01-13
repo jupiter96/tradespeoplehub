@@ -3056,7 +3056,13 @@ function BillingSection() {
   };
 
   const handleStripePayment = async () => {
+    console.log("[Stripe Frontend] handleStripePayment called");
+    console.log("[Stripe Frontend] Amount:", parseFloat(amount));
+    console.log("[Stripe Frontend] Selected payment method:", selectedPaymentMethod);
+    console.log("[Stripe Frontend] Available payment methods:", fundPaymentMethods.length);
+    
     if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
+      console.error("[Stripe Frontend] No payment method available");
       toast.error("Please add a payment method first");
       setShowAddCardModal(true);
       return;
@@ -3064,6 +3070,7 @@ function BillingSection() {
 
     setLoading(true);
     try {
+      console.log("[Stripe Frontend] Sending request to /api/wallet/fund/stripe");
       const response = await fetch(resolveApiUrl("/api/wallet/fund/stripe"), {
         method: "POST",
         headers: {
@@ -3076,24 +3083,42 @@ function BillingSection() {
         }),
       });
 
+      console.log("[Stripe Frontend] Response status:", response.status);
       const data = await response.json();
+      console.log("[Stripe Frontend] Response data:", data);
 
       if (!response.ok) {
+        console.error("[Stripe Frontend] Error response:", data);
+        // If payment method was removed due to environment mismatch, refresh payment methods
+        if (data.removedPaymentMethod) {
+          console.log("[Stripe Frontend] Payment method was removed, refreshing payment methods");
+          await fetchFundPaymentMethods();
+          setSelectedPaymentMethod(null);
+        }
         throw new Error(data.error || "Failed to create payment");
       }
+      
+      console.log("[Stripe Frontend] Payment intent created successfully");
+      console.log("[Stripe Frontend] Payment status:", data.status);
 
       if (data.status === 'succeeded') {
+        console.log("[Stripe Frontend] Payment succeeded immediately");
+        console.log("[Stripe Frontend] New balance:", data.balance);
         toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
-    await fetchWalletBalance();
-    await fetchTransactions();
+        await fetchWalletBalance();
+        await fetchTransactions();
         setAmount("20");
-    if (refreshUser) {
-      await refreshUser();
+        if (refreshUser) {
+          await refreshUser();
         }
       } else if (data.requiresAction) {
+        console.log("[Stripe Frontend] Payment requires action");
+        console.log("[Stripe Frontend] Transaction ID:", data.transactionId);
+        console.log("[Stripe Frontend] Client secret:", data.clientSecret);
         toast.info("Please complete the authentication");
         pollPaymentStatus(data.transactionId, data.clientSecret);
       } else {
+        console.log("[Stripe Frontend] Payment processed successfully");
         toast.success("Payment processed successfully!");
         await fetchWalletBalance();
         await fetchTransactions();
@@ -3103,6 +3128,7 @@ function BillingSection() {
         }
       }
     } catch (error: any) {
+      console.error("[Stripe Frontend] Error in handleStripePayment:", error);
       toast.error(error.message || "Failed to process payment");
     } finally {
       setLoading(false);

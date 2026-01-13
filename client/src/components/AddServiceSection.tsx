@@ -1870,7 +1870,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 });
               } else {
                 // Legacy format - images first, then videos
-                if (draft.images && Array.isArray(draft.images)) {
+              if (draft.images && Array.isArray(draft.images)) {
                   draft.images.forEach((url: string) => {
                     draftItems.push({ type: 'image', url });
                   });
@@ -2170,13 +2170,13 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         for (const subCategoryId of allSubCategoryIds) {
           if (!subCategoryId) continue;
 
-          const response = await fetch(
+        const response = await fetch(
             resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
-            { credentials: "include" }
-          );
+          { credentials: "include" }
+        );
 
-          if (response.ok) {
-            const data = await response.json();
+        if (response.ok) {
+          const data = await response.json();
             if (data.serviceSubCategory?.serviceIdealFor && Array.isArray(data.serviceSubCategory.serviceIdealFor)) {
               // Add ideal for options from this level (avoid duplicates)
               data.serviceSubCategory.serviceIdealFor.forEach((option: string) => {
@@ -2191,8 +2191,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         setDynamicServiceIdealFor(allIdealFor);
       } catch (error) {
         // console.error("Error fetching service ideal for:", error);
-        setDynamicServiceIdealFor([]);
-      }
+            setDynamicServiceIdealFor([]);
+          }
     };
 
     fetchServiceIdealFor();

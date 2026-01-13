@@ -190,8 +190,42 @@ router.get('/payment-methods', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
+    // Validate payment methods against current Stripe environment
+    const settings = await PaymentSettings.getSettings();
+    const stripeKeys = getStripeKeys(settings);
+    let validPaymentMethods = [];
+    const invalidPaymentMethodIds = [];
+    
+    if (user.paymentMethods && user.paymentMethods.length > 0 && stripeKeys.secretKey) {
+      const stripe = new Stripe(stripeKeys.secretKey);
+      
+      for (const pm of user.paymentMethods) {
+        try {
+          await stripe.paymentMethods.retrieve(pm.paymentMethodId);
+          validPaymentMethods.push(pm);
+        } catch (error) {
+          console.log(`[Stripe Backend] PaymentMethod ${pm.paymentMethodId} is invalid in current environment, removing from list`);
+          invalidPaymentMethodIds.push(pm.paymentMethodId);
+        }
+      }
+      
+      // Remove invalid payment methods from user's saved methods
+      if (invalidPaymentMethodIds.length > 0) {
+        user.paymentMethods = user.paymentMethods.filter(
+          pm => !invalidPaymentMethodIds.includes(pm.paymentMethodId)
+        );
+        // If default was removed, set first valid one as default
+        if (validPaymentMethods.length > 0 && !validPaymentMethods.some(pm => pm.isDefault)) {
+          validPaymentMethods[0].isDefault = true;
+        }
+        await user.save();
+      }
+    } else {
+      validPaymentMethods = user.paymentMethods || [];
+    }
+    
     res.json({ 
-      paymentMethods: user.paymentMethods || [],
+      paymentMethods: validPaymentMethods,
       stripeCustomerId: user.stripeCustomerId,
     });
   } catch (error) {
@@ -344,32 +378,48 @@ router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req
 
 // Create Stripe payment intent for wallet funding (requires saved payment method)
 router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
+  console.log('[Stripe Backend] POST /wallet/fund/stripe - Request received');
+  console.log('[Stripe Backend] Request body:', req.body);
+  console.log('[Stripe Backend] User ID:', req.user.id);
+  
   try {
     const { amount, paymentMethodId } = req.body;
+    console.log('[Stripe Backend] Amount:', amount);
+    console.log('[Stripe Backend] PaymentMethod ID:', paymentMethodId);
     
     if (!amount || amount <= 0) {
+      console.error('[Stripe Backend] Invalid amount:', amount);
       return res.status(400).json({ error: 'Invalid amount' });
     }
     
+    console.log('[Stripe Backend] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[Stripe Backend] Payment settings loaded');
     
     if (!settings.isActive || !settings.stripeSecretKey) {
+      console.error('[Stripe Backend] Stripe payments are not configured');
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
     if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
+      console.error('[Stripe Backend] Amount out of range:', amount, 'Min:', settings.minDepositAmount, 'Max:', settings.maxDepositAmount);
       return res.status(400).json({ 
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
       });
     }
     
+    console.log('[Stripe Backend] Fetching user...');
     const user = await User.findById(req.user.id);
     if (!user) {
+      console.error('[Stripe Backend] User not found:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
+    console.log('[Stripe Backend] User found:', user.email);
+    console.log('[Stripe Backend] User payment methods count:', user.paymentMethods?.length || 0);
     
     // Check if user has saved payment methods
     if (!user.paymentMethods || user.paymentMethods.length === 0) {
+      console.error('[Stripe Backend] User has no payment methods');
       return res.status(400).json({ error: 'Please add a payment method first' });
     }
     
@@ -378,23 +428,74 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       ? user.paymentMethods.find(pm => pm.paymentMethodId === paymentMethodId)
       : user.paymentMethods.find(pm => pm.isDefault) || user.paymentMethods[0];
     
+    console.log('[Stripe Backend] Selected payment method:', selectedPaymentMethod?.paymentMethodId);
+    
     if (!selectedPaymentMethod) {
+      console.error('[Stripe Backend] Payment method not found');
       return res.status(400).json({ error: 'Payment method not found' });
     }
     
     if (!user.stripeCustomerId) {
+      console.error('[Stripe Backend] Stripe customer not found');
       return res.status(400).json({ error: 'Stripe customer not found. Please add a payment method first.' });
     }
+    console.log('[Stripe Backend] Stripe customer ID:', user.stripeCustomerId);
     
     const stripeKeys = getStripeKeys(settings);
+    const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
+    console.log('[Stripe Backend] Stripe environment:', stripeEnvironment);
+    console.log('[Stripe Backend] Using Stripe keys for environment:', stripeEnvironment);
+    
     const stripe = new Stripe(stripeKeys.secretKey);
+    
+    // Verify payment method exists in current Stripe environment
+    console.log('[Stripe Backend] Verifying payment method:', selectedPaymentMethod.paymentMethodId);
+    try {
+      const paymentMethod = await stripe.paymentMethods.retrieve(selectedPaymentMethod.paymentMethodId);
+      console.log('[Stripe Backend] PaymentMethod verified successfully:', paymentMethod.id);
+      console.log('[Stripe Backend] PaymentMethod type:', paymentMethod.type);
+      console.log('[Stripe Backend] PaymentMethod card:', paymentMethod.card?.brand, paymentMethod.card?.last4);
+    } catch (error) {
+      console.error('[Stripe Backend] PaymentMethod verification failed:', error.message);
+      console.error('[Stripe Backend] Error code:', error.code);
+      console.error('[Stripe Backend] Error type:', error.type);
+      
+      // Remove invalid payment method from user's saved methods
+      console.log('[Stripe Backend] Removing invalid payment method from user account');
+      user.paymentMethods = user.paymentMethods.filter(
+        pm => pm.paymentMethodId !== selectedPaymentMethod.paymentMethodId
+      );
+      await user.save();
+      console.log('[Stripe Backend] Invalid payment method removed from user account');
+      
+      return res.status(400).json({ 
+        error: 'The selected payment method is no longer valid. Please add a new payment method.',
+        code: 'INVALID_PAYMENT_METHOD',
+        removedPaymentMethod: true
+      });
+    }
     
     // Calculate Stripe commission (fee is taken separately, full amount is deposited)
     const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
     const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
     const stripeCommission = (amount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
     
+    console.log('[Stripe Backend] Commission calculation:');
+    console.log('[Stripe Backend]   - Deposit amount:', amount);
+    console.log('[Stripe Backend]   - Commission percentage:', stripeCommissionPercentage + '%');
+    console.log('[Stripe Backend]   - Commission fixed:', stripeCommissionFixed);
+    console.log('[Stripe Backend]   - Commission total:', stripeCommission);
+    console.log('[Stripe Backend]   - Total amount to charge:', amount + stripeCommission);
+    
     // Create payment intent with saved payment method (charge full amount)
+    console.log('[Stripe Backend] Creating payment intent...');
+    console.log('[Stripe Backend] Payment intent parameters:', {
+      amount: Math.round(amount * 100),
+      currency: 'gbp',
+      customer: user.stripeCustomerId,
+      payment_method: selectedPaymentMethod.paymentMethodId,
+    });
+    
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to pence - charge full amount user entered
       currency: 'gbp',
@@ -408,6 +509,12 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
         type: 'wallet_funding',
       },
     });
+    
+    console.log('[Stripe Backend] Payment intent created successfully');
+    console.log('[Stripe Backend] Payment intent ID:', paymentIntent.id);
+    console.log('[Stripe Backend] Payment intent status:', paymentIntent.status);
+    console.log('[Stripe Backend] Payment intent amount:', paymentIntent.amount);
+    console.log('[Stripe Backend] Payment intent currency:', paymentIntent.currency);
     
     // Create pending wallet transaction (full amount deposited, fee stored separately)
     const transaction = new Wallet({
@@ -734,8 +841,8 @@ function createPayPalClient(settings) {
   console.log('[PayPal Backend] createPayPalClient called');
   const paypalKeys = getPayPalKeys(settings);
   console.log('[PayPal Backend] PayPal keys retrieved:', {
-    clientId: paypalKeys.clientId,
-    secretKey: paypalKeys.secretKey
+    clientId: paypalKeys.clientId ? 'Present' : 'Missing',
+    secretKey: paypalKeys.secretKey ? 'Present' : 'Missing'
   });
   
   // Validate keys before creating client
