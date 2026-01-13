@@ -1492,6 +1492,9 @@ export default function ServicesPage() {
       const newFilters = [...selectedFilters, filter];
       setSelectedFilters(newFilters);
       
+      // Close filter sheet when filter is added
+      setIsFilterOpen(false);
+      
       // Auto-expand the relevant categories when filter is added
       // Find the sector in categoryTree to get the sectorValue
       const matchedSector = categoryTree.find(s => s.sector === filter.sector);
@@ -1519,52 +1522,71 @@ export default function ServicesPage() {
       }
       
       // Update URL based on filter type
-      const sectorApi = apiSectors.find((s: Sector) => s.name === filter.sector);
-      if (!sectorApi) return;
-      
-      const sectorSlug = sectorApi.slug || sectorApi.name.toLowerCase().replace(/\s+/g, '-');
-      
-      if (filter.type === 'subCategory' && filter.mainCategory && filter.subCategory) {
-        // Find category and subcategory slugs
-        const sectorCategories = serviceCategoriesBySector.get(sectorApi._id) || [];
-        const matchedCategory = sectorCategories.find((cat: ServiceCategory) => cat.name === filter.mainCategory);
+      // Use setTimeout to allow other click handlers to execute first
+      setTimeout(() => {
+        const sectorApi = apiSectors.find((s: Sector) => s.name === filter.sector);
+        if (!sectorApi) return;
         
-        if (matchedCategory) {
-          const categorySlug = matchedCategory.slug || matchedCategory.name.toLowerCase().replace(/\s+/g, '-');
+        const sectorSlug = sectorApi.slug || sectorApi.name.toLowerCase().replace(/\s+/g, '-');
+        
+        if (filter.type === 'subCategory' && filter.mainCategory && filter.subCategory) {
+          // Find category and subcategory slugs
+          const sectorCategories = serviceCategoriesBySector.get(sectorApi._id) || [];
+          const matchedCategory = sectorCategories.find((cat: ServiceCategory) => cat.name === filter.mainCategory);
           
-          // Find subcategory slug
-          if (matchedCategory.subCategories) {
-            const matchedSubCategory = (matchedCategory.subCategories as ServiceSubCategory[]).find(
-              (sub: ServiceSubCategory) => sub.name === filter.subCategory
-            );
+          if (matchedCategory) {
+            const categorySlug = matchedCategory.slug || matchedCategory.name.toLowerCase().replace(/\s+/g, '-');
             
-            if (matchedSubCategory) {
-              const subCategorySlug = matchedSubCategory.slug || matchedSubCategory.name.toLowerCase().replace(/\s+/g, '-');
-              const newSearchParams = new URLSearchParams(searchParams);
-              // Keep only non-filter query params (search, etc.)
-              newSearchParams.delete('sector');
-              newSearchParams.delete('serviceCategory');
-              newSearchParams.delete('serviceSubCategory');
-              newSearchParams.delete('category');
-              newSearchParams.delete('subcategory');
-              newSearchParams.delete('detailedSubcategory');
+            // Find subcategory slug
+            if (matchedCategory.subCategories) {
+              const matchedSubCategory = (matchedCategory.subCategories as ServiceSubCategory[]).find(
+                (sub: ServiceSubCategory) => sub.name === filter.subCategory
+              );
               
-              const queryString = newSearchParams.toString();
-              const url = queryString 
-                ? `/services/${sectorSlug}/${categorySlug}/${subCategorySlug}?${queryString}`
-                : `/services/${sectorSlug}/${categorySlug}/${subCategorySlug}`;
-              navigate(url, { replace: true });
-              return;
+              if (matchedSubCategory) {
+                const subCategorySlug = matchedSubCategory.slug || matchedSubCategory.name.toLowerCase().replace(/\s+/g, '-');
+                const newSearchParams = new URLSearchParams(searchParams);
+                // Keep only non-filter query params (search, etc.)
+                newSearchParams.delete('sector');
+                newSearchParams.delete('serviceCategory');
+                newSearchParams.delete('serviceSubCategory');
+                newSearchParams.delete('category');
+                newSearchParams.delete('subcategory');
+                newSearchParams.delete('detailedSubcategory');
+                
+                const queryString = newSearchParams.toString();
+                const url = queryString 
+                  ? `/services/${sectorSlug}/${categorySlug}/${subCategorySlug}?${queryString}`
+                  : `/services/${sectorSlug}/${categorySlug}/${subCategorySlug}`;
+                navigate(url, { replace: true });
+                return;
+              }
             }
           }
-        }
-      } else if (filter.type === 'mainCategory' && filter.mainCategory) {
-        // Find category slug
-        const sectorCategories = serviceCategoriesBySector.get(sectorApi._id) || [];
-        const matchedCategory = sectorCategories.find((cat: ServiceCategory) => cat.name === filter.mainCategory);
-        
-        if (matchedCategory) {
-          const categorySlug = matchedCategory.slug || matchedCategory.name.toLowerCase().replace(/\s+/g, '-');
+        } else if (filter.type === 'mainCategory' && filter.mainCategory) {
+          // Find category slug
+          const sectorCategories = serviceCategoriesBySector.get(sectorApi._id) || [];
+          const matchedCategory = sectorCategories.find((cat: ServiceCategory) => cat.name === filter.mainCategory);
+          
+          if (matchedCategory) {
+            const categorySlug = matchedCategory.slug || matchedCategory.name.toLowerCase().replace(/\s+/g, '-');
+            const newSearchParams = new URLSearchParams(searchParams);
+            // Keep only non-filter query params (search, etc.)
+            newSearchParams.delete('sector');
+            newSearchParams.delete('serviceCategory');
+            newSearchParams.delete('serviceSubCategory');
+            newSearchParams.delete('category');
+            newSearchParams.delete('subcategory');
+            newSearchParams.delete('detailedSubcategory');
+            
+            const queryString = newSearchParams.toString();
+            const url = queryString 
+              ? `/services/${sectorSlug}/${categorySlug}?${queryString}`
+              : `/services/${sectorSlug}/${categorySlug}`;
+            navigate(url, { replace: true });
+            return;
+          }
+        } else if (filter.type === 'sector') {
           const newSearchParams = new URLSearchParams(searchParams);
           // Keep only non-filter query params (search, etc.)
           newSearchParams.delete('sector');
@@ -1576,28 +1598,12 @@ export default function ServicesPage() {
           
           const queryString = newSearchParams.toString();
           const url = queryString 
-            ? `/services/${sectorSlug}/${categorySlug}?${queryString}`
-            : `/services/${sectorSlug}/${categorySlug}`;
+            ? `/services/${sectorSlug}?${queryString}`
+            : `/services/${sectorSlug}`;
           navigate(url, { replace: true });
           return;
         }
-      } else if (filter.type === 'sector') {
-        const newSearchParams = new URLSearchParams(searchParams);
-        // Keep only non-filter query params (search, etc.)
-        newSearchParams.delete('sector');
-        newSearchParams.delete('serviceCategory');
-        newSearchParams.delete('serviceSubCategory');
-        newSearchParams.delete('category');
-        newSearchParams.delete('subcategory');
-        newSearchParams.delete('detailedSubcategory');
-        
-        const queryString = newSearchParams.toString();
-        const url = queryString 
-          ? `/services/${sectorSlug}?${queryString}`
-          : `/services/${sectorSlug}`;
-        navigate(url, { replace: true });
-        return;
-      }
+      }, 0);
     }
   };
 

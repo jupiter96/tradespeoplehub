@@ -4369,9 +4369,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   };
 
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="mb-4 md:mb-6">
+    <div className="w-full h-full flex flex-col">
+      {/* Header with Back Button */}
+      <div className="px-6 pt-6 pb-4 flex-shrink-0">
         <Button
           variant="ghost"
           onClick={handleClose}
@@ -4380,65 +4380,55 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to My Services
         </Button>
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="font-['Poppins',sans-serif] text-[22px] sm:text-[24px] md:text-[28px] text-[#2c353f] mb-2">
-              {isEditMode ? "Edit Service" : "Add Service"}
-            </h2>
-            <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
-              {isEditMode ? "Update your service offering details" : "Create a new service offering with all the details"}
-            </p>
+        {/* Auto-save indicator and Discard Draft button */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[12px] text-gray-500">
+            {isSavingDraft ? (
+              <>
+                <div className="w-3 h-3 border-2 border-[#FE8A0F] border-t-transparent rounded-full animate-spin" />
+                <span>Saving draft...</span>
+              </>
+            ) : lastSaved ? (
+              <>
+                <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>Draft saved {new Date(lastSaved).toLocaleTimeString()}</span>
+              </>
+            ) : null}
           </div>
-          {/* Auto-save indicator and Discard Draft button */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-[12px] text-gray-500">
-              {isSavingDraft ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-[#FE8A0F] border-t-transparent rounded-full animate-spin" />
-                  <span>Saving draft...</span>
-                </>
-              ) : lastSaved ? (
-                <>
-                  <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Draft saved {new Date(lastSaved).toLocaleTimeString()}</span>
-                </>
-              ) : null}
-            </div>
-            {draftId && !isEditMode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  if (window.confirm("Are you sure you want to discard this draft? This action cannot be undone.")) {
-                    try {
-                      const { resolveApiUrl } = await import("../config/api");
-                      const response = await fetch(resolveApiUrl(`/api/services/${draftId}`), {
-                        method: "DELETE",
-                        credentials: "include",
-                      });
+          {draftId && !isEditMode && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                if (window.confirm("Are you sure you want to discard this draft? This action cannot be undone.")) {
+                  try {
+                    const { resolveApiUrl } = await import("../config/api");
+                    const response = await fetch(resolveApiUrl(`/api/services/${draftId}`), {
+                      method: "DELETE",
+                      credentials: "include",
+                    });
 
-                      if (response.ok) {
-                        toast.success("Draft discarded successfully");
-                        setDraftId(null);
-                        setLastSaved(null);
-                        onClose();
-                      } else {
-                        toast.error("Failed to discard draft");
-                      }
-                    } catch (error) {
+                    if (response.ok) {
+                      toast.success("Draft discarded successfully");
+                      setDraftId(null);
+                      setLastSaved(null);
+                      onClose();
+                    } else {
                       toast.error("Failed to discard draft");
                     }
+                  } catch (error) {
+                    toast.error("Failed to discard draft");
                   }
-                }}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-[12px]"
-              >
-                <Trash2 className="w-3 h-3 mr-1" />
-                Discard Draft
-              </Button>
-            )}
-          </div>
+                }
+              }}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 text-[12px]"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Discard Draft
+            </Button>
+          )}
         </div>
       </div>
 
@@ -4496,9 +4486,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           </div>
         </Card>
       ) : (
-        <Card className="border-2 border-gray-200 shadow-lg">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="px-6 pt-6 pb-4 border-b border-gray-200">
+        <Card className="border-2 border-gray-200 shadow-lg flex-1 flex flex-col min-h-0">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex-1 flex flex-col min-h-0">
+          <div className="px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0">
             {/* Progress Indicator */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
@@ -4602,7 +4592,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             </div>
           </div>
 
-          <ScrollArea className="h-[calc(100vh-400px)] px-6">
+          <ScrollArea className="flex-1 min-h-0 px-6 [&_[data-slot=scroll-area-scrollbar]]:w-2.5 [&_[data-slot=scroll-area-scrollbar]]:bg-gray-100 [&_[data-slot=scroll-area-thumb]]:bg-[#FE8A0F] [&_[data-slot=scroll-area-thumb]]:rounded-full [&_[data-slot=scroll-area-thumb]]:hover:bg-[#FFB347]">
             {/* Service Details Tab */}
             <TabsContent value="service-details" className="mt-0 py-6">
               <div className="space-y-6">
@@ -6276,7 +6266,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           </ScrollArea>
 
           {/* Footer Actions */}
-          <div className="flex gap-3 px-6 py-4 border-t border-gray-200 bg-white">
+          <div className="flex gap-3 px-6 py-4 bg-white flex-shrink-0 rounded-[15px]">
             {!isFirstTab() && (
               <Button
                 variant="outline"

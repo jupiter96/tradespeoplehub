@@ -7462,69 +7462,81 @@ function ServicesSection() {
     return labels[status.toLowerCase()] || labels[status] || status || "Unknown";
   };
 
-  return (
-    <div>
-      <div className="mb-6">
-        <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
-          Service Management
-        </h2>
-        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-          Manage your services, reviews, and performance analytics
-        </p>
-      </div>
+  // Check if AddServiceSection is open (including package service)
+  const isServiceSectionOpen = isAddServiceOpen || isEditServiceOpen || isAddingPackageService;
 
-      {/* Tabs */}
-      <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-        <div className="flex gap-2 pb-2 border-b-2 border-gray-100">
-        {[
-          { id: "myservices", label: "Single Service", icon: Briefcase },
-          { id: "packageservice", label: "Package Service", icon: Package },
-          { id: "reviews", label: "Reviews", icon: Heart },
-          { id: "analytics", label: "Analytics", icon: TrendingUp },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
-                isActive
-                  ? "bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]"
-                  : "text-[#6b6b6b] hover:bg-gray-50 hover:text-[#2c353f] border-transparent"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="font-['Poppins',sans-serif] text-[14px]">
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-        </div>
-      </div>
+  return (
+    <div className={isServiceSectionOpen ? "h-full flex flex-col" : ""}>
+      {/* Hide title and description when AddServiceSection is open */}
+      {!isServiceSectionOpen && (
+        <>
+          <div className="mb-6">
+            <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
+              Service Management
+            </h2>
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Manage your services, reviews, and performance analytics
+            </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+            <div className="flex gap-2 pb-2 border-b-2 border-gray-100">
+            {[
+              { id: "myservices", label: "Single Service", icon: Briefcase },
+              { id: "packageservice", label: "Package Service", icon: Package },
+              { id: "reviews", label: "Reviews", icon: Heart },
+              { id: "analytics", label: "Analytics", icon: TrendingUp },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
+                    isActive
+                      ? "bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]"
+                      : "text-[#6b6b6b] hover:bg-gray-50 hover:text-[#2c353f] border-transparent"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="font-['Poppins',sans-serif] text-[14px]">
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Single Service Tab */}
       {activeTab === "myservices" && (
-        <div>
+        <div className={isServiceSectionOpen ? "flex-1 flex flex-col min-h-0" : ""}>
           {/* Show Add Service Section or Service List */}
           {isAddServiceOpen ? (
-            <AddServiceSection
-              onClose={() => setIsAddServiceOpen(false)}
-              onSave={handleAddService}
-              isPackageService={false}
-            />
+            <div className="flex-1 flex flex-col min-h-0">
+              <AddServiceSection
+                onClose={() => setIsAddServiceOpen(false)}
+                onSave={handleAddService}
+                isPackageService={false}
+              />
+            </div>
           ) : isEditServiceOpen && selectedService ? (
-            <AddServiceSection
-              onClose={() => {
-                setIsEditServiceOpen(false);
-                setSelectedService(null);
-              }}
-              onSave={handleUpdateService}
-              initialService={selectedService}
-              isPackageService={selectedService.packages && Array.isArray(selectedService.packages) && selectedService.packages.length > 0}
-            />
+            <div className="flex-1 flex flex-col min-h-0">
+              <AddServiceSection
+                onClose={() => {
+                  setIsEditServiceOpen(false);
+                  setSelectedService(null);
+                }}
+                onSave={handleUpdateService}
+                initialService={selectedService}
+                isPackageService={selectedService.packages && Array.isArray(selectedService.packages) && selectedService.packages.length > 0}
+              />
+            </div>
           ) : (
             <>
           {/* Action Bar */}
@@ -8002,24 +8014,28 @@ function ServicesSection() {
       {/* Reviews Tab */}
       {/* Package Service Tab */}
       {activeTab === "packageservice" && (
-        <div>
+        <div className={isServiceSectionOpen ? "flex-1 flex flex-col min-h-0" : ""}>
           {/* Show Add Service Section or Service List */}
           {isAddingPackageService ? (
-            <AddServiceSection
-              onClose={() => setIsAddingPackageService(false)}
-              onSave={handleAddService}
-              isPackageService={true}
-            />
+            <div className="flex-1 flex flex-col min-h-0">
+              <AddServiceSection
+                onClose={() => setIsAddingPackageService(false)}
+                onSave={handleAddService}
+                isPackageService={true}
+              />
+            </div>
           ) : isEditServiceOpen && selectedService ? (
-            <AddServiceSection
-              onClose={() => {
-                setIsEditServiceOpen(false);
-                setSelectedService(null);
-              }}
-              onSave={handleUpdateService}
-              initialService={selectedService}
-              isPackageService={true}
-            />
+            <div className="flex-1 flex flex-col min-h-0">
+              <AddServiceSection
+                onClose={() => {
+                  setIsEditServiceOpen(false);
+                  setSelectedService(null);
+                }}
+                onSave={handleUpdateService}
+                initialService={selectedService}
+                isPackageService={true}
+              />
+            </div>
           ) : (
             <>
           {/* Action Bar */}
