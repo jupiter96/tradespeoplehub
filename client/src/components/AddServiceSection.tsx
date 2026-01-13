@@ -2393,6 +2393,34 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Portfolio Section (from user profile)
+  interface PortfolioItem {
+    id?: string;
+    type?: 'image' | 'video';
+    url?: string;
+    image?: string;
+    thumbnail?: string;
+    duration?: number;
+    size?: number;
+    title?: string;
+    description?: string;
+  }
+  const [userPortfolio, setUserPortfolio] = useState<PortfolioItem[]>([]);
+  const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
+  const [newPortfolioTitle, setNewPortfolioTitle] = useState("");
+  const [newPortfolioDescription, setNewPortfolioDescription] = useState("");
+  const [newPortfolioFile, setNewPortfolioFile] = useState<File | null>(null);
+  const [newPortfolioPreview, setNewPortfolioPreview] = useState<string | null>(null);
+  const [newPortfolioType, setNewPortfolioType] = useState<'image' | 'video'>('image');
+  const [isUploadingPortfolio, setIsUploadingPortfolio] = useState(false);
+  
+  // Load user portfolio from profile
+  useEffect(() => {
+    if (userInfo?.publicProfile?.portfolio) {
+      setUserPortfolio(userInfo.publicProfile.portfolio);
+    }
+  }, [userInfo?.publicProfile?.portfolio]);
+  
   // FAQs Tab
   const [faqs, setFAQs] = useState<FAQ[]>([]);
   
@@ -2913,6 +2941,146 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     if (files && files.length > 0) {
       handleImageUpload(files);
     }
+  };
+
+  // Portfolio functions
+  const handlePortfolioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Determine type based on file
+    const isVideo = file.type.startsWith('video/');
+    setNewPortfolioType(isVideo ? 'video' : 'image');
+    setNewPortfolioFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewPortfolioPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddPortfolioItem = async () => {
+    if (!newPortfolioFile) {
+      toast.error("Please select a file to upload");
+      return;
+    }
+    if (!newPortfolioTitle.trim()) {
+      toast.error("Please enter a title");
+      return;
+    }
+
+    setIsUploadingPortfolio(true);
+    try {
+      const formData = new FormData();
+      const isVideo = newPortfolioType === 'video';
+      
+      if (isVideo) {
+        formData.append("portfolioVideo", newPortfolioFile);
+      } else {
+        formData.append("portfolioImage", newPortfolioFile);
+      }
+
+      const endpoint = isVideo 
+        ? "/api/auth/profile/portfolio/upload-video"
+        : "/api/auth/profile/portfolio/upload";
+      
+      const response = await fetch(resolveApiUrl(endpoint), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to upload file");
+      }
+
+      const data = await response.json();
+      
+      // Create new portfolio item
+      const newItem: PortfolioItem = {
+        id: `portfolio-${Date.now()}`,
+        type: newPortfolioType,
+        url: isVideo ? data.videoUrl : data.imageUrl,
+        thumbnail: isVideo ? data.thumbnail : data.imageUrl,
+        duration: isVideo ? data.duration : undefined,
+        size: isVideo ? data.size : undefined,
+        title: newPortfolioTitle.trim(),
+        description: newPortfolioDescription.trim(),
+      };
+
+      // Update local state
+      const updatedPortfolio = [...userPortfolio, newItem];
+      setUserPortfolio(updatedPortfolio);
+      
+      // Sync to user profile
+      await syncPortfolioToProfile(updatedPortfolio);
+      
+      // Reset form
+      setNewPortfolioTitle("");
+      setNewPortfolioDescription("");
+      setNewPortfolioFile(null);
+      setNewPortfolioPreview(null);
+      setNewPortfolioType('image');
+      setIsAddingPortfolio(false);
+      
+      toast.success("Portfolio item added successfully");
+    } catch (error) {
+      console.error("Error adding portfolio item:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add portfolio item");
+    } finally {
+      setIsUploadingPortfolio(false);
+    }
+  };
+
+  const handleRemovePortfolioItem = async (itemId: string) => {
+    const updatedPortfolio = userPortfolio.filter(item => item.id !== itemId);
+    setUserPortfolio(updatedPortfolio);
+    
+    // Sync to user profile
+    await syncPortfolioToProfile(updatedPortfolio);
+    toast.success("Portfolio item removed");
+  };
+
+  const syncPortfolioToProfile = async (portfolio: PortfolioItem[]) => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/auth/profile"), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          publicProfile: {
+            portfolio: portfolio,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to sync portfolio");
+      }
+      
+      console.log("Portfolio synced to profile successfully");
+    } catch (error) {
+      console.error("Error syncing portfolio:", error);
+      toast.error("Failed to sync portfolio to profile");
+    }
+  };
+
+  // Helper function to resolve portfolio media URLs
+  const resolvePortfolioUrl = (url: string | undefined): string => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    if (url.startsWith("/")) {
+      return resolveApiUrl(url);
+    }
+    return url;
   };
 
   // Tab order for navigation - conditionally include packages step
@@ -5378,7 +5546,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                        Uploaded Media ({galleryImages.length + galleryVideos.length} items - {galleryImages.length} images, {galleryVideos.length} videos)
+                        Service Gallery ({galleryImages.length + galleryVideos.length} items - {galleryImages.length} images, {galleryVideos.length} videos)
                       </p>
                       {galleryImages.length > 0 && (
                         <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
@@ -5500,6 +5668,198 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     </div>
                   </div>
                 )}
+
+                {/* Portfolio Section */}
+                <div className="border-t-2 border-gray-200 pt-6 mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] flex items-center gap-2">
+                        Your Portfolio
+                        <span className="text-[12px] font-normal text-[#6b6b6b] bg-gray-100 px-2 py-0.5 rounded-full">Optional</span>
+                      </h3>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
+                        Showcase your previous work from your profile. These items are synced with your profile portfolio.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setIsAddingPortfolio(true)}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Portfolio Item
+                    </Button>
+                  </div>
+
+                  {/* Add Portfolio Form */}
+                  {isAddingPortfolio && (
+                    <div className="bg-gray-50 rounded-xl p-5 mb-4 border-2 border-[#FE8A0F]/30">
+                      <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] mb-4">
+                        Add New Portfolio Item
+                      </h4>
+                      <div className="space-y-4">
+                        {/* File Upload */}
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            Upload Image or Video
+                          </Label>
+                          <div className="flex items-center gap-4">
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
+                              onChange={handlePortfolioFileChange}
+                              className="hidden"
+                              id="portfolio-file-input"
+                            />
+                            <label
+                              htmlFor="portfolio-file-input"
+                              className="flex-1 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-[#FE8A0F] transition-colors"
+                            >
+                              {newPortfolioPreview ? (
+                                <div className="relative">
+                                  {newPortfolioType === 'video' ? (
+                                    <video src={newPortfolioPreview} className="w-full h-32 object-cover rounded-lg" />
+                                  ) : (
+                                    <img src={newPortfolioPreview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                                  )}
+                                  <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-[10px]">
+                                    {newPortfolioType === 'video' ? 'Video' : 'Image'}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-gray-500">
+                                  <ImagePlus className="w-8 h-8 mx-auto mb-2" />
+                                  <p className="font-['Poppins',sans-serif] text-[12px]">Click to select file</p>
+                                </div>
+                              )}
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            Title <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            value={newPortfolioTitle}
+                            onChange={(e) => setNewPortfolioTitle(e.target.value)}
+                            placeholder="e.g., Kitchen Renovation Project"
+                            className="font-['Poppins',sans-serif] text-[13px]"
+                          />
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                            Description
+                          </Label>
+                          <Textarea
+                            value={newPortfolioDescription}
+                            onChange={(e) => setNewPortfolioDescription(e.target.value)}
+                            placeholder="Brief description of this work..."
+                            className="font-['Poppins',sans-serif] text-[13px] min-h-[80px]"
+                          />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsAddingPortfolio(false);
+                              setNewPortfolioFile(null);
+                              setNewPortfolioPreview(null);
+                              setNewPortfolioTitle("");
+                              setNewPortfolioDescription("");
+                            }}
+                            className="font-['Poppins',sans-serif] text-[13px]"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleAddPortfolioItem}
+                            disabled={isUploadingPortfolio || !newPortfolioFile}
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
+                          >
+                            {isUploadingPortfolio ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Item
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Portfolio Grid */}
+                  {userPortfolio.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {userPortfolio.map((item, index) => {
+                        const mediaUrl = resolvePortfolioUrl(item.url || item.image);
+                        const isVideo = item.type === 'video';
+                        
+                        return (
+                          <div
+                            key={item.id || `portfolio-${index}`}
+                            className="relative group bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-[#FE8A0F]/50 transition-all"
+                          >
+                            {isVideo ? (
+                              <video
+                                src={mediaUrl}
+                                className="w-full h-32 object-cover"
+                                preload="metadata"
+                              />
+                            ) : (
+                              <img
+                                src={mediaUrl}
+                                alt={item.title || `Portfolio ${index + 1}`}
+                                className="w-full h-32 object-cover"
+                              />
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            
+                            {/* Type Badge */}
+                            <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-medium text-white ${isVideo ? 'bg-purple-500/90' : 'bg-blue-500/90'}`}>
+                              {isVideo ? 'Video' : 'Image'}
+                            </div>
+                            
+                            {/* Remove Button */}
+                            <button
+                              onClick={() => handleRemovePortfolioItem(item.id || `portfolio-${index}`)}
+                              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                            
+                            {/* Title */}
+                            <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <p className="font-['Poppins',sans-serif] text-[11px] text-white truncate font-medium">
+                                {item.title || 'Untitled'}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50">
+                      <ImagePlus className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
+                        No portfolio items yet. Add items to showcase your previous work.
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#a0a0a0] mt-1">
+                        Portfolio items will be synced with your profile.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
 
@@ -5777,6 +6137,28 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
+            {/* Publish Changes Button - Always visible for direct submission */}
+            {!isLastTab() && (
+              <Button
+                onClick={handlePublish}
+                disabled={loading}
+                variant="outline"
+                className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif] text-[14px] disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Publish Changes
+                  </>
+                )}
+              </Button>
+            )}
+            
             {isLastTab() ? (
               <Button
                 onClick={handlePublish}

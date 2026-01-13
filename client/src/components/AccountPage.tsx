@@ -2630,11 +2630,8 @@ function BillingSection() {
   const [selectedPaymentType, setSelectedPaymentType] = useState<"card" | "paypal" | "bank">("card");
   const [expandedPaymentType, setExpandedPaymentType] = useState<"card" | "paypal" | "bank" | null>("card");
   const [amount, setAmount] = useState("20");
-  const [reference, setReference] = useState("");
   const [fullName, setFullName] = useState("");
-  const [dateOfDeposit, setDateOfDeposit] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingReference, setLoadingReference] = useState(false);
   const [fundPaymentMethods, setFundPaymentMethods] = useState<any[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [loadingMethods, setLoadingMethods] = useState(false);
@@ -2650,7 +2647,11 @@ function BillingSection() {
     paypalCommissionPercentage: 3.00,
     paypalCommissionFixed: 0.30,
     bankProcessingFeePercentage: 2.00,
+    stripeEnabled: false,
+    paypalEnabled: false,
+    manualTransferEnabled: false,
   });
+  const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(true);
   const [showBankTransferConfirmModal, setShowBankTransferConfirmModal] = useState(false);
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
@@ -2725,13 +2726,18 @@ function BillingSection() {
         const data = await response.json();
         setPublishableKey(data.publishableKey);
         setPaypalClientId(data.paypalClientId || null);
-        setPaymentSettings({
+        // Only update commission rates, preserve enabled states
+        setPaymentSettings(prev => ({
+          ...prev,
           stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
           stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
           paypalCommissionPercentage: data.paypalCommissionPercentage || 3.00,
           paypalCommissionFixed: data.paypalCommissionFixed || 0.30,
           bankProcessingFeePercentage: data.bankProcessingFeePercentage || 2.00,
-        });
+          stripeEnabled: data.stripeEnabled === true,
+          paypalEnabled: data.paypalEnabled === true,
+          manualTransferEnabled: data.manualTransferEnabled === true,
+        }));
       }
     } catch (error) {
       console.error("Error fetching publishable key:", error);
@@ -2836,15 +2842,21 @@ function BillingSection() {
     }
   };
 
-  // Fetch fund wallet data
+  // Fetch payment settings when fund section is shown
   useEffect(() => {
     if (showFundSection) {
+      console.log("[useEffect] showFundSection is true, calling fetchPaymentSettings");
       fetchPaymentSettings();
+    }
+  }, [showFundSection]);
+
+  // Fetch additional data based on selected payment type
+  useEffect(() => {
+    if (showFundSection) {
       if (selectedPaymentType === "card") {
         fetchFundPaymentMethods();
         fetchPublishableKey();
       } else if (selectedPaymentType === "bank") {
-        generateDepositReference();
         fetchBankAccountDetails();
         if (userInfo?.firstName && userInfo?.lastName) {
           setFullName(`${userInfo.firstName} ${userInfo.lastName}`);
@@ -2856,22 +2868,68 @@ function BillingSection() {
   }, [showFundSection, selectedPaymentType, userInfo]);
 
   const fetchPaymentSettings = async () => {
+    setLoadingPaymentSettings(true);
     try {
       const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
         credentials: "include",
       });
+      
+      console.log("[fetchPaymentSettings] Response status:", response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.stripeCommissionPercentage !== undefined) {
-          setPaymentSettings({
-            stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
-            stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
-            bankProcessingFeePercentage: data.bankProcessingFeePercentage || 2.00,
-          });
+        
+        console.log("[fetchPaymentSettings] Raw data:", data);
+        
+        const stripeEnabled = data.stripeEnabled === true;
+        const paypalEnabled = data.paypalEnabled === true;
+        const manualTransferEnabled = data.manualTransferEnabled === true;
+        
+        console.log("[fetchPaymentSettings] Parsed enabled states:", {
+          stripeEnabled,
+          paypalEnabled,
+          manualTransferEnabled,
+        });
+        
+        // Update publishable key and paypal client id
+        if (data.publishableKey) {
+          setPublishableKey(data.publishableKey);
         }
+        if (data.paypalClientId) {
+          setPaypalClientId(data.paypalClientId);
+        }
+        
+        const newPaymentSettings = {
+          stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
+          stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
+          bankProcessingFeePercentage: data.bankProcessingFeePercentage || 2.00,
+          paypalCommissionPercentage: data.paypalCommissionPercentage || 3.00,
+          paypalCommissionFixed: data.paypalCommissionFixed || 0.30,
+          stripeEnabled,
+          paypalEnabled,
+          manualTransferEnabled,
+        };
+        console.log("[fetchPaymentSettings] Setting paymentSettings to:", newPaymentSettings);
+        setPaymentSettings(newPaymentSettings);
+        
+        // Set default payment type to first enabled option
+        if (stripeEnabled) {
+          setSelectedPaymentType("card");
+          setExpandedPaymentType("card");
+        } else if (paypalEnabled) {
+          setSelectedPaymentType("paypal");
+          setExpandedPaymentType("paypal");
+        } else if (manualTransferEnabled) {
+          setSelectedPaymentType("bank");
+          setExpandedPaymentType("bank");
+        }
+      } else {
+        console.error("[fetchPaymentSettings] Response not ok:", await response.text());
       }
     } catch (error) {
       console.error("Error fetching payment settings:", error);
+    } finally {
+      setLoadingPaymentSettings(false);
     }
   };
 
@@ -2896,36 +2954,6 @@ function BillingSection() {
     }
   };
 
-  const generateDepositReference = async () => {
-    setLoadingReference(true);
-    try {
-      const response = await fetch(resolveApiUrl("/api/wallet/fund/manual/reference"), {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setReference(data.reference || "");
-      } else {
-        if (userInfo?.email && userInfo?.referenceId) {
-          const emailPrefix = userInfo.email.split('@')[0];
-          setReference(`${emailPrefix}-${userInfo.referenceId}`);
-        } else {
-          setReference("");
-        }
-      }
-    } catch (error) {
-      if (userInfo?.email && userInfo?.referenceId) {
-        const emailPrefix = userInfo.email.split('@')[0];
-        setReference(`${emailPrefix}-${userInfo.referenceId}`);
-      } else {
-        setReference("");
-      }
-    } finally {
-      setLoadingReference(false);
-    }
-  };
 
   const fetchFundPaymentMethods = async () => {
     setLoadingMethods(true);
@@ -3141,17 +3169,6 @@ function BillingSection() {
       return;
     }
 
-    if (!dateOfDeposit) {
-      toast.error("Please select the date of deposit");
-      return;
-    }
-
-    if (!reference || !reference.trim()) {
-      toast.error("Deposit reference is missing. Please try again.");
-      await generateDepositReference();
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch(resolveApiUrl("/api/wallet/fund/manual"), {
@@ -3162,9 +3179,7 @@ function BillingSection() {
         credentials: "include",
         body: JSON.stringify({
           amount: parseFloat(amount),
-          reference: reference.trim(),
           fullName: fullName.trim(),
-          dateOfDeposit: dateOfDeposit,
         }),
       });
 
@@ -3177,8 +3192,6 @@ function BillingSection() {
       toast.success("Transfer request submitted successfully. We will credit your wallet once we receive your payment.");
       setAmount("20");
       setFullName("");
-      setDateOfDeposit("");
-      setReference("");
       await fetchWalletBalance();
       await fetchTransactions();
       if (refreshUser) {
@@ -3254,6 +3267,21 @@ function BillingSection() {
                 Fund Your Wallet
               </h3>
               
+              {/* Debug: Log payment settings on render */}
+              {console.log("[Render] paymentSettings:", paymentSettings, "loadingPaymentSettings:", loadingPaymentSettings)}
+              
+              {/* Loading state */}
+              {loadingPaymentSettings ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F]" />
+                </div>
+              ) : !paymentSettings.stripeEnabled && !paymentSettings.paypalEnabled && !paymentSettings.manualTransferEnabled ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-800">
+                    No payment methods are currently available. Please contact support for assistance.
+                  </p>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {/* Left Section: Select Payment Method */}
                 <div className="space-y-4">
@@ -3270,6 +3298,7 @@ function BillingSection() {
                     className="space-y-4"
                   >
                     {/* Card Payment Option */}
+                    {paymentSettings.stripeEnabled && (
                     <div className="border-2 rounded-lg overflow-hidden">
                       <div
                         className={`p-4 cursor-pointer transition-all ${
@@ -3403,49 +3432,53 @@ function BillingSection() {
                         </div>
                       )}
                     </div>
+                    )}
 
                     {/* PayPal Option */}
-                    <div className="border-2 rounded-lg overflow-hidden">
-                      <div
-                        className={`p-4 cursor-pointer transition-all ${
-                          selectedPaymentType === "paypal"
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:bg-gray-50"
-                        }`}
-                        onClick={() => togglePaymentType("paypal")}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <RadioGroupItem
-                              value="paypal"
-                              id="payment-paypal"
-                              className="mt-0"
-                            />
-                            <div className="flex items-center gap-2">
-                              <PayPalLogo />
-                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                                PayPal
-                              </span>
+                    {paymentSettings.paypalEnabled && (
+                      <div className="border-2 rounded-lg overflow-hidden">
+                        <div
+                          className={`p-4 cursor-pointer transition-all ${
+                            selectedPaymentType === "paypal"
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                          onClick={() => togglePaymentType("paypal")}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <RadioGroupItem
+                                value="paypal"
+                                id="payment-paypal"
+                                className="mt-0"
+                              />
+                              <div className="flex items-center gap-2">
+                                <PayPalLogo />
+                                <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                  PayPal
+                                </span>
+                              </div>
                             </div>
+                            {expandedPaymentType === "paypal" ? (
+                              <ChevronUp className="w-5 h-5 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            )}
                           </div>
-                          {expandedPaymentType === "paypal" ? (
-                            <ChevronUp className="w-5 h-5 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-400" />
-                          )}
                         </div>
-                      </div>
 
-                      {expandedPaymentType === "paypal" && (
-                        <div className="border-t border-gray-200 p-4 bg-white">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600 mb-3">
-                            Choose your payment method below to complete your deposit.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                        {expandedPaymentType === "paypal" && (
+                          <div className="border-t border-gray-200 p-4 bg-white">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600 mb-3">
+                              Choose your payment method below to complete your deposit.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Bank Transfer Option */}
+                    {paymentSettings.manualTransferEnabled && (
                     <div className="border-2 rounded-lg overflow-hidden">
                       <div
                         className={`p-4 cursor-pointer transition-all ${
@@ -3493,6 +3526,7 @@ function BillingSection() {
                         </div>
                       )}
                     </div>
+                    )}
                   </RadioGroup>
                 </div>
 
@@ -3613,35 +3647,37 @@ function BillingSection() {
                       )}
                       
                       {/* Debit or Credit Card Button */}
-                      <Button
-                        onClick={async () => {
-                          if (!amount || parseFloat(amount) <= 0) {
-                            toast.error("Please enter a valid amount");
-                            return;
-                          }
-                          
-                          if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
-                            toast.error("Please add a payment method first");
-                            setShowAddCardModal(true);
-                            return;
-                          }
-                          
-                          // Directly trigger card payment without changing selectedPaymentType
-                          await handleStripePayment();
-                        }}
-                        disabled={loading || !amount || parseFloat(amount) <= 0 || (!selectedPaymentMethod && fundPaymentMethods.length === 0)}
-                        className="w-full bg-gray-800 hover:bg-gray-900 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold flex items-center justify-center gap-2"
-                      >
-                        <CreditCard className="w-5 h-5" />
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          `Pay with Debit or Credit Card`
-                        )}
-                      </Button>
+                      {paymentSettings.stripeEnabled && (
+                        <Button
+                          onClick={async () => {
+                            if (!amount || parseFloat(amount) <= 0) {
+                              toast.error("Please enter a valid amount");
+                              return;
+                            }
+                            
+                            if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
+                              toast.error("Please add a payment method first");
+                              setShowAddCardModal(true);
+                              return;
+                            }
+                            
+                            // Directly trigger card payment without changing selectedPaymentType
+                            await handleStripePayment();
+                          }}
+                          disabled={loading || !amount || parseFloat(amount) <= 0 || (!selectedPaymentMethod && fundPaymentMethods.length === 0)}
+                          className="w-full bg-gray-800 hover:bg-gray-900 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold flex items-center justify-center gap-2"
+                        >
+                          <CreditCard className="w-5 h-5" />
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            `Pay with Debit or Credit Card`
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     /* Confirm Button for Card and Bank Transfer */
@@ -3662,6 +3698,7 @@ function BillingSection() {
                   )}
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -3924,34 +3961,6 @@ function BillingSection() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="modal-date-of-deposit" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                  Date of deposit:
-                </Label>
-                <Input
-                  id="modal-date-of-deposit"
-                  type="date"
-                  value={dateOfDeposit}
-                  onChange={(e) => setDateOfDeposit(e.target.value)}
-                  className="mt-1 font-['Poppins',sans-serif]"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="modal-deposit-reference" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                  Deposit reference:
-                </Label>
-                <Input
-                  id="modal-deposit-reference"
-                  type="text"
-                  value={loadingReference ? "Generating..." : reference}
-                  onChange={(e) => setReference(e.target.value)}
-                  placeholder="Enter deposit reference"
-                  className="mt-1 font-['Poppins',sans-serif] bg-gray-50"
-                  readOnly
-                  disabled
-                />
-              </div>
             </div>
 
             {/* Transfer Details */}
@@ -3984,9 +3993,7 @@ function BillingSection() {
             {/* Confirmation Message */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-800">
-                <strong>Important:</strong> Please make sure you have completed the bank transfer using the information above. 
-                Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. 
-                Once you confirm, we will process your request and credit your wallet once we receive your payment.
+                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer £{calculateFees().paymentDue.toFixed(2)} using the account details above. Please make sure you have completed the bank transfer using the information above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
               </p>
             </div>
 
@@ -4001,7 +4008,7 @@ function BillingSection() {
               </Button>
               <Button
                 onClick={handleConfirmBankTransfer}
-                disabled={loading || !fullName || !dateOfDeposit || !reference}
+                disabled={loading || !fullName}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif]"
               >
                 {loading ? (
@@ -6883,6 +6890,7 @@ function ServicesSection() {
       "paused": "bg-blue-100 text-blue-700 border-blue-200",
       "inactive": "bg-gray-100 text-gray-700 border-gray-200",
       "approved": "bg-green-100 text-green-700 border-green-200",
+      "blocked": "bg-red-200 text-red-800 border-red-300",
       // Legacy support
       "Active": "bg-green-100 text-green-700 border-green-200",
       "Paused": "bg-blue-100 text-blue-700 border-blue-200",
@@ -6902,6 +6910,7 @@ function ServicesSection() {
       "paused": "Paused",
       "inactive": "Inactive",
       "approved": "Approved",
+      "blocked": "Inactive (Contact Support)",
     };
     return labels[status.toLowerCase()] || labels[status] || status || "Unknown";
   };

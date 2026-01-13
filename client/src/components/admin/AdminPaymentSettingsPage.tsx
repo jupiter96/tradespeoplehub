@@ -20,6 +20,7 @@ export default function AdminPaymentSettingsPage() {
     stripeWebhookSecret: "",
     paypalPublicKey: "",
     paypalSecretKey: "",
+    paypalEnabled: true,
     environment: "test",
     isActive: false,
     minDepositAmount: 1,
@@ -257,16 +258,27 @@ export default function AdminPaymentSettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="paypalEnabled" className="font-['Poppins',sans-serif]">
+                    Enable PayPal Payments
+                  </Label>
+                  <Switch
+                    id="paypalEnabled"
+                    checked={settings.paypalEnabled}
+                    onCheckedChange={(checked) => updateField("paypalEnabled", checked)}
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="paypalPublicKey" className="font-['Poppins',sans-serif]">
-                    PayPal Public Key
+                    PayPal Client ID
                   </Label>
                   <Input
                     id="paypalPublicKey"
                     type="text"
                     value={settings.paypalPublicKey || ""}
                     onChange={(e) => updateField("paypalPublicKey", e.target.value)}
-                    placeholder="Enter PayPal Public Key"
+                    placeholder="Enter PayPal Client ID"
                     className="mt-2 font-['Poppins',sans-serif]"
                   />
                 </div>

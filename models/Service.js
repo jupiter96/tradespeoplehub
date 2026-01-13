@@ -98,7 +98,8 @@ const serviceSchema = new mongoose.Schema(
     status: {
       type: String,
       // Unified service lifecycle status (admin + professional)
-      enum: ['draft', 'pending', 'required_modification', 'denied', 'paused', 'approved', 'inactive'],
+      // 'blocked' is used when the service owner's account is blocked by admin
+      enum: ['draft', 'pending', 'required_modification', 'denied', 'paused', 'approved', 'inactive', 'blocked'],
       default: 'draft',
       index: true,
     },
@@ -296,6 +297,14 @@ const serviceSchema = new mongoose.Schema(
     // Review date
     reviewedAt: {
       type: Date,
+    },
+    // Blocked status fields (when owner account is blocked)
+    blockedAt: {
+      type: Date,
+    },
+    blockedReason: {
+      type: String,
+      trim: true,
     },
   },
   {

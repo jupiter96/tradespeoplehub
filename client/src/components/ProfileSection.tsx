@@ -51,15 +51,34 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Separator } from "./ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent } from "./ui/card";
-import API_BASE_URL from "../config/api";
+import API_BASE_URL, { resolveApiUrl } from "../config/api";
 import { allServices } from "./servicesData";
 
 interface PortfolioItem {
   id: string;
-  image: string;
+  type?: 'image' | 'video';
+  url?: string;
+  image?: string; // Legacy support
+  thumbnail?: string;
+  duration?: number;
+  size?: number;
   title: string;
   description: string;
 }
+
+// Helper function to resolve media URLs (handles both local paths and external URLs)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  // If already a full URL, return as is
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  // If it's a local path (starts with /), resolve it with API base URL
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
 
 export default function ProfileSection() {
   const { userInfo, updateProfile, uploadAvatar } = useAccount();
@@ -84,7 +103,9 @@ export default function ProfileSection() {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [isUploadingCoverImage, setIsUploadingCoverImage] = useState(false);
   const [newPortfolioItem, setNewPortfolioItem] = useState({
-    image: "",
+    type: 'image' as 'image' | 'video',
+    url: "",
+    image: "", // Legacy support
     title: "",
     description: "",
   });
@@ -485,6 +506,9 @@ export default function ProfileSection() {
 
   const handleSave = async () => {
     try {
+      console.log('=== [ProfileSection] handleSave - Start ===');
+      console.log('[ProfileSection] Current userInfo:', userInfo);
+      
       // Preserve existing MAIN category IDs, but only allow SUBCATEGORY selection via the Skills picker.
       const categoryIdSet = new Set<string>(availableCategories.map((c: Category) => c._id));
       const existingCategoryIds = (userInfo?.services || []).filter((s: string) => categoryIdSet.has(s));
@@ -493,13 +517,16 @@ export default function ProfileSection() {
       const selectedSubCategoryIds = convertServiceNamesToIds(skills);
       const serviceIds = Array.from(new Set([...existingCategoryIds, ...selectedSubCategoryIds]));
       
-      // Include required fields from userInfo
+      console.log('[ProfileSection] Services:', {
+        existingCategoryIds,
+        selectedSubCategoryIds,
+        serviceIds
+      });
+      
+      // Include only profile edit fields
+      // Note: firstName, lastName, email, phone are excluded as they are managed in "My Details" section
+      // and require OTP verification for changes
       const profileData: any = {
-        firstName: userInfo?.firstName || "",
-        lastName: userInfo?.lastName || "",
-        email: userInfo?.email || "",
-        phone: userInfo?.phone || "",
-        postcode: userInfo?.postcode || "",
         services: serviceIds, // Save as IDs
         professionalIndemnityAmount: professionalIndemnityAmount == null ? 0 : professionalIndemnityAmount,
         insuranceExpiryDate: insuranceExpiryDate ? new Date(insuranceExpiryDate).toISOString() : undefined,
@@ -514,11 +541,17 @@ export default function ProfileSection() {
         },
       };
 
+      console.log('[ProfileSection] Profile data to send:', profileData);
+      console.log('[ProfileSection] Portfolio items count:', portfolio.length);
+      console.log('[ProfileSection] Portfolio items:', portfolio);
+
       await updateProfile(profileData);
+      
+      console.log('[ProfileSection] Profile update successful');
       setIsEditing(false);
       toast.success("Profile updated successfully");
     } catch (error) {
-      // console.error("Error updating profile:", error);
+      console.error('[ProfileSection] Error updating profile:', error);
       toast.error("Failed to update profile");
     }
   };
@@ -608,40 +641,103 @@ export default function ProfileSection() {
     }
   };
 
+  const handlePortfolioVideoUpload = async (file: File) => {
+    // Validate file type
+    const allowedTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Unsupported file type. Please upload MP4, MPEG, MOV, AVI, or WEBM video.");
+      return null;
+    }
+
+    // Validate file size (50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Video size must be less than 50MB");
+      return null;
+    }
+
+    setIsUploadingPortfolioImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("portfolioVideo", file);
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile/portfolio/upload-video`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload video");
+      }
+
+      const data = await response.json();
+      return {
+        videoUrl: data.videoUrl,
+        thumbnail: data.thumbnail,
+        duration: data.duration,
+        size: data.size,
+      };
+    } catch (error) {
+      // console.error("Upload error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload video");
+      return null;
+    } finally {
+      setIsUploadingPortfolioImage(false);
+    }
+  };
+
   const handleAddPortfolioItem = async () => {
     if (!newPortfolioItem.title) {
       toast.error("Please fill in the title");
       return;
     }
 
-    let imageUrl = newPortfolioItem.image;
+    let mediaUrl = newPortfolioItem.url || newPortfolioItem.image;
+    let mediaData: any = {};
 
     // If file is selected, upload it first
     if (portfolioInputType === "file" && portfolioImageFile) {
-      const uploadedUrl = await handlePortfolioImageUpload(portfolioImageFile);
-      if (!uploadedUrl) {
-        return; // Error already shown in handlePortfolioImageUpload
+      if (newPortfolioItem.type === 'video') {
+        const uploadedData = await handlePortfolioVideoUpload(portfolioImageFile);
+        if (!uploadedData) {
+          return; // Error already shown
+        }
+        mediaUrl = uploadedData.videoUrl;
+        mediaData = {
+          thumbnail: uploadedData.thumbnail,
+          duration: uploadedData.duration,
+          size: uploadedData.size,
+        };
+      } else {
+        const uploadedUrl = await handlePortfolioImageUpload(portfolioImageFile);
+        if (!uploadedUrl) {
+          return; // Error already shown
+        }
+        mediaUrl = uploadedUrl;
       }
-      imageUrl = uploadedUrl;
-    } else if (portfolioInputType === "link" && !newPortfolioItem.image) {
-      toast.error("Please provide an image URL or upload a file");
+    } else if (portfolioInputType === "link" && !mediaUrl) {
+      toast.error("Please provide a media URL or upload a file");
       return;
     }
 
-    if (!imageUrl) {
-      toast.error("Please provide an image URL or upload a file");
+    if (!mediaUrl) {
+      toast.error("Please provide a media URL or upload a file");
       return;
     }
 
     const newItem: PortfolioItem = {
       id: `portfolio-${Date.now()}`,
-      image: imageUrl,
+      type: newPortfolioItem.type,
+      url: mediaUrl,
+      image: newPortfolioItem.type === 'image' ? mediaUrl : undefined, // Legacy support
+      ...mediaData,
       title: newPortfolioItem.title,
       description: newPortfolioItem.description,
     };
 
     setPortfolio([...portfolio, newItem]);
-    setNewPortfolioItem({ image: "", title: "", description: "" });
+    setNewPortfolioItem({ type: 'image', url: "", image: "", title: "", description: "" });
     setPortfolioImageFile(null);
     setPortfolioImagePreview(null);
     setIsAddingPortfolio(false);
@@ -655,47 +751,73 @@ export default function ProfileSection() {
 
   const handleEditPortfolioItem = (item: PortfolioItem) => {
     setEditingPortfolioId(item.id);
+    const rawMediaUrl = item.url || item.image || "";
+    const mediaUrl = resolveMediaUrl(rawMediaUrl);
     setNewPortfolioItem({
-      image: item.image,
+      type: item.type || 'image',
+      url: rawMediaUrl, // Keep original URL for saving
+      image: rawMediaUrl,
       title: item.title,
       description: item.description,
     });
     setPortfolioImageFile(null);
-    setPortfolioImagePreview(null);
-    setPortfolioInputType(item.image.startsWith("http") ? "link" : "file");
+    setPortfolioImagePreview(item.type === 'video' ? resolveMediaUrl(item.thumbnail || rawMediaUrl) : mediaUrl);
+    setPortfolioInputType(rawMediaUrl.startsWith("http") ? "link" : "file");
     setIsAddingPortfolio(true);
   };
 
   const handleUpdatePortfolioItem = async () => {
     if (!editingPortfolioId) return;
 
-    let imageUrl = newPortfolioItem.image;
+    let mediaUrl = newPortfolioItem.url || newPortfolioItem.image;
+    let mediaData: any = {};
 
     // If file is selected, upload it first
     if (portfolioInputType === "file" && portfolioImageFile) {
-      const uploadedUrl = await handlePortfolioImageUpload(portfolioImageFile);
-      if (!uploadedUrl) {
-        return; // Error already shown in handlePortfolioImageUpload
+      if (newPortfolioItem.type === 'video') {
+        const uploadedData = await handlePortfolioVideoUpload(portfolioImageFile);
+        if (!uploadedData) {
+          return; // Error already shown
+        }
+        mediaUrl = uploadedData.videoUrl;
+        mediaData = {
+          thumbnail: uploadedData.thumbnail,
+          duration: uploadedData.duration,
+          size: uploadedData.size,
+        };
+      } else {
+        const uploadedUrl = await handlePortfolioImageUpload(portfolioImageFile);
+        if (!uploadedUrl) {
+          return; // Error already shown
+        }
+        mediaUrl = uploadedUrl;
       }
-      imageUrl = uploadedUrl;
-    } else if (portfolioInputType === "link" && !newPortfolioItem.image) {
-      toast.error("Please provide an image URL or upload a file");
+    } else if (portfolioInputType === "link" && !mediaUrl) {
+      toast.error("Please provide a media URL or upload a file");
       return;
     }
 
-    if (!imageUrl) {
-      toast.error("Please provide an image URL or upload a file");
+    if (!mediaUrl) {
+      toast.error("Please provide a media URL or upload a file");
       return;
     }
 
     setPortfolio(portfolio.map(item =>
       item.id === editingPortfolioId
-        ? { ...item, image: imageUrl, title: newPortfolioItem.title, description: newPortfolioItem.description }
+        ? { 
+            ...item, 
+            type: newPortfolioItem.type,
+            url: mediaUrl,
+            image: newPortfolioItem.type === 'image' ? mediaUrl : undefined,
+            ...mediaData,
+            title: newPortfolioItem.title, 
+            description: newPortfolioItem.description 
+          }
         : item
     ));
 
     setEditingPortfolioId(null);
-    setNewPortfolioItem({ image: "", title: "", description: "" });
+    setNewPortfolioItem({ type: 'image', url: "", image: "", title: "", description: "" });
     setPortfolioImageFile(null);
     setPortfolioImagePreview(null);
     setIsAddingPortfolio(false);
@@ -1295,11 +1417,11 @@ export default function ProfileSection() {
         <div className="flex justify-between items-center mb-4">
           <Label className="text-[#FE8A0F] font-semibold">Portfolio</Label>
           {isEditing && (
-            <Button
+              <Button
               onClick={() => {
                 setIsAddingPortfolio(true);
                 setEditingPortfolioId(null);
-                setNewPortfolioItem({ image: "", title: "", description: "" });
+                setNewPortfolioItem({ type: 'image', url: "", image: "", title: "", description: "" });
               }}
               variant="outline"
               size="sm"
@@ -1314,12 +1436,49 @@ export default function ProfileSection() {
         {isAddingPortfolio && (
           <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="space-y-4">
-              {/* Image Source Tabs */}
+              {/* Media Type Selection */}
               <div>
-                <Label className="text-black dark:text-white mb-2 block">Image Source</Label>
+                <Label className="text-black dark:text-white mb-2 block">Media Type</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={newPortfolioItem.type === 'image'}
+                      onChange={() => {
+                        setNewPortfolioItem({ ...newPortfolioItem, type: 'image' });
+                        setPortfolioImageFile(null);
+                        setPortfolioImagePreview(null);
+                      }}
+                      className="w-4 h-4 text-[#FE8A0F]"
+                    />
+                    <ImageIcon className="w-4 h-4 text-[#FE8A0F]" />
+                    <span className="text-black dark:text-white">Image</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={newPortfolioItem.type === 'video'}
+                      onChange={() => {
+                        setNewPortfolioItem({ ...newPortfolioItem, type: 'video' });
+                        setPortfolioImageFile(null);
+                        setPortfolioImagePreview(null);
+                      }}
+                      className="w-4 h-4 text-[#FE8A0F]"
+                    />
+                    <Upload className="w-4 h-4 text-[#FE8A0F]" />
+                    <span className="text-black dark:text-white">Video</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Media Source Tabs */}
+              <div>
+                <Label className="text-black dark:text-white mb-2 block">
+                  {newPortfolioItem.type === 'video' ? 'Video' : 'Image'} Source
+                </Label>
                 <Tabs value={portfolioInputType} onValueChange={(value) => {
                   setPortfolioInputType(value as "file" | "link");
-                  setNewPortfolioItem({ ...newPortfolioItem, image: "" });
+                  setNewPortfolioItem({ ...newPortfolioItem, url: "", image: "" });
                   setPortfolioImageFile(null);
                   setPortfolioImagePreview(null);
                 }}>
@@ -1336,46 +1495,66 @@ export default function ProfileSection() {
                       className="data-[state=active]:bg-[#FE8A0F] data-[state=active]:text-white"
                     >
                       <LinkIcon className="w-4 h-4 mr-2" />
-                      Image URL
+                      {newPortfolioItem.type === 'video' ? 'Video' : 'Image'} URL
                     </TabsTrigger>
                   </TabsList>
 
                   {/* File Upload Tab */}
                   <TabsContent value="file" className="mt-4">
                     <div>
-                      <Label className="text-black dark:text-white">Upload Image</Label>
+                      <Label className="text-black dark:text-white">
+                        Upload {newPortfolioItem.type === 'video' ? 'Video' : 'Image'}
+                      </Label>
                       <div className="mt-1">
                         <input
                           type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          accept={newPortfolioItem.type === 'video' 
+                            ? 'video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm'
+                            : 'image/png,image/jpeg,image/jpg,image/gif,image/webp'
+                          }
                           className="hidden"
-                          id="portfolio-image-upload"
+                          id="portfolio-media-upload"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
                               setPortfolioImageFile(file);
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setPortfolioImagePreview(reader.result as string);
-                              };
-                              reader.readAsDataURL(file);
+                              if (newPortfolioItem.type === 'image') {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setPortfolioImagePreview(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              } else {
+                                // For video, show a placeholder
+                                const videoUrl = URL.createObjectURL(file);
+                                setPortfolioImagePreview(videoUrl);
+                              }
                             }
                           }}
                         />
                         <label
-                          htmlFor="portfolio-image-upload"
+                          htmlFor="portfolio-media-upload"
                           className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#FE8A0F] rounded-lg cursor-pointer hover:bg-[#FE8A0F]/5 transition-colors"
                         >
                           {portfolioImagePreview ? (
                             <div className="relative w-full h-full">
-                              <img
-                                src={portfolioImagePreview}
-                                alt="Preview"
-                                className="w-full h-32 object-cover rounded-lg"
-                              />
+                              {newPortfolioItem.type === 'video' ? (
+                                <video
+                                  src={portfolioImagePreview}
+                                  className="w-full h-32 object-cover rounded-lg"
+                                  controls
+                                />
+                              ) : (
+                                <img
+                                  src={portfolioImagePreview}
+                                  alt="Preview"
+                                  className="w-full h-32 object-cover rounded-lg"
+                                />
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => {
+                                  e.preventDefault();
                                   e.stopPropagation();
                                   setPortfolioImageFile(null);
                                   setPortfolioImagePreview(null);
@@ -1389,10 +1568,13 @@ export default function ProfileSection() {
                             <>
                               <Upload className="w-8 h-8 text-[#FE8A0F] mb-2" />
                               <span className="text-sm text-black dark:text-white">
-                                Click to upload image
+                                Click to upload {newPortfolioItem.type === 'video' ? 'video' : 'image'}
                               </span>
                               <span className="text-xs text-gray-500 mt-1">
-                                PNG, JPG, GIF, WEBP (max 5MB)
+                                {newPortfolioItem.type === 'video' 
+                                  ? 'MP4, MPEG, MOV, AVI, WEBM (max 50MB)'
+                                  : 'PNG, JPG, GIF, WEBP (max 5MB)'
+                                }
                               </span>
                             </>
                           )}
@@ -1401,26 +1583,39 @@ export default function ProfileSection() {
                     </div>
                   </TabsContent>
 
-                  {/* Image URL Tab */}
+                  {/* Media URL Tab */}
                   <TabsContent value="link" className="mt-4">
                     <div>
-                      <Label className="text-black dark:text-white">Image URL</Label>
+                      <Label className="text-black dark:text-white">
+                        {newPortfolioItem.type === 'video' ? 'Video' : 'Image'} URL
+                      </Label>
                       <Input
-                        value={newPortfolioItem.image}
-                        onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, image: e.target.value })}
-                        placeholder="https://gmail.com/image.jpg"
+                        value={newPortfolioItem.url || newPortfolioItem.image}
+                        onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, url: e.target.value, image: e.target.value })}
+                        placeholder={newPortfolioItem.type === 'video' ? 'https://example.com/video.mp4' : 'https://example.com/image.jpg'}
                         className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
                       />
-                      {newPortfolioItem.image && (
+                      {(newPortfolioItem.url || newPortfolioItem.image) && (
                         <div className="mt-2">
-                          <img
-                            src={newPortfolioItem.image}
-                            alt="Preview"
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
-                          />
+                          {newPortfolioItem.type === 'video' ? (
+                            <video
+                              src={newPortfolioItem.url || newPortfolioItem.image}
+                              className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                              controls
+                              onError={(e) => {
+                                (e.target as HTMLVideoElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <img
+                              src={newPortfolioItem.url || newPortfolioItem.image}
+                              alt="Preview"
+                              className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          )}
                         </div>
                       )}
                     </div>
@@ -1466,7 +1661,7 @@ export default function ProfileSection() {
                   onClick={() => {
                     setIsAddingPortfolio(false);
                     setEditingPortfolioId(null);
-                    setNewPortfolioItem({ image: "", title: "", description: "" });
+                    setNewPortfolioItem({ type: 'image', url: "", image: "", title: "", description: "" });
                     setPortfolioImageFile(null);
                     setPortfolioImagePreview(null);
                   }}
@@ -1485,16 +1680,34 @@ export default function ProfileSection() {
               No portfolio items yet. {isEditing && "Click 'Add Item' to add your work."}
             </div>
           ) : (
-            portfolio.map((item) => (
+            portfolio.map((item, index) => {
+              const mediaUrl = resolveMediaUrl(item.url || item.image);
+              const isVideo = item.type === 'video';
+              
+              return (
               <div
-                key={item.id}
+                key={item.id || `portfolio-item-${index}`}
                 className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
               >
-                <ImageWithFallback
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-48 object-cover"
-                />
+                {isVideo ? (
+                  <div className="relative w-full h-48 bg-black">
+                    <video
+                      src={mediaUrl}
+                      className="w-full h-48 object-cover"
+                      controls
+                      preload="metadata"
+                    />
+                    <div className="absolute top-2 left-2 bg-purple-500/90 text-white px-2 py-1 rounded-md text-xs font-medium">
+                      Video
+                    </div>
+                  </div>
+                ) : (
+                  <ImageWithFallback
+                    src={mediaUrl}
+                    alt={item.title}
+                    className="w-full h-48 object-cover"
+                  />
+                )}
                 <div className="p-4">
                   <h4 className="font-semibold text-black dark:text-white mb-1">{item.title}</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
@@ -1524,7 +1737,7 @@ export default function ProfileSection() {
                   )}
                 </div>
               </div>
-            ))
+            );})
           )}
         </div>
       </div>
@@ -1781,16 +1994,34 @@ export default function ProfileSection() {
                           Portfolio
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                          {portfolio.length > 0 ? portfolio.map((item, index) => (
+                          {portfolio.length > 0 ? portfolio.map((item, index) => {
+                            const mediaUrl = resolveMediaUrl(item.url || item.image);
+                            const isVideo = item.type === 'video';
+                            
+                            return (
                             <div
                               key={item.id || index}
                               className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
                             >
-                              <ImageWithFallback
-                                src={item.image}
-                                alt={item.title}
-                                className="w-full h-32 md:h-48 object-cover"
-                              />
+                              {isVideo ? (
+                                <div className="relative w-full h-32 md:h-48 bg-black">
+                                  <video
+                                    src={mediaUrl}
+                                    className="w-full h-32 md:h-48 object-cover"
+                                    controls
+                                    preload="metadata"
+                                  />
+                                  <div className="absolute top-2 left-2 bg-purple-500/90 text-white px-2 py-1 rounded-md text-xs font-medium">
+                                    Video
+                                  </div>
+                                </div>
+                              ) : (
+                                <ImageWithFallback
+                                  src={mediaUrl}
+                                  alt={item.title}
+                                  className="w-full h-32 md:h-48 object-cover"
+                                />
+                              )}
                               <div className="p-3 md:p-4">
                                 <h4 className="text-[#003D82] font-semibold mb-1 md:mb-2 text-[13px] md:text-[15px]">
                                   {item.title}
@@ -1800,7 +2031,7 @@ export default function ProfileSection() {
                                 </p>
                               </div>
                             </div>
-                          )) : (
+                          )}) : (
                             <p className="text-gray-500 text-center py-6 md:py-8 col-span-2 text-[13px] md:text-[14px]">No portfolio items available yet.</p>
                           )}
                         </div>

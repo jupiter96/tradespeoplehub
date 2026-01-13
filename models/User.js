@@ -363,6 +363,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Store previous service statuses when user is blocked (for restoration when unblocked)
+    previousServiceStatuses: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     blockReviewInvitation: {
       type: Boolean,
       default: false,
@@ -414,9 +419,29 @@ const userSchema = new mongoose.Schema(
         trim: true,
       },
       portfolio: [{
+        type: {
+          type: String,
+          enum: ['image', 'video'],
+          default: 'image',
+        },
+        url: {
+          type: String,
+          trim: true,
+        },
+        // Legacy field for backwards compatibility
         image: {
           type: String,
           trim: true,
+        },
+        thumbnail: {
+          type: String,
+          trim: true,
+        },
+        duration: {
+          type: Number, // in seconds, for videos
+        },
+        size: {
+          type: Number, // in bytes
         },
         title: {
           type: String,

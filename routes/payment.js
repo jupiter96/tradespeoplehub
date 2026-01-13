@@ -9,39 +9,53 @@ import paypal from '@paypal/checkout-server-sdk';
 
 const router = express.Router();
 
-// Get publishable key (for clients to add payment methods)
+// Get payment settings (for clients to see available payment methods)
 router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
     
-    // Check if Stripe is configured
-    if (!settings.stripePublishableKey) {
-      return res.status(400).json({ 
-        error: 'Stripe is not configured',
-        details: 'Stripe publishable key is missing. Please configure it in admin payment settings.'
-      });
-    }
+    console.log('[Payment Settings] Raw settings:', {
+      isActive: settings.isActive,
+      isActiveType: typeof settings.isActive,
+      paypalEnabled: settings.paypalEnabled,
+      paypalEnabledType: typeof settings.paypalEnabled,
+      manualTransferEnabled: settings.manualTransferEnabled,
+      manualTransferEnabledType: typeof settings.manualTransferEnabled,
+      stripePublishableKey: settings.stripePublishableKey ? 'SET' : 'NOT SET',
+      paypalPublicKey: settings.paypalPublicKey ? 'SET' : 'NOT SET',
+    });
     
-    if (!settings.isActive) {
-      return res.status(400).json({ 
-        error: 'Stripe is not active',
-        details: 'Stripe payment is disabled. Please enable it in admin payment settings.'
-      });
-    }
-    
-    res.json({ 
-      publishableKey: settings.stripePublishableKey,
-      paypalClientId: settings.paypalPublicKey, // PayPal uses Client ID as public key
-      bankAccountDetails: settings.bankAccountDetails || {},
+    // Return all payment settings - each payment method enabled based on toggle only
+    // Handle both boolean true and truthy values (in case stored as string)
+    const response = { 
+      // Stripe settings
+      publishableKey: settings.stripePublishableKey || null,
+      stripeEnabled: Boolean(settings.isActive),
       stripeCommissionPercentage: settings.stripeCommissionPercentage || 1.55,
       stripeCommissionFixed: settings.stripeCommissionFixed || 0.29,
+      
+      // PayPal settings
+      paypalClientId: settings.paypalPublicKey || null,
+      paypalEnabled: Boolean(settings.paypalEnabled),
       paypalCommissionPercentage: settings.paypalCommissionPercentage || 3.00,
       paypalCommissionFixed: settings.paypalCommissionFixed || 0.30,
+      
+      // Bank Transfer settings
+      bankAccountDetails: settings.bankAccountDetails || {},
+      manualTransferEnabled: Boolean(settings.manualTransferEnabled),
       bankProcessingFeePercentage: settings.bankProcessingFeePercentage || 2.00,
+    };
+    
+    console.log('[Payment Settings] Response:', {
+      stripeEnabled: response.stripeEnabled,
+      paypalEnabled: response.paypalEnabled,
+      manualTransferEnabled: response.manualTransferEnabled,
     });
+    
+    res.json(response);
   } catch (error) {
-    console.error('Error fetching publishable key:', error);
-    res.status(500).json({ error: 'Failed to fetch publishable key' });
+    console.error('Error fetching payment settings:', error);
+    res.status(500).json({ error: 'Failed to fetch payment settings' });
   }
 });
 
@@ -602,22 +616,14 @@ router.get('/wallet/fund/manual/reference', authenticateToken, async (req, res) 
 // Create manual transfer request
 router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
   try {
-    const { amount, reference, fullName, dateOfDeposit } = req.body;
+    const { amount, fullName } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
     }
-    
-    if (!reference || !reference.trim()) {
-      return res.status(400).json({ error: 'Deposit reference is required' });
-    }
 
     if (!fullName || !fullName.trim()) {
       return res.status(400).json({ error: 'Full name is required' });
-    }
-
-    if (!dateOfDeposit) {
-      return res.status(400).json({ error: 'Date of deposit is required' });
     }
     
     const settings = await PaymentSettings.getSettings();
@@ -654,9 +660,7 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
         depositAmount: depositAmount, // Amount to be deposited to user balance
         fee: fee, // Fee taken by platform (separate)
         feePercentage: bankProcessingFeePercentage,
-        reference: reference.trim(),
         fullName: fullName.trim(),
-        dateOfDeposit: dateOfDeposit,
       },
     });
     await transaction.save();
@@ -675,7 +679,7 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
             depositAmount: depositAmount.toFixed(2),
             fee: fee.toFixed(2),
             totalAmount: totalAmount.toFixed(2),
-            referenceNumber: reference.trim(),
+            referenceNumber: user.referenceId || 'N/A',
             requestDate: new Date().toLocaleDateString('en-GB', { 
               year: 'numeric', 
               month: 'long', 
@@ -1116,8 +1120,7 @@ router.get('/admin/bank-transfer-requests', authenticateToken, requireRole(['adm
         userAmount: depositAmount, // Amount deposited to user balance
         city: t.userId?.townCity || '',
         bankAccountName: t.metadata?.fullName || '',
-        dateOfDeposit: t.metadata?.dateOfDeposit || '',
-        referenceNumber: t.metadata?.reference || '',
+        referenceNumber: t.userId?.referenceId || '',
         status: t.status,
         createdAt: t.createdAt,
         processedBy: t.processedBy ? {

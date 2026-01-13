@@ -2855,12 +2855,28 @@ router.post('/profile/verify-otp', requireAuth, async (req, res) => {
 
 router.put('/profile', requireAuth, async (req, res) => {
   try {
+    console.log('=== [Backend] PUT /profile - Start ===');
+    console.log('[Backend] Session userId:', req.session.userId);
+    
     const user = await User.findById(req.session.userId);
     if (!user) {
+      console.log('[Backend] User not found for session userId:', req.session.userId);
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
+    console.log('[Backend] Current user:', {
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role
+    });
+
     const body = req.body || {};
+    console.log('[Backend] Request body:', body);
+    console.log('[Backend] Request body.publicProfile:', body.publicProfile);
+    console.log('[Backend] Request body.publicProfile.portfolio:', body.publicProfile?.portfolio);
+    
     const {
       firstName,
       lastName,
@@ -2886,13 +2902,31 @@ router.put('/profile', requireAuth, async (req, res) => {
     // - Validate required fields ONLY if the client is trying to set them.
     const hasField = (key) => Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined && body[key] !== null;
 
+    console.log('[Backend] Checking firstName field:', {
+      hasFirstName: hasField('firstName'),
+      firstName: firstName,
+      currentFirstName: user.firstName,
+      isChanged: hasField('firstName') && String(firstName).trim() !== user.firstName
+    });
+    
+    console.log('[Backend] Checking lastName field:', {
+      hasLastName: hasField('lastName'),
+      lastName: lastName,
+      currentLastName: user.lastName,
+      isChanged: hasField('lastName') && String(lastName).trim() !== user.lastName
+    });
+
     // First name and last name cannot be changed after registration
     if (hasField('firstName') && String(firstName).trim() !== user.firstName) {
+      console.log('[Backend] ❌ First name change detected - returning 403');
       return res.status(403).json({ error: 'First name cannot be changed after registration' });
     }
     if (hasField('lastName') && String(lastName).trim() !== user.lastName) {
+      console.log('[Backend] ❌ Last name change detected - returning 403');
       return res.status(403).json({ error: 'Last name cannot be changed after registration' });
     }
+    
+    console.log('[Backend] ✅ First name and last name validation passed');
     if (hasField('postcode') && !String(postcode).trim()) {
       return res.status(400).json({ error: 'Postcode is required' });
     }
@@ -3119,17 +3153,28 @@ router.put('/profile', requireAuth, async (req, res) => {
 
       // Update public profile if provided
       if (req.body.publicProfile) {
+        console.log('[Backend] Updating public profile...');
+        console.log('[Backend] Received publicProfile data:', req.body.publicProfile);
+        
         if (!user.publicProfile) {
+          console.log('[Backend] Creating new publicProfile object');
           user.publicProfile = {};
         }
+        
         if (req.body.publicProfile.bio !== undefined) {
           user.publicProfile.bio = req.body.publicProfile.bio?.trim() || undefined;
+          console.log('[Backend] Updated bio:', user.publicProfile.bio?.substring(0, 50) + '...');
         }
         if (req.body.publicProfile.coverImage !== undefined) {
           user.publicProfile.coverImage = req.body.publicProfile.coverImage?.trim() || undefined;
+          console.log('[Backend] Updated coverImage:', user.publicProfile.coverImage);
         }
         if (req.body.publicProfile.portfolio !== undefined) {
+          console.log('[Backend] Updating portfolio...');
+          console.log('[Backend] Received portfolio items:', req.body.publicProfile.portfolio.length);
+          console.log('[Backend] Portfolio items:', req.body.publicProfile.portfolio);
           user.publicProfile.portfolio = req.body.publicProfile.portfolio || [];
+          console.log('[Backend] Portfolio updated. New count:', user.publicProfile.portfolio.length);
         }
         // publicProfileUrl is no longer used - profiles are accessed by user ID only
         // Keeping this for backward compatibility but it won't be used
@@ -3138,15 +3183,19 @@ router.put('/profile', requireAuth, async (req, res) => {
         }
         if (req.body.publicProfile.isPublic !== undefined) {
           user.publicProfile.isPublic = req.body.publicProfile.isPublic;
+          console.log('[Backend] Updated isPublic:', user.publicProfile.isPublic);
         }
         if (req.body.publicProfile.qualifications !== undefined) {
           user.publicProfile.qualifications = req.body.publicProfile.qualifications?.trim() || undefined;
+          console.log('[Backend] Updated qualifications');
         }
         if (req.body.publicProfile.certifications !== undefined) {
           user.publicProfile.certifications = req.body.publicProfile.certifications?.trim() || undefined;
+          console.log('[Backend] Updated certifications');
         }
         if (req.body.publicProfile.companyDetails !== undefined) {
           user.publicProfile.companyDetails = req.body.publicProfile.companyDetails?.trim() || undefined;
+          console.log('[Backend] Updated companyDetails');
         }
       }
     } else {
@@ -3165,10 +3214,22 @@ router.put('/profile', requireAuth, async (req, res) => {
       user.hasPublicLiability = 'no';
     }
 
+    console.log('[Backend] Saving user to database...');
+    console.log('[Backend] User.publicProfile.portfolio before save:', user.publicProfile?.portfolio?.length || 0);
+    
     await user.save();
-    return res.json({ user: sanitizeUser(user) });
+    
+    console.log('[Backend] User saved successfully');
+    console.log('[Backend] User.publicProfile.portfolio after save:', user.publicProfile?.portfolio?.length || 0);
+    
+    const sanitizedUser = sanitizeUser(user);
+    console.log('[Backend] Sanitized user.publicProfile.portfolio:', sanitizedUser.publicProfile?.portfolio?.length || 0);
+    console.log('[Backend] Returning response with user data');
+    
+    return res.json({ user: sanitizedUser });
   } catch (error) {
-    // console.error('Profile update error', error);
+    console.error('[Backend] ❌ Profile update error:', error);
+    console.error('[Backend] Error stack:', error.stack);
     return res.status(500).json({ error: 'Failed to update profile' });
   }
 });
@@ -3334,18 +3395,48 @@ router.delete('/profile', async (req, res) => {
   }
 });
 
-// Upload portfolio image
-router.post('/profile/portfolio/upload', requireAuth, multer({ storage: multer.memoryStorage() }).single('portfolioImage'), async (req, res) => {
-  try {
-    // Check if Cloudinary is configured
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-      return res.status(500).json({ 
-        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-      });
-    }
+// Portfolio image/video upload - Local storage
+const portfolioDir = path.join(__dirname, '..', 'uploads', 'portfolio');
+// Create portfolio directory if it doesn't exist
+fs.mkdir(portfolioDir, { recursive: true }).catch(() => {});
 
+const portfolioStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, portfolioDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const portfolioUpload = multer({
+  storage: portfolioStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images (PNG, JPG, GIF, WEBP) and videos (MP4, MPEG, MOV, AVI, WEBM) are allowed.'));
+    }
+  }
+});
+
+// Upload portfolio image
+router.post('/profile/portfolio/upload', requireAuth, portfolioUpload.single('portfolioImage'), async (req, res) => {
+  try {
     const user = await User.findById(req.session.userId);
     if (!user) {
+      if (req.file && req.file.path) {
+        fs.unlink(req.file.path).catch(err => console.error('Error deleting file:', err));
+      }
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
@@ -3356,37 +3447,74 @@ router.post('/profile/portfolio/upload', requireAuth, multer({ storage: multer.m
     // Validate file type
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(req.file.mimetype)) {
+      fs.unlink(req.file.path).catch(() => {});
       return res.status(400).json({ error: 'Invalid file type. Only PNG, JPG, GIF, and WEBP are allowed.' });
     }
 
-    // Validate file size (5MB)
+    // Validate file size (5MB for images)
     if (req.file.size > 5 * 1024 * 1024) {
+      fs.unlink(req.file.path).catch(() => {});
       return res.status(400).json({ error: 'File size must be less than 5MB' });
     }
 
-    // Upload to Cloudinary
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: `portfolio/${user._id}`,
-          resource_type: 'image',
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(req.file.buffer);
-    });
-
-    return res.json({ imageUrl: uploadResult.secure_url });
+    const imageUrl = `/uploads/portfolio/${req.file.filename}`;
+    return res.json({ imageUrl });
   } catch (error) {
-    // console.error('Portfolio image upload error', error);
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path).catch(() => {});
+    }
     return res.status(500).json({ error: 'Failed to upload portfolio image' });
   }
 });
 
-// Upload portfolio video - Local storage (same as chat attachments)
+// Upload portfolio video
+router.post('/profile/portfolio/upload-video', requireAuth, portfolioUpload.single('portfolioVideo'), async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      if (req.file && req.file.path) {
+        fs.unlink(req.file.path).catch(err => console.error('Error deleting file:', err));
+      }
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      fs.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: 'Invalid file type. Only MP4, MPEG, MOV, AVI, and WEBM are allowed.' });
+    }
+
+    // Validate file size (50MB for videos)
+    if (req.file.size > 50 * 1024 * 1024) {
+      fs.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: 'File size must be less than 50MB' });
+    }
+
+    const videoUrl = `/uploads/portfolio/${req.file.filename}`;
+    const thumbnail = videoUrl; // Use video itself as thumbnail for now
+    const duration = 0; // Would need video processing library to extract
+    const size = req.file.size;
+
+    return res.json({ 
+      videoUrl, 
+      thumbnail,
+      duration,
+      size
+    });
+  } catch (error) {
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path).catch(() => {});
+    }
+    return res.status(500).json({ error: 'Failed to upload portfolio video' });
+  }
+});
+
+// Service video upload - Local storage (for service gallery)
 const videosDir = path.join(__dirname, '..', 'uploads', 'videos');
 // Create videos directory if it doesn't exist
 fs.mkdir(videosDir, { recursive: true }).catch(() => {
@@ -3420,7 +3548,8 @@ const videoUpload = multer({
   }
 });
 
-router.post('/profile/portfolio/upload-video', requireAuth, videoUpload.single('portfolioVideo'), async (req, res) => {
+// Service video upload endpoint (for service gallery, not portfolio)
+router.post('/profile/service/upload-video', requireAuth, videoUpload.single('portfolioVideo'), async (req, res) => {
   console.log('=== Video Upload Request Started ===');
   console.log('User ID:', req.session?.userId);
   console.log('File received:', req.file ? 'Yes' : 'No');

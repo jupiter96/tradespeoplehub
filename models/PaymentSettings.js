@@ -25,6 +25,10 @@ const paymentSettingsSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    paypalEnabled: {
+      type: Boolean,
+      default: true,
+    },
     
     // Environment (test or live)
     environment: {

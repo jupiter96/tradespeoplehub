@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle, X } from "lucide-react@0.487.0";
+import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle, X, Play } from "lucide-react@0.487.0";
 import { toast } from "sonner@2.0.3";
 import BookingModal from "./BookingModal";
 import AddToCartModal from "./AddToCartModal";
@@ -327,6 +327,17 @@ export default function ServiceDetailPage() {
             providerImage: typeof s.professional === 'object' 
               ? s.professional.avatar || ""
               : "",
+            providerPortfolio: (() => {
+              console.log('[ServiceDetailPage] Processing providerPortfolio...');
+              console.log('[ServiceDetailPage] s.professional:', s.professional);
+              console.log('[ServiceDetailPage] s.professional.publicProfile:', s.professional?.publicProfile);
+              console.log('[ServiceDetailPage] s.professional.publicProfile.portfolio:', s.professional?.publicProfile?.portfolio);
+              const portfolio = typeof s.professional === 'object'
+                ? (s.professional.publicProfile?.portfolio || [])
+                : [];
+              console.log('[ServiceDetailPage] Final providerPortfolio:', portfolio);
+              return portfolio;
+            })(),
             aboutMe: s.aboutMe || (typeof s.professional === 'object'
               ? (s.professional.publicProfile?.bio || s.professional.aboutService || "")
               : ""),
@@ -2062,47 +2073,144 @@ export default function ServiceDetailPage() {
                       Portfolio Gallery
                     </h2>
                     
-                    {/* Portfolio Grid - Masonry style */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {/* First image - larger, fills full height */}
-                      <div className="col-span-2 md:col-span-1 md:row-span-2">
-                        <div className="relative h-full min-h-[300px] overflow-hidden rounded-xl group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300">
-                          <img 
-                            src={portfolioImages[0]} 
-                            alt="Portfolio work 1"
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <p className="font-['Poppins',sans-serif] text-[14px] font-medium">Featured Work</p>
-                          </div>
+                    {service.providerPortfolio && service.providerPortfolio.length > 0 ? (
+                      <>
+                        {/* Portfolio Grid - Masonry style */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {service.providerPortfolio.map((item: any, index: number) => {
+                            // Resolve media URL - handle both local paths and external URLs
+                            const rawUrl = item.url || item.image;
+                            const itemUrl = rawUrl && !rawUrl.startsWith('http') && rawUrl.startsWith('/') 
+                              ? `${window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin}${rawUrl}` 
+                              : rawUrl;
+                            const isVideo = item.type === 'video';
+                            const isFirstItem = index === 0;
+                            
+                            if (isFirstItem) {
+                              // First item - larger, fills full height
+                              return (
+                                <div key={index} className="col-span-2 md:col-span-1 md:row-span-2">
+                                  <div className="relative h-full min-h-[300px] overflow-hidden rounded-xl group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300">
+                                    {isVideo ? (
+                                      <>
+                                        {/* Blurred background video */}
+                                        <video
+                                          src={itemUrl}
+                                          className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-90 scale-110"
+                                          muted
+                                          loop
+                                          playsInline
+                                        />
+                                        {/* Main video */}
+                                        <video
+                                          src={itemUrl}
+                                          className="relative w-full h-full object-contain"
+                                          controls
+                                          playsInline
+                                        />
+                                        {/* Play icon overlay */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                          <div className="bg-white/90 rounded-full p-4 shadow-lg">
+                                            <Play className="w-8 h-8 text-[#FE8A0F] fill-[#FE8A0F]" />
+                                          </div>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <img 
+                                        src={itemUrl} 
+                                        alt={item.title || `Portfolio work ${index + 1}`}
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                      />
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                    <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium">
+                                        {item.title || 'Featured Work'}
+                                      </p>
+                                      {item.description && (
+                                        <p className="font-['Poppins',sans-serif] text-[12px] opacity-90 mt-1">
+                                          {item.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            // Remaining items in grid
+                            return (
+                              <div key={index} className="relative aspect-square overflow-hidden rounded-xl group cursor-pointer shadow-md hover:shadow-lg transition-all duration-300">
+                                {isVideo ? (
+                                  <>
+                                    {/* Blurred background video */}
+                                    <video
+                                      src={itemUrl}
+                                      className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-85 scale-110"
+                                      muted
+                                      loop
+                                      playsInline
+                                    />
+                                    {/* Main video */}
+                                    <video
+                                      src={itemUrl}
+                                      className="relative w-full h-full object-contain"
+                                      controls
+                                      playsInline
+                                    />
+                                    {/* Play icon overlay */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                      <div className="bg-white/90 rounded-full p-3 shadow-lg">
+                                        <Play className="w-6 h-6 text-[#FE8A0F] fill-[#FE8A0F]" />
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <img 
+                                    src={itemUrl} 
+                                    alt={item.title || `Portfolio work ${index + 1}`}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                  />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                {(item.title || item.description) && (
+                                  <div className="absolute bottom-2 left-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    {item.title && (
+                                      <p className="font-['Poppins',sans-serif] text-[12px] font-medium">
+                                        {item.title}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
+                        
+                        <div className="mt-6 text-center">
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                            Showcasing {service.providerPortfolio.length} completed projects
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            className="border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
+                            onClick={() => {
+                              if (service.professionalId) {
+                                navigate(`/profile/${service.professionalId}`);
+                              }
+                            }}
+                          >
+                            View All Work
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          No portfolio items available yet.
+                        </p>
                       </div>
-                      
-                      {/* Remaining images in grid */}
-                      {portfolioImages.slice(1, 7).map((image, index) => (
-                        <div key={index} className="relative aspect-square overflow-hidden rounded-xl group cursor-pointer shadow-md hover:shadow-lg transition-all duration-300">
-                          <img 
-                            src={image} 
-                            alt={`Portfolio work ${index + 2}`}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="mt-6 text-center">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
-                        Showcasing {portfolioImages.length} completed projects
-                      </p>
-                      <Button 
-                        variant="outline" 
-                        className="border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
-                      >
-                        View All Work
-                      </Button>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

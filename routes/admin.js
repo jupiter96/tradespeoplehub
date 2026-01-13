@@ -1817,15 +1817,73 @@ router.put('/users/:id/block', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Store previous status of services before blocking (to restore later if unblocked)
+    const previousServiceStatuses = {};
+    
     user.isBlocked = isBlocked;
     if (isBlocked) {
       user.blockedAt = new Date();
-      user.blockedBy = req.session.userId;
+      user.blockedBy = req.session.userId || req.session.adminId;
       user.blockReason = blockReason || undefined;
+      
+      // Deactivate all services of the blocked user
+      // First, get all services to store their previous status
+      const userServices = await Service.find({ professional: id });
+      for (const service of userServices) {
+        previousServiceStatuses[service._id.toString()] = {
+          status: service.status,
+          isActive: service.isActive,
+        };
+      }
+      
+      // Store previous statuses in user document for potential restoration
+      user.previousServiceStatuses = previousServiceStatuses;
+      
+      // Update all services to blocked status
+      const updateResult = await Service.updateMany(
+        { professional: id },
+        { 
+          $set: { 
+            status: 'blocked',
+            isActive: false,
+            blockedAt: new Date(),
+            blockedReason: blockReason || 'User account blocked by admin',
+          }
+        }
+      );
+      
+      console.log(`[Admin] Blocked user ${id}: ${updateResult.modifiedCount} services deactivated`);
     } else {
+      // Unblock user - restore previous service statuses if available
+      const previousStatuses = user.previousServiceStatuses || {};
+      
       user.blockedAt = undefined;
       user.blockedBy = undefined;
       user.blockReason = undefined;
+      user.previousServiceStatuses = undefined;
+      
+      // Restore services to their previous status
+      const userServices = await Service.find({ professional: id, status: 'blocked' });
+      let restoredCount = 0;
+      
+      for (const service of userServices) {
+        const prevStatus = previousStatuses[service._id.toString()];
+        if (prevStatus) {
+          // Restore to previous status
+          service.status = prevStatus.status;
+          service.isActive = prevStatus.isActive;
+        } else {
+          // Default to pending if no previous status found
+          service.status = 'pending';
+          service.isActive = false;
+        }
+        service.blockedAt = undefined;
+        service.blockedReason = undefined;
+        await service.save();
+        restoredCount++;
+      }
+      
+      console.log(`[Admin] Unblocked user ${id}: ${restoredCount} services restored`);
     }
 
     await user.save();
@@ -1835,7 +1893,7 @@ router.put('/users/:id/block', requireAdmin, async (req, res) => {
       message: `User ${isBlocked ? 'blocked' : 'unblocked'} successfully`
     });
   } catch (error) {
-    // console.error('Block user error', error);
+    console.error('Block user error', error);
     return res.status(500).json({ error: 'Failed to update block status' });
   }
 });

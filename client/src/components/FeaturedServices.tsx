@@ -296,9 +296,9 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                         
                         return (
                           <>
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                                {priceRange.formatted}
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
+                              {priceRange.formatted}
                               </span>
                             </div>
                             {/* Show discount badge range for packages with discounts */}
@@ -325,8 +325,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                                     style={{ backgroundColor: '#CC0C39' }}
                                   >
                                     {minDiscount === maxDiscount ? `${minDiscount}% OFF` : `${minDiscount}% ~ ${maxDiscount}% OFF`}
-                                  </span>
-                                </div>
+                            </span>
+                          </div>
                               );
                             })()}
                           </>
@@ -579,9 +579,9 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                         
                         return (
                           <>
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
-                                {priceRange.formatted}
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
+                              {priceRange.formatted}
                               </span>
                             </div>
                             {/* Show discount badge range for packages with discounts */}
@@ -608,8 +608,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                                     style={{ backgroundColor: '#CC0C39' }}
                                   >
                                     {minDiscount === maxDiscount ? `${minDiscount}% OFF` : `${minDiscount}% ~ ${maxDiscount}% OFF`}
-                                  </span>
-                                </div>
+                            </span>
+                          </div>
                               );
                             })()}
                           </>
@@ -857,11 +857,11 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                             
                             return (
                               <>
-                                <div className="flex items-baseline gap-2">
-                                  <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
-                                    {priceRange.formatted}
-                                  </span>
-                                </div>
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
+                                  {priceRange.formatted}
+                                </span>
+                              </div>
                                 {/* Show discount badges for all packages with discounts */}
                                 {packagesWithDiscounts.length > 0 && (
                                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">

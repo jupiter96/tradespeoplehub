@@ -422,6 +422,7 @@ export default function AdminServicesPage({
       paused: "bg-blue-100 text-blue-700 border-blue-200",
       inactive: "bg-gray-100 text-gray-700 border-gray-200",
       approved: "bg-green-100 text-green-700 border-green-200",
+      blocked: "bg-red-200 text-red-800 border-red-300",
       // Legacy support
       active: "bg-green-100 text-green-700 border-green-200",
       rejected: "bg-red-100 text-red-700 border-red-200",
@@ -437,6 +438,7 @@ export default function AdminServicesPage({
       paused: "Paused",
       inactive: "Inactive",
       approved: "Approved",
+      blocked: "Blocked (User Account)",
       // Legacy support
       active: "Active",
       rejected: "Rejected",

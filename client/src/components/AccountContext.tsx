@@ -392,10 +392,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = useCallback(
     async (payload: ProfileUpdatePayload) => {
+      console.log('=== [AccountContext] updateProfile - Start ===');
+      console.log('[AccountContext] Payload to send:', payload);
+      console.log('[AccountContext] Payload.publicProfile:', payload.publicProfile);
+      console.log('[AccountContext] Payload.publicProfile.portfolio:', payload.publicProfile?.portfolio);
+      
       const data = await requestJson("/api/auth/profile", {
         method: "PUT",
         body: JSON.stringify(payload),
       });
+
+      console.log('[AccountContext] Response data:', data);
+      console.log('[AccountContext] Updated user:', data.user);
+      console.log('[AccountContext] Updated user.publicProfile.portfolio:', data.user?.publicProfile?.portfolio);
 
       applyUserSession(data.user);
       return data.user;

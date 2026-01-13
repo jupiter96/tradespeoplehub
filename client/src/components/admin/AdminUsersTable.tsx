@@ -1165,7 +1165,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
               className={`font-['Poppins',sans-serif] ${
                 userToBlock?.isBlocked
                   ? "bg-green-600 hover:bg-green-700"
-                  : "bg-orange-600 hover:bg-orange-700"
+                  : "bg-red-600 hover:bg-red-700"
               } text-white`}
             >
               {userToBlock?.isBlocked ? "Unblock" : "Block"}
