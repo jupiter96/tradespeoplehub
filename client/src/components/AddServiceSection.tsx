@@ -4517,7 +4517,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 </div>
 
                 {/* Steps */}
-                <div className="flex items-start justify-between relative z-10 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-start justify-start md:justify-between relative z-10 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
                   {STEPS.map((step, index) => {
                     const Icon = step.icon;
                     const stepIndex = TAB_ORDER.indexOf(step.id);
@@ -4528,7 +4528,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     const isClickable = isEditMode ? true : false;
 
                     return (
-                      <div key={step.id} className="flex flex-col items-center flex-1 min-w-[80px] md:min-w-0">
+                      <div key={step.id} className="flex flex-col items-center flex-shrink-0 min-w-[100px] md:flex-1 md:min-w-0">
                         {/* Step Circle */}
                         <button
                           type="button"
@@ -5845,9 +5845,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
                   {/* Add Portfolio Form - Always Visible */}
                   <div className="bg-gray-50 rounded-xl p-4 mb-4 border-2 border-[#FE8A0F]/30">
-                    <div className="flex gap-4 items-start">
-                      {/* Left: File Upload */}
-                      <div className="flex-shrink-0 w-[200px]">
+                    <div className="flex gap-4 items-stretch w-full">
+                      {/* Left: File Upload - 30% width */}
+                      <div className="w-[30%] flex-shrink-0 mr-4">
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
@@ -5857,14 +5857,14 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                         />
                         <label
                           htmlFor="portfolio-file-input"
-                          className="block border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-[#FE8A0F] transition-colors bg-white"
+                          className="block border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-[#FE8A0F] transition-colors bg-white h-full flex items-center justify-center"
                         >
                           {newPortfolioPreview ? (
-                            <div className="relative">
+                            <div className="relative w-full h-full">
                               {newPortfolioType === 'video' ? (
-                                <video src={newPortfolioPreview} className="w-full h-32 object-cover rounded-lg" />
+                                <video src={newPortfolioPreview} className="w-full h-full object-cover rounded-lg" />
                               ) : (
-                                <img src={newPortfolioPreview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                                <img src={newPortfolioPreview} alt="Preview" className="w-full h-full object-cover rounded-lg" />
                               )}
                               <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-[10px]">
                                 {newPortfolioType === 'video' ? 'Video' : 'Image'}
@@ -5879,8 +5879,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                         </label>
                       </div>
 
-                      {/* Right: Title, Description, and Buttons */}
-                      <div className="flex-1 space-y-3">
+                      {/* Right: Title, Description, and Buttons - 60% width */}
+                      <div className="flex-1 min-w-0 space-y-3">
                         {/* Title */}
                         <div>
                           <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
@@ -5907,41 +5907,43 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           />
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex justify-end gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setNewPortfolioFile(null);
-                              setNewPortfolioPreview(null);
-                              setNewPortfolioTitle("");
-                              setNewPortfolioDescription("");
-                              // Reset file input
-                              const fileInput = document.getElementById('portfolio-file-input') as HTMLInputElement;
-                              if (fileInput) fileInput.value = '';
-                            }}
-                            className="font-['Poppins',sans-serif] text-[13px]"
-                          >
-                            Clear
-                          </Button>
-                          <Button
-                            onClick={handleAddPortfolioItem}
-                            disabled={isUploadingPortfolio || !newPortfolioFile}
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
-                          >
-                            {isUploadingPortfolio ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-4 h-4 mr-1" />
-                                Add Item
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                        {/* Actions - Only show when file is uploaded */}
+                        {newPortfolioFile && (
+                          <div className="flex justify-end gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setNewPortfolioFile(null);
+                                setNewPortfolioPreview(null);
+                                setNewPortfolioTitle("");
+                                setNewPortfolioDescription("");
+                                // Reset file input
+                                const fileInput = document.getElementById('portfolio-file-input') as HTMLInputElement;
+                                if (fileInput) fileInput.value = '';
+                              }}
+                              className="font-['Poppins',sans-serif] text-[13px]"
+                            >
+                              Clear
+                            </Button>
+                            <Button
+                              onClick={handleAddPortfolioItem}
+                              disabled={isUploadingPortfolio || !newPortfolioFile}
+                              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
+                            >
+                              {isUploadingPortfolio ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Add Item
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -6266,7 +6268,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           </ScrollArea>
 
           {/* Footer Actions */}
-          <div className="flex gap-3 px-6 py-4 bg-white flex-shrink-0 rounded-[15px]">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white flex-shrink-0 rounded-[15px]">
             {!isFirstTab() && (
               <Button
                 variant="outline"
