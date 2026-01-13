@@ -13,36 +13,100 @@ const router = express.Router();
 function getStripeKeys(settings) {
   const environment = settings.stripeEnvironment || settings.environment || 'test';
   
+  console.log('[Payment Keys] getStripeKeys called');
+  console.log('[Payment Keys] Stripe environment setting:', environment);
+  console.log('[Payment Keys] stripeEnvironment field:', settings.stripeEnvironment);
+  console.log('[Payment Keys] environment field (legacy):', settings.environment);
+  
+  let keys;
   if (environment === 'live') {
-    return {
+    console.log('[Payment Keys] Using LIVE mode Stripe keys');
+    keys = {
       publishableKey: settings.stripeLivePublishableKey || settings.stripePublishableKey || null,
       secretKey: settings.stripeLiveSecretKey || settings.stripeSecretKey || null,
       webhookSecret: settings.stripeLiveWebhookSecret || settings.stripeWebhookSecret || null,
     };
+    console.log('[Payment Keys] Live publishable key source:', 
+      settings.stripeLivePublishableKey ? 'stripeLivePublishableKey' : 
+      (settings.stripePublishableKey ? 'stripePublishableKey (legacy)' : 'null'));
+    console.log('[Payment Keys] Live secret key source:', 
+      settings.stripeLiveSecretKey ? 'stripeLiveSecretKey' : 
+      (settings.stripeSecretKey ? 'stripeSecretKey (legacy)' : 'null'));
+    console.log('[Payment Keys] Live webhook secret source:', 
+      settings.stripeLiveWebhookSecret ? 'stripeLiveWebhookSecret' : 
+      (settings.stripeWebhookSecret ? 'stripeWebhookSecret (legacy)' : 'null'));
   } else {
-    return {
+    console.log('[Payment Keys] Using TEST mode Stripe keys');
+    keys = {
       publishableKey: settings.stripeTestPublishableKey || settings.stripePublishableKey || null,
       secretKey: settings.stripeTestSecretKey || settings.stripeSecretKey || null,
       webhookSecret: settings.stripeTestWebhookSecret || settings.stripeWebhookSecret || null,
     };
+    console.log('[Payment Keys] Test publishable key source:', 
+      settings.stripeTestPublishableKey ? 'stripeTestPublishableKey' : 
+      (settings.stripePublishableKey ? 'stripePublishableKey (legacy)' : 'null'));
+    console.log('[Payment Keys] Test secret key source:', 
+      settings.stripeTestSecretKey ? 'stripeTestSecretKey' : 
+      (settings.stripeSecretKey ? 'stripeSecretKey (legacy)' : 'null'));
+    console.log('[Payment Keys] Test webhook secret source:', 
+      settings.stripeTestWebhookSecret ? 'stripeTestWebhookSecret' : 
+      (settings.stripeWebhookSecret ? 'stripeWebhookSecret (legacy)' : 'null'));
   }
+  
+  // Log key presence (without exposing full keys)
+  console.log('[Payment Keys] Publishable key present:', keys.publishableKey ? `Yes (${keys.publishableKey.substring(0, 20)}...)` : 'No');
+  console.log('[Payment Keys] Secret key present:', keys.secretKey ? `Yes (${keys.secretKey.substring(0, 20)}...)` : 'No');
+  console.log('[Payment Keys] Webhook secret present:', keys.webhookSecret ? `Yes (${keys.webhookSecret.substring(0, 20)}...)` : 'No');
+  
+  return keys;
 }
 
 // Helper function to get PayPal keys (always live)
 function getPayPalKeys(settings) {
-  return {
+  console.log('[Payment Keys] getPayPalKeys called');
+  console.log('[Payment Keys] PayPal environment setting:', settings.paypalEnvironment || 'sandbox (default)');
+  
+  const keys = {
     clientId: settings.paypalClientId || settings.paypalPublicKey || null,
     secretKey: settings.paypalSecretKey || null,
+    environment: settings.paypalEnvironment || 'sandbox', // Include environment in keys
   };
-  }
+  
+  console.log('[Payment Keys] PayPal client ID source:', 
+    settings.paypalClientId ? 'paypalClientId' : 
+    (settings.paypalPublicKey ? 'paypalPublicKey (legacy)' : 'null'));
+  console.log('[Payment Keys] PayPal secret key source:', 
+    settings.paypalSecretKey ? 'paypalSecretKey' : 'null');
+  
+  // Log key presence (without exposing full keys)
+  console.log('[Payment Keys] PayPal client ID present:', keys.clientId ? `Yes (${keys.clientId.substring(0, 20)}...)` : 'No');
+  console.log('[Payment Keys] PayPal secret key present:', keys.secretKey ? `Yes (${keys.secretKey.substring(0, 20)}...)` : 'No');
+  console.log('[Payment Keys] PayPal environment:', keys.environment);
+  
+  return keys;
+}
 
 // Get payment settings (for clients to see available payment methods)
 router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
+  console.log('[Payment Settings] GET /payment/publishable-key - Request received');
+  console.log('[Payment Settings] User ID:', req.user.id);
+  
   try {
+    console.log('[Payment Settings] Fetching payment settings from database...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[Payment Settings] Payment settings loaded from database');
+    
+    console.log('[Payment Settings] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
+    console.log('[Payment Settings] Stripe keys retrieved');
+    
+    console.log('[Payment Settings] Retrieving PayPal keys...');
     const paypalKeys = getPayPalKeys(settings);
+    console.log('[Payment Settings] PayPal keys retrieved');
+    
     const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
+    console.log('[Payment Settings] Stripe environment:', stripeEnvironment);
+    console.log('[Payment Settings] PayPal environment:', paypalKeys.environment);
     
     // Debug logs (can be removed in production)
     
@@ -138,14 +202,28 @@ router.get('/wallet/transactions', authenticateToken, async (req, res) => {
 
 // Create setup intent for adding payment method
 router.post('/payment-methods/create-setup-intent', authenticateToken, async (req, res) => {
+  console.log('[Stripe Setup Intent] POST /payment-methods/create-setup-intent - Request received');
+  console.log('[Stripe Setup Intent] User ID:', req.user.id);
+  
   try {
+    console.log('[Stripe Setup Intent] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[Stripe Setup Intent] Payment settings loaded');
+    
+    console.log('[Stripe Setup Intent] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
+    console.log('[Stripe Setup Intent] Stripe keys retrieved');
+    
     if (!settings.isActive || !stripeKeys.secretKey) {
+      console.error('[Stripe Setup Intent] Stripe payments not configured or secret key missing');
+      console.error('[Stripe Setup Intent] isActive:', settings.isActive);
+      console.error('[Stripe Setup Intent] secretKey present:', !!stripeKeys.secretKey);
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
+    console.log('[Stripe Setup Intent] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
+    console.log('[Stripe Setup Intent] Stripe instance created');
     const user = await User.findById(req.user.id);
     
     if (!user) {
@@ -236,20 +314,37 @@ router.get('/payment-methods', authenticateToken, async (req, res) => {
 
 // Setup payment method (create Stripe customer and attach payment method)
 router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
+  console.log('[Stripe Setup] POST /payment-methods/setup - Request received');
+  console.log('[Stripe Setup] User ID:', req.user.id);
+  console.log('[Stripe Setup] Request body:', req.body);
+  
   try {
     const { paymentMethodId } = req.body;
+    console.log('[Stripe Setup] Payment method ID:', paymentMethodId);
     
     if (!paymentMethodId) {
+      console.error('[Stripe Setup] Payment method ID is missing');
       return res.status(400).json({ error: 'Payment method ID is required' });
     }
     
+    console.log('[Stripe Setup] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[Stripe Setup] Payment settings loaded');
+    
+    console.log('[Stripe Setup] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
+    console.log('[Stripe Setup] Stripe keys retrieved');
+    
     if (!settings.isActive || !stripeKeys.secretKey) {
+      console.error('[Stripe Setup] Stripe payments not configured or secret key missing');
+      console.error('[Stripe Setup] isActive:', settings.isActive);
+      console.error('[Stripe Setup] secretKey present:', !!stripeKeys.secretKey);
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
+    console.log('[Stripe Setup] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
+    console.log('[Stripe Setup] Stripe instance created');
     const user = await User.findById(req.user.id);
     
     if (!user) {
@@ -338,12 +433,24 @@ router.post('/payment-methods/set-default', authenticateToken, async (req, res) 
 
 // Delete payment method
 router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req, res) => {
+  console.log('[Stripe Delete] DELETE /payment-methods/:paymentMethodId - Request received');
+  console.log('[Stripe Delete] User ID:', req.user.id);
+  console.log('[Stripe Delete] Payment method ID:', req.params.paymentMethodId);
+  
   try {
     const { paymentMethodId } = req.params;
     
+    console.log('[Stripe Delete] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[Stripe Delete] Payment settings loaded');
+    
+    console.log('[Stripe Delete] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
+    console.log('[Stripe Delete] Stripe keys retrieved');
+    
+    console.log('[Stripe Delete] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
+    console.log('[Stripe Delete] Stripe instance created');
     const user = await User.findById(req.user.id);
     
     if (!user || !user.paymentMethods) {
@@ -620,20 +727,36 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
 
 // Confirm Stripe payment and update wallet
 router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) => {
+  console.log('[Stripe Confirm] POST /wallet/fund/stripe/confirm - Request received');
+  console.log('[Stripe Confirm] User ID:', req.user.id);
+  console.log('[Stripe Confirm] Request body:', req.body);
+  
   try {
     const { paymentIntentId, transactionId } = req.body;
+    console.log('[Stripe Confirm] Payment intent ID:', paymentIntentId);
+    console.log('[Stripe Confirm] Transaction ID:', transactionId);
     
     if (!paymentIntentId || !transactionId) {
+      console.error('[Stripe Confirm] Missing required parameters');
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
+    console.log('[Stripe Confirm] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[Stripe Confirm] Payment settings loaded');
+    
+    console.log('[Stripe Confirm] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
+    console.log('[Stripe Confirm] Stripe keys retrieved');
+    
     if (!stripeKeys.secretKey) {
+      console.error('[Stripe Confirm] Stripe secret key is missing');
       return res.status(400).json({ error: 'Stripe is not configured' });
     }
     
+    console.log('[Stripe Confirm] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
+    console.log('[Stripe Confirm] Stripe instance created');
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== 'succeeded') {
@@ -836,27 +959,31 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
   }
 });
 
-// Helper function to create PayPal client (always Live mode)
+// Helper function to create PayPal client
 function createPayPalClient(settings) {
   console.log('[PayPal Backend] createPayPalClient called');
   const paypalKeys = getPayPalKeys(settings);
-  console.log('[PayPal Backend] PayPal keys retrieved:', {
-    clientId: paypalKeys.clientId ? 'Present' : 'Missing',
-    secretKey: paypalKeys.secretKey ? 'Present' : 'Missing'
-  });
+  console.log('[PayPal Backend] PayPal keys retrieved from getPayPalKeys');
+  console.log('[PayPal Backend] PayPal Client ID present:', paypalKeys.clientId ? `Yes (${paypalKeys.clientId.substring(0, 20)}...)` : 'No');
+  console.log('[PayPal Backend] PayPal Secret Key present:', paypalKeys.secretKey ? `Yes (${paypalKeys.secretKey.substring(0, 20)}...)` : 'No');
+  console.log('[PayPal Backend] PayPal Environment:', paypalKeys.environment);
   
   // Validate keys before creating client
   if (!paypalKeys.clientId || !paypalKeys.secretKey) {
     console.error('[PayPal Backend] PayPal credentials are missing');
+    console.error('[PayPal Backend] Client ID missing:', !paypalKeys.clientId);
+    console.error('[PayPal Backend] Secret Key missing:', !paypalKeys.secretKey);
     throw new Error('PayPal credentials are missing. Please configure PayPal Client ID and Secret Key in payment settings.');
   }
   
-  // PayPal always operates in Live mode
-  console.log('[PayPal Backend] Creating LiveEnvironment with Client ID and Secret Key');
-  const environment = new paypal.core.LiveEnvironment(
-    paypalKeys.clientId, 
-    paypalKeys.secretKey
-  );
+  // PayPal environment: sandbox or live
+  const paypalEnvironment = paypalKeys.environment === 'live' 
+    ? new paypal.core.LiveEnvironment(paypalKeys.clientId, paypalKeys.secretKey)
+    : new paypal.core.SandboxEnvironment(paypalKeys.clientId, paypalKeys.secretKey);
+  
+  console.log(`[PayPal Backend] Creating ${paypalKeys.environment === 'live' ? 'Live' : 'Sandbox'}Environment`);
+  console.log(`[PayPal Backend] Using PayPal ${paypalKeys.environment === 'live' ? 'Live' : 'Sandbox'} mode`);
+  const environment = paypalEnvironment;
   
   console.log('[PayPal Backend] Creating PayPalHttpClient');
   const client = new paypal.core.PayPalHttpClient(environment);
@@ -1017,13 +1144,16 @@ router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) =
     
     console.log('[PayPal Backend] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    // Check for PayPal credentials (prefer paypalClientId, fallback to paypalPublicKey for legacy)
-    const paypalClientId = settings.paypalClientId || settings.paypalPublicKey;
-    console.log('[PayPal Backend] PayPal Client ID:', paypalClientId ? 'Present' : 'Missing');
-    console.log('[PayPal Backend] PayPal Secret Key:', settings.paypalSecretKey ? 'Present' : 'Missing');
+    console.log('[PayPal Backend] Payment settings loaded');
     
-    if (!paypalClientId || !settings.paypalSecretKey) {
+    console.log('[PayPal Backend] Retrieving PayPal keys...');
+    const paypalKeys = getPayPalKeys(settings);
+    console.log('[PayPal Backend] PayPal keys retrieved');
+    
+    if (!paypalKeys.clientId || !paypalKeys.secretKey) {
       console.error('[PayPal Backend] PayPal is not configured');
+      console.error('[PayPal Backend] Client ID missing:', !paypalKeys.clientId);
+      console.error('[PayPal Backend] Secret Key missing:', !paypalKeys.secretKey);
       return res.status(400).json({ error: 'PayPal is not configured' });
     }
     
