@@ -44,7 +44,25 @@ const paymentSettingsSchema = new mongoose.Schema(
       trim: true,
     },
     
-    // PayPal API Keys (Live only)
+    // PayPal API Keys - Sandbox Mode
+    paypalSandboxClientId: {
+      type: String,
+      trim: true,
+    },
+    paypalSandboxSecretKey: {
+      type: String,
+      trim: true,
+    },
+    // PayPal API Keys - Live Mode
+    paypalLiveClientId: {
+      type: String,
+      trim: true,
+    },
+    paypalLiveSecretKey: {
+      type: String,
+      trim: true,
+    },
+    // Legacy PayPal fields (for backward compatibility)
     paypalClientId: {
       type: String,
       trim: true,
@@ -53,7 +71,6 @@ const paymentSettingsSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    // Legacy field
     paypalPublicKey: {
       type: String,
       trim: true,
@@ -62,7 +79,7 @@ const paymentSettingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    // PayPal Environment (test/sandbox or live)
+    // PayPal Environment (sandbox or live)
     paypalEnvironment: {
       type: String,
       enum: ['sandbox', 'live'],

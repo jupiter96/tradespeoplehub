@@ -2781,17 +2781,46 @@ function BillingSection() {
   };
 
   const fetchPublishableKey = async () => {
+    console.log("[Payment Frontend] ========== fetchPublishableKey ==========");
+    console.log("[Payment Frontend] Step 1: Starting fetchPublishableKey");
+    console.log("[Payment Frontend] API URL:", resolveApiUrl("/api/payment/publishable-key"));
+    
     try {
+      console.log("[Payment Frontend] Step 2: Sending request to /api/payment/publishable-key");
       const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
         credentials: "include",
       });
+      console.log("[Payment Frontend] Step 2 Complete: Response received");
+      console.log("[Payment Frontend] Response status:", response.status);
+      console.log("[Payment Frontend] Response ok:", response.ok);
+      
       if (response.ok) {
+        console.log("[Payment Frontend] Step 3: Parsing response JSON");
         const data = await response.json();
+        console.log("[Payment Frontend] Step 3 Complete: Response parsed");
+        console.log("[Payment Frontend] Full response data:", JSON.stringify(data, null, 2));
+        console.log("[Payment Frontend] Response values:");
+        console.log("  - publishableKey:", data.publishableKey);
+        console.log("  - paypalClientId:", data.paypalClientId);
+        console.log("  - paypalEnvironment:", data.paypalEnvironment);
+        console.log("  - stripeEnabled:", data.stripeEnabled);
+        console.log("  - paypalEnabled:", data.paypalEnabled);
+        console.log("  - manualTransferEnabled:", data.manualTransferEnabled);
+        console.log("  - stripeEnvironment:", data.stripeEnvironment);
+        console.log("  - stripeCommissionPercentage:", data.stripeCommissionPercentage);
+        console.log("  - stripeCommissionFixed:", data.stripeCommissionFixed);
+        console.log("  - paypalCommissionPercentage:", data.paypalCommissionPercentage);
+        console.log("  - paypalCommissionFixed:", data.paypalCommissionFixed);
+        console.log("  - bankProcessingFeePercentage:", data.bankProcessingFeePercentage);
+        
+        console.log("[Payment Frontend] Step 4: Setting state values");
         setPublishableKey(data.publishableKey);
+        console.log("[Payment Frontend] publishableKey state set to:", data.publishableKey);
         setPaypalClientId(data.paypalClientId || null);
+        console.log("[Payment Frontend] paypalClientId state set to:", data.paypalClientId || null);
+        
         // Only update commission rates, preserve enabled states
-        setPaymentSettings(prev => ({
-          ...prev,
+        const newPaymentSettings = {
           stripeCommissionPercentage: data.stripeCommissionPercentage || 1.55,
           stripeCommissionFixed: data.stripeCommissionFixed || 0.29,
           paypalCommissionPercentage: data.paypalCommissionPercentage || 3.00,
@@ -2800,10 +2829,22 @@ function BillingSection() {
           stripeEnabled: data.stripeEnabled === true,
           paypalEnabled: data.paypalEnabled === true,
           manualTransferEnabled: data.manualTransferEnabled === true,
+        };
+        console.log("[Payment Frontend] New payment settings object:", JSON.stringify(newPaymentSettings, null, 2));
+        setPaymentSettings(prev => ({
+          ...prev,
+          ...newPaymentSettings,
         }));
+        console.log("[Payment Frontend] Step 4 Complete: State values set");
+        console.log("[Payment Frontend] ========== fetchPublishableKey completed ==========");
+      } else {
+        console.error("[Payment Frontend] Response not ok, status:", response.status);
+        const errorText = await response.text();
+        console.error("[Payment Frontend] Error response:", errorText);
       }
     } catch (error) {
-      console.error("Error fetching publishable key:", error);
+      console.error("[Payment Frontend] Error in fetchPublishableKey:", error);
+      console.error("[Payment Frontend] Error details:", JSON.stringify(error, null, 2));
     }
   };
 
@@ -3056,36 +3097,57 @@ function BillingSection() {
   };
 
   const handleStripePayment = async () => {
-    console.log("[Stripe Frontend] handleStripePayment called");
-    console.log("[Stripe Frontend] Amount:", parseFloat(amount));
-    console.log("[Stripe Frontend] Selected payment method:", selectedPaymentMethod);
-    console.log("[Stripe Frontend] Available payment methods:", fundPaymentMethods.length);
+    console.log("[Stripe Frontend] ========== handleStripePayment ==========");
+    console.log("[Stripe Frontend] Step 1: Function called");
+    console.log("[Stripe Frontend] Current state values:");
+    console.log("  - amount (string):", amount);
+    console.log("  - amount (parsed):", parseFloat(amount));
+    console.log("  - selectedPaymentMethod:", selectedPaymentMethod);
+    console.log("  - fundPaymentMethods count:", fundPaymentMethods.length);
+    console.log("  - fundPaymentMethods:", JSON.stringify(fundPaymentMethods, null, 2));
+    console.log("  - paymentSettings:", JSON.stringify(paymentSettings, null, 2));
     
     if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
-      console.error("[Stripe Frontend] No payment method available");
+      console.error("[Stripe Frontend] Step 1 Failed: No payment method available");
       toast.error("Please add a payment method first");
       setShowAddCardModal(true);
       return;
     }
 
+    console.log("[Stripe Frontend] Step 2: Setting loading state to true");
     setLoading(true);
+    
     try {
-      console.log("[Stripe Frontend] Sending request to /api/wallet/fund/stripe");
+      console.log("[Stripe Frontend] Step 3: Preparing request body");
+      const requestBody = { 
+        amount: parseFloat(amount),
+        paymentMethodId: selectedPaymentMethod,
+      };
+      console.log("[Stripe Frontend] Request body:", JSON.stringify(requestBody, null, 2));
+      console.log("[Stripe Frontend] Request body values:");
+      console.log("  - amount:", requestBody.amount);
+      console.log("  - paymentMethodId:", requestBody.paymentMethodId);
+      
+      console.log("[Stripe Frontend] Step 4: Sending request to /api/wallet/fund/stripe");
+      console.log("[Stripe Frontend] API URL:", resolveApiUrl("/api/wallet/fund/stripe"));
       const response = await fetch(resolveApiUrl("/api/wallet/fund/stripe"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ 
-          amount: parseFloat(amount),
-          paymentMethodId: selectedPaymentMethod,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log("[Stripe Frontend] Step 4 Complete: Response received");
       console.log("[Stripe Frontend] Response status:", response.status);
+      console.log("[Stripe Frontend] Response ok:", response.ok);
+      console.log("[Stripe Frontend] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+      
+      console.log("[Stripe Frontend] Step 5: Parsing response JSON");
       const data = await response.json();
-      console.log("[Stripe Frontend] Response data:", data);
+      console.log("[Stripe Frontend] Step 5 Complete: Response parsed");
+      console.log("[Stripe Frontend] Full response data:", JSON.stringify(data, null, 2));
 
       if (!response.ok) {
         console.error("[Stripe Frontend] Error response:", data);

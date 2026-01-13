@@ -53,35 +53,64 @@ function getStripeKeys(settings) {
       (settings.stripeWebhookSecret ? 'stripeWebhookSecret (legacy)' : 'null'));
   }
   
-  // Log key presence (without exposing full keys)
-  console.log('[Payment Keys] Publishable key present:', keys.publishableKey ? `Yes (${keys.publishableKey.substring(0, 20)}...)` : 'No');
-  console.log('[Payment Keys] Secret key present:', keys.secretKey ? `Yes (${keys.secretKey.substring(0, 20)}...)` : 'No');
-  console.log('[Payment Keys] Webhook secret present:', keys.webhookSecret ? `Yes (${keys.webhookSecret.substring(0, 20)}...)` : 'No');
+  // Log key presence and full keys (for debugging)
+  console.log('[Payment Keys] Publishable key present:', keys.publishableKey ? 'Yes' : 'No');
+  console.log('[Payment Keys] Publishable key value:', keys.publishableKey || 'null');
+  console.log('[Payment Keys] Secret key present:', keys.secretKey ? 'Yes' : 'No');
+  console.log('[Payment Keys] Secret key value:', keys.secretKey || 'null');
+  console.log('[Payment Keys] Webhook secret present:', keys.webhookSecret ? 'Yes' : 'No');
+  console.log('[Payment Keys] Webhook secret value:', keys.webhookSecret || 'null');
+  console.log('[Payment Keys] Full keys object:', JSON.stringify(keys, null, 2));
   
   return keys;
 }
 
-// Helper function to get PayPal keys (always live)
+// Helper function to get PayPal keys based on environment
 function getPayPalKeys(settings) {
+  const environment = settings.paypalEnvironment || 'sandbox';
+  
   console.log('[Payment Keys] getPayPalKeys called');
-  console.log('[Payment Keys] PayPal environment setting:', settings.paypalEnvironment || 'sandbox (default)');
+  console.log('[Payment Keys] PayPal environment setting:', environment);
+  console.log('[Payment Keys] paypalEnvironment field:', settings.paypalEnvironment);
   
-  const keys = {
-    clientId: settings.paypalClientId || settings.paypalPublicKey || null,
-    secretKey: settings.paypalSecretKey || null,
-    environment: settings.paypalEnvironment || 'sandbox', // Include environment in keys
-  };
+  let keys;
+  if (environment === 'live') {
+    console.log('[Payment Keys] Using LIVE mode PayPal keys');
+    keys = {
+      clientId: settings.paypalLiveClientId || settings.paypalClientId || settings.paypalPublicKey || null,
+      secretKey: settings.paypalLiveSecretKey || settings.paypalSecretKey || null,
+      environment: 'live',
+    };
+    console.log('[Payment Keys] Live client ID source:', 
+      settings.paypalLiveClientId ? 'paypalLiveClientId' : 
+      (settings.paypalClientId ? 'paypalClientId (legacy)' : 
+      (settings.paypalPublicKey ? 'paypalPublicKey (legacy)' : 'null')));
+    console.log('[Payment Keys] Live secret key source:', 
+      settings.paypalLiveSecretKey ? 'paypalLiveSecretKey' : 
+      (settings.paypalSecretKey ? 'paypalSecretKey (legacy)' : 'null'));
+  } else {
+    console.log('[Payment Keys] Using SANDBOX mode PayPal keys');
+    keys = {
+      clientId: settings.paypalSandboxClientId || settings.paypalClientId || settings.paypalPublicKey || null,
+      secretKey: settings.paypalSandboxSecretKey || settings.paypalSecretKey || null,
+      environment: 'sandbox',
+    };
+    console.log('[Payment Keys] Sandbox client ID source:', 
+      settings.paypalSandboxClientId ? 'paypalSandboxClientId' : 
+      (settings.paypalClientId ? 'paypalClientId (legacy)' : 
+      (settings.paypalPublicKey ? 'paypalPublicKey (legacy)' : 'null')));
+    console.log('[Payment Keys] Sandbox secret key source:', 
+      settings.paypalSandboxSecretKey ? 'paypalSandboxSecretKey' : 
+      (settings.paypalSecretKey ? 'paypalSecretKey (legacy)' : 'null'));
+  }
   
-  console.log('[Payment Keys] PayPal client ID source:', 
-    settings.paypalClientId ? 'paypalClientId' : 
-    (settings.paypalPublicKey ? 'paypalPublicKey (legacy)' : 'null'));
-  console.log('[Payment Keys] PayPal secret key source:', 
-    settings.paypalSecretKey ? 'paypalSecretKey' : 'null');
-  
-  // Log key presence (without exposing full keys)
-  console.log('[Payment Keys] PayPal client ID present:', keys.clientId ? `Yes (${keys.clientId.substring(0, 20)}...)` : 'No');
-  console.log('[Payment Keys] PayPal secret key present:', keys.secretKey ? `Yes (${keys.secretKey.substring(0, 20)}...)` : 'No');
+  // Log key presence and full keys (for debugging)
+  console.log('[Payment Keys] PayPal client ID present:', keys.clientId ? 'Yes' : 'No');
+  console.log('[Payment Keys] PayPal client ID value:', keys.clientId || 'null');
+  console.log('[Payment Keys] PayPal secret key present:', keys.secretKey ? 'Yes' : 'No');
+  console.log('[Payment Keys] PayPal secret key value:', keys.secretKey || 'null');
   console.log('[Payment Keys] PayPal environment:', keys.environment);
+  console.log('[Payment Keys] Full PayPal keys object:', JSON.stringify(keys, null, 2));
   
   return keys;
 }
@@ -119,9 +148,10 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
       stripeCommissionPercentage: settings.stripeCommissionPercentage || 1.55,
       stripeCommissionFixed: settings.stripeCommissionFixed || 0.29,
       
-      // PayPal settings (always live)
+      // PayPal settings (based on environment)
       paypalClientId: paypalKeys.clientId,
       paypalEnabled: Boolean(settings.paypalEnabled),
+      paypalEnvironment: paypalKeys.environment,
       paypalCommissionPercentage: settings.paypalCommissionPercentage || 3.00,
       paypalCommissionFixed: settings.paypalCommissionFixed || 0.30,
       
@@ -485,75 +515,121 @@ router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req
 
 // Create Stripe payment intent for wallet funding (requires saved payment method)
 router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
-  console.log('[Stripe Backend] POST /wallet/fund/stripe - Request received');
-  console.log('[Stripe Backend] Request body:', req.body);
+  console.log('[Stripe Backend] ========== POST /wallet/fund/stripe ==========');
+  console.log('[Stripe Backend] Request received at:', new Date().toISOString());
+  console.log('[Stripe Backend] Full request object:', JSON.stringify(req, null, 2));
+  console.log('[Stripe Backend] Request body:', JSON.stringify(req.body, null, 2));
   console.log('[Stripe Backend] User ID:', req.user.id);
+  console.log('[Stripe Backend] User object:', JSON.stringify(req.user, null, 2));
   
   try {
+    console.log('[Stripe Backend] Step 1: Extracting request body values');
     const { amount, paymentMethodId } = req.body;
-    console.log('[Stripe Backend] Amount:', amount);
-    console.log('[Stripe Backend] PaymentMethod ID:', paymentMethodId);
+    console.log('[Stripe Backend] Step 1 Complete: Values extracted');
+    console.log('[Stripe Backend] Request body values:');
+    console.log('  - amount:', amount, '(type:', typeof amount, ')');
+    console.log('  - paymentMethodId:', paymentMethodId, '(type:', typeof paymentMethodId, ')');
     
     if (!amount || amount <= 0) {
-      console.error('[Stripe Backend] Invalid amount:', amount);
+      console.error('[Stripe Backend] Step 1 Failed: Invalid amount');
+      console.error('[Stripe Backend] Amount value:', amount);
+      console.error('[Stripe Backend] Amount type:', typeof amount);
       return res.status(400).json({ error: 'Invalid amount' });
     }
     
-    console.log('[Stripe Backend] Fetching payment settings...');
+    console.log('[Stripe Backend] Step 2: Fetching payment settings from database');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Stripe Backend] Payment settings loaded');
+    console.log('[Stripe Backend] Step 2 Complete: Payment settings loaded');
+    console.log('[Stripe Backend] Full settings object:', JSON.stringify(settings, null, 2));
+    console.log('[Stripe Backend] Settings values:');
+    console.log('  - isActive:', settings.isActive);
+    console.log('  - stripeEnvironment:', settings.stripeEnvironment);
+    console.log('  - environment (legacy):', settings.environment);
+    console.log('  - stripeTestPublishableKey:', settings.stripeTestPublishableKey);
+    console.log('  - stripeTestSecretKey:', settings.stripeTestSecretKey);
+    console.log('  - stripeLivePublishableKey:', settings.stripeLivePublishableKey);
+    console.log('  - stripeLiveSecretKey:', settings.stripeLiveSecretKey);
+    console.log('  - stripeSecretKey (legacy):', settings.stripeSecretKey);
+    console.log('  - minDepositAmount:', settings.minDepositAmount);
+    console.log('  - maxDepositAmount:', settings.maxDepositAmount);
     
     if (!settings.isActive || !settings.stripeSecretKey) {
-      console.error('[Stripe Backend] Stripe payments are not configured');
+      console.error('[Stripe Backend] Step 2 Failed: Stripe payments are not configured');
+      console.error('[Stripe Backend] isActive:', settings.isActive);
+      console.error('[Stripe Backend] stripeSecretKey present:', !!settings.stripeSecretKey);
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
+    console.log('[Stripe Backend] Step 3: Validating amount range');
+    console.log('[Stripe Backend] Amount validation:');
+    console.log('  - amount:', amount);
+    console.log('  - minDepositAmount:', settings.minDepositAmount);
+    console.log('  - maxDepositAmount:', settings.maxDepositAmount);
+    console.log('  - amount >= minDepositAmount:', amount >= settings.minDepositAmount);
+    console.log('  - amount <= maxDepositAmount:', amount <= settings.maxDepositAmount);
+    
     if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
-      console.error('[Stripe Backend] Amount out of range:', amount, 'Min:', settings.minDepositAmount, 'Max:', settings.maxDepositAmount);
+      console.error('[Stripe Backend] Step 3 Failed: Amount out of range');
+      console.error('[Stripe Backend] Amount:', amount, 'Min:', settings.minDepositAmount, 'Max:', settings.maxDepositAmount);
       return res.status(400).json({ 
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
       });
     }
+    console.log('[Stripe Backend] Step 3 Complete: Amount validation passed');
     
-    console.log('[Stripe Backend] Fetching user...');
+    console.log('[Stripe Backend] Step 4: Fetching user from database');
     const user = await User.findById(req.user.id);
     if (!user) {
-      console.error('[Stripe Backend] User not found:', req.user.id);
+      console.error('[Stripe Backend] Step 4 Failed: User not found');
+      console.error('[Stripe Backend] User ID:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
-    console.log('[Stripe Backend] User found:', user.email);
-    console.log('[Stripe Backend] User payment methods count:', user.paymentMethods?.length || 0);
+    console.log('[Stripe Backend] Step 4 Complete: User found');
+    console.log('[Stripe Backend] User values:');
+    console.log('  - email:', user.email);
+    console.log('  - stripeCustomerId:', user.stripeCustomerId);
+    console.log('  - paymentMethods count:', user.paymentMethods?.length || 0);
+    console.log('  - Full user payment methods:', JSON.stringify(user.paymentMethods, null, 2));
     
     // Check if user has saved payment methods
     if (!user.paymentMethods || user.paymentMethods.length === 0) {
-      console.error('[Stripe Backend] User has no payment methods');
+      console.error('[Stripe Backend] Step 4 Failed: User has no payment methods');
       return res.status(400).json({ error: 'Please add a payment method first' });
     }
     
+    console.log('[Stripe Backend] Step 5: Selecting payment method');
     // Use provided payment method or default
     const selectedPaymentMethod = paymentMethodId 
       ? user.paymentMethods.find(pm => pm.paymentMethodId === paymentMethodId)
       : user.paymentMethods.find(pm => pm.isDefault) || user.paymentMethods[0];
     
-    console.log('[Stripe Backend] Selected payment method:', selectedPaymentMethod?.paymentMethodId);
+    console.log('[Stripe Backend] Step 5 Complete: Payment method selected');
+    console.log('[Stripe Backend] Selected payment method:', JSON.stringify(selectedPaymentMethod, null, 2));
+    console.log('[Stripe Backend] Selected payment method ID:', selectedPaymentMethod?.paymentMethodId);
     
     if (!selectedPaymentMethod) {
-      console.error('[Stripe Backend] Payment method not found');
+      console.error('[Stripe Backend] Step 5 Failed: Payment method not found');
       return res.status(400).json({ error: 'Payment method not found' });
     }
     
     if (!user.stripeCustomerId) {
-      console.error('[Stripe Backend] Stripe customer not found');
+      console.error('[Stripe Backend] Step 5 Failed: Stripe customer not found');
       return res.status(400).json({ error: 'Stripe customer not found. Please add a payment method first.' });
     }
     console.log('[Stripe Backend] Stripe customer ID:', user.stripeCustomerId);
     
+    console.log('[Stripe Backend] Step 6: Retrieving Stripe keys');
     const stripeKeys = getStripeKeys(settings);
+    console.log('[Stripe Backend] Step 6 Complete: Stripe keys retrieved');
+    
     const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
     console.log('[Stripe Backend] Stripe environment:', stripeEnvironment);
     console.log('[Stripe Backend] Using Stripe keys for environment:', stripeEnvironment);
+    console.log('[Stripe Backend] Stripe secret key to use:', stripeKeys.secretKey);
     
+    console.log('[Stripe Backend] Step 7: Creating Stripe instance');
     const stripe = new Stripe(stripeKeys.secretKey);
+    console.log('[Stripe Backend] Step 7 Complete: Stripe instance created');
     
     // Verify payment method exists in current Stripe environment
     console.log('[Stripe Backend] Verifying payment method:', selectedPaymentMethod.paymentMethodId);
