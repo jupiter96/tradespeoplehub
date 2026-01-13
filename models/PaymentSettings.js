@@ -62,6 +62,12 @@ const paymentSettingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // PayPal Environment (test/sandbox or live)
+    paypalEnvironment: {
+      type: String,
+      enum: ['sandbox', 'live'],
+      default: 'sandbox',
+    },
     
     // Stripe Environment (test or live)
     stripeEnvironment: {

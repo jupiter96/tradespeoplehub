@@ -731,42 +731,76 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
 
 // Helper function to create PayPal client (always Live mode)
 function createPayPalClient(settings) {
+  console.log('[PayPal Backend] createPayPalClient called');
   const paypalKeys = getPayPalKeys(settings);
+  console.log('[PayPal Backend] PayPal keys retrieved:', {
+    clientId: paypalKeys.clientId,
+    secretKey: paypalKeys.secretKey
+  });
+  
+  // Validate keys before creating client
+  if (!paypalKeys.clientId || !paypalKeys.secretKey) {
+    console.error('[PayPal Backend] PayPal credentials are missing');
+    throw new Error('PayPal credentials are missing. Please configure PayPal Client ID and Secret Key in payment settings.');
+  }
   
   // PayPal always operates in Live mode
+  console.log('[PayPal Backend] Creating LiveEnvironment with Client ID and Secret Key');
   const environment = new paypal.core.LiveEnvironment(
     paypalKeys.clientId, 
     paypalKeys.secretKey
   );
   
-  return new paypal.core.PayPalHttpClient(environment);
+  console.log('[PayPal Backend] Creating PayPalHttpClient');
+  const client = new paypal.core.PayPalHttpClient(environment);
+  console.log('[PayPal Backend] PayPal client created successfully');
+  
+  return client;
 }
 
 // Create PayPal order for wallet funding
 router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
+  console.log('[PayPal Backend] POST /wallet/fund/paypal - Request received');
+  console.log('[PayPal Backend] Request body:', req.body);
+  console.log('[PayPal Backend] User ID:', req.user.id);
+  
   try {
     const { amount } = req.body;
+    console.log('[PayPal Backend] Amount received:', amount);
     
     if (!amount || amount <= 0) {
+      console.error('[PayPal Backend] Invalid amount:', amount);
       return res.status(400).json({ error: 'Invalid amount' });
     }
     
+    console.log('[PayPal Backend] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
+    console.log('[PayPal Backend] Payment settings loaded');
     
-    if (!settings.paypalPublicKey || !settings.paypalSecretKey) {
+    // Check for PayPal credentials (prefer paypalClientId, fallback to paypalPublicKey for legacy)
+    const paypalClientId = settings.paypalClientId || settings.paypalPublicKey;
+    console.log('[PayPal Backend] PayPal Client ID:', paypalClientId ? 'Present' : 'Missing');
+    console.log('[PayPal Backend] PayPal Secret Key:', settings.paypalSecretKey ? 'Present' : 'Missing');
+    
+    if (!paypalClientId || !settings.paypalSecretKey) {
+      console.error('[PayPal Backend] PayPal is not configured');
       return res.status(400).json({ error: 'PayPal is not configured' });
     }
     
     if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
+      console.error('[PayPal Backend] Amount out of range:', amount, 'Min:', settings.minDepositAmount, 'Max:', settings.maxDepositAmount);
       return res.status(400).json({ 
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
       });
     }
     
+    console.log('[PayPal Backend] Fetching user...');
     const user = await User.findById(req.user.id);
     if (!user) {
+      console.error('[PayPal Backend] User not found:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
+    console.log('[PayPal Backend] User found:', user.email);
     
     // Calculate PayPal commission (fee is taken separately, full amount is deposited)
     const paypalCommissionPercentage = settings.paypalCommissionPercentage || 3.00;
@@ -774,13 +808,23 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
     const paypalCommission = (amount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
     const totalAmount = amount + paypalCommission; // Total amount to charge
     
+    console.log('[PayPal Backend] Commission calculation:');
+    console.log('[PayPal Backend]   - Deposit amount:', amount);
+    console.log('[PayPal Backend]   - Commission percentage:', paypalCommissionPercentage + '%');
+    console.log('[PayPal Backend]   - Commission fixed:', paypalCommissionFixed);
+    console.log('[PayPal Backend]   - Commission total:', paypalCommission);
+    console.log('[PayPal Backend]   - Total amount to charge:', totalAmount);
+    
     // Create PayPal client
+    console.log('[PayPal Backend] Creating PayPal client...');
     const client = createPayPalClient(settings);
+    console.log('[PayPal Backend] PayPal client created successfully');
     
     // Create PayPal order
+    console.log('[PayPal Backend] Creating PayPal order request...');
     const request = new paypal.orders.OrdersCreateRequest();
     request.prefer("return=representation");
-    request.requestBody({
+    const requestBody = {
       intent: 'CAPTURE',
       purchase_units: [{
         amount: {
@@ -796,11 +840,19 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
         return_url: `${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}/account?tab=billing&paypal=success`,
         cancel_url: `${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}/account?tab=billing&paypal=cancel`,
       },
-    });
+    };
+    request.requestBody(requestBody);
+    console.log('[PayPal Backend] Order request body:', JSON.stringify(requestBody, null, 2));
     
+    console.log('[PayPal Backend] Executing PayPal order request...');
     const order = await client.execute(request);
+    console.log('[PayPal Backend] PayPal order created successfully');
+    console.log('[PayPal Backend] Order ID:', order.result.id);
+    console.log('[PayPal Backend] Order status:', order.result.status);
+    console.log('[PayPal Backend] Order links:', order.result.links);
     
     // Create pending wallet transaction
+    console.log('[PayPal Backend] Creating wallet transaction...');
     const transaction = new Wallet({
       userId: req.user.id,
       type: 'deposit',
@@ -820,39 +872,68 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
     });
     
     await transaction.save();
+    console.log('[PayPal Backend] Wallet transaction created:', transaction._id);
     
-    res.json({
+    const approvalUrl = order.result.links.find(link => link.rel === 'approve')?.href;
+    console.log('[PayPal Backend] Approval URL:', approvalUrl);
+    
+    const response = {
       orderId: order.result.id,
       transactionId: transaction._id,
-      approvalUrl: order.result.links.find(link => link.rel === 'approve')?.href,
-    });
+      approvalUrl: approvalUrl,
+    };
+    console.log('[PayPal Backend] Sending response:', response);
+    
+    res.json(response);
   } catch (error) {
-    console.error('Error creating PayPal order:', error);
+    console.error('[PayPal Backend] Error creating PayPal order:', error);
+    console.error('[PayPal Backend] Error stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
   }
 });
 
 // Capture PayPal payment and update wallet
 router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) => {
+  console.log('[PayPal Backend] POST /wallet/fund/paypal/capture - Request received');
+  console.log('[PayPal Backend] Request body:', req.body);
+  console.log('[PayPal Backend] User ID:', req.user.id);
+  
   try {
     const { orderId, transactionId } = req.body;
+    console.log('[PayPal Backend] Order ID:', orderId);
+    console.log('[PayPal Backend] Transaction ID:', transactionId);
     
     if (!orderId || !transactionId) {
+      console.error('[PayPal Backend] Missing required parameters');
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
+    console.log('[PayPal Backend] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    if (!settings.paypalPublicKey || !settings.paypalSecretKey) {
+    // Check for PayPal credentials (prefer paypalClientId, fallback to paypalPublicKey for legacy)
+    const paypalClientId = settings.paypalClientId || settings.paypalPublicKey;
+    console.log('[PayPal Backend] PayPal Client ID:', paypalClientId ? 'Present' : 'Missing');
+    console.log('[PayPal Backend] PayPal Secret Key:', settings.paypalSecretKey ? 'Present' : 'Missing');
+    
+    if (!paypalClientId || !settings.paypalSecretKey) {
+      console.error('[PayPal Backend] PayPal is not configured');
       return res.status(400).json({ error: 'PayPal is not configured' });
     }
     
     // Verify transaction belongs to user
+    console.log('[PayPal Backend] Fetching transaction from database...');
     const transaction = await Wallet.findById(transactionId);
     if (!transaction || transaction.userId.toString() !== req.user.id.toString()) {
+      console.error('[PayPal Backend] Transaction not found or does not belong to user');
       return res.status(404).json({ error: 'Transaction not found' });
     }
+    console.log('[PayPal Backend] Transaction found:', transaction._id);
+    console.log('[PayPal Backend] Transaction status:', transaction.status);
+    console.log('[PayPal Backend] Transaction amount:', transaction.amount);
+    console.log('[PayPal Backend] Transaction metadata:', transaction.metadata);
     
     if (transaction.status === 'completed') {
+      console.log('[PayPal Backend] Transaction already completed');
       const user = await User.findById(req.user.id);
       return res.json({ 
         message: 'Transaction already processed', 
@@ -862,41 +943,66 @@ router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) =
     }
     
     // Create PayPal client
+    console.log('[PayPal Backend] Creating PayPal client...');
     const client = createPayPalClient(settings);
+    console.log('[PayPal Backend] PayPal client created successfully');
     
     // Capture the order
+    console.log('[PayPal Backend] Creating capture request for order:', orderId);
     const request = new paypal.orders.OrdersCaptureRequest(orderId);
     request.requestBody({});
     
+    console.log('[PayPal Backend] Executing PayPal capture request...');
     const capture = await client.execute(request);
+    console.log('[PayPal Backend] Capture response received');
+    console.log('[PayPal Backend] Capture status:', capture.result.status);
+    console.log('[PayPal Backend] Capture ID:', capture.result.id);
+    console.log('[PayPal Backend] Capture result:', JSON.stringify(capture.result, null, 2));
     
     if (capture.result.status !== 'COMPLETED') {
+      console.error('[PayPal Backend] Payment not completed. Status:', capture.result.status);
       return res.status(400).json({ error: 'Payment not completed' });
     }
     
     // Update user wallet balance (deposit full amount, fee was already charged)
+    console.log('[PayPal Backend] Fetching user...');
     const user = await User.findById(req.user.id);
     if (!user) {
+      console.error('[PayPal Backend] User not found:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
+    console.log('[PayPal Backend] User found:', user.email);
+    console.log('[PayPal Backend] Current wallet balance:', user.walletBalance);
     
     const depositAmount = transaction.metadata?.depositAmount || transaction.amount;
-    user.walletBalance = (user.walletBalance || 0) + depositAmount;
+    console.log('[PayPal Backend] Deposit amount:', depositAmount);
+    
+    const previousBalance = user.walletBalance || 0;
+    user.walletBalance = previousBalance + depositAmount;
     await user.save();
+    console.log('[PayPal Backend] Wallet balance updated');
+    console.log('[PayPal Backend] Previous balance:', previousBalance);
+    console.log('[PayPal Backend] New balance:', user.walletBalance);
     
     // Update transaction
+    console.log('[PayPal Backend] Updating transaction status...');
     transaction.status = 'completed';
     transaction.balance = user.walletBalance;
     transaction.paypalCaptureId = capture.result.id;
     await transaction.save();
+    console.log('[PayPal Backend] Transaction updated successfully');
     
-    res.json({ 
+    const response = { 
       message: 'Wallet funded successfully',
       balance: user.walletBalance,
       transaction,
-    });
+    };
+    console.log('[PayPal Backend] Sending response:', { ...response, transaction: { ...response.transaction.toObject(), _id: response.transaction._id } });
+    
+    res.json(response);
   } catch (error) {
-    console.error('Error capturing PayPal payment:', error);
+    console.error('[PayPal Backend] Error capturing PayPal payment:', error);
+    console.error('[PayPal Backend] Error stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to capture PayPal payment' });
   }
 });

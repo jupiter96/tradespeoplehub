@@ -3151,7 +3151,11 @@ function BillingSection() {
   };
 
   const handlePayPalCreateOrder = async (): Promise<string> => {
+    console.log("[PayPal Frontend] handlePayPalCreateOrder called");
+    console.log("[PayPal Frontend] Amount:", parseFloat(amount));
+    
     try {
+      console.log("[PayPal Frontend] Sending request to /api/wallet/fund/paypal");
       const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
         method: "POST",
         headers: {
@@ -3163,25 +3167,38 @@ function BillingSection() {
         }),
       });
 
+      console.log("[PayPal Frontend] Response status:", response.status);
       const data = await response.json();
+      console.log("[PayPal Frontend] Response data:", data);
 
       if (!response.ok) {
+        console.error("[PayPal Frontend] Error response:", data);
         throw new Error(data.error || "Failed to create PayPal order");
       }
 
+      console.log("[PayPal Frontend] Order created successfully");
+      console.log("[PayPal Frontend] Order ID:", data.orderId);
+      console.log("[PayPal Frontend] Transaction ID:", data.transactionId);
+      
       setPaypalOrderId(data.orderId);
       setPaypalTransactionId(data.transactionId);
       
       return data.orderId;
     } catch (error: any) {
+      console.error("[PayPal Frontend] Error in handlePayPalCreateOrder:", error);
       toast.error(error.message || "Failed to create PayPal order");
       throw error;
     }
   };
 
   const handlePayPalApprove = async (data: { orderID: string }) => {
+    console.log("[PayPal Frontend] handlePayPalApprove called");
+    console.log("[PayPal Frontend] Order ID from PayPal:", data.orderID);
+    console.log("[PayPal Frontend] Transaction ID:", paypalTransactionId);
+    
     try {
       setLoading(true);
+      console.log("[PayPal Frontend] Sending capture request to /api/wallet/fund/paypal/capture");
       
       const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal/capture"), {
         method: "POST",
@@ -3195,12 +3212,18 @@ function BillingSection() {
         }),
       });
 
+      console.log("[PayPal Frontend] Capture response status:", response.status);
       const result = await response.json();
+      console.log("[PayPal Frontend] Capture response data:", result);
 
       if (!response.ok) {
+        console.error("[PayPal Frontend] Capture error response:", result);
         throw new Error(result.error || "Failed to capture PayPal payment");
       }
 
+      console.log("[PayPal Frontend] Payment captured successfully");
+      console.log("[PayPal Frontend] New balance:", result.balance);
+      
       toast.success(`Wallet funded successfully! New balance: £${result.balance?.toFixed(2)}`);
       await fetchWalletBalance();
       await fetchTransactions();
@@ -3212,6 +3235,7 @@ function BillingSection() {
         await refreshUser();
       }
     } catch (error: any) {
+      console.error("[PayPal Frontend] Error in handlePayPalApprove:", error);
       toast.error(error.message || "Failed to process PayPal payment");
     } finally {
       setLoading(false);
@@ -3673,14 +3697,20 @@ function BillingSection() {
                             createOrder={handlePayPalCreateOrder}
                             onApprove={handlePayPalApprove}
                             onError={(err) => {
-                              console.error("PayPal error:", err);
+                              console.error("[PayPal Frontend] PayPal button error:", err);
                               toast.error("PayPal payment failed. Please try again.");
                               setLoading(false);
                             }}
                             onCancel={() => {
+                              console.log("[PayPal Frontend] PayPal payment cancelled by user");
                               toast.info("PayPal payment cancelled");
                               setPaypalOrderId(null);
                               setPaypalTransactionId(null);
+                            }}
+                            onClick={(data, actions) => {
+                              console.log("[PayPal Frontend] PayPal button clicked");
+                              console.log("[PayPal Frontend] Click data:", data);
+                              return actions.resolve();
                             }}
                             style={{
                               layout: "vertical",
@@ -3791,7 +3821,14 @@ function BillingSection() {
                         }`}
                       >
                         {transaction.type === "deposit" || transaction.type === "refund" ? "+" : "-"}
-                        £{transaction.amount.toFixed(2)}
+                        £{(() => {
+                          // For deposits, show the actual deposited amount (fee excluded)
+                          // Use metadata.depositAmount if available, otherwise use amount
+                          if (transaction.type === "deposit" && transaction.metadata?.depositAmount !== undefined) {
+                            return transaction.metadata.depositAmount.toFixed(2);
+                          }
+                          return transaction.amount.toFixed(2);
+                        })()}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
                         Balance: £{transaction.balance?.toFixed(2) || "0.00"}
@@ -4045,7 +4082,7 @@ function BillingSection() {
             {/* Confirmation Message */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-800">
-                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer £{calculateFees().paymentDue.toFixed(2)} using the account details above. Please make sure you have completed the bank transfer using the information above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
+                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer £{calculateFees().paymentDue.toFixed(2)} using the account details above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
               </p>
             </div>
 
