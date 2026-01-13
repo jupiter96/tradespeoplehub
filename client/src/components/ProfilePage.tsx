@@ -180,6 +180,8 @@ export default function ProfilePage() {
             ))
               ? `£${s.originalPrice.toFixed(2)}`
               : undefined,
+            originalPriceValidFrom: s.originalPriceValidFrom || null,
+            originalPriceValidUntil: s.originalPriceValidUntil || null,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",
@@ -201,6 +203,8 @@ export default function ProfilePage() {
               name: p.name,
               price: `£${p.price?.toFixed(2) || '0.00'}`,
               originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              originalPriceValidFrom: p.originalPriceValidFrom || null,
+              originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",
               description: p.description || "",
               highlights: [],

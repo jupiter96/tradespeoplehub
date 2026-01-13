@@ -391,16 +391,13 @@ export default function Nav() {
     
     try {
       setLoadingNotifications(true);
-      console.log('[Nav] Fetching notifications...');
       const response = await fetch(resolveApiUrl('/api/notifications?limit=10'), {
         credentials: 'include',
       });
       
-      console.log('[Nav] Notifications response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[Nav] Notifications data:', data);
         setNotifications(data.notifications || []);
         setUnreadCount(data.unreadCount || 0);
       } else {
@@ -425,7 +422,6 @@ export default function Nav() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[Nav] Unread count:', data.unreadCount);
         setUnreadCount(data.unreadCount || 0);
       }
     } catch (error) {
@@ -472,7 +468,6 @@ export default function Nav() {
 
   // Fetch notifications when user logs in
   useEffect(() => {
-    console.log('[Nav] isLoggedIn changed:', isLoggedIn, 'userInfo:', userInfo?.id);
     if (isLoggedIn) {
       fetchNotifications();
       
@@ -494,7 +489,6 @@ export default function Nav() {
     
     // Handler for new notification
     const handleNewNotification = (data: { notification: Notification; unreadCount: number }) => {
-      console.log('📢 Real-time notification received:', data);
       
       // Update unread count immediately
       setUnreadCount(data.unreadCount);

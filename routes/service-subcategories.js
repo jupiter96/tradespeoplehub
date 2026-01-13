@@ -858,6 +858,112 @@ router.put('/bulk-update-attributes', async (req, res) => {
   }
 });
 
+// Bulk update service ideal for (Admin only) - MUST be before /:id route
+router.put('/bulk-update-ideal-for', async (req, res) => {
+  try {
+    const { updates } = req.body;
+
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({ error: 'Invalid updates format' });
+    }
+
+    // Validate all subCategoryIds before processing
+    const invalidIds = updates.filter(({ subCategoryId }) => 
+      !subCategoryId || !mongoose.Types.ObjectId.isValid(subCategoryId)
+    );
+    
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ 
+        error: 'Invalid subCategoryId(s) provided',
+        invalidIds: invalidIds.map(u => u.subCategoryId)
+      });
+    }
+
+    const updatePromises = updates.map(async ({ subCategoryId, serviceIdealFor }) => {
+      try {
+        const result = await ServiceSubCategory.findByIdAndUpdate(
+          subCategoryId,
+          { serviceIdealFor },
+          { new: true, runValidators: true }
+        );
+        if (!result) {
+          throw new Error(`Service subcategory with id ${subCategoryId} not found`);
+        }
+        
+        // Get serviceCategory for cache clearing (could be ObjectId or populated)
+        const serviceCategoryId = result.serviceCategory 
+          ? (result.serviceCategory._id || result.serviceCategory).toString()
+          : null;
+        
+        return {
+          _id: result._id,
+          serviceIdealFor: result.serviceIdealFor,
+          serviceCategory: serviceCategoryId
+        };
+      } catch (error) {
+        throw error;
+      }
+    });
+
+    const results = await Promise.all(updatePromises);
+    
+    // Clear cache for affected service categories
+    clearCache();
+    
+    // Also clear specific service category caches if available
+    const serviceCategoryIds = new Set();
+    for (const result of results) {
+      if (result.serviceCategory) {
+        serviceCategoryIds.add(result.serviceCategory);
+      }
+    }
+    serviceCategoryIds.forEach(id => {
+      clearCache(id);
+    });
+
+    return res.json({
+      message: 'Service ideal for updated successfully',
+      updatedCount: results.length
+    });
+  } catch (error) {
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        error: 'Duplicate key violation',
+        duplicateField: error.keyPattern ? Object.keys(error.keyPattern)[0] : undefined,
+        duplicateValue: error.keyValue,
+        details: error.message
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = {};
+      if (error.errors) {
+        Object.keys(error.errors).forEach(key => {
+          validationErrors[key] = error.errors[key].message;
+        });
+      }
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors,
+        message: error.message
+      });
+    }
+    
+    return res.status(500).json({ 
+      error: 'Failed to update service ideal for',
+      details: error.message,
+      errorCode: error.code,
+      errorName: error.name,
+      ...(error.errors && { validationErrors: Object.keys(error.errors).reduce((acc, key) => {
+        acc[key] = error.errors[key].message;
+        return acc;
+      }, {}) })
+    });
+  }
+});
+
 // Update service subcategory (Admin only)
 // NOTE: This route MUST come after all specific routes like /bulk-update-attributes
 router.put('/:id', async (req, res) => {

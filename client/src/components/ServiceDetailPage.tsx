@@ -80,17 +80,11 @@ function ThumbnailButtons({
   // Use galleryItems if provided, otherwise fall back to images
   const items = galleryItems || (images || []).map(url => ({ type: 'image' as const, url }));
   
-  console.log('=== ThumbnailButtons Render ===');
-  console.log('galleryItems prop:', galleryItems);
-  console.log('items to display:', items);
-  console.log('items length:', items.length);
-  
   if (!items || items.length <= 1) return null;
 
   return (
     <div className={`flex flex-wrap gap-2 ${className}`}>
       {items.map((item, idx) => {
-        console.log(`Rendering thumbnail ${idx}:`, item);
         return (
           <button
             key={idx}
@@ -303,10 +297,6 @@ export default function ServiceDetailPage() {
           const data = await response.json();
           const s = data.service;
           
-          console.log('=== Service Data Fetched ===');
-          console.log('Service ID:', s._id);
-          console.log('Service images:', s.images);
-          console.log('Service videos:', s.videos);
           
           // Transform API data to match Service interface
           const transformedService = {
@@ -328,14 +318,9 @@ export default function ServiceDetailPage() {
               ? s.professional.avatar || ""
               : "",
             providerPortfolio: (() => {
-              console.log('[ServiceDetailPage] Processing providerPortfolio...');
-              console.log('[ServiceDetailPage] s.professional:', s.professional);
-              console.log('[ServiceDetailPage] s.professional.publicProfile:', s.professional?.publicProfile);
-              console.log('[ServiceDetailPage] s.professional.publicProfile.portfolio:', s.professional?.publicProfile?.portfolio);
               const portfolio = typeof s.professional === 'object'
                 ? (s.professional.publicProfile?.portfolio || [])
                 : [];
-              console.log('[ServiceDetailPage] Final providerPortfolio:', portfolio);
               return portfolio;
             })(),
             aboutMe: s.aboutMe || (typeof s.professional === 'object'
@@ -364,6 +349,8 @@ export default function ServiceDetailPage() {
             ))
               ? `£${s.originalPrice.toFixed(2)}`
               : undefined,
+            originalPriceValidFrom: s.originalPriceValidFrom || null,
+            originalPriceValidUntil: s.originalPriceValidUntil || null,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",
@@ -385,6 +372,8 @@ export default function ServiceDetailPage() {
               name: p.name || "",
               price: typeof p.price === 'number' ? p.price : parseFloat(String(p.price || '0').replace('£', '').replace(/,/g, '')) || 0,
               originalPrice: p.originalPrice ? (typeof p.originalPrice === 'number' ? p.originalPrice : parseFloat(String(p.originalPrice).replace('£', '').replace(/,/g, ''))) : undefined,
+              originalPriceValidFrom: p.originalPriceValidFrom || null,
+              originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: p.priceUnit || "fixed",
               description: p.description || "",
               highlights: [],
@@ -505,11 +494,6 @@ export default function ServiceDetailPage() {
     if (!service) return [];
     const items: Array<{type: 'image' | 'video', url: string, thumbnail?: string, duration?: number}> = [];
     
-    console.log('=== Building Gallery Items ===');
-    console.log('service.images:', service.images);
-    console.log('service.portfolioImages:', service.portfolioImages);
-    console.log('service.videos:', service.videos);
-    
     // Add all images (from both images and portfolioImages)
     const allImages = [
       ...(Array.isArray(service.images) ? service.images : []),
@@ -518,16 +502,13 @@ export default function ServiceDetailPage() {
     
     // Remove duplicates
     const uniqueImages = allImages.filter((url, idx) => allImages.indexOf(url) === idx);
-    
-    console.log('Unique images count:', uniqueImages.length);
-    
+        
     uniqueImages.forEach((img: string) => {
       items.push({ type: 'image', url: img });
     });
     
     // Add videos
     if (service.videos && Array.isArray(service.videos)) {
-      console.log('Adding videos count:', service.videos.length);
       service.videos.forEach((video: any) => {
         items.push({ 
           type: 'video', 
@@ -537,10 +518,6 @@ export default function ServiceDetailPage() {
         });
       });
     }
-    
-    console.log('Total gallery items:', items.length);
-    console.log('Gallery items:', items);
-    
     return items;
   }, [service]);
 
@@ -2292,16 +2269,34 @@ export default function ServiceDetailPage() {
                                   £{pkgPrice.toFixed(2)}
                                 </span>
                               </div>
-                              {pkgDiscountedPrice && (
-                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                  <span 
-                                    className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
-                                    style={{ backgroundColor: '#CC0C39' }}
-                                  >
-                                    {Math.round(((pkgRegularPrice - pkgDiscountedPrice) / pkgRegularPrice) * 100)}% off
-                                  </span>
-                                </div>
-                              )}
+                              {pkgDiscountedPrice && (() => {
+                                // Check if package has a valid time-limited discount
+                                // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                                // No end date means offer is valid indefinitely
+                                const validFrom = pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom) : null;
+                                const validUntil = pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil) : null;
+                                const now = new Date();
+                                // Must have an end date (validUntil) to show "Limited Time Offer"
+                                const hasTimeLimitedDiscount = validUntil && 
+                                                               (!validFrom || validFrom <= now) && 
+                                                               validUntil >= now;
+                                
+                                return (
+                                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                    <span 
+                                      className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                      style={{ backgroundColor: '#CC0C39' }}
+                                    >
+                                      {Math.round(((pkgRegularPrice - pkgDiscountedPrice) / pkgRegularPrice) * 100)}% off
+                                    </span>
+                                    {hasTimeLimitedDiscount && (
+                                      <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                        Limited Time Offer
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             
                             {/* Package Description */}
@@ -2400,16 +2395,34 @@ export default function ServiceDetailPage() {
                           / {service.priceUnit}
                         </span>
                       </div>
-                      {originalPrice && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <span 
-                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
-                            style={{ backgroundColor: '#CC0C39' }}
-                          >
-                            {Math.round(((originalPrice - basePrice) / originalPrice) * 100)}% off
-                          </span>
-                        </div>
-                      )}
+                      {originalPrice && (() => {
+                        // Check if service has a valid time-limited discount
+                        // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                        // No end date means offer is valid indefinitely
+                        const validFrom = service.originalPriceValidFrom ? new Date(service.originalPriceValidFrom) : null;
+                        const validUntil = service.originalPriceValidUntil ? new Date(service.originalPriceValidUntil) : null;
+                        const now = new Date();
+                        // Must have an end date (validUntil) to show "Limited Time Offer"
+                        const hasTimeLimitedDiscount = validUntil && 
+                                                       (!validFrom || validFrom <= now) && 
+                                                       validUntil >= now;
+                        
+                        return (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span 
+                              className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                              style={{ backgroundColor: '#CC0C39' }}
+                            >
+                              {Math.round(((originalPrice - basePrice) / originalPrice) * 100)}% off
+                            </span>
+                            {hasTimeLimitedDiscount && (
+                              <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                Limited Time Offer
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -2804,16 +2817,47 @@ export default function ServiceDetailPage() {
                           / {selectedPackage ? selectedPackage.priceUnit : service.priceUnit}
                         </span>
                       </div>
-                      {originalPrice && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <span 
-                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
-                            style={{ backgroundColor: '#CC0C39' }}
-                          >
-                            {Math.round(((originalPrice - basePrice) / originalPrice) * 100)}% off
-                          </span>
-                        </div>
-                      )}
+                      {originalPrice && (() => {
+                        // Check if service or selected package has a valid time-limited discount
+                        // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                        // No end date means offer is valid indefinitely
+                        let hasTimeLimitedDiscount = false;
+                        if (selectedPackage && selectedPackage.originalPriceValidFrom !== undefined) {
+                          // Check package discount dates
+                          const validFrom = selectedPackage.originalPriceValidFrom ? new Date(selectedPackage.originalPriceValidFrom) : null;
+                          const validUntil = selectedPackage.originalPriceValidUntil ? new Date(selectedPackage.originalPriceValidUntil) : null;
+                          const now = new Date();
+                          // Must have an end date (validUntil) to show "Limited Time Offer"
+                          hasTimeLimitedDiscount = validUntil && 
+                                                   (!validFrom || validFrom <= now) && 
+                                                   validUntil >= now;
+                        } else if (!selectedPackage) {
+                          // Check service discount dates
+                          const validFrom = service.originalPriceValidFrom ? new Date(service.originalPriceValidFrom) : null;
+                          const validUntil = service.originalPriceValidUntil ? new Date(service.originalPriceValidUntil) : null;
+                          const now = new Date();
+                          // Must have an end date (validUntil) to show "Limited Time Offer"
+                          hasTimeLimitedDiscount = validUntil && 
+                                                   (!validFrom || validFrom <= now) && 
+                                                   validUntil >= now;
+                        }
+                        
+                        return (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span 
+                              className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                              style={{ backgroundColor: '#CC0C39' }}
+                            >
+                              {Math.round(((originalPrice - basePrice) / originalPrice) * 100)}% off
+                            </span>
+                            {hasTimeLimitedDiscount && (
+                              <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                Limited Time Offer
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <Separator className="my-6" />

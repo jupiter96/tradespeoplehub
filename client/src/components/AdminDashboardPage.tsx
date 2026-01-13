@@ -55,6 +55,7 @@ import AdminServiceCategoriesPage from "./admin/AdminServiceCategoriesPage";
 import AdminServiceCategoryFormPage from "./admin/AdminServiceCategoryFormPage";
 import AdminServiceTitlesPage from "./admin/AdminServiceTitlesPage";
 import AdminServiceAttributesPage from "./admin/AdminServiceAttributesPage";
+import AdminServiceIdealForPage from "./admin/AdminServiceIdealForPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
@@ -283,6 +284,8 @@ export default function AdminDashboardPage() {
         return <AdminServiceTitlesPage />;
       case "service-attributes":
         return <AdminServiceAttributesPage />;
+      case "service-ideal-for":
+        return <AdminServiceIdealForPage />;
       case "all-service":
         return (
           <AdminServicesPage

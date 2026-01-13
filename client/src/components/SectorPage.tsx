@@ -826,6 +826,8 @@ export default function SectorPage() {
             ))
               ? `£${s.originalPrice.toFixed(2)}`
               : undefined,
+            originalPriceValidFrom: s.originalPriceValidFrom || null,
+            originalPriceValidUntil: s.originalPriceValidUntil || null,
             priceUnit: s.priceUnit || "fixed",
             badges: s.badges || [],
             deliveryType: s.deliveryType || "standard",
@@ -858,6 +860,8 @@ export default function SectorPage() {
               name: p.name,
               price: `£${p.price?.toFixed(2) || '0.00'}`,
               originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              originalPriceValidFrom: p.originalPriceValidFrom || null,
+              originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",
               description: p.description || "",
               highlights: [],
@@ -2412,6 +2416,19 @@ export default function SectorPage() {
                                         const minDiscount = Math.min(...discountPercentages);
                                         const maxDiscount = Math.max(...discountPercentages);
                                         
+                                        // Check if any package has a valid time-limited discount
+                                        // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                                        // No end date means offer is valid indefinitely
+                                        const hasTimeLimitedDiscount = packagesWithDiscounts.some((pkg: any) => {
+                                          const validFrom = pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom) : null;
+                                          const validUntil = pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil) : null;
+                                          const now = new Date();
+                                          // Must have an end date (validUntil) to show "Limited Time Offer"
+                                          return validUntil && 
+                                                 (!validFrom || validFrom <= now) && 
+                                                 validUntil >= now;
+                                        });
+                                        
                                         return (
                                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
                                             <span 
@@ -2420,6 +2437,11 @@ export default function SectorPage() {
                                             >
                                               {minDiscount === maxDiscount ? `${minDiscount}% OFF` : `${minDiscount}% ~ ${maxDiscount}% OFF`}
                                             </span>
+                                            {hasTimeLimitedDiscount && (
+                                              <span className="text-[9px] md:text-[10px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                                Limited Time Offer
+                                              </span>
+                                            )}
                                           </div>
                                         );
                                       })()}
@@ -2440,19 +2462,34 @@ export default function SectorPage() {
                                         )}
                                       </div>
                                       {/* Discount and Limited Time Offer - Below Price */}
-                                      {service.originalPrice && (
-                                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
-                                          <span 
-                                            className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
-                                            style={{ backgroundColor: '#CC0C39' }}
-                                          >
-                                            {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
-                                          </span>
-                                          <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
-                                            Limited Time Offer
-                                          </span>
-                                        </div>
-                                      )}
+                                      {service.originalPrice && (() => {
+                                        // Check if service has a valid time-limited discount
+                                        // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                                        // No end date means offer is valid indefinitely
+                                        const validFrom = service.originalPriceValidFrom ? new Date(service.originalPriceValidFrom) : null;
+                                        const validUntil = service.originalPriceValidUntil ? new Date(service.originalPriceValidUntil) : null;
+                                        const now = new Date();
+                                        // Must have an end date (validUntil) to show "Limited Time Offer"
+                                        const hasTimeLimitedDiscount = validUntil && 
+                                                                       (!validFrom || validFrom <= now) && 
+                                                                       validUntil >= now;
+                                        
+                                        return (
+                                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
+                                            <span 
+                                              className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
+                                              style={{ backgroundColor: '#CC0C39' }}
+                                            >
+                                              {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                            </span>
+                                            {hasTimeLimitedDiscount && (
+                                              <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                                Limited Time Offer
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                     </>
                                   );
                                 }
@@ -2784,6 +2821,19 @@ export default function SectorPage() {
                                         const minDiscount = Math.min(...discountPercentages);
                                         const maxDiscount = Math.max(...discountPercentages);
                                         
+                                        // Check if any package has a valid time-limited discount
+                                        // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                                        // No end date means offer is valid indefinitely
+                                        const hasTimeLimitedDiscount = packagesWithDiscounts.some((pkg: any) => {
+                                          const validFrom = pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom) : null;
+                                          const validUntil = pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil) : null;
+                                          const now = new Date();
+                                          // Must have an end date (validUntil) to show "Limited Time Offer"
+                                          return validUntil && 
+                                                 (!validFrom || validFrom <= now) && 
+                                                 validUntil >= now;
+                                        });
+                                        
                                         return (
                                           <div className="flex flex-wrap items-center gap-1 mt-1">
                                             <span 
@@ -2792,6 +2842,11 @@ export default function SectorPage() {
                                             >
                                               {minDiscount === maxDiscount ? `${minDiscount}% OFF` : `${minDiscount}% ~ ${maxDiscount}% OFF`}
                                             </span>
+                                            {hasTimeLimitedDiscount && (
+                                              <span className="text-[8px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                                Limited Time Offer
+                                              </span>
+                                            )}
                                           </div>
                                         );
                                       })()}
@@ -2800,20 +2855,51 @@ export default function SectorPage() {
                                 } else {
                                   // Show regular price when no packages
                                   return (
-                                    <>
-                              {service.originalPrice && (
-                                <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
-                                  {service.price}
-                                </span>
-                              )}
-                              <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
-                                {service.originalPrice && "From "}
-                                <span className="text-[14px] text-[#2c353f] font-medium">
-                                  {service.originalPrice || service.price}
-                                </span>
-                                <span className="text-[9px]">/{service.priceUnit}</span>
-                              </span>
-                                    </>
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-baseline gap-1">
+                                        {service.originalPrice && (
+                                          <span className="font-['Poppins',sans-serif] text-[9px] text-[#c0c0c0] line-through">
+                                            {service.price}
+                                          </span>
+                                        )}
+                                        <span className="font-['Poppins',sans-serif] text-[9px] text-[#5b5b5b]">
+                                          {service.originalPrice && "From "}
+                                          <span className="text-[14px] text-[#2c353f] font-medium">
+                                            {service.originalPrice || service.price}
+                                          </span>
+                                          <span className="text-[9px]">/{service.priceUnit}</span>
+                                        </span>
+                                      </div>
+                                      {/* Discount and Limited Time Offer - Below Price */}
+                                      {service.originalPrice && (() => {
+                                        // Check if service has a valid time-limited discount
+                                        // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
+                                        // No end date means offer is valid indefinitely
+                                        const validFrom = service.originalPriceValidFrom ? new Date(service.originalPriceValidFrom) : null;
+                                        const validUntil = service.originalPriceValidUntil ? new Date(service.originalPriceValidUntil) : null;
+                                        const now = new Date();
+                                        // Must have an end date (validUntil) to show "Limited Time Offer"
+                                        const hasTimeLimitedDiscount = validUntil && 
+                                                                       (!validFrom || validFrom <= now) && 
+                                                                       validUntil >= now;
+                                        
+                                        return (
+                                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                            <span 
+                                              className="inline-block text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                              style={{ backgroundColor: '#CC0C39' }}
+                                            >
+                                              {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                            </span>
+                                            {hasTimeLimitedDiscount && (
+                                              <span className="text-[8px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
+                                                Limited Time Offer
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
                                   );
                                 }
                               })()}

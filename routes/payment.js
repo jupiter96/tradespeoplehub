@@ -34,7 +34,7 @@ function getPayPalKeys(settings) {
     clientId: settings.paypalClientId || settings.paypalPublicKey || null,
     secretKey: settings.paypalSecretKey || null,
   };
-}
+  }
 
 // Get payment settings (for clients to see available payment methods)
 router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
@@ -45,9 +45,6 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
     const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
     
     // Debug logs (can be removed in production)
-    console.log('[Payment Settings] Stripe Environment:', stripeEnvironment);
-    console.log('[Payment Settings] Stripe Publishable Key:', stripeKeys.publishableKey ? 'SET' : 'NOT SET');
-    console.log('[Payment Settings] PayPal Client ID:', paypalKeys.clientId ? 'SET' : 'NOT SET');
     
     // Return all payment settings - each payment method enabled based on toggle only
     const response = { 

@@ -494,24 +494,14 @@ router.get('/:id', async (req, res) => {
         ]);
         service = doc.toObject();
         
-        // Debug: Log professional portfolio data
-        console.log('[Service Detail] Professional ID:', service.professional?._id);
-        console.log('[Service Detail] Professional publicProfile exists:', !!service.professional?.publicProfile);
-        console.log('[Service Detail] Professional publicProfile keys:', service.professional?.publicProfile ? Object.keys(service.professional.publicProfile) : 'N/A');
-        console.log('[Service Detail] Professional portfolio:', service.professional?.publicProfile?.portfolio);
-        console.log('[Service Detail] Professional portfolio count:', service.professional?.publicProfile?.portfolio?.length || 0);
-        
         // If portfolio is not populated, fetch it separately
         if (service.professional && (!service.professional.publicProfile?.portfolio || service.professional.publicProfile.portfolio.length === 0)) {
-          console.log('[Service Detail] Portfolio not found in populate, fetching user directly...');
           const fullUser = await User.findById(service.professional._id).select('publicProfile.portfolio').lean();
-          console.log('[Service Detail] Full user publicProfile.portfolio:', fullUser?.publicProfile?.portfolio);
           if (fullUser?.publicProfile?.portfolio) {
             if (!service.professional.publicProfile) {
               service.professional.publicProfile = {};
             }
             service.professional.publicProfile.portfolio = fullUser.publicProfile.portfolio;
-            console.log('[Service Detail] Portfolio manually attached, count:', service.professional.publicProfile.portfolio.length);
           }
         }
       } else {
@@ -539,23 +529,14 @@ router.get('/:id', async (req, res) => {
       
       // Debug: Log professional portfolio data
       if (service) {
-        console.log('[Service Detail - Slug] Professional ID:', service.professional?._id);
-        console.log('[Service Detail - Slug] Professional publicProfile exists:', !!service.professional?.publicProfile);
-        console.log('[Service Detail - Slug] Professional publicProfile keys:', service.professional?.publicProfile ? Object.keys(service.professional.publicProfile) : 'N/A');
-        console.log('[Service Detail - Slug] Professional portfolio:', service.professional?.publicProfile?.portfolio);
-        console.log('[Service Detail - Slug] Professional portfolio count:', service.professional?.publicProfile?.portfolio?.length || 0);
-        
         // If portfolio is not populated, fetch it separately
         if (service.professional && (!service.professional.publicProfile?.portfolio || service.professional.publicProfile.portfolio.length === 0)) {
-          console.log('[Service Detail - Slug] Portfolio not found in populate, fetching user directly...');
           const fullUser = await User.findById(service.professional._id).select('publicProfile.portfolio').lean();
-          console.log('[Service Detail - Slug] Full user publicProfile.portfolio:', fullUser?.publicProfile?.portfolio);
           if (fullUser?.publicProfile?.portfolio) {
             if (!service.professional.publicProfile) {
               service.professional.publicProfile = {};
             }
             service.professional.publicProfile.portfolio = fullUser.publicProfile.portfolio;
-            console.log('[Service Detail - Slug] Portfolio manually attached, count:', service.professional.publicProfile.portfolio.length);
           }
         }
       }
@@ -584,21 +565,14 @@ router.get('/:id', async (req, res) => {
             { path: 'serviceSubCategory', select: 'name slug icon' },
           ]);
           service = doc.toObject();
-          
-          // Debug: Log professional portfolio data
-          console.log('[Service Detail - Fallback] Professional ID:', service.professional?._id);
-          console.log('[Service Detail - Fallback] Professional portfolio count:', service.professional?.publicProfile?.portfolio?.length || 0);
-          
           // If portfolio is not populated, fetch it separately
           if (service.professional && (!service.professional.publicProfile?.portfolio || service.professional.publicProfile.portfolio.length === 0)) {
-            console.log('[Service Detail - Fallback] Portfolio not found in populate, fetching user directly...');
             const fullUser = await User.findById(service.professional._id).select('publicProfile.portfolio').lean();
             if (fullUser?.publicProfile?.portfolio) {
               if (!service.professional.publicProfile) {
                 service.professional.publicProfile = {};
               }
               service.professional.publicProfile.portfolio = fullUser.publicProfile.portfolio;
-              console.log('[Service Detail - Fallback] Portfolio manually attached, count:', service.professional.publicProfile.portfolio.length);
             }
           }
         } else {

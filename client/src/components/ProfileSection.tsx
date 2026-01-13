@@ -506,8 +506,6 @@ export default function ProfileSection() {
 
   const handleSave = async () => {
     try {
-      console.log('=== [ProfileSection] handleSave - Start ===');
-      console.log('[ProfileSection] Current userInfo:', userInfo);
       
       // Preserve existing MAIN category IDs, but only allow SUBCATEGORY selection via the Skills picker.
       const categoryIdSet = new Set<string>(availableCategories.map((c: Category) => c._id));
@@ -517,11 +515,6 @@ export default function ProfileSection() {
       const selectedSubCategoryIds = convertServiceNamesToIds(skills);
       const serviceIds = Array.from(new Set([...existingCategoryIds, ...selectedSubCategoryIds]));
       
-      console.log('[ProfileSection] Services:', {
-        existingCategoryIds,
-        selectedSubCategoryIds,
-        serviceIds
-      });
       
       // Include only profile edit fields
       // Note: firstName, lastName, email, phone are excluded as they are managed in "My Details" section
@@ -540,14 +533,8 @@ export default function ProfileSection() {
           coverImage: coverImage || (userInfo?.publicProfile as any)?.coverImage || undefined,
         },
       };
-
-      console.log('[ProfileSection] Profile data to send:', profileData);
-      console.log('[ProfileSection] Portfolio items count:', portfolio.length);
-      console.log('[ProfileSection] Portfolio items:', portfolio);
-
       await updateProfile(profileData);
       
-      console.log('[ProfileSection] Profile update successful');
       setIsEditing(false);
       toast.success("Profile updated successfully");
     } catch (error) {

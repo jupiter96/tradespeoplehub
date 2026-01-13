@@ -2908,7 +2908,6 @@ function BillingSection() {
   // Fetch payment settings when fund section is shown
   useEffect(() => {
     if (showFundSection) {
-      console.log("[useEffect] showFundSection is true, calling fetchPaymentSettings");
       fetchPaymentSettings();
     }
   }, [showFundSection]);
@@ -2937,22 +2936,15 @@ function BillingSection() {
         credentials: "include",
       });
       
-      console.log("[fetchPaymentSettings] Response status:", response.status);
       
       if (response.ok) {
         const data = await response.json();
         
-        console.log("[fetchPaymentSettings] Raw data:", data);
         
         const stripeEnabled = data.stripeEnabled === true;
         const paypalEnabled = data.paypalEnabled === true;
         const manualTransferEnabled = data.manualTransferEnabled === true;
         
-        console.log("[fetchPaymentSettings] Parsed enabled states:", {
-          stripeEnabled,
-          paypalEnabled,
-          manualTransferEnabled,
-        });
         
         // Update publishable key and paypal client id
         if (data.publishableKey) {
@@ -2972,7 +2964,7 @@ function BillingSection() {
           paypalEnabled,
           manualTransferEnabled,
         };
-        console.log("[fetchPaymentSettings] Setting paymentSettings to:", newPaymentSettings);
+        
         setPaymentSettings(newPaymentSettings);
         
         // Set default payment type to first enabled option
@@ -3329,10 +3321,7 @@ function BillingSection() {
               <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-6">
                 Fund Your Wallet
               </h3>
-              
-              {/* Debug: Log payment settings on render */}
-              {console.log("[Render] paymentSettings:", paymentSettings, "loadingPaymentSettings:", loadingPaymentSettings)}
-              
+                            
               {/* Loading state */}
               {loadingPaymentSettings ? (
                 <div className="flex justify-center py-8">
@@ -5525,7 +5514,6 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
     
     // Handler for new notification
     const handleNewNotification = (data: { notification: NotificationItem; unreadCount: number }) => {
-      console.log('📢 [NotificationsSection] Real-time notification received:', data);
       
       // Update unread count
       onUnreadCountChange(data.unreadCount);

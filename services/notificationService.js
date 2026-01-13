@@ -30,7 +30,6 @@ async function emitNotificationToUser(userId, notification) {
         unreadCount,
       });
       
-      console.log(`📢 Real-time notification sent to user ${userIdStr}`);
     }
   } catch (error) {
     console.error('Error emitting notification via socket:', error);

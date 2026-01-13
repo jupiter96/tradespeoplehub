@@ -2855,27 +2855,14 @@ router.post('/profile/verify-otp', requireAuth, async (req, res) => {
 
 router.put('/profile', requireAuth, async (req, res) => {
   try {
-    console.log('=== [Backend] PUT /profile - Start ===');
-    console.log('[Backend] Session userId:', req.session.userId);
     
     const user = await User.findById(req.session.userId);
     if (!user) {
-      console.log('[Backend] User not found for session userId:', req.session.userId);
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
-    console.log('[Backend] Current user:', {
-      id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role
-    });
 
     const body = req.body || {};
-    console.log('[Backend] Request body:', body);
-    console.log('[Backend] Request body.publicProfile:', body.publicProfile);
-    console.log('[Backend] Request body.publicProfile.portfolio:', body.publicProfile?.portfolio);
     
     const {
       firstName,
@@ -2902,31 +2889,16 @@ router.put('/profile', requireAuth, async (req, res) => {
     // - Validate required fields ONLY if the client is trying to set them.
     const hasField = (key) => Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined && body[key] !== null;
 
-    console.log('[Backend] Checking firstName field:', {
-      hasFirstName: hasField('firstName'),
-      firstName: firstName,
-      currentFirstName: user.firstName,
-      isChanged: hasField('firstName') && String(firstName).trim() !== user.firstName
-    });
     
-    console.log('[Backend] Checking lastName field:', {
-      hasLastName: hasField('lastName'),
-      lastName: lastName,
-      currentLastName: user.lastName,
-      isChanged: hasField('lastName') && String(lastName).trim() !== user.lastName
-    });
 
     // First name and last name cannot be changed after registration
     if (hasField('firstName') && String(firstName).trim() !== user.firstName) {
-      console.log('[Backend] ❌ First name change detected - returning 403');
       return res.status(403).json({ error: 'First name cannot be changed after registration' });
     }
     if (hasField('lastName') && String(lastName).trim() !== user.lastName) {
-      console.log('[Backend] ❌ Last name change detected - returning 403');
       return res.status(403).json({ error: 'Last name cannot be changed after registration' });
     }
     
-    console.log('[Backend] ✅ First name and last name validation passed');
     if (hasField('postcode') && !String(postcode).trim()) {
       return res.status(400).json({ error: 'Postcode is required' });
     }
@@ -2969,11 +2941,6 @@ router.put('/profile', requireAuth, async (req, res) => {
         _id: { $ne: user._id } // Exclude current user
       });
       if (existingPhoneUser) {
-        // console.log('[Profile Update] Phone number already in use:', {
-        //   phone: normalizedPhone,
-        //   existingUserId: existingPhoneUser._id,
-        //   existingUserEmail: existingPhoneUser.email
-        // });
         return res.status(409).json({ error: 'This phone number is already registered to another account' });
       }
       const phoneOTP = req.session[phoneChangeOTPKey];
@@ -3153,28 +3120,19 @@ router.put('/profile', requireAuth, async (req, res) => {
 
       // Update public profile if provided
       if (req.body.publicProfile) {
-        console.log('[Backend] Updating public profile...');
-        console.log('[Backend] Received publicProfile data:', req.body.publicProfile);
         
         if (!user.publicProfile) {
-          console.log('[Backend] Creating new publicProfile object');
           user.publicProfile = {};
         }
         
         if (req.body.publicProfile.bio !== undefined) {
           user.publicProfile.bio = req.body.publicProfile.bio?.trim() || undefined;
-          console.log('[Backend] Updated bio:', user.publicProfile.bio?.substring(0, 50) + '...');
         }
         if (req.body.publicProfile.coverImage !== undefined) {
           user.publicProfile.coverImage = req.body.publicProfile.coverImage?.trim() || undefined;
-          console.log('[Backend] Updated coverImage:', user.publicProfile.coverImage);
         }
         if (req.body.publicProfile.portfolio !== undefined) {
-          console.log('[Backend] Updating portfolio...');
-          console.log('[Backend] Received portfolio items:', req.body.publicProfile.portfolio.length);
-          console.log('[Backend] Portfolio items:', req.body.publicProfile.portfolio);
           user.publicProfile.portfolio = req.body.publicProfile.portfolio || [];
-          console.log('[Backend] Portfolio updated. New count:', user.publicProfile.portfolio.length);
         }
         // publicProfileUrl is no longer used - profiles are accessed by user ID only
         // Keeping this for backward compatibility but it won't be used
@@ -3183,19 +3141,15 @@ router.put('/profile', requireAuth, async (req, res) => {
         }
         if (req.body.publicProfile.isPublic !== undefined) {
           user.publicProfile.isPublic = req.body.publicProfile.isPublic;
-          console.log('[Backend] Updated isPublic:', user.publicProfile.isPublic);
         }
         if (req.body.publicProfile.qualifications !== undefined) {
           user.publicProfile.qualifications = req.body.publicProfile.qualifications?.trim() || undefined;
-          console.log('[Backend] Updated qualifications');
         }
         if (req.body.publicProfile.certifications !== undefined) {
           user.publicProfile.certifications = req.body.publicProfile.certifications?.trim() || undefined;
-          console.log('[Backend] Updated certifications');
         }
         if (req.body.publicProfile.companyDetails !== undefined) {
           user.publicProfile.companyDetails = req.body.publicProfile.companyDetails?.trim() || undefined;
-          console.log('[Backend] Updated companyDetails');
         }
       }
     } else {
@@ -3214,22 +3168,12 @@ router.put('/profile', requireAuth, async (req, res) => {
       user.hasPublicLiability = 'no';
     }
 
-    console.log('[Backend] Saving user to database...');
-    console.log('[Backend] User.publicProfile.portfolio before save:', user.publicProfile?.portfolio?.length || 0);
-    
     await user.save();
     
-    console.log('[Backend] User saved successfully');
-    console.log('[Backend] User.publicProfile.portfolio after save:', user.publicProfile?.portfolio?.length || 0);
     
     const sanitizedUser = sanitizeUser(user);
-    console.log('[Backend] Sanitized user.publicProfile.portfolio:', sanitizedUser.publicProfile?.portfolio?.length || 0);
-    console.log('[Backend] Returning response with user data');
-    
     return res.json({ user: sanitizedUser });
   } catch (error) {
-    console.error('[Backend] ❌ Profile update error:', error);
-    console.error('[Backend] Error stack:', error.stack);
     return res.status(500).json({ error: 'Failed to update profile' });
   }
 });
@@ -3550,13 +3494,8 @@ const videoUpload = multer({
 
 // Service video upload endpoint (for service gallery, not portfolio)
 router.post('/profile/service/upload-video', requireAuth, videoUpload.single('portfolioVideo'), async (req, res) => {
-  console.log('=== Video Upload Request Started ===');
-  console.log('User ID:', req.session?.userId);
-  console.log('File received:', req.file ? 'Yes' : 'No');
-  
   try {
     // Check user session
-    console.log('Fetching user from session...');
     const user = await User.findById(req.session.userId);
     if (!user) {
       console.error('User not found in session:', req.session.userId);
@@ -3566,28 +3505,16 @@ router.post('/profile/service/upload-video', requireAuth, videoUpload.single('po
       }
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
-    console.log('User found:', user.email);
 
     // Check file
     if (!req.file) {
       console.error('No video file provided in request');
       return res.status(400).json({ error: 'No video file provided' });
     }
-    console.log('File details:', {
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      originalname: req.file.originalname,
-      filename: req.file.filename,
-      path: req.file.path
-    });
-
     // Get video URL (relative path for serving)
     const videoUrl = `/api/auth/videos/${req.file.filename}`;
-    console.log('Video URL:', videoUrl);
-
     // Generate thumbnail URL (we'll use a placeholder for now, or implement ffmpeg later)
     const thumbnailUrl = `/api/auth/videos/thumbnail/${req.file.filename}`;
-    console.log('Thumbnail URL:', thumbnailUrl);
 
     const responseData = { 
       videoUrl: videoUrl,
@@ -3596,13 +3523,8 @@ router.post('/profile/service/upload-video', requireAuth, videoUpload.single('po
       size: req.file.size,
     };
     
-    console.log('Sending success response:', responseData);
     return res.json(responseData);
   } catch (error) {
-    console.error('=== Video Upload Error ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
     // Delete uploaded file on error
     if (req.file && req.file.path) {
       fs.unlink(req.file.path).catch(err => console.error('Error deleting file:', err));
@@ -3617,8 +3539,6 @@ router.get('/videos/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(videosDir, filename);
   
-  console.log('Serving video:', filename);
-  
   if (!existsSync(filePath)) {
     console.error('Video file not found:', filePath);
     return res.status(404).json({ error: 'Video not found' });
@@ -3632,7 +3552,6 @@ router.get('/videos/thumbnail/:filename', (req, res) => {
   const filename = req.params.filename;
   const videoPath = path.join(videosDir, filename);
   
-  console.log('Serving video thumbnail for:', filename);
   
   if (!existsSync(videoPath)) {
     console.error('Video file not found:', videoPath);

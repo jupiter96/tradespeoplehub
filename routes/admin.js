@@ -1827,7 +1827,7 @@ router.put('/users/:id/block', requireAdmin, async (req, res) => {
 
     // Store previous status of services before blocking (to restore later if unblocked)
     const previousServiceStatuses = {};
-    
+
     user.isBlocked = isBlocked;
     if (isBlocked) {
       user.blockedAt = new Date();
@@ -1860,7 +1860,6 @@ router.put('/users/:id/block', requireAdmin, async (req, res) => {
         }
       );
       
-      console.log(`[Admin] Blocked user ${id}: ${updateResult.modifiedCount} services deactivated`);
     } else {
       // Unblock user - restore previous service statuses if available
       const previousStatuses = user.previousServiceStatuses || {};
@@ -1891,7 +1890,6 @@ router.put('/users/:id/block', requireAdmin, async (req, res) => {
         restoredCount++;
       }
       
-      console.log(`[Admin] Unblocked user ${id}: ${restoredCount} services restored`);
     }
 
     await user.save();

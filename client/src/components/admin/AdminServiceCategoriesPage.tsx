@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Loader2, MoreVertical, Search, ChevronLeft, ChevronRight, ChevronDown, ArrowUpDown, Upload, Eye, FolderTree, Ban, CheckCircle2, GripVertical, Type, List, Target } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -127,7 +127,7 @@ const ATTRIBUTE_TYPES = [
 ] as const;
 
 // Sortable Row Component
-function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive, onViewSubCategories, onManageTitles, onManageAttributes, sectors }: {
+function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggleActive, onViewSubCategories, onManageTitles, onManageAttributes, onManageIdealFor, sectors }: {
   serviceCategory: ServiceCategory;
   onEdit: (serviceCategory: ServiceCategory) => void;
   onDelete: (serviceCategory: ServiceCategory) => void;
@@ -135,6 +135,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
   onViewSubCategories: (serviceCategory: ServiceCategory) => void;
   onManageTitles: (serviceCategory: ServiceCategory) => void;
   onManageAttributes: (serviceCategory: ServiceCategory) => void;
+  onManageIdealFor: (serviceCategory: ServiceCategory) => void;
   sectors: Sector[];
 }) {
   const {
@@ -291,6 +292,13 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
             >
               <List className="h-4 w-4 mr-2" />
               Attributes
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onManageIdealFor(serviceCategory)}
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+            >
+              <Target className="h-4 w-4 mr-2" />
+              Service Ideal For
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onEdit(serviceCategory)}
@@ -1262,6 +1270,11 @@ export default function AdminServiceCategoriesPage() {
   const handleManageAttributes = (serviceCategory: ServiceCategory) => {
     // Navigate to attributes management page (similar to titles)
     navigate(`/admin/service-attributes?categoryId=${serviceCategory._id}`);
+  };
+
+  const handleManageIdealFor = (serviceCategory: ServiceCategory) => {
+    // Navigate to service ideal for management page (similar to attributes)
+    navigate(`/admin/service-ideal-for?categoryId=${serviceCategory._id}`);
   };
 
   const handleViewNestedSubCategories = (subCategory: ServiceSubCategory) => {
@@ -2739,6 +2752,7 @@ export default function AdminServiceCategoriesPage() {
                                 onViewSubCategories={handleViewSubCategories}
                                 onManageTitles={handleManageTitles}
                                 onManageAttributes={handleManageAttributes}
+                                onManageIdealFor={handleManageIdealFor}
                                 sectors={sectors}
                               />
                             ))}

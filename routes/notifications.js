@@ -7,13 +7,9 @@ const router = express.Router();
 // Get all notifications for current user
 router.get('/notifications', authenticateToken, async (req, res) => {
   try {
-    console.log('[Notifications API] GET /notifications called');
-    console.log('[Notifications API] req.user:', req.user);
-    
     const { page = 1, limit = 20, unreadOnly = false } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    console.log('[Notifications API] Fetching for user:', req.user.id);
     
     const query = { userId: req.user.id };
     if (unreadOnly === 'true') {
@@ -30,7 +26,6 @@ router.get('/notifications', authenticateToken, async (req, res) => {
       Notification.getUnreadCount(req.user.id),
     ]);
     
-    console.log('[Notifications API] Found:', notifications.length, 'notifications, unread:', unreadCount);
     
     res.json({
       notifications,
@@ -51,9 +46,7 @@ router.get('/notifications', authenticateToken, async (req, res) => {
 // Get unread count only
 router.get('/notifications/unread-count', authenticateToken, async (req, res) => {
   try {
-    console.log('[Notifications API] Fetching unread count for user:', req.user.id);
     const unreadCount = await Notification.getUnreadCount(req.user.id);
-    console.log('[Notifications API] Unread count:', unreadCount);
     res.json({ unreadCount });
   } catch (error) {
     console.error('Error fetching unread count:', error);

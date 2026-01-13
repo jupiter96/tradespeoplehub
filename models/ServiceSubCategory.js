@@ -133,6 +133,14 @@ const serviceSubCategorySchema = new mongoose.Schema(
       // e.g., ['Licensed and Insured', '24/7 Emergency Service', 'Free Estimates']
       // These will be displayed in "What's Included" section
     },
+    // Service Ideal For options for this subcategory
+    serviceIdealFor: {
+      type: [String],
+      default: [],
+      // Array of "ideal for" options specific to this subcategory
+      // e.g., ['Homeowners', 'Business owners', 'Property managers']
+      // These will be displayed in "What is the service ideal for" section
+    },
   },
   { timestamps: true }
 );

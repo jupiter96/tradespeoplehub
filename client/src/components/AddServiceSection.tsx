@@ -1616,42 +1616,31 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   // Resolve currently selected service category (for dynamic price unit options)
   const currentServiceCategory = useMemo(() => {
     if (!selectedSectorId || !selectedCategoryId) {
-      console.log('[PriceUnit] Missing selectedSectorId or selectedCategoryId:', { selectedSectorId, selectedCategoryId });
       return null;
     }
     const categoriesForSector = serviceCategoriesBySector[selectedSectorId] || [];
-    console.log('[PriceUnit] Categories for sector:', categoriesForSector.length, 'categories');
     const found = categoriesForSector.find((c) => c._id === selectedCategoryId) || null;
-    if (found) {
-      console.log('[PriceUnit] Found category:', found.name, 'pricePerUnit:', found.pricePerUnit);
-    } else {
-      console.log('[PriceUnit] Category not found in serviceCategoriesBySector');
-    }
     return found;
   }, [serviceCategoriesBySector, selectedSectorId, selectedCategoryId]);
 
   const priceUnitOptions = useMemo(() => {
     // Only use units explicitly configured on the selected service category.
     if (!currentServiceCategory) {
-      console.log('[PriceUnit] No currentServiceCategory found');
       return [] as { value: string; label: string }[];
     }
 
     // Check if pricePerUnit exists
     if (!currentServiceCategory.pricePerUnit) {
-      console.log('[PriceUnit] No pricePerUnit found in category:', currentServiceCategory.name);
       return [] as { value: string; label: string }[];
     }
 
     // If enabled is false, return empty
     if (currentServiceCategory.pricePerUnit.enabled === false) {
-      console.log('[PriceUnit] pricePerUnit.enabled is false for category:', currentServiceCategory.name);
       return [] as { value: string; label: string }[];
     }
 
     // Check if units array exists
     if (!Array.isArray(currentServiceCategory.pricePerUnit.units)) {
-      console.log('[PriceUnit] pricePerUnit.units is not an array for category:', currentServiceCategory.name);
       return [] as { value: string; label: string }[];
     }
 
@@ -1659,7 +1648,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       (a, b) => (a.order || 0) - (b.order || 0)
     );
 
-    console.log('[PriceUnit] Found units for category:', currentServiceCategory.name, units);
 
     const options: { value: string; label: string }[] = [];
     for (const unit of units) {
@@ -1670,7 +1658,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
     }
 
-    console.log('[PriceUnit] Final options:', options);
     return options;
   }, [currentServiceCategory]);
 
@@ -1681,12 +1668,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   
   useEffect(() => {
     const fetchServiceAttributes = async () => {
-      console.log('🔍 [Attributes] Starting fetchServiceAttributes');
-      console.log('🔍 [Attributes] selectedCategoryId:', selectedCategoryId);
-      console.log('🔍 [Attributes] isPackageService:', isPackageService);
       
       if (!selectedCategoryId) {
-        console.log('⚠️ [Attributes] No selectedCategoryId, clearing attributes');
         setAvailableServiceAttributes([]);
         return;
       }
@@ -1695,19 +1678,13 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         // Fetch service category with all nested subcategories
         const { resolveApiUrl } = await import("../config/api");
         const apiUrl = resolveApiUrl(`/api/service-categories/${selectedCategoryId}?includeSubCategories=true`);
-        console.log('📡 [Attributes] Fetching from:', apiUrl);
-        
         const response = await fetch(apiUrl, { credentials: 'include' });
-        console.log('📡 [Attributes] Response status:', response.status, response.ok);
 
         if (response.ok) {
           const data = await response.json();
           const category = data.serviceCategory;
-          console.log('📦 [Attributes] Category received:', category ? 'Yes' : 'No');
-          console.log('📦 [Attributes] Category subCategories:', category?.subCategories?.length || 0);
           
           if (!category) {
-            console.log('⚠️ [Attributes] No category in response, clearing attributes');
             setAvailableServiceAttributes([]);
             return;
           }
@@ -1718,38 +1695,25 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           // Recursively collect attributes from all subcategories
           const collectAttributes = (subCats: ServiceSubCategory[], level = 0) => {
             if (!subCats || !Array.isArray(subCats)) {
-              console.log(`⚠️ [Attributes] Level ${level}: subCats is not an array`);
               return;
             }
-            console.log(`📋 [Attributes] Level ${level}: Processing ${subCats.length} subcategories`);
             subCats.forEach((subCat: ServiceSubCategory, index: number) => {
-              console.log(`  📄 [Attributes] Level ${level}, SubCat ${index}:`, subCat.name, 'attributes:', subCat.serviceAttributes?.length || 0);
               if (subCat.serviceAttributes && Array.isArray(subCat.serviceAttributes)) {
-                console.log(`  ✅ [Attributes] Adding ${subCat.serviceAttributes.length} attributes from ${subCat.name}`);
                 allAttributes.push(...subCat.serviceAttributes);
               }
               // Recursively check nested subcategories
               if (subCat.subCategories && Array.isArray(subCat.subCategories)) {
-                console.log(`  🔄 [Attributes] Recursing into ${subCat.subCategories.length} nested subcategories of ${subCat.name}`);
                 collectAttributes(subCat.subCategories, level + 1);
               }
             });
           };
           
           if (category.subCategories && Array.isArray(category.subCategories)) {
-            console.log('🔄 [Attributes] Starting to collect attributes from', category.subCategories.length, 'top-level subcategories');
             collectAttributes(category.subCategories);
-          } else {
-            console.log('⚠️ [Attributes] No subCategories array in category');
           }
-
-          console.log('📊 [Attributes] Total attributes collected:', allAttributes.length);
-          console.log('📊 [Attributes] Raw attributes:', allAttributes);
 
           // Remove duplicates and return unique attributes
           const uniqueAttributes = Array.from(new Set(allAttributes)).filter(attr => attr && attr.trim() !== '');
-          console.log('✨ [Attributes] Unique attributes after filtering:', uniqueAttributes.length);
-          console.log('✨ [Attributes] Final attributes:', uniqueAttributes);
           setAvailableServiceAttributes(uniqueAttributes);
         } else {
           // Fallback: try to get attributes from currentServiceCategory if API fails
@@ -1777,7 +1741,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           setAvailableServiceAttributes([]);
         }
       } catch (error) {
-        console.error("Error fetching service attributes:", error);
         // Fallback: try to get attributes from currentServiceCategory if fetch fails
         if (currentServiceCategory?.subCategories && Array.isArray(currentServiceCategory.subCategories)) {
           const allAttributes: string[] = [];
@@ -1933,7 +1896,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           }
         }
       } catch (error) {
-        console.error("Error loading draft:", error);
+        // Error loading draft
       } finally {
         setLoadingDraft(false);
         setDraftLoaded(true);
@@ -2118,11 +2081,75 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     fetchServiceAttributes();
   }, [selectedSubCategoryPath]);
 
-  // Fetch service ideal for and extra services from selected category
+  // Fetch service ideal for from selected subcategories (similar to attributes)
+  // For package services, also include selectedLastLevelSubCategories
+  useEffect(() => {
+    const fetchServiceIdealFor = async () => {
+      // Combine selectedSubCategoryPath and selectedLastLevelSubCategories for package services
+      const allSubCategoryIds: string[] = [];
+      
+      // Add from selectedSubCategoryPath
+      if (selectedSubCategoryPath && selectedSubCategoryPath.length > 0) {
+        selectedSubCategoryPath.forEach(id => {
+          if (id && !allSubCategoryIds.includes(id)) {
+            allSubCategoryIds.push(id);
+          }
+        });
+      }
+      
+      // For package services, also add from selectedLastLevelSubCategories
+      if (isPackageService && selectedLastLevelSubCategories && selectedLastLevelSubCategories.length > 0) {
+        selectedLastLevelSubCategories.forEach(id => {
+          if (id && !allSubCategoryIds.includes(id)) {
+            allSubCategoryIds.push(id);
+          }
+        });
+      }
+      
+      if (allSubCategoryIds.length === 0) {
+        setDynamicServiceIdealFor([]);
+        return;
+      }
+
+      try {
+        // Collect all ideal for options from all selected subcategories
+        const allIdealFor: string[] = [];
+
+        for (const subCategoryId of allSubCategoryIds) {
+          if (!subCategoryId) continue;
+
+          const response = await fetch(
+            resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
+            { credentials: "include" }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.serviceSubCategory?.serviceIdealFor && Array.isArray(data.serviceSubCategory.serviceIdealFor)) {
+              // Add ideal for options from this level (avoid duplicates)
+              data.serviceSubCategory.serviceIdealFor.forEach((option: string) => {
+                if (option && !allIdealFor.includes(option)) {
+                  allIdealFor.push(option);
+                }
+              });
+            }
+          }
+        }
+
+        setDynamicServiceIdealFor(allIdealFor);
+      } catch (error) {
+        // console.error("Error fetching service ideal for:", error);
+        setDynamicServiceIdealFor([]);
+      }
+    };
+
+    fetchServiceIdealFor();
+  }, [selectedSubCategoryPath, isPackageService, selectedLastLevelSubCategories]);
+
+  // Fetch extra services from selected category
   useEffect(() => {
     const fetchCategoryData = async () => {
       if (!selectedCategoryId) {
-        setDynamicServiceIdealFor([]);
         setDynamicExtraServices([]);
         return;
       }
@@ -2135,16 +2162,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
         if (response.ok) {
           const data = await response.json();
-
-          // Set service ideal for options
-          if (data.serviceCategory?.serviceIdealFor && Array.isArray(data.serviceCategory.serviceIdealFor)) {
-            const idealForOptions = data.serviceCategory.serviceIdealFor
-              .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-              .map((item: any) => item.name);
-            setDynamicServiceIdealFor(idealForOptions);
-          } else {
-            setDynamicServiceIdealFor([]);
-          }
 
           // Set extra services
           if (data.serviceCategory?.extraServices && Array.isArray(data.serviceCategory.extraServices)) {
@@ -2163,7 +2180,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         }
       } catch (error) {
         // console.error("Error fetching category data:", error);
-        setDynamicServiceIdealFor([]);
         setDynamicExtraServices([]);
       }
     };
@@ -2299,13 +2315,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               }
             }
           } catch (error) {
-            console.error(`Error fetching subcategory ${subCategoryId}:`, error);
+            // Error fetching subcategory
           }
         }
 
         setLastLevelSubCategoryAttributes(attributesMap);
       } catch (error) {
-        console.error("Error fetching last-level subcategory attributes:", error);
         setLastLevelSubCategoryAttributes({});
       }
     };
@@ -2753,21 +2768,15 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
   // Video upload functions
   const handleVideoUpload = async (files: FileList | null) => {
-    console.log('=== handleVideoUpload called ===');
-    console.log('Files:', files);
     
     if (!files || files.length === 0) {
-      console.log('No files provided');
       return;
     }
 
     const filesArray = Array.from(files);
-    console.log('Files array:', filesArray.map(f => ({ name: f.name, size: f.size, type: f.type })));
     
     const remainingSlots = 2 - galleryVideos.length; // Max 2 videos
     const filesToUpload = filesArray.slice(0, remainingSlots);
-    console.log('Remaining slots:', remainingSlots);
-    console.log('Files to upload:', filesToUpload.length);
 
     if (filesArray.length > remainingSlots) {
       toast.error(`You can only upload ${remainingSlots} more video(s). Maximum 2 videos allowed.`);
@@ -2778,69 +2787,51 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     for (let i = 0; i < filesToUpload.length; i++) {
       const file = filesToUpload[i];
       const tempIndex = startIndex + i;
-      console.log(`\n=== Uploading video ${i + 1}/${filesToUpload.length} ===`);
-      console.log('File name:', file.name);
-      console.log('File size:', file.size, 'bytes');
-      console.log('File type:', file.type);
 
       // Validate file type
       const allowedTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
       if (!allowedTypes.includes(file.type)) {
-        console.error('Invalid file type:', file.type);
         toast.error(`${file.name}: Unsupported file type. Please upload MP4, MPEG, MOV, AVI, or WEBM.`);
         continue;
       }
-      console.log('File type validation passed');
 
       // Validate file size (50MB)
       if (file.size > 50 * 1024 * 1024) {
-        console.error('File too large:', file.size);
         toast.error(`${file.name}: Video size must be less than 50MB`);
         continue;
       }
-      console.log('File size validation passed');
 
       // Create a temporary preview
       const tempPreviewUrl = URL.createObjectURL(file);
-      console.log('Temporary preview URL created:', tempPreviewUrl);
       
       setGalleryVideos(prev => {
         const next = [...prev];
         next[tempIndex] = { url: tempPreviewUrl, thumbnail: tempPreviewUrl };
-        console.log('Gallery videos updated with temporary preview');
         return next;
       });
 
       setUploadingVideos(prev => ({ ...prev, [tempIndex]: true }));
-      console.log('Upload state set to true for index:', tempIndex);
 
       try {
         const formData = new FormData();
         formData.append("portfolioVideo", file);
-        console.log('FormData created with video file');
 
         const uploadPromise = (async () => {
-          console.log('Starting API call...');
           const { resolveApiUrl } = await import("../config/api");
           const apiUrl = resolveApiUrl("/api/auth/profile/portfolio/upload-video");
-          console.log('API URL:', apiUrl);
           
           const response = await fetch(apiUrl, {
             method: "POST",
             credentials: "include",
             body: formData,
           });
-          console.log('Response status:', response.status);
-          console.log('Response ok:', response.ok);
 
           if (!response.ok) {
             const errorData = await response.json();
-            console.error('Server error response:', errorData);
             throw new Error(errorData.error || "Upload failed");
           }
 
           const data = await response.json();
-          console.log('Upload success! Response data:', data);
           
           // Convert relative URL to absolute URL for display
           const baseUrl = apiUrl.replace('/api/auth/profile/portfolio/upload-video', '');
@@ -2861,13 +2852,11 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             return `${file.name} uploaded successfully`;
           },
           error: (err: Error) => {
-            console.error('Toast error:', err);
             return `${file.name}: ${err.message}`;
           },
         });
 
         const videoData = await uploadPromise;
-        console.log('Video data received:', videoData);
 
         setGalleryVideos(prev => {
           const next = [...prev];
@@ -2877,36 +2866,24 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             duration: videoData.duration,
             size: videoData.size,
           };
-          console.log('Gallery videos updated with uploaded video data');
           return next;
         });
 
         setUploadingVideos(prev => {
           const updated = { ...prev };
           delete updated[tempIndex];
-          console.log('Upload state cleared for index:', tempIndex);
           return updated;
         });
 
-        console.log(`=== Video ${i + 1} upload complete ===\n`);
-
       } catch (error: any) {
-        console.error('=== Video upload error ===');
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-        console.error('Error object:', error);
-        
         setGalleryVideos(prev => prev.filter((_, i) => i !== tempIndex));
         setUploadingVideos(prev => {
           const updated = { ...prev };
           delete updated[tempIndex];
           return updated;
         });
-        console.log('Cleaned up failed upload');
       }
     }
-    
-    console.log('=== handleVideoUpload complete ===\n');
   };
 
   const handleRemoveVideo = (index: number) => {
@@ -3028,7 +3005,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       
       toast.success("Portfolio item added successfully");
     } catch (error) {
-      console.error("Error adding portfolio item:", error);
       toast.error(error instanceof Error ? error.message : "Failed to add portfolio item");
     } finally {
       setIsUploadingPortfolio(false);
@@ -3064,9 +3040,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         throw new Error(errorData.error || "Failed to sync portfolio");
       }
       
-      console.log("Portfolio synced to profile successfully");
+      // Portfolio synced to profile successfully
     } catch (error) {
-      console.error("Error syncing portfolio:", error);
       toast.error("Failed to sync portfolio to profile");
     }
   };
@@ -3247,8 +3222,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         return;
       }
       
-      // Validate "What's Included" (Service Highlights)
-      if (dynamicServiceAttributes && dynamicServiceAttributes.length > 0 && serviceHighlights.length === 0) {
+      // Validate "What's Included" (Service Highlights) - Only for single services
+      // Package services have their own attributes per package
+      if (!isPackageService && dynamicServiceAttributes && dynamicServiceAttributes.length > 0 && serviceHighlights.length === 0) {
         toast.error("Please select at least one option for 'What's Included'");
         return;
       }
@@ -3339,7 +3315,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
     // Only professionals can save drafts
     if (userInfo?.role !== 'professional') {
-      console.log('Draft save skipped: User is not a professional');
       return;
     }
 
@@ -3511,9 +3486,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
       const method = draftId ? "PUT" : "POST";
 
-      console.log(`Saving draft (${method}):`, url);
-      console.log('Draft data:', draftData);
-
       const response = await fetch(url, {
         method,
         headers: {
@@ -3525,17 +3497,16 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Draft saved successfully:', data);
         if (!draftId && data.service?._id) {
           setDraftId(data.service._id);
         }
         setLastSaved(new Date());
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Failed to save draft:', response.status, errorData);
+        // Failed to save draft
       }
     } catch (error) {
-      console.error("Error saving draft:", error);
+      // Error saving draft
     } finally {
       setIsSavingDraft(false);
     }
@@ -3845,7 +3816,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         setLastSaved(null);
       }
     } catch (error) {
-      console.error("Error deleting draft:", error);
+      // Error deleting draft
     }
   };
 
@@ -3915,8 +3886,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("service-details");
       return;
     }
-    if (!description || description.length < 35) {
-      toast.error("Please provide at least 35 characters description");
+    if (!description || description.length < 100) {
+      toast.error("Please provide at least 100 characters description");
       setActiveTab("service-details");
       return;
     }
@@ -3933,8 +3904,16 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("service-details");
       return;
     }
-    // Validate How do you charge? (mandatory if priceUnitOptions available)
-    if (currentServiceCategory && priceUnitOptions.length > 0 && !priceUnit) {
+    // Validate "What's Included" (Service Highlights) - Only for single services
+    // Package services have their own attributes per package
+    if (!isPackageService && dynamicServiceAttributes && dynamicServiceAttributes.length > 0 && serviceHighlights.length === 0) {
+      toast.error("Please select at least one option for 'What's Included'");
+      setActiveTab("service-details");
+      return;
+    }
+    // Validate How do you charge? (mandatory if priceUnitOptions available) - Only for single services
+    // Package services have their own price settings per package
+    if (!isPackageService && currentServiceCategory && priceUnitOptions.length > 0 && !priceUnit) {
       toast.error("Please select 'How do you charge?'");
       setActiveTab("packages");
       return;
@@ -4122,18 +4101,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       const result = await response.json();
       const updatedService = result.service || result;
       
-      console.log('[Service Publish] Initial Service Status:', initialService?.status);
-      // console.log('[Service Publish] Updated Service Status:', updatedService?.status);
-      // console.log('[Service Publish] Is Edit Mode:', isEditMode);
-      // console.log('[Service Publish] Draft ID:', draftId);
-      
       // Delete draft if it exists and we're creating a new service (not updating existing)
       if (!isUpdatingExisting && draftId) {
         try {
           await deleteDraft();
         } catch (error) {
           // Log error but don't block the success flow
-          console.error("Error deleting draft after publish:", error);
         }
       }
       
@@ -4227,7 +4200,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                         toast.error("Failed to discard draft");
                       }
                     } catch (error) {
-                      console.error("Error discarding draft:", error);
                       toast.error("Failed to discard draft");
                     }
                   }
