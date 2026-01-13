@@ -2,7 +2,35 @@ import mongoose from 'mongoose';
 
 const paymentSettingsSchema = new mongoose.Schema(
   {
-    // Stripe API Keys
+    // Stripe API Keys - Test Mode
+    stripeTestPublishableKey: {
+      type: String,
+      trim: true,
+    },
+    stripeTestSecretKey: {
+      type: String,
+      trim: true,
+    },
+    stripeTestWebhookSecret: {
+      type: String,
+      trim: true,
+    },
+    
+    // Stripe API Keys - Live Mode
+    stripeLivePublishableKey: {
+      type: String,
+      trim: true,
+    },
+    stripeLiveSecretKey: {
+      type: String,
+      trim: true,
+    },
+    stripeLiveWebhookSecret: {
+      type: String,
+      trim: true,
+    },
+    
+    // Legacy fields (for backward compatibility)
     stripePublishableKey: {
       type: String,
       trim: true,
@@ -16,12 +44,17 @@ const paymentSettingsSchema = new mongoose.Schema(
       trim: true,
     },
     
-    // PayPal API Keys
-    paypalPublicKey: {
+    // PayPal API Keys (Live only)
+    paypalClientId: {
       type: String,
       trim: true,
     },
     paypalSecretKey: {
+      type: String,
+      trim: true,
+    },
+    // Legacy field
+    paypalPublicKey: {
       type: String,
       trim: true,
     },
@@ -30,7 +63,13 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: true,
     },
     
-    // Environment (test or live)
+    // Stripe Environment (test or live)
+    stripeEnvironment: {
+      type: String,
+      enum: ['test', 'live'],
+      default: 'test',
+    },
+    // Legacy field
     environment: {
       type: String,
       enum: ['test', 'live'],

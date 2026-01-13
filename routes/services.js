@@ -1191,6 +1191,9 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       }
     }
 
+    // Store previous status for notification logic
+    const previousStatus = service.status;
+    
     service.status = nextStatus;
     
     // Automatically set isActive based on status
@@ -1209,6 +1212,23 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       { path: 'serviceSubCategory', select: 'name slug icon' },
       { path: 'reviewedBy', select: 'firstName lastName email' },
     ]);
+
+    // Send notifications if status changed by admin (not by owner)
+    if (isAdmin && service.professional && previousStatus !== nextStatus) {
+      try {
+        const { notifyListingApproved, notifyListingRejected, notifyListingRequiresModification } = await import('../services/notificationService.js');
+        
+        if (nextStatus === 'approved') {
+          await notifyListingApproved(service.professional._id, service._id, service.title);
+        } else if (nextStatus === 'denied') {
+          await notifyListingRejected(service.professional._id, service._id, service.title, null);
+        } else if (nextStatus === 'required_modification') {
+          await notifyListingRequiresModification(service.professional._id, service._id, service.title, null);
+        }
+      } catch (notifError) {
+        console.error('Failed to send listing status notification:', notifError);
+      }
+    }
 
     return res.json({ service });
   } catch (error) {
@@ -1324,86 +1344,99 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
       { path: 'reviewedBy', select: 'firstName lastName email' },
     ]);
 
-    // Send email notifications based on status change
-    if (service.professional?.email) {
+    // Send email and in-app notifications based on status change
+    if (service.professional) {
       try {
         const { sendTemplatedEmail } = await import('../services/notifier.js');
+        const { notifyListingApproved, notifyListingRejected, notifyListingRequiresModification } = await import('../services/notificationService.js');
         
         if (service.status === 'approved') {
           // Send approval email
-          await sendTemplatedEmail(
-            service.professional.email,
-            'listing-approved',
-            {
-              firstName: service.professional.firstName || 'Professional',
-              lastName: service.professional.lastName || '',
-              serviceTitle: service.title,
-              serviceId: service._id.toString(),
-              serviceSlug: service.slug,
-              categoryName: service.serviceCategory?.name || 'Service',
-              approvedDate: new Date().toLocaleDateString('en-GB', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              }),
-              reviewedBy: service.reviewedBy?.firstName 
-                ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
-                : 'Admin',
-            },
-            'listing'
-          );
+          if (service.professional.email) {
+            await sendTemplatedEmail(
+              service.professional.email,
+              'listing-approved',
+              {
+                firstName: service.professional.firstName || 'Professional',
+                lastName: service.professional.lastName || '',
+                serviceTitle: service.title,
+                serviceId: service._id.toString(),
+                serviceSlug: service.slug,
+                categoryName: service.serviceCategory?.name || 'Service',
+                approvedDate: new Date().toLocaleDateString('en-GB', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }),
+                reviewedBy: service.reviewedBy?.firstName 
+                  ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
+                  : 'Admin',
+              },
+              'listing'
+            );
+          }
+          // Create in-app notification
+          await notifyListingApproved(service.professional._id, service._id, service.title);
         } else if (service.status === 'denied') {
           // Send rejection email
-          await sendTemplatedEmail(
-            service.professional.email,
-            'listing-rejected',
-            {
-              firstName: service.professional.firstName || 'Professional',
-              lastName: service.professional.lastName || '',
-              serviceTitle: service.title,
-              serviceId: service._id.toString(),
-              serviceSlug: service.slug,
-              categoryName: service.serviceCategory?.name || 'Service',
-              rejectionReason: service.modificationReason || 'Your listing did not meet our requirements. Please review our guidelines and try again.',
-              rejectedDate: new Date().toLocaleDateString('en-GB', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              }),
-              reviewedBy: service.reviewedBy?.firstName 
-                ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
-                : 'Admin',
-            },
-            'listing'
-          );
+          if (service.professional.email) {
+            await sendTemplatedEmail(
+              service.professional.email,
+              'listing-rejected',
+              {
+                firstName: service.professional.firstName || 'Professional',
+                lastName: service.professional.lastName || '',
+                serviceTitle: service.title,
+                serviceId: service._id.toString(),
+                serviceSlug: service.slug,
+                categoryName: service.serviceCategory?.name || 'Service',
+                rejectionReason: service.modificationReason || 'Your listing did not meet our requirements. Please review our guidelines and try again.',
+                rejectedDate: new Date().toLocaleDateString('en-GB', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }),
+                reviewedBy: service.reviewedBy?.firstName 
+                  ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
+                  : 'Admin',
+              },
+              'listing'
+            );
+          }
+          // Create in-app notification
+          await notifyListingRejected(service.professional._id, service._id, service.title, service.modificationReason);
         } else if (service.status === 'required_modification') {
           // Send modification required email
-          await sendTemplatedEmail(
-            service.professional.email,
-            'listing-modification-required',
-            {
-              firstName: service.professional.firstName || 'Professional',
-              lastName: service.professional.lastName || '',
-              serviceTitle: service.title,
-              serviceId: service._id.toString(),
-              serviceSlug: service.slug,
-              categoryName: service.serviceCategory?.name || 'Service',
-              modificationReason: service.modificationReason || 'Your listing requires some modifications before it can be approved.',
-              modificationDate: new Date().toLocaleDateString('en-GB', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              }),
-              reviewedBy: service.reviewedBy?.firstName 
-                ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
-                : 'Admin',
-            },
-            'listing'
-          );
+          if (service.professional.email) {
+            await sendTemplatedEmail(
+              service.professional.email,
+              'listing-modification-required',
+              {
+                firstName: service.professional.firstName || 'Professional',
+                lastName: service.professional.lastName || '',
+                serviceTitle: service.title,
+                serviceId: service._id.toString(),
+                serviceSlug: service.slug,
+                categoryName: service.serviceCategory?.name || 'Service',
+                modificationReason: service.modificationReason || 'Your listing requires some modifications before it can be approved.',
+                modificationDate: new Date().toLocaleDateString('en-GB', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }),
+                reviewedBy: service.reviewedBy?.firstName 
+                  ? `${service.reviewedBy.firstName} ${service.reviewedBy.lastName || ''}`.trim()
+                  : 'Admin',
+              },
+              'listing'
+            );
+          }
+          // Create in-app notification
+          await notifyListingRequiresModification(service.professional._id, service._id, service.title, service.modificationReason);
         }
       } catch (emailError) {
-        // Don't fail the request if email fails
-        console.error('Failed to send listing status email:', emailError);
+        // Don't fail the request if email/notification fails
+        console.error('Failed to send listing status notification:', emailError);
       }
     }
 

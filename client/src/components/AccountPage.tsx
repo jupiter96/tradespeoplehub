@@ -69,7 +69,8 @@ import {
   Download,
   Reply,
   ExternalLink,
-  Landmark
+  Landmark,
+  Bell
 } from "lucide-react";
 import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
@@ -97,6 +98,7 @@ import FavouriteSection from "./FavouriteSection";
 import ProfileSection from "./ProfileSection";
 import VerificationProgressModal from "./VerificationProgressModal";
 import SEOHead from "./SEOHead";
+import { getSocket, connectSocket } from "../services/socket";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -292,11 +294,65 @@ export default function AccountPage() {
   };
 
   // Menu items for Client
+  // State for unread notifications count
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+
+  // Fetch notification unread count
+  useEffect(() => {
+    const fetchNotificationCount = async () => {
+      try {
+        const response = await fetch(resolveApiUrl('/api/notifications/unread-count'), {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setNotificationUnreadCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching notification count:', error);
+      }
+    };
+
+    if (isLoggedIn) {
+      fetchNotificationCount();
+      // Poll every 30 seconds (as fallback)
+      const interval = setInterval(fetchNotificationCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn]);
+
+  // Listen for real-time notifications via Socket.io (for menu badge)
+  useEffect(() => {
+    if (!isLoggedIn || !userInfo?.id) return;
+
+    // Connect socket if not already connected
+    const socket = getSocket() || connectSocket(userInfo.id);
+    
+    // Handler for new notification
+    const handleNewNotification = (data: { notification: any; unreadCount: number }) => {
+      console.log('📢 [AccountPage] Real-time notification received:', data);
+      setNotificationUnreadCount(data.unreadCount);
+    };
+
+    // Subscribe to notification events
+    socket.on('notification:new', handleNewNotification);
+
+    return () => {
+      socket.off('notification:new', handleNewNotification);
+    };
+  }, [isLoggedIn, userInfo?.id]);
+
   const clientMenu = useMemo(() => [
     { id: "overview", label: "Overview", icon: User },
     { id: "favourites", label: "Favourites", icon: Heart },
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "my-jobs", label: "My Jobs", icon: FileText },
+    { 
+      id: "notifications", 
+      label: "Notifications", 
+      icon: Bell, 
+      badge: notificationUnreadCount > 0 ? notificationUnreadCount.toString() : undefined 
+    },
     { id: "details", label: "My Details", icon: Settings },
     { id: "billing", label: "Billing", icon: CreditCard },
     { id: "security", label: "Security", icon: Lock },
@@ -308,7 +364,7 @@ export default function AccountPage() {
     },
     { id: "support", label: "Support Center", icon: HelpCircle },
     { id: "invite", label: "Invite & Earn", icon: Gift },
-  ], [totalUnreadMessages]);
+  ], [totalUnreadMessages, notificationUnreadCount]);
 
   // Menu items for Professional (dynamically generated to include verification badge)
   const professionalMenu = useMemo(() => [
@@ -318,6 +374,12 @@ export default function AccountPage() {
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "my-jobs", label: "My Jobs", icon: FileText },
     { id: "promo-code", label: "Promo Code", icon: Ticket },
+    { 
+      id: "notifications", 
+      label: "Notifications", 
+      icon: Bell, 
+      badge: notificationUnreadCount > 0 ? notificationUnreadCount.toString() : undefined 
+    },
     { 
       id: "verification", 
       label: "Verification", 
@@ -335,7 +397,7 @@ export default function AccountPage() {
     },
     { id: "support", label: "Support Center", icon: HelpCircle },
     { id: "invite", label: "Invite & Earn", icon: Gift },
-  ], [verificationPendingCount, totalUnreadMessages]);
+  ], [verificationPendingCount, totalUnreadMessages, notificationUnreadCount]);
 
   const menuItems = userRole === "client" ? clientMenu : professionalMenu;
 
@@ -531,6 +593,7 @@ export default function AccountPage() {
               {activeSection === "billing" && <BillingSection />}
               {activeSection === "withdraw" && <WithdrawSection />}
               {activeSection === "security" && <SecuritySection />}
+              {activeSection === "notifications" && <NotificationsSection onUnreadCountChange={setNotificationUnreadCount} />}
               {activeSection === "messenger" && <MessengerSection />}
               {activeSection === "support" && <SupportSection />}
               {activeSection === "invite" && <InviteSection />}
@@ -5366,6 +5429,377 @@ function SecuritySection() {
   );
 }
 
+// Notifications Section
+interface NotificationItem {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (count: number) => void }) {
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+
+  // Format relative time
+  const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  // Get icon type from notification type
+  const getIconType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      'account_verified': 'success',
+      'listing_approved': 'success',
+      'listing_rejected': 'warning',
+      'listing_requires_modification': 'warning',
+      'message_received': 'message',
+      'chat_message_received': 'message',
+      'bank_transfer_approved': 'payment',
+      'bank_transfer_rejected': 'warning',
+      'order_received': 'booking',
+      'order_completed': 'service',
+      'review_received': 'review',
+      'payment_received': 'payment',
+      'system': 'info',
+    };
+    return typeMap[type] || 'info';
+  };
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async (pageNum: number, reset: boolean = false) => {
+    try {
+      setLoading(true);
+      const unreadOnly = filter === 'unread' ? 'true' : 'false';
+      const response = await fetch(resolveApiUrl(`/api/notifications?page=${pageNum}&limit=20&unreadOnly=${unreadOnly}`), {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (reset) {
+          setNotifications(data.notifications || []);
+        } else {
+          setNotifications(prev => [...prev, ...(data.notifications || [])]);
+        }
+        setHasMore(data.pagination?.page < data.pagination?.pages);
+        onUnreadCountChange(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, onUnreadCountChange]);
+
+  useEffect(() => {
+    setPage(1);
+    fetchNotifications(1, true);
+  }, [filter, fetchNotifications]);
+
+  // Listen for real-time notifications via Socket.io
+  const { userInfo } = useAccount();
+  useEffect(() => {
+    if (!userInfo?.id) return;
+
+    // Connect socket if not already connected
+    const socket = getSocket() || connectSocket(userInfo.id);
+    
+    // Handler for new notification
+    const handleNewNotification = (data: { notification: NotificationItem; unreadCount: number }) => {
+      console.log('📢 [NotificationsSection] Real-time notification received:', data);
+      
+      // Update unread count
+      onUnreadCountChange(data.unreadCount);
+      
+      // Add new notification to the top of the list (only if showing all or if it's unread)
+      if (filter === 'all' || !data.notification.isRead) {
+        setNotifications(prev => {
+          // Check if notification already exists
+          const exists = prev.some(n => n._id === data.notification._id);
+          if (exists) return prev;
+          return [data.notification, ...prev];
+        });
+      }
+    };
+
+    // Subscribe to notification events
+    socket.on('notification:new', handleNewNotification);
+
+    return () => {
+      socket.off('notification:new', handleNewNotification);
+    };
+  }, [userInfo?.id, filter, onUnreadCountChange]);
+
+  // Mark as read
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/notifications/${notificationId}/read`), {
+        method: 'PUT',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(prev =>
+          prev.map(n => n._id === notificationId ? { ...n, isRead: true } : n)
+        );
+        onUnreadCountChange(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Mark all as read
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch(resolveApiUrl('/api/notifications/mark-all-read'), {
+        method: 'PUT',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        onUnreadCountChange(0);
+        toast.success('All notifications marked as read');
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  // Delete notification
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/notifications/${notificationId}`), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(prev => prev.filter(n => n._id !== notificationId));
+        onUnreadCountChange(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
+  // Delete all notifications
+  const deleteAllNotifications = async () => {
+    try {
+      const response = await fetch(resolveApiUrl('/api/notifications'), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setNotifications([]);
+        onUnreadCountChange(0);
+        toast.success('All notifications deleted');
+      }
+    } catch (error) {
+      console.error('Error deleting all notifications:', error);
+    }
+  };
+
+  // Load more
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchNotifications(nextPage, false);
+  };
+
+  // Handle notification click
+  const handleNotificationClick = (notification: NotificationItem) => {
+    if (!notification.isRead) {
+      markAsRead(notification._id);
+    }
+    if (notification.link) {
+      navigate(notification.link);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] font-semibold">
+            Notifications
+          </h2>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
+            Stay updated with your account activities
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="font-['Poppins',sans-serif] text-[13px] text-[#003D82] hover:text-[#FE8A0F] transition-colors"
+            >
+              Mark all as read
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button
+              onClick={deleteAllNotifications}
+              className="font-['Poppins',sans-serif] text-[13px] text-red-500 hover:text-red-600 transition-colors"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-4 py-2 rounded-lg font-['Poppins',sans-serif] text-[14px] transition-all ${
+            filter === 'all'
+              ? 'bg-[#003D82] text-white'
+              : 'bg-gray-100 text-[#5b5b5b] hover:bg-gray-200'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setFilter('unread')}
+          className={`px-4 py-2 rounded-lg font-['Poppins',sans-serif] text-[14px] transition-all ${
+            filter === 'unread'
+              ? 'bg-[#003D82] text-white'
+              : 'bg-gray-100 text-[#5b5b5b] hover:bg-gray-200'
+          }`}
+        >
+          Unread
+        </button>
+      </div>
+
+      {/* Notifications List */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading && notifications.length === 0 ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-8 h-8 border-2 border-[#003D82] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <Bell className="w-16 h-16 text-gray-300 mb-4" />
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-2">
+              No notifications
+            </h3>
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] text-center">
+              {filter === 'unread' 
+                ? "You've read all your notifications" 
+                : "You don't have any notifications yet"}
+            </p>
+          </div>
+        ) : (
+          <>
+            {notifications.map((notification) => {
+              const iconType = getIconType(notification.type);
+              return (
+                <div
+                  key={notification._id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`flex items-start gap-4 p-4 border-b border-gray-100 hover:bg-[#FFF5EB] transition-colors cursor-pointer ${
+                    !notification.isRead ? 'bg-blue-50/30' : ''
+                  }`}
+                >
+                  {/* Icon */}
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                    iconType === 'success' ? 'bg-green-100' :
+                    iconType === 'warning' ? 'bg-orange-100' :
+                    iconType === 'message' ? 'bg-blue-100' :
+                    iconType === 'payment' ? 'bg-green-100' :
+                    iconType === 'booking' ? 'bg-blue-100' :
+                    iconType === 'service' ? 'bg-purple-100' :
+                    iconType === 'review' ? 'bg-orange-100' :
+                    'bg-gray-100'
+                  }`}>
+                    {iconType === 'success' && <CheckCircle className="w-6 h-6 text-green-600" />}
+                    {iconType === 'warning' && <AlertCircle className="w-6 h-6 text-orange-600" />}
+                    {iconType === 'message' && <MessageCircle className="w-6 h-6 text-blue-600" />}
+                    {iconType === 'payment' && <DollarSign className="w-6 h-6 text-green-600" />}
+                    {iconType === 'booking' && <Calendar className="w-6 h-6 text-[#003D82]" />}
+                    {iconType === 'service' && <Briefcase className="w-6 h-6 text-purple-600" />}
+                    {iconType === 'review' && <TrendingUp className="w-6 h-6 text-[#FE8A0F]" />}
+                    {iconType === 'info' && <Info className="w-6 h-6 text-gray-600" />}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-['Poppins',sans-serif] font-medium text-[15px] text-[#2c353f]">
+                        {notification.title}
+                      </h4>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {!notification.isRead && (
+                          <div className="w-2.5 h-2.5 bg-[#FE8A0F] rounded-full"></div>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotification(notification._id);
+                          }}
+                          className="p-1 rounded hover:bg-gray-200 transition-colors"
+                        >
+                          <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#5b5b5b] mt-1 line-clamp-2">
+                      {notification.message}
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2">
+                      {formatRelativeTime(notification.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Load More */}
+            {hasMore && (
+              <div className="p-4 text-center">
+                <button
+                  onClick={loadMore}
+                  disabled={loading}
+                  className="font-['Poppins',sans-serif] text-[14px] text-[#003D82] hover:text-[#FE8A0F] transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Loading...' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Messenger Section
 function MessengerSection() {
   const navigate = useNavigate();
@@ -7939,7 +8373,6 @@ const getStatusBadge = (status: string) => {
       return "bg-gray-100 text-gray-700 border-gray-200";
     default:
       return "bg-gray-100 text-gray-700 border-gray-200";
-  };
+  }
 };
-
 

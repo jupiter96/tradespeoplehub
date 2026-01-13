@@ -9,33 +9,57 @@ import paypal from '@paypal/checkout-server-sdk';
 
 const router = express.Router();
 
+// Helper function to get Stripe keys based on environment
+function getStripeKeys(settings) {
+  const environment = settings.stripeEnvironment || settings.environment || 'test';
+  
+  if (environment === 'live') {
+    return {
+      publishableKey: settings.stripeLivePublishableKey || settings.stripePublishableKey || null,
+      secretKey: settings.stripeLiveSecretKey || settings.stripeSecretKey || null,
+      webhookSecret: settings.stripeLiveWebhookSecret || settings.stripeWebhookSecret || null,
+    };
+  } else {
+    return {
+      publishableKey: settings.stripeTestPublishableKey || settings.stripePublishableKey || null,
+      secretKey: settings.stripeTestSecretKey || settings.stripeSecretKey || null,
+      webhookSecret: settings.stripeTestWebhookSecret || settings.stripeWebhookSecret || null,
+    };
+  }
+}
+
+// Helper function to get PayPal keys (always live)
+function getPayPalKeys(settings) {
+  return {
+    clientId: settings.paypalClientId || settings.paypalPublicKey || null,
+    secretKey: settings.paypalSecretKey || null,
+  };
+}
+
 // Get payment settings (for clients to see available payment methods)
 router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
+    const stripeKeys = getStripeKeys(settings);
+    const paypalKeys = getPayPalKeys(settings);
+    const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
     
-    console.log('[Payment Settings] Raw settings:', {
-      isActive: settings.isActive,
-      isActiveType: typeof settings.isActive,
-      paypalEnabled: settings.paypalEnabled,
-      paypalEnabledType: typeof settings.paypalEnabled,
-      manualTransferEnabled: settings.manualTransferEnabled,
-      manualTransferEnabledType: typeof settings.manualTransferEnabled,
-      stripePublishableKey: settings.stripePublishableKey ? 'SET' : 'NOT SET',
-      paypalPublicKey: settings.paypalPublicKey ? 'SET' : 'NOT SET',
-    });
+    // Debug logs (can be removed in production)
+    console.log('[Payment Settings] Stripe Environment:', stripeEnvironment);
+    console.log('[Payment Settings] Stripe Publishable Key:', stripeKeys.publishableKey ? 'SET' : 'NOT SET');
+    console.log('[Payment Settings] PayPal Client ID:', paypalKeys.clientId ? 'SET' : 'NOT SET');
     
     // Return all payment settings - each payment method enabled based on toggle only
-    // Handle both boolean true and truthy values (in case stored as string)
     const response = { 
-      // Stripe settings
-      publishableKey: settings.stripePublishableKey || null,
+      // Stripe settings (based on environment)
+      publishableKey: stripeKeys.publishableKey,
       stripeEnabled: Boolean(settings.isActive),
+      stripeEnvironment: stripeEnvironment,
       stripeCommissionPercentage: settings.stripeCommissionPercentage || 1.55,
       stripeCommissionFixed: settings.stripeCommissionFixed || 0.29,
       
-      // PayPal settings
-      paypalClientId: settings.paypalPublicKey || null,
+      // PayPal settings (always live)
+      paypalClientId: paypalKeys.clientId,
       paypalEnabled: Boolean(settings.paypalEnabled),
       paypalCommissionPercentage: settings.paypalCommissionPercentage || 3.00,
       paypalCommissionFixed: settings.paypalCommissionFixed || 0.30,
@@ -46,11 +70,6 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
       bankProcessingFeePercentage: settings.bankProcessingFeePercentage || 2.00,
     };
     
-    console.log('[Payment Settings] Response:', {
-      stripeEnabled: response.stripeEnabled,
-      paypalEnabled: response.paypalEnabled,
-      manualTransferEnabled: response.manualTransferEnabled,
-    });
     
     res.json(response);
   } catch (error) {
@@ -124,11 +143,12 @@ router.get('/wallet/transactions', authenticateToken, async (req, res) => {
 router.post('/payment-methods/create-setup-intent', authenticateToken, async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
-    if (!settings.isActive || !settings.stripeSecretKey) {
+    const stripeKeys = getStripeKeys(settings);
+    if (!settings.isActive || !stripeKeys.secretKey) {
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
-    const stripe = new Stripe(settings.stripeSecretKey);
+    const stripe = new Stripe(stripeKeys.secretKey);
     const user = await User.findById(req.user.id);
     
     if (!user) {
@@ -193,11 +213,12 @@ router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
     }
     
     const settings = await PaymentSettings.getSettings();
-    if (!settings.isActive || !settings.stripeSecretKey) {
+    const stripeKeys = getStripeKeys(settings);
+    if (!settings.isActive || !stripeKeys.secretKey) {
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
-    const stripe = new Stripe(settings.stripeSecretKey);
+    const stripe = new Stripe(stripeKeys.secretKey);
     const user = await User.findById(req.user.id);
     
     if (!user) {
@@ -290,7 +311,8 @@ router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req
     const { paymentMethodId } = req.params;
     
     const settings = await PaymentSettings.getSettings();
-    const stripe = new Stripe(settings.stripeSecretKey);
+    const stripeKeys = getStripeKeys(settings);
+    const stripe = new Stripe(stripeKeys.secretKey);
     const user = await User.findById(req.user.id);
     
     if (!user || !user.paymentMethods) {
@@ -367,7 +389,8 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Stripe customer not found. Please add a payment method first.' });
     }
     
-    const stripe = new Stripe(settings.stripeSecretKey);
+    const stripeKeys = getStripeKeys(settings);
+    const stripe = new Stripe(stripeKeys.secretKey);
     
     // Calculate Stripe commission (fee is taken separately, full amount is deposited)
     const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
@@ -399,7 +422,7 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       paymentMethod: 'card',
       stripePaymentIntentId: paymentIntent.id,
       stripeChargeId: paymentIntent.latest_charge,
-      description: `Card Deposit - Amount: £${amount.toFixed(2)}, Fee: £${stripeCommission.toFixed(2)}`,
+      description: `Card Deposit - Charged £${(amount + stripeCommission).toFixed(2)}`,
       metadata: {
         depositAmount: amount, // Full amount deposited to user balance
         fee: stripeCommission, // Fee taken by platform (separate)
@@ -501,11 +524,12 @@ router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) =
     }
     
     const settings = await PaymentSettings.getSettings();
-    if (!settings.stripeSecretKey) {
+    const stripeKeys = getStripeKeys(settings);
+    if (!stripeKeys.secretKey) {
       return res.status(400).json({ error: 'Stripe is not configured' });
     }
     
-    const stripe = new Stripe(settings.stripeSecretKey);
+    const stripe = new Stripe(stripeKeys.secretKey);
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== 'succeeded') {
@@ -655,7 +679,7 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
       balance: 0, // Will be updated after admin approval
       status: 'pending',
       paymentMethod: 'manual_transfer',
-      description: `Bank Transfer - Total: £${totalAmount.toFixed(2)} (Deposit: £${depositAmount.toFixed(2)}, Fee: £${fee.toFixed(2)})`,
+      description: `Bank Transfer - Charged £${totalAmount.toFixed(2)}`,
       metadata: {
         depositAmount: depositAmount, // Amount to be deposited to user balance
         fee: fee, // Fee taken by platform (separate)
@@ -708,11 +732,15 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
   }
 });
 
-// Helper function to create PayPal client
+// Helper function to create PayPal client (always Live mode)
 function createPayPalClient(settings) {
-  const environment = settings.environment === 'live' 
-    ? new paypal.core.LiveEnvironment(settings.paypalPublicKey, settings.paypalSecretKey)
-    : new paypal.core.SandboxEnvironment(settings.paypalPublicKey, settings.paypalSecretKey);
+  const paypalKeys = getPayPalKeys(settings);
+  
+  // PayPal always operates in Live mode
+  const environment = new paypal.core.LiveEnvironment(
+    paypalKeys.clientId, 
+    paypalKeys.secretKey
+  );
   
   return new paypal.core.PayPalHttpClient(environment);
 }
@@ -762,7 +790,7 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
           currency_code: 'GBP',
           value: totalAmount.toFixed(2), // Total amount including fee
         },
-        description: `Wallet Deposit - Amount: £${amount.toFixed(2)}, Fee: £${paypalCommission.toFixed(2)}`,
+        description: `PayPal Deposit - Charged £${totalAmount.toFixed(2)}`,
       }],
       application_context: {
         brand_name: 'Sortars',
@@ -784,7 +812,7 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
       status: 'pending',
       paymentMethod: 'paypal',
       paypalOrderId: order.result.id,
-      description: `PayPal Deposit - Amount: £${amount.toFixed(2)}, Fee: £${paypalCommission.toFixed(2)}`,
+      description: `PayPal Deposit - Charged £${totalAmount.toFixed(2)}`,
       metadata: {
         depositAmount: amount, // Full amount deposited to user balance
         fee: paypalCommission, // Fee taken by platform (separate)
@@ -955,6 +983,14 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
       }
     }
     
+    // Create in-app notification
+    try {
+      const { notifyBankTransferApproved } = await import('../services/notificationService.js');
+      await notifyBankTransferApproved(user._id, transaction._id, depositAmount);
+    } catch (notifError) {
+      console.error('Failed to create bank transfer approved notification:', notifError);
+    }
+    
     res.json({ 
       message: 'Manual transfer approved successfully',
       transaction,
@@ -1014,6 +1050,14 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
         // Don't fail the request if email fails
         console.error('Failed to send bank transfer rejected email:', emailError);
       }
+    }
+    
+    // Create in-app notification
+    try {
+      const { notifyBankTransferRejected } = await import('../services/notificationService.js');
+      await notifyBankTransferRejected(user._id, transaction._id, transaction.amount, adminNotes);
+    } catch (notifError) {
+      console.error('Failed to create bank transfer rejected notification:', notifError);
     }
     
     res.json({ 
@@ -1088,7 +1132,7 @@ router.get('/admin/bank-transfer-requests', authenticateToken, requireRole(['adm
     }
     
     const transactions = await Wallet.find(query)
-      .populate('userId', 'firstName lastName email townCity')
+      .populate('userId', 'firstName lastName email townCity referenceId')
       .populate('processedBy', 'firstName lastName')
       .sort(sort)
       .skip(skip)
@@ -1114,6 +1158,7 @@ router.get('/admin/bank-transfer-requests', authenticateToken, requireRole(['adm
           lastName: t.userId.lastName || '',
           email: t.userId.email || '',
           name: `${t.userId.firstName || ''} ${t.userId.lastName || ''}`.trim() || t.userId.email,
+          referenceId: t.userId.referenceId || '',
         } : null,
         amount: t.amount, // Total amount (depositAmount + fee)
         commission: fee, // Fee taken by platform
@@ -1257,16 +1302,17 @@ router.get('/admin/wallet/transactions', authenticateToken, requireRole(['admin'
 router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
-    if (!settings.stripeWebhookSecret) {
+    const stripeKeys = getStripeKeys(settings);
+    if (!stripeKeys.webhookSecret) {
       return res.status(400).json({ error: 'Webhook secret not configured' });
     }
     
-    const stripe = new Stripe(settings.stripeSecretKey);
+    const stripe = new Stripe(stripeKeys.secretKey);
     const sig = req.headers['stripe-signature'];
     
     let event;
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, settings.stripeWebhookSecret);
+      event = stripe.webhooks.constructEvent(req.body, sig, stripeKeys.webhookSecret);
     } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);

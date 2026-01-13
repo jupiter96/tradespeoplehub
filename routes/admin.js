@@ -1724,6 +1724,14 @@ router.put('/users/:id/verification/:type', requireAdmin, async (req, res) => {
             await sendTemplatedEmail(user.email, 'fully-verified', {
               firstName: user.firstName,
             }, 'verification');
+            
+            // Create in-app notification for account verified
+            try {
+              const { notifyAccountVerified } = await import('../services/notificationService.js');
+              await notifyAccountVerified(user._id);
+            } catch (notifError) {
+              console.error('[Admin] Failed to create account verified notification:', notifError);
+            }
           }
         } catch (emailError) {
           // console.error('[Admin] Failed to send verification emails:', emailError);

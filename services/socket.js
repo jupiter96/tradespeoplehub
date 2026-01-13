@@ -260,6 +260,26 @@ export const initializeSocket = (server) => {
           const participantIdStr = participantId.toString();
           io.to(`user:${participantIdStr}`).emit('conversation-updated', conversationUpdate);
         });
+
+        // Create in-app notification for the recipient(s)
+        try {
+          const { notifyChatMessageReceived } = await import('./notificationService.js');
+          const senderName = message.sender.role === 'professional'
+            ? message.sender.tradingName || `${message.sender.firstName} ${message.sender.lastName}`
+            : `${message.sender.firstName} ${message.sender.lastName}`;
+          
+          for (const participantId of otherParticipants) {
+            await notifyChatMessageReceived(
+              participantId,
+              userId,
+              senderName,
+              conversationId,
+              message.text || 'Sent a file'
+            );
+          }
+        } catch (notifError) {
+          console.error('Error creating chat message notification:', notifError);
+        }
       } catch (error) {
         console.error('Error handling new message:', error);
         socket.emit('error', { message: 'Failed to send message' });

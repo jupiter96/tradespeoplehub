@@ -21,13 +21,13 @@ interface BankTransferRequest {
     lastName: string;
     email: string;
     name: string;
+    referenceId?: string;
   } | null;
   amount: number;
   commission: number;
   userAmount: number;
   city: string;
   bankAccountName: string;
-  dateOfDeposit: string;
   referenceNumber: string;
   status: "pending" | "completed" | "rejected";
   createdAt: string;
@@ -40,7 +40,7 @@ interface BankTransferRequest {
   adminNotes: string | null;
 }
 
-type SortField = "createdAt" | "amount" | "status" | "dateOfDeposit";
+type SortField = "createdAt" | "amount" | "status";
 type SortOrder = "asc" | "desc";
 
 export default function AdminBankTransferRequestPage() {
@@ -204,6 +204,18 @@ export default function AdminBankTransferRequestPage() {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -373,15 +385,15 @@ export default function AdminBankTransferRequestPage() {
                       </th>
                       <th 
                         className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort("dateOfDeposit")}
+                        onClick={() => handleSort("createdAt")}
                       >
                         <div className="flex items-center">
-                          Date of deposit
-                          {getSortIcon("dateOfDeposit")}
+                          Request Date
+                          {getSortIcon("createdAt")}
                         </div>
                       </th>
                       <th className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
-                        Reference Number
+                        User Reference ID
                       </th>
                       <th 
                         className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] cursor-pointer hover:bg-gray-100"
@@ -422,10 +434,10 @@ export default function AdminBankTransferRequestPage() {
                           {request.bankAccountName || "-"}
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          {formatDate(request.dateOfDeposit)}
+                          {formatDateTime(request.createdAt)}
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          {request.referenceNumber || "-"}
+                          {request.user?.referenceId || "-"}
                         </td>
                         <td className="py-3 px-4">
                           {getStatusBadge(request.status)}

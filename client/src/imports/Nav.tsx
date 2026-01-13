@@ -1,7 +1,7 @@
 import logoImage from "figma:asset/71632be70905a17fd389a8d053249645c4e8a4df.png";
 import appIcon from "figma:asset/e0cd63eca847c922f306abffb67a5c6de3fd7001.png";
 import { categoryTree, mainCategories } from "../components/unifiedCategoriesData";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, ShoppingCart, Bell, User, Search, Heart, ShoppingBag, Briefcase, CreditCard, Lock, Settings, MessageCircle, HelpCircle, Gift, FileText, Wallet, Shield, Ticket, LogOut } from "lucide-react";
 import { useCart } from "../components/CartContext";
@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../components/ui/alert-dialog";
 import svgPaths from "./svg-fomenmyfjn";
+import { getSocket, connectSocket } from "../services/socket";
+import { resolveApiUrl } from "../config/api";
 
 // Helper function to convert sector name to URL slug
 const sectorToSlug = (sectorName: string): string => {
@@ -275,49 +277,52 @@ function Component1() {
 
 
 
-// Sample notification data
-const notificationsData = [
-  {
-    id: 1,
-    title: "New service booking",
-    message: "John Smith booked your plumbing service",
-    time: "5 min ago",
-    read: false,
-    type: "booking"
-  },
-  {
-    id: 2,
-    title: "Payment received",
-    message: "£250 payment confirmed for Garden Landscaping",
-    time: "1 hour ago",
-    read: false,
-    type: "payment"
-  },
-  {
-    id: 3,
-    title: "New review",
-    message: "Sarah left a 5-star review on your service",
-    time: "2 hours ago",
-    read: false,
-    type: "review"
-  },
-  {
-    id: 4,
-    title: "Service completed",
-    message: "Your electrical repair service was marked complete",
-    time: "1 day ago",
-    read: true,
-    type: "service"
-  },
-  {
-    id: 5,
-    title: "Special offer",
-    message: "Get 20% off on featured listing this week",
-    time: "2 days ago",
-    read: true,
-    type: "promotion"
-  },
-];
+// Notification interface
+interface Notification {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+// Helper to format relative time
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
+// Map notification type to icon type for styling
+const getNotificationIconType = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'account_verified': 'success',
+    'listing_approved': 'success',
+    'listing_rejected': 'warning',
+    'listing_requires_modification': 'warning',
+    'message_received': 'message',
+    'chat_message_received': 'message',
+    'bank_transfer_approved': 'payment',
+    'bank_transfer_rejected': 'warning',
+    'order_received': 'booking',
+    'order_completed': 'service',
+    'review_received': 'review',
+    'payment_received': 'payment',
+    'system': 'info',
+  };
+  return typeMap[type] || 'info';
+};
 
 export default function Nav() {
   const { cartCount, cartTotal } = useCart();
@@ -337,6 +342,9 @@ export default function Nav() {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -376,6 +384,144 @@ export default function Nav() {
       }
     }
   }, [isHomePage]);
+
+  // Fetch notifications from API
+  const fetchNotifications = async () => {
+    if (!isLoggedIn) return;
+    
+    try {
+      setLoadingNotifications(true);
+      console.log('[Nav] Fetching notifications...');
+      const response = await fetch(resolveApiUrl('/api/notifications?limit=10'), {
+        credentials: 'include',
+      });
+      
+      console.log('[Nav] Notifications response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Nav] Notifications data:', data);
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      } else {
+        const errorText = await response.text();
+        console.error('[Nav] Notifications fetch failed:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('[Nav] Error fetching notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  // Fetch unread count periodically
+  const fetchUnreadCount = async () => {
+    if (!isLoggedIn) return;
+    
+    try {
+      const response = await fetch(resolveApiUrl('/api/notifications/unread-count'), {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Nav] Unread count:', data.unreadCount);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('[Nav] Error fetching unread count:', error);
+    }
+  };
+
+  // Mark notification as read
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/notifications/${notificationId}/read`), {
+        method: 'PUT',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(prev => 
+          prev.map(n => n._id === notificationId ? { ...n, isRead: true } : n)
+        );
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch(resolveApiUrl('/api/notifications/mark-all-read'), {
+        method: 'PUT',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  // Fetch notifications when user logs in
+  useEffect(() => {
+    console.log('[Nav] isLoggedIn changed:', isLoggedIn, 'userInfo:', userInfo?.id);
+    if (isLoggedIn) {
+      fetchNotifications();
+      
+      // Poll for unread count every 30 seconds (as fallback)
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  }, [isLoggedIn]);
+
+  // Listen for real-time notifications via Socket.io
+  useEffect(() => {
+    if (!isLoggedIn || !userInfo?.id) return;
+
+    // Connect socket if not already connected
+    const socket = getSocket() || connectSocket(userInfo.id);
+    
+    // Handler for new notification
+    const handleNewNotification = (data: { notification: Notification; unreadCount: number }) => {
+      console.log('📢 Real-time notification received:', data);
+      
+      // Update unread count immediately
+      setUnreadCount(data.unreadCount);
+      
+      // Add new notification to the top of the list
+      setNotifications(prev => {
+        // Check if notification already exists
+        const exists = prev.some(n => n._id === data.notification._id);
+        if (exists) return prev;
+        return [data.notification, ...prev].slice(0, 10); // Keep max 10 in dropdown
+      });
+    };
+
+    // Subscribe to notification events
+    socket.on('notification:new', handleNewNotification);
+
+    return () => {
+      socket.off('notification:new', handleNewNotification);
+    };
+  }, [isLoggedIn, userInfo?.id]);
+
+  // Fetch notifications when dropdown opens
+  useEffect(() => {
+    if (showNotifications && isLoggedIn) {
+      fetchNotifications();
+    }
+  }, [showNotifications, isLoggedIn]);
 
   const handleDismissAppBanner = () => {
     setShowAppBanner(false);
@@ -966,114 +1112,183 @@ export default function Nav() {
           </Link>
 
           {/* Notification Icon with Badge and Dropdown */}
-          <div 
-            ref={notificationRef}
-            className="relative"
-            onMouseEnter={handleNotificationMouseEnter}
-            onMouseLeave={handleNotificationMouseLeave}
-          >
-            <button className="relative hover:opacity-80 transition-opacity cursor-pointer group">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFF5EB] transition-colors">
-                <Bell className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
-                {notificationsData.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Poppins',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
-                    {notificationsData.filter(n => !n.read).length}
-                  </span>
-                )}
-              </div>
-            </button>
-
-            {/* Notification Dropdown */}
-            {showNotifications && (
-              <div className="absolute top-[calc(100%+8px)] right-0 w-[380px] bg-white rounded-lg shadow-[0px_4px_20px_rgba(0,0,0,0.15)] z-[9999999] overflow-hidden">
-                {/* Header */}
-                <div className="px-4 py-3 bg-gradient-to-r from-[#003D82] to-[#0052AC] flex items-center justify-between">
-                  <h3 className="font-['Poppins',sans-serif] font-semibold text-white text-[16px]">
-                    Notifications
-                  </h3>
-                  {notificationsData.filter(n => !n.read).length > 0 && (
-                    <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-2.5 py-1 rounded-full">
-                      {notificationsData.filter(n => !n.read).length} New
+          {isLoggedIn && (
+            <div 
+              ref={notificationRef}
+              className="relative"
+              onMouseEnter={handleNotificationMouseEnter}
+              onMouseLeave={handleNotificationMouseLeave}
+            >
+              <button className="relative hover:opacity-80 transition-opacity cursor-pointer group">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFF5EB] transition-colors">
+                  <Bell className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Poppins',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                      {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </div>
+              </button>
 
-                {/* Notifications List */}
-                <div className="max-h-[400px] overflow-y-auto">
-                  {notificationsData.map((notification) => (
-                    <div 
-                      key={notification.id}
-                      className={`px-4 py-3 border-b border-gray-100 hover:bg-[#FFF5EB] transition-colors cursor-pointer ${
-                        !notification.read ? 'bg-blue-50/30' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Icon */}
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                          notification.type === 'booking' ? 'bg-blue-100' :
-                          notification.type === 'payment' ? 'bg-green-100' :
-                          notification.type === 'review' ? 'bg-orange-100' :
-                          notification.type === 'service' ? 'bg-purple-100' :
-                          'bg-gray-100'
-                        }`}>
-                          {notification.type === 'booking' && (
-                            <svg className="w-5 h-5 text-[#003D82]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          )}
-                          {notification.type === 'payment' && (
-                            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                          {notification.type === 'review' && (
-                            <svg className="w-5 h-5 text-[#FE8A0F]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                            </svg>
-                          )}
-                          {notification.type === 'service' && (
-                            <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                          {notification.type === 'promotion' && (
-                            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-['Poppins',sans-serif] font-medium text-[14px] text-[#2c353f]">
-                              {notification.title}
-                            </h4>
-                            {!notification.read && (
-                              <div className="w-2 h-2 bg-[#FE8A0F] rounded-full flex-shrink-0 mt-1.5"></div>
-                            )}
-                          </div>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] mt-0.5 line-clamp-2">
-                            {notification.message}
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
-                            {notification.time}
-                          </p>
-                        </div>
-                      </div>
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute top-[calc(100%+8px)] right-0 w-[380px] bg-white rounded-lg shadow-[0px_4px_20px_rgba(0,0,0,0.15)] z-[9999999] overflow-hidden">
+                  {/* Header */}
+                  <div className="px-4 py-3 bg-gradient-to-r from-[#003D82] to-[#0052AC] flex items-center justify-between">
+                    <h3 className="font-['Poppins',sans-serif] font-semibold text-white text-[16px]">
+                      Notifications
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <>
+                          <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-2.5 py-1 rounded-full">
+                            {unreadCount} New
+                          </span>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAllAsRead();
+                            }}
+                            className="text-white/80 hover:text-white text-[11px] font-['Poppins',sans-serif] underline"
+                          >
+                            Mark all read
+                          </button>
+                        </>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
 
-                {/* Footer */}
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
-                  <button className="w-full text-center font-['Poppins',sans-serif] font-medium text-[14px] text-[#003D82] hover:text-[#FE8A0F] transition-colors">
-                    View All Notifications
-                  </button>
+                  {/* Notifications List */}
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {loadingNotifications ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-6 h-6 border-2 border-[#003D82] border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 px-4">
+                        <Bell className="w-12 h-12 text-gray-300 mb-3" />
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#8d8d8d] text-center">
+                          No notifications yet
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#b0b0b0] text-center mt-1">
+                          We'll notify you when something happens
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => {
+                        const iconType = getNotificationIconType(notification.type);
+                        return (
+                          <div 
+                            key={notification._id}
+                            onClick={() => {
+                              if (!notification.isRead) {
+                                markAsRead(notification._id);
+                              }
+                              if (notification.link) {
+                                navigate(notification.link);
+                                setShowNotifications(false);
+                              }
+                            }}
+                            className={`px-4 py-3 border-b border-gray-100 hover:bg-[#FFF5EB] transition-colors cursor-pointer ${
+                              !notification.isRead ? 'bg-blue-50/30' : ''
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {/* Icon */}
+                              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                iconType === 'success' ? 'bg-green-100' :
+                                iconType === 'warning' ? 'bg-orange-100' :
+                                iconType === 'message' ? 'bg-blue-100' :
+                                iconType === 'payment' ? 'bg-green-100' :
+                                iconType === 'booking' ? 'bg-blue-100' :
+                                iconType === 'service' ? 'bg-purple-100' :
+                                iconType === 'review' ? 'bg-orange-100' :
+                                'bg-gray-100'
+                              }`}>
+                                {iconType === 'success' && (
+                                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                )}
+                                {iconType === 'warning' && (
+                                  <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  </svg>
+                                )}
+                                {iconType === 'message' && (
+                                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                  </svg>
+                                )}
+                                {iconType === 'payment' && (
+                                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                )}
+                                {iconType === 'booking' && (
+                                  <svg className="w-5 h-5 text-[#003D82]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                )}
+                                {iconType === 'service' && (
+                                  <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                )}
+                                {iconType === 'review' && (
+                                  <svg className="w-5 h-5 text-[#FE8A0F]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                  </svg>
+                                )}
+                                {iconType === 'info' && (
+                                  <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                )}
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="font-['Poppins',sans-serif] font-medium text-[14px] text-[#2c353f]">
+                                    {notification.title}
+                                  </h4>
+                                  {!notification.isRead && (
+                                    <div className="w-2 h-2 bg-[#FE8A0F] rounded-full flex-shrink-0 mt-1.5"></div>
+                                  )}
+                                </div>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] mt-0.5 line-clamp-2">
+                                  {notification.message}
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
+                                  {formatRelativeTime(notification.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                      <button 
+                        onClick={() => {
+                          navigate('/account?tab=notifications');
+                          setShowNotifications(false);
+                        }}
+                        className="w-full text-center font-['Poppins',sans-serif] font-medium text-[14px] text-[#003D82] hover:text-[#FE8A0F] transition-colors"
+                      >
+                        View All Notifications
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Shopping Cart with Details */}
           <Link
@@ -1332,17 +1547,25 @@ export default function Nav() {
               )}
 
               {/* Notification */}
-              <button className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#F8F9FA] hover:bg-[#FFF5EB] transition-all cursor-pointer relative">
-                <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white">
-                  <Bell className="w-4 h-4 text-[#5b5b5b]" />
-                  {notificationsData.filter(n => !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
-                      {notificationsData.filter(n => !n.read).length}
-                    </span>
-                  )}
-                </div>
-                <span className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] text-center leading-tight">Alerts</span>
-              </button>
+              {isLoggedIn && (
+                <button 
+                  onClick={() => {
+                    navigate('/account?tab=notifications');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#F8F9FA] hover:bg-[#FFF5EB] transition-all cursor-pointer relative"
+                >
+                  <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white">
+                    <Bell className="w-4 h-4 text-[#5b5b5b]" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[9px] font-['Poppins',sans-serif] font-semibold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-['Poppins',sans-serif] text-[10px] text-[#5b5b5b] text-center leading-tight">Alerts</span>
+                </button>
+              )}
 
               {/* Shopping Cart */}
               <Link

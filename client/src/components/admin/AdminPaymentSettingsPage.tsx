@@ -15,13 +15,26 @@ export default function AdminPaymentSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
+    // Stripe Test Mode Keys
+    stripeTestPublishableKey: "",
+    stripeTestSecretKey: "",
+    stripeTestWebhookSecret: "",
+    // Stripe Live Mode Keys
+    stripeLivePublishableKey: "",
+    stripeLiveSecretKey: "",
+    stripeLiveWebhookSecret: "",
+    // Legacy Stripe fields (for backward compatibility)
     stripePublishableKey: "",
     stripeSecretKey: "",
     stripeWebhookSecret: "",
-    paypalPublicKey: "",
+    // PayPal Keys (Live only)
+    paypalClientId: "",
     paypalSecretKey: "",
+    paypalPublicKey: "", // Legacy
     paypalEnabled: true,
-    environment: "test",
+    // Stripe environment
+    stripeEnvironment: "test",
+    environment: "test", // Legacy
     isActive: false,
     minDepositAmount: 1,
     maxDepositAmount: 10000,
@@ -169,10 +182,10 @@ export default function AdminPaymentSettingsPage() {
                   Stripe API Configuration
                 </CardTitle>
                 <CardDescription>
-                  Configure your Stripe payment gateway credentials
+                  Configure your Stripe payment gateway credentials for Test and Live modes
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="isActive" className="font-['Poppins',sans-serif]">
                     Enable Stripe Payments
@@ -185,61 +198,152 @@ export default function AdminPaymentSettingsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="environment" className="font-['Poppins',sans-serif]">
-                    Environment
+                  <Label htmlFor="stripeEnvironment" className="font-['Poppins',sans-serif]">
+                    Stripe Environment
                   </Label>
                   <select
-                    id="environment"
-                    value={settings.environment}
-                    onChange={(e) => updateField("environment", e.target.value)}
+                    id="stripeEnvironment"
+                    value={settings.stripeEnvironment || settings.environment || "test"}
+                    onChange={(e) => {
+                      updateField("stripeEnvironment", e.target.value);
+                      updateField("environment", e.target.value); // Keep legacy field in sync
+                    }}
                     className="w-full mt-2 h-10 px-3 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F]"
                   >
                     <option value="test">Test Mode</option>
                     <option value="live">Live Mode</option>
                   </select>
+                  <p className="text-[12px] text-gray-500 mt-1">
+                    {(settings.stripeEnvironment || settings.environment) === "test" 
+                      ? "Test mode uses test API keys. No real payments will be processed."
+                      : "Live mode uses live API keys. Real payments will be processed."}
+                  </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="stripePublishableKey" className="font-['Poppins',sans-serif]">
-                    Stripe Publishable Key
-                  </Label>
-                  <Input
-                    id="stripePublishableKey"
-                    type="text"
-                    value={settings.stripePublishableKey}
-                    onChange={(e) => updateField("stripePublishableKey", e.target.value)}
-                    placeholder="pk_test_..."
-                    className="mt-2 font-['Poppins',sans-serif]"
-                  />
-                </div>
+                {/* Test Mode Keys */}
+                {(settings.stripeEnvironment || settings.environment) === "test" && (
+                  <div className="space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-yellow-800 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                      Test Mode API Keys
+                    </h4>
+                    <div>
+                      <Label htmlFor="stripeTestPublishableKey" className="font-['Poppins',sans-serif] text-[13px]">
+                        Test Publishable Key
+                      </Label>
+                      <Input
+                        id="stripeTestPublishableKey"
+                        type="text"
+                        value={settings.stripeTestPublishableKey || settings.stripePublishableKey || ""}
+                        onChange={(e) => {
+                          updateField("stripeTestPublishableKey", e.target.value);
+                          updateField("stripePublishableKey", e.target.value); // Keep legacy in sync
+                        }}
+                        placeholder="pk_test_..."
+                        className="mt-1 font-['Poppins',sans-serif]"
+                      />
+                    </div>
 
-                <div>
-                  <Label htmlFor="stripeSecretKey" className="font-['Poppins',sans-serif]">
-                    Stripe Secret Key
-                  </Label>
-                  <Input
-                    id="stripeSecretKey"
-                    type="password"
-                    value={settings.stripeSecretKey}
-                    onChange={(e) => updateField("stripeSecretKey", e.target.value)}
-                    placeholder="sk_test_..."
-                    className="mt-2 font-['Poppins',sans-serif]"
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor="stripeTestSecretKey" className="font-['Poppins',sans-serif] text-[13px]">
+                        Test Secret Key
+                      </Label>
+                      <Input
+                        id="stripeTestSecretKey"
+                        type="password"
+                        value={settings.stripeTestSecretKey || settings.stripeSecretKey || ""}
+                        onChange={(e) => {
+                          updateField("stripeTestSecretKey", e.target.value);
+                          updateField("stripeSecretKey", e.target.value); // Keep legacy in sync
+                        }}
+                        placeholder="sk_test_..."
+                        className="mt-1 font-['Poppins',sans-serif]"
+                      />
+                    </div>
 
-                <div>
-                  <Label htmlFor="stripeWebhookSecret" className="font-['Poppins',sans-serif]">
-                    Stripe Webhook Secret
-                  </Label>
-                  <Input
-                    id="stripeWebhookSecret"
-                    type="password"
-                    value={settings.stripeWebhookSecret}
-                    onChange={(e) => updateField("stripeWebhookSecret", e.target.value)}
-                    placeholder="whsec_..."
-                    className="mt-2 font-['Poppins',sans-serif]"
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor="stripeTestWebhookSecret" className="font-['Poppins',sans-serif] text-[13px]">
+                        Test Webhook Secret
+                      </Label>
+                      <Input
+                        id="stripeTestWebhookSecret"
+                        type="password"
+                        value={settings.stripeTestWebhookSecret || settings.stripeWebhookSecret || ""}
+                        onChange={(e) => {
+                          updateField("stripeTestWebhookSecret", e.target.value);
+                          updateField("stripeWebhookSecret", e.target.value); // Keep legacy in sync
+                        }}
+                        placeholder="whsec_..."
+                        className="mt-1 font-['Poppins',sans-serif]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Mode Keys */}
+                {(settings.stripeEnvironment || settings.environment) === "live" && (
+                  <div className="space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-green-800 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      Live Mode API Keys
+                    </h4>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-red-700">
+                        <strong>Warning:</strong> Live mode will process real payments. Make sure your API keys are correct.
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="stripeLivePublishableKey" className="font-['Poppins',sans-serif] text-[13px]">
+                        Live Publishable Key
+                      </Label>
+                      <Input
+                        id="stripeLivePublishableKey"
+                        type="text"
+                        value={settings.stripeLivePublishableKey || ""}
+                        onChange={(e) => {
+                          updateField("stripeLivePublishableKey", e.target.value);
+                          updateField("stripePublishableKey", e.target.value); // Keep legacy in sync
+                        }}
+                        placeholder="pk_live_..."
+                        className="mt-1 font-['Poppins',sans-serif]"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="stripeLiveSecretKey" className="font-['Poppins',sans-serif] text-[13px]">
+                        Live Secret Key
+                      </Label>
+                      <Input
+                        id="stripeLiveSecretKey"
+                        type="password"
+                        value={settings.stripeLiveSecretKey || ""}
+                        onChange={(e) => {
+                          updateField("stripeLiveSecretKey", e.target.value);
+                          updateField("stripeSecretKey", e.target.value); // Keep legacy in sync
+                        }}
+                        placeholder="sk_live_..."
+                        className="mt-1 font-['Poppins',sans-serif]"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="stripeLiveWebhookSecret" className="font-['Poppins',sans-serif] text-[13px]">
+                        Live Webhook Secret
+                      </Label>
+                      <Input
+                        id="stripeLiveWebhookSecret"
+                        type="password"
+                        value={settings.stripeLiveWebhookSecret || ""}
+                        onChange={(e) => {
+                          updateField("stripeLiveWebhookSecret", e.target.value);
+                          updateField("stripeWebhookSecret", e.target.value); // Keep legacy in sync
+                        }}
+                        placeholder="whsec_..."
+                        className="mt-1 font-['Poppins',sans-serif]"
+                      />
+                    </div>
+                  </div>
+                )}
 
               </CardContent>
             </Card>
@@ -254,7 +358,7 @@ export default function AdminPaymentSettingsPage() {
                   PayPal API Configuration
                 </CardTitle>
                 <CardDescription>
-                  Configure your PayPal payment gateway credentials
+                  Configure your PayPal payment gateway credentials (Live mode only)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -269,32 +373,48 @@ export default function AdminPaymentSettingsPage() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="paypalPublicKey" className="font-['Poppins',sans-serif]">
-                    PayPal Client ID
-                  </Label>
-                  <Input
-                    id="paypalPublicKey"
-                    type="text"
-                    value={settings.paypalPublicKey || ""}
-                    onChange={(e) => updateField("paypalPublicKey", e.target.value)}
-                    placeholder="Enter PayPal Client ID"
-                    className="mt-2 font-['Poppins',sans-serif]"
-                  />
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700">
+                    <strong>Note:</strong> PayPal always operates in Live mode. Enter your Live API credentials below.
+                  </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="paypalSecretKey" className="font-['Poppins',sans-serif]">
-                    PayPal Secret Key
-                  </Label>
-                  <Input
-                    id="paypalSecretKey"
-                    type="password"
-                    value={settings.paypalSecretKey || ""}
-                    onChange={(e) => updateField("paypalSecretKey", e.target.value)}
-                    placeholder="Enter PayPal Secret Key"
-                    className="mt-2 font-['Poppins',sans-serif]"
-                  />
+                <div className="space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-green-800 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    PayPal Live API Keys
+                  </h4>
+                  
+                  <div>
+                    <Label htmlFor="paypalClientId" className="font-['Poppins',sans-serif] text-[13px]">
+                      PayPal Client ID
+                    </Label>
+                    <Input
+                      id="paypalClientId"
+                      type="text"
+                      value={settings.paypalClientId || settings.paypalPublicKey || ""}
+                      onChange={(e) => {
+                        updateField("paypalClientId", e.target.value);
+                        updateField("paypalPublicKey", e.target.value); // Keep legacy in sync
+                      }}
+                      placeholder="Enter PayPal Live Client ID"
+                      className="mt-1 font-['Poppins',sans-serif]"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="paypalSecretKey" className="font-['Poppins',sans-serif] text-[13px]">
+                      PayPal Secret Key
+                    </Label>
+                    <Input
+                      id="paypalSecretKey"
+                      type="password"
+                      value={settings.paypalSecretKey || ""}
+                      onChange={(e) => updateField("paypalSecretKey", e.target.value)}
+                      placeholder="Enter PayPal Live Secret Key"
+                      className="mt-1 font-['Poppins',sans-serif]"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
