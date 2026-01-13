@@ -17,7 +17,112 @@ import type { SubCategory } from "./unifiedCategoriesData";
 import { SEOHead } from "./SEOHead";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Skeleton } from "./ui/skeleton";
-import { Star, Heart, MapPin, Medal } from "lucide-react";
+import { Star, Heart, MapPin, Medal, Play } from "lucide-react";
+
+// Video Thumbnail Component with Play Button
+function VideoThumbnail({
+  videoUrl,
+  thumbnail,
+  fallbackImage,
+  className = "",
+  style = {},
+}: {
+  videoUrl: string;
+  thumbnail?: string;
+  fallbackImage?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Set video to middle frame when metadata loads
+  useEffect(() => {
+    if (!videoRef.current || isPlaying) return;
+    
+    const video = videoRef.current;
+    
+    const handleLoadedMetadata = () => {
+      if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+        // Seek to middle of video for thumbnail
+        video.currentTime = video.duration / 2;
+      }
+    };
+    
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [isPlaying]);
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      setIsPlaying(true);
+      videoRef.current.play().catch(() => {
+        // Handle play error (e.g., autoplay blocked)
+        setIsPlaying(false);
+      });
+    }
+  };
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Allow clicking video to play/pause
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        setIsPlaying(true);
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const handleVideoEnd = () => {
+    if (videoRef.current) {
+      // Seek back to middle when video ends
+      if (videoRef.current.duration && !isNaN(videoRef.current.duration)) {
+        videoRef.current.currentTime = videoRef.current.duration / 2;
+      }
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} style={style}>
+      {/* Video element - always shown, plays on button click */}
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        poster={thumbnail || fallbackImage || undefined}
+        className="w-full h-full object-cover object-center"
+        style={{ minWidth: '100%', minHeight: '100%' }}
+        muted
+        playsInline
+        loop
+        onEnded={handleVideoEnd}
+        onClick={handleVideoClick}
+        preload="metadata"
+      />
+      
+      {/* Play Button Overlay - shown when video is paused */}
+      {!isPlaying && (
+        <button
+          onClick={handlePlayClick}
+          className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group z-10"
+          aria-label="Play video"
+        >
+          <div className="bg-white/90 group-hover:bg-white rounded-full p-3 md:p-4 shadow-lg transform group-hover:scale-110 transition-transform">
+            <Play className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] fill-[#FE8A0F]" />
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
 
 // Helper function to check if professional is verified
 const isVerified = (service: any) => {
@@ -780,7 +885,35 @@ export default function SectorPage() {
           const transformed = (servicesData.services || []).map((s: any) => ({
             id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
             slug: s.slug,
-            image: s.images?.[0] || s.portfolioImages?.[0] || "",
+            // Determine thumbnail image/video - prioritize gallery first item if it's a video
+            ...(() => {
+              let thumbnailImage = "";
+              let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+              
+              // Check gallery array first (new format)
+              if (s.gallery && Array.isArray(s.gallery) && s.gallery.length > 0) {
+                const firstItem = s.gallery[0];
+                if (firstItem.type === 'video' && firstItem.url) {
+                  thumbnailVideo = {
+                    url: firstItem.url,
+                    thumbnail: firstItem.thumbnail
+                  };
+                  thumbnailImage = firstItem.thumbnail || "";
+                } else if (firstItem.type === 'image' && firstItem.url) {
+                  thumbnailImage = firstItem.url;
+                }
+              }
+              
+              // Fallback to legacy format if gallery not available or no video found
+              if (!thumbnailImage && !thumbnailVideo) {
+                thumbnailImage = s.images?.[0] || s.portfolioImages?.[0] || "";
+              }
+              
+              return {
+                image: thumbnailImage,
+                thumbnailVideo: thumbnailVideo,
+              };
+            })(),
             professionalId: typeof s.professional === 'object' 
               ? (s.professional._id || s.professional.id || s.professional)
               : (typeof s.professional === 'string' ? s.professional : null),
@@ -2311,14 +2444,24 @@ export default function SectorPage() {
                           className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full"
                           style={{ maxWidth: '330px', margin: '0 auto' }}
                   >
-                    {/* Image Section */}
+                    {/* Image/Video Section */}
                           <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
-                      <img
-                        src={service.image}
-                        alt={service.description}
-                              className="w-full h-full object-cover object-center"
-                              style={{ minWidth: '100%', minHeight: '100%' }}
-                      />
+                      {(service as any).thumbnailVideo ? (
+                        <VideoThumbnail
+                          videoUrl={(service as any).thumbnailVideo.url}
+                          thumbnail={(service as any).thumbnailVideo.thumbnail}
+                          fallbackImage={service.image}
+                          className="w-full h-full"
+                          style={{ minWidth: '100%', minHeight: '100%' }}
+                        />
+                      ) : (
+                        <img
+                          src={service.image}
+                          alt={service.description}
+                          className="w-full h-full object-cover object-center"
+                          style={{ minWidth: '100%', minHeight: '100%' }}
+                        />
+                      )}
                       
                             {/* Heart Icon - Top Right */}
                             <button
@@ -2657,14 +2800,24 @@ export default function SectorPage() {
                         to={`/service/${service.slug || service._id || service.id}`}
                         className="bg-white rounded-lg shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_12px_0px_rgba(254,138,15,0.3)] overflow-hidden transition-shadow duration-300 cursor-pointer flex min-h-[145px]"
                       >
-                        {/* Image Section - Left Side */}
+                        {/* Image/Video Section - Left Side */}
                         <div className="relative w-[100px] flex-shrink-0 overflow-hidden bg-gray-100">
-                          <img
-                            src={service.image}
-                            alt={service.description}
-                            className="w-full h-full object-cover"
-                            style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
-                          />
+                          {(service as any).thumbnailVideo ? (
+                            <VideoThumbnail
+                              videoUrl={(service as any).thumbnailVideo.url}
+                              thumbnail={(service as any).thumbnailVideo.thumbnail}
+                              fallbackImage={service.image}
+                              className="w-full h-full"
+                              style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <img
+                              src={service.image}
+                              alt={service.description}
+                              className="w-full h-full object-cover"
+                              style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
+                            />
+                          )}
                           {/* Badges */}
                           {service.badges && service.badges.length > 0 && (
                             <div className="absolute top-1.5 left-1.5 z-10">
