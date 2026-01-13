@@ -591,13 +591,7 @@ export default function ServicesPage() {
     return result;
   }, [apiSectors, legacySectors, serviceCategoriesBySector]);
   
-  // Debug: Track categoryTree changes
-  useEffect(() => {
-    console.log('[ServicesPage] categoryTree changed:', {
-      categoryTreeLength: categoryTree.length,
-      categoryTree: categoryTree.map(s => ({ sector: s.sector, mainCategoriesCount: s.mainCategories.length }))
-    });
-  }, [categoryTree]);
+  // Debug: Track categoryTree changes (removed to prevent infinite loops)
 
   // Selected filters - new approach with type and value
   type SelectedFilter = {
@@ -927,11 +921,8 @@ export default function ServicesPage() {
       return;
     }
     
-    // Wait for categoryTree to be populated (either from service categories or legacy)
-    const hasLoadedCategories = Array.from(serviceCategoriesBySector.values()).some(cats => cats.length > 0);
-    if (categoryTree.length === 0 && !hasLoadedCategories) {
-      return;
-    }
+    // Wait for sectors to be loaded - categories can be loaded lazily
+    // No need to wait for categoryTree - we can work with apiSectors directly
 
     const filters: SelectedFilter[] = [];
     
@@ -1082,9 +1073,53 @@ export default function ServicesPage() {
           });
         }
       }
+    } else if (sectorSlugParam) {
+      // Only sector selected (e.g., /services/home-garden)
+      const matchedSector = apiSectors.find((s: Sector) => s.slug === sectorSlugParam);
+      if (matchedSector) {
+        filters.push({
+          type: 'sector',
+          sector: matchedSector.name,
+          displayName: matchedSector.name
+        });
+        
+        setExpandedSectors(prev => {
+          const newSet = new Set(prev);
+          newSet.add(matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-'));
+          return newSet;
+        });
+      }
     } else if (categoryParam || subcategoryParam || detailedSubcategoryParam) {
       // Legacy URL params for backward compatibility
-      const matchedSector = categoryTree.find(s => s.sector === categoryParam);
+      // Calculate categoryTree inline to avoid dependency on categoryTree
+      const currentCategoryTree: CategoryTree[] = apiSectors.length > 0
+        ? apiSectors.map((sector: Sector) => ({
+            sector: sector.name,
+            sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
+            sectorId: sector._id,
+            mainCategories: (serviceCategoriesBySector.get(sector._id) || []).map((sc: ServiceCategory) => ({
+              name: sc.name,
+              value: sc.slug || sc.name.toLowerCase().replace(/\s+/g, '-'),
+              categoryId: sc._id,
+              subCategories: (sc.subCategories || []).map((subCat: ServiceSubCategory) => subCat.name),
+              hasSubCategories: sc.subCategories !== undefined
+            }))
+          }))
+        : legacySectors.length > 0
+        ? legacySectors.map((sector: Sector) => ({
+            sector: sector.name,
+            sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
+            sectorId: sector._id,
+            mainCategories: ((sector.categories || []) as Category[]).map((category: Category) => ({
+              name: category.name,
+              value: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
+              subCategories: ((category.subCategories || []) as SubCategory[]).map((subCat: SubCategory) => subCat.name),
+              hasSubCategories: true
+            }))
+          }))
+        : [];
+      
+      const matchedSector = currentCategoryTree.find(s => s.sector === categoryParam);
       
       if (matchedSector) {
         if (detailedSubcategoryParam && subcategoryParam) {
@@ -1169,15 +1204,16 @@ export default function ServicesPage() {
                                 categoryParam || subcategoryParam || detailedSubcategoryParam);
         // If no URL params, clear filters (URL was cleared by removeFilter)
         if (!hasUrlParams) {
+          console.log('[ServicesPage] Clearing filters - no URL params');
           return [];
         }
-        // URL params exist but no filters generated - clear filters
-        return [];
+        // URL params exist but no filters generated - this shouldn't happen, keep current filters
+        return prev;
       }
       
       return prev; // No change needed
     });
-  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParams, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, serviceCategoriesBySector, categoryTree]);
+  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParams, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, serviceCategoriesBySector]);
 
   // Auto-expand categories when filters change
   useEffect(() => {
@@ -1222,38 +1258,88 @@ export default function ServicesPage() {
 
   // Filter and sort services with distance calculation
   // Note: Category filtering and search are done by backend API
-  // Frontend only applies additional filters (delivery, rating, price, location)
+  // Frontend applies additional filters (delivery, rating, price, location)
   const filteredAndSortedServices = useMemo(() => {
-    let filtered = allServices.map(service => ({
+    // Calculate distance for all services
+    const servicesWithDistance = allServices.map(service => ({
       ...service,
       distance: userCoords && service.latitude && service.longitude
         ? calculateDistance(userCoords.latitude, userCoords.longitude, service.latitude, service.longitude)
         : undefined
-    })).filter((service) => {
-      // Location filter (postcode/radius)
-      const matchesLocation = !userCoords || service.distance === undefined || service.distance <= radiusMiles;
+    }));
 
-      // Location text search
-      const matchesLocationSearch = locationSearch === "" ||
-        service.location.toLowerCase().includes(locationSearch.toLowerCase()) ||
-        service.postcode.toLowerCase().includes(locationSearch.toLowerCase());
+    // Apply all filters
+    let filtered = servicesWithDistance.filter((service) => {
+      // 0. Category/Sector filters (selectedFilters)
+      // Only apply frontend filtering if URL params are not present (backend already filtered)
+      const hasUrlParams = !!(sectorSlugParam || serviceCategorySlugParam || serviceSubCategorySlugParam);
+      if (!hasUrlParams && selectedFilters.length > 0) {
+        const matchesFilter = selectedFilters.some(filter => {
+          if (filter.type === 'subCategory') {
+            // Match subcategory filter
+            return service.category === filter.sector &&
+                   service.subcategory === filter.mainCategory &&
+                   service.detailedSubcategory === filter.subCategory;
+          } else if (filter.type === 'mainCategory') {
+            // Match main category filter
+            return service.category === filter.sector &&
+                   service.subcategory === filter.mainCategory;
+          } else if (filter.type === 'sector') {
+            // Match sector filter
+            return service.category === filter.sector;
+          }
+          return false;
+        });
+        
+        if (!matchesFilter) {
+          return false;
+        }
+      }
 
-      // Delivery filter
-      const matchesDelivery = selectedDelivery.length === 0 || 
-        (selectedDelivery.includes("Same Day") && service.deliveryType === "same-day") ||
-        (selectedDelivery.includes("Standard") && service.deliveryType === "standard");
+      // 1. Location filter (radius-based distance)
+      if (userCoords && service.distance !== undefined) {
+        if (service.distance > radiusMiles) {
+          return false;
+        }
+      }
 
-      // Rating filter
-      const matchesRating = selectedRating === 0 || service.rating >= selectedRating;
+      // 2. Location text search
+      if (locationSearch.trim()) {
+        const locationLower = locationSearch.toLowerCase();
+        const matchesLocation = 
+          service.location?.toLowerCase().includes(locationLower) ||
+          service.postcode?.toLowerCase().includes(locationLower) ||
+          service.townCity?.toLowerCase().includes(locationLower);
+        if (!matchesLocation) {
+          return false;
+        }
+      }
 
-      // Price filter - remove £ symbol before parsing
-      // Use originalPrice if available (actual selling price), otherwise use price
+      // 3. Delivery filter
+      if (selectedDelivery.length > 0) {
+        const matchesDelivery = 
+          (selectedDelivery.includes("Same Day") && service.deliveryType === "same-day") ||
+          (selectedDelivery.includes("Standard") && service.deliveryType === "standard");
+        if (!matchesDelivery) {
+          return false;
+        }
+      }
+
+      // 4. Rating filter
+      if (selectedRating > 0) {
+        if (service.rating < selectedRating) {
+          return false;
+        }
+      }
+
+      // 5. Price filter
       const actualPrice = service.originalPrice || service.price;
-      const priceValue = parseFloat(String(actualPrice).replace('£', ''));
-      const matchesPrice = priceValue >= priceRange[0] && priceValue <= priceRange[1];
+      const priceValue = parseFloat(String(actualPrice).replace(/[£,]/g, ''));
+      if (isNaN(priceValue) || priceValue < priceRange[0] || priceValue > priceRange[1]) {
+        return false;
+      }
 
-      return matchesLocation && matchesLocationSearch && 
-             matchesDelivery && matchesRating && matchesPrice;
+      return true;
     });
 
     // Sort services
@@ -1293,7 +1379,7 @@ export default function ServicesPage() {
     const experiencedProfessionals = filtered.filter(s => s.reviewCount > 0 || s.completedTasks > 0);
     
     return [...newProfessionals, ...experiencedProfessionals];
-  }, [allServices, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch]);
+  }, [allServices, selectedFilters, selectedDelivery, selectedRating, priceRange, sortBy, userCoords, radiusMiles, locationSearch]);
 
   // Filter category tree based on selected filters (show only relevant sectors)
   const filteredCategoryTree = useMemo(() => {
@@ -1403,7 +1489,8 @@ export default function ServicesPage() {
     );
     
     if (!exists) {
-      setSelectedFilters(prev => [...prev, filter]);
+      const newFilters = [...selectedFilters, filter];
+      setSelectedFilters(newFilters);
       
       // Auto-expand the relevant categories when filter is added
       // Find the sector in categoryTree to get the sectorValue
@@ -1430,6 +1517,105 @@ export default function ServicesPage() {
           }
         }
       }
+      
+      // Update URL based on filter type
+      const sectorApi = apiSectors.find((s: Sector) => s.name === filter.sector);
+      if (!sectorApi) return;
+      
+      const sectorSlug = sectorApi.slug || sectorApi.name.toLowerCase().replace(/\s+/g, '-');
+      
+      if (filter.type === 'subCategory' && filter.mainCategory && filter.subCategory) {
+        // Find category and subcategory slugs
+        const sectorCategories = serviceCategoriesBySector.get(sectorApi._id) || [];
+        const matchedCategory = sectorCategories.find((cat: ServiceCategory) => cat.name === filter.mainCategory);
+        
+        if (matchedCategory) {
+          const categorySlug = matchedCategory.slug || matchedCategory.name.toLowerCase().replace(/\s+/g, '-');
+          
+          // Find subcategory slug
+          if (matchedCategory.subCategories) {
+            const matchedSubCategory = (matchedCategory.subCategories as ServiceSubCategory[]).find(
+              (sub: ServiceSubCategory) => sub.name === filter.subCategory
+            );
+            
+            if (matchedSubCategory) {
+              const subCategorySlug = matchedSubCategory.slug || matchedSubCategory.name.toLowerCase().replace(/\s+/g, '-');
+              const newSearchParams = new URLSearchParams(searchParams);
+              // Keep only non-filter query params (search, etc.)
+              newSearchParams.delete('sector');
+              newSearchParams.delete('serviceCategory');
+              newSearchParams.delete('serviceSubCategory');
+              newSearchParams.delete('category');
+              newSearchParams.delete('subcategory');
+              newSearchParams.delete('detailedSubcategory');
+              
+              const queryString = newSearchParams.toString();
+              const url = queryString 
+                ? `/services/${sectorSlug}/${categorySlug}/${subCategorySlug}?${queryString}`
+                : `/services/${sectorSlug}/${categorySlug}/${subCategorySlug}`;
+              navigate(url, { replace: true });
+              return;
+            }
+          }
+        }
+      } else if (filter.type === 'mainCategory' && filter.mainCategory) {
+        // Find category slug
+        const sectorCategories = serviceCategoriesBySector.get(sectorApi._id) || [];
+        const matchedCategory = sectorCategories.find((cat: ServiceCategory) => cat.name === filter.mainCategory);
+        
+        if (matchedCategory) {
+          const categorySlug = matchedCategory.slug || matchedCategory.name.toLowerCase().replace(/\s+/g, '-');
+          const newSearchParams = new URLSearchParams(searchParams);
+          // Keep only non-filter query params (search, etc.)
+          newSearchParams.delete('sector');
+          newSearchParams.delete('serviceCategory');
+          newSearchParams.delete('serviceSubCategory');
+          newSearchParams.delete('category');
+          newSearchParams.delete('subcategory');
+          newSearchParams.delete('detailedSubcategory');
+          
+          const queryString = newSearchParams.toString();
+          const url = queryString 
+            ? `/services/${sectorSlug}/${categorySlug}?${queryString}`
+            : `/services/${sectorSlug}/${categorySlug}`;
+          navigate(url, { replace: true });
+          return;
+        }
+      } else if (filter.type === 'sector') {
+        const newSearchParams = new URLSearchParams(searchParams);
+        // Keep only non-filter query params (search, etc.)
+        newSearchParams.delete('sector');
+        newSearchParams.delete('serviceCategory');
+        newSearchParams.delete('serviceSubCategory');
+        newSearchParams.delete('category');
+        newSearchParams.delete('subcategory');
+        newSearchParams.delete('detailedSubcategory');
+        
+        const queryString = newSearchParams.toString();
+        const url = queryString 
+          ? `/services/${sectorSlug}?${queryString}`
+          : `/services/${sectorSlug}`;
+        navigate(url, { replace: true });
+        return;
+      }
+    }
+  };
+
+  const toggleFilter = (filter: SelectedFilter) => {
+    // Check if filter already exists
+    const existingIndex = selectedFilters.findIndex(f => 
+      f.type === filter.type &&
+      f.sector === filter.sector &&
+      f.mainCategory === filter.mainCategory &&
+      f.subCategory === filter.subCategory
+    );
+    
+    if (existingIndex >= 0) {
+      // Filter exists, remove it
+      removeFilter(existingIndex);
+    } else {
+      // Filter doesn't exist, add it
+      addFilter(filter);
     }
   };
 
@@ -1437,14 +1623,17 @@ export default function ServicesPage() {
     const filterToRemove = selectedFilters[index];
     if (!filterToRemove) return;
     
-    // Remove from state first
-    setSelectedFilters(prev => prev.filter((_, i) => i !== index));
+    // Calculate new filters after removal
+    const newFilters = selectedFilters.filter((_, i) => i !== index);
     
-    // Then update URL to match the state
+    // Update state immediately
+    setSelectedFilters(newFilters);
+    
+    // If path params exist (e.g., /services/home-garden/builders/advanced-builders),
+    // always redirect to /services page with page refresh
     if (sectorSlugFromPath || serviceCategorySlugFromPath || serviceSubCategorySplat) {
-      // If path params exist, navigate to base services page
       const newSearchParams = new URLSearchParams(searchParams);
-      // Remove filter-related query params
+      // Keep only non-filter query params (search, etc.)
       newSearchParams.delete('sector');
       newSearchParams.delete('serviceCategory');
       newSearchParams.delete('serviceSubCategory');
@@ -1453,27 +1642,44 @@ export default function ServicesPage() {
       newSearchParams.delete('detailedSubcategory');
       
       const queryString = newSearchParams.toString();
-      const newPath = queryString ? `/services?${queryString}` : '/services';
-      navigate(newPath, { replace: true });
-    } else {
-      // If only query params exist, remove them
+      const redirectUrl = queryString ? `/services?${queryString}` : '/services';
+      // Use window.location for full page reload
+      window.location.href = redirectUrl;
+      return;
+    }
+    
+    // If all filters are removed, navigate to base services page
+    if (newFilters.length === 0) {
       const newSearchParams = new URLSearchParams(searchParams);
-      
-      if (filterToRemove.type === 'subCategory') {
-        newSearchParams.delete('serviceSubCategory');
-        newSearchParams.delete('detailedSubcategory');
-      } else if (filterToRemove.type === 'mainCategory') {
-        newSearchParams.delete('serviceCategory');
-        newSearchParams.delete('subcategory');
-      } else if (filterToRemove.type === 'sector') {
-        newSearchParams.delete('sector');
-        newSearchParams.delete('category');
-      }
+      // Keep only non-filter query params (search, etc.)
+      newSearchParams.delete('sector');
+      newSearchParams.delete('serviceCategory');
+      newSearchParams.delete('serviceSubCategory');
+      newSearchParams.delete('category');
+      newSearchParams.delete('subcategory');
+      newSearchParams.delete('detailedSubcategory');
       
       const queryString = newSearchParams.toString();
-      const newPath = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
-      navigate(newPath, { replace: true });
+      navigate(queryString ? `/services?${queryString}` : '/services', { replace: true });
+      return;
     }
+    
+    // If only query params exist, remove the specific filter params
+    const newSearchParams = new URLSearchParams(searchParams);
+    
+    if (filterToRemove.type === 'subCategory') {
+      newSearchParams.delete('serviceSubCategory');
+      newSearchParams.delete('detailedSubcategory');
+    } else if (filterToRemove.type === 'mainCategory') {
+      newSearchParams.delete('serviceCategory');
+      newSearchParams.delete('subcategory');
+    } else if (filterToRemove.type === 'sector') {
+      newSearchParams.delete('sector');
+      newSearchParams.delete('category');
+    }
+    
+    const queryString = newSearchParams.toString();
+    navigate(queryString ? `/services?${queryString}` : '/services', { replace: true });
   };
 
   const toggleDelivery = (delivery: string) => {
@@ -1562,14 +1768,7 @@ export default function ServicesPage() {
         </h3>
         
         {/* Loading state with skeleton - Show skeleton only while loading */}
-        {(() => {
-          console.log('[ServicesPage] FilterPanel - Skeleton display check:', {
-            sectorsLoading,
-            apiSectorsLength: apiSectors.length,
-            categoryTreeLength: categoryTree.length
-          });
-          return sectorsLoading;
-        })() ? (
+        {sectorsLoading ? (
           <div className="space-y-1">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="border border-gray-200 rounded-lg p-2">
@@ -1583,38 +1782,6 @@ export default function ServicesPage() {
           </div>
         ) : null}
         
-        {/* Selected Filters */}
-        {!sectorsLoading && selectedFilters.length > 0 && (
-          <TooltipProvider>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {selectedFilters.map((filter, index) => {
-                // Get short name (last part of the path)
-                const shortName = filter.subCategory || filter.mainCategory || filter.sector || "";
-                const hasMultipleLevels = filter.displayName.includes(">");
-                
-                return (
-                  <Tooltip key={index}>
-                    <TooltipTrigger asChild>
-                      <Badge
-                        className="bg-[#FFF5EB] text-[#FE8A0F] border border-[#FE8A0F]/30 font-['Poppins',sans-serif] text-[12px] px-2.5 py-1 cursor-pointer hover:bg-[#FE8A0F] hover:text-white transition-colors max-w-[180px]"
-                        onClick={() => removeFilter(index)}
-                      >
-                        <span className="truncate">{shortName}</span>
-                        <X className="w-3 h-3 ml-1.5 flex-shrink-0" />
-                      </Badge>
-                    </TooltipTrigger>
-                    {hasMultipleLevels && (
-                      <TooltipContent side="top" className="font-['Poppins',sans-serif] text-[11px] bg-gray-900 text-white">
-                        <p>{filter.displayName}</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                );
-              })}
-            </div>
-          </TooltipProvider>
-        )}
-
         {/* Category Tree - Always show sectors when loaded */}
         {!sectorsLoading && apiSectors.length > 0 && categoryTree.length > 0 && (
         <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
@@ -1637,13 +1804,16 @@ export default function ServicesPage() {
                       return (
                         <button
                           key={subCat}
-                          onClick={() => addFilter({
-                            type: 'subCategory',
-                            sector: sector.sector,
-                            mainCategory: mainCat.name,
-                            subCategory: subCat,
-                            displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
-                          })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFilter({
+                              type: 'subCategory',
+                              sector: sector.sector,
+                              mainCategory: mainCat.name,
+                              subCategory: subCat,
+                              displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
+                            });
+                          }}
                           className={`block w-full text-left py-2 px-3 font-['Poppins',sans-serif] text-[13px] rounded transition-colors ${
                             isSelected
                               ? 'bg-[#FFF5EB] text-[#FE8A0F] font-medium'
@@ -1668,15 +1838,20 @@ export default function ServicesPage() {
                     {getSectorIcon(sector.sector)}
                   </div>
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       toggleSectorExpansion(sector.sectorValue);
-                      addFilter({
+                      toggleFilter({
                         type: 'sector',
                         sector: sector.sector,
                         displayName: sector.sector
                       });
                     }}
-                    className="flex-1 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors"
+                    className={`flex-1 text-left font-['Poppins',sans-serif] text-[14px] transition-colors ${
+                      selectedFilters.some(f => f.type === 'sector' && f.sector === sector.sector)
+                        ? 'text-[#FE8A0F] font-medium'
+                        : 'text-[#2c353f] hover:text-[#FE8A0F]'
+                    }`}
                   >
                     {sector.sector}
                   </button>
@@ -1723,13 +1898,20 @@ export default function ServicesPage() {
                                 </button>
                               )}
                               <button
-                                onClick={() => addFilter({
-                                  type: 'mainCategory',
-                                  sector: sector.sector,
-                                  mainCategory: mainCat.name,
-                                  displayName: `${sector.sector} > ${mainCat.name}`
-                                })}
-                                className="flex-1 text-left font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] hover:text-[#10B981] transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFilter({
+                                    type: 'mainCategory',
+                                    sector: sector.sector,
+                                    mainCategory: mainCat.name,
+                                    displayName: `${sector.sector} > ${mainCat.name}`
+                                  });
+                                }}
+                                className={`flex-1 text-left font-['Poppins',sans-serif] text-[13px] transition-colors ${
+                                  selectedFilters.some(f => f.type === 'mainCategory' && f.sector === sector.sector && f.mainCategory === mainCat.name)
+                                    ? 'text-[#FE8A0F] font-medium bg-[#FFF5EB] rounded px-1'
+                                    : 'text-[#5b5b5b] hover:text-[#10B981]'
+                                }`}
                               >
                                 {mainCat.name}
                               </button>
@@ -1746,21 +1928,37 @@ export default function ServicesPage() {
                                   </div>
                                 ) : mainCat.subCategories.length > 0 ? (
                                   <div className="pl-4 space-y-0.5">
-                                    {mainCat.subCategories.map((subCat) => (
-                                      <button
-                                        key={subCat}
-                                        onClick={() => addFilter({
-                                          type: 'subCategory',
-                                          sector: sector.sector,
-                                          mainCategory: mainCat.name,
-                                          subCategory: subCat,
-                                          displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
-                                        })}
-                                        className="block w-full text-left py-1 px-2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50 rounded transition-colors"
-                                      >
-                                        • {subCat}
-                                      </button>
-                                    ))}
+                                    {mainCat.subCategories.map((subCat) => {
+                                      const isSelected = selectedFilters.some(f => 
+                                        f.type === 'subCategory' && 
+                                        f.sector === sector.sector &&
+                                        f.mainCategory === mainCat.name &&
+                                        f.subCategory === subCat
+                                      );
+                                      
+                                      return (
+                                        <button
+                                          key={subCat}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleFilter({
+                                              type: 'subCategory',
+                                              sector: sector.sector,
+                                              mainCategory: mainCat.name,
+                                              subCategory: subCat,
+                                              displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
+                                            });
+                                          }}
+                                          className={`block w-full text-left py-1 px-2 font-['Poppins',sans-serif] text-[12px] rounded transition-colors ${
+                                            isSelected
+                                              ? 'text-[#FE8A0F] font-medium bg-[#FFF5EB]'
+                                              : 'text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          • {subCat}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 ) : null}
                               </>
