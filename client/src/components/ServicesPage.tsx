@@ -51,6 +51,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
+import { Skeleton } from "./ui/skeleton";
 
 // Helper function to check if professional is verified
 const isVerified = (service: any) => {
@@ -409,10 +410,13 @@ export default function ServicesPage() {
   type CategoryTree = {
     sector: string;
     sectorValue: string;
+    sectorId?: string; // For lazy loading
     mainCategories: {
       name: string;
       value: string;
+      categoryId?: string; // For lazy loading
       subCategories: string[];
+      hasSubCategories?: boolean; // Track if subcategories are loaded
     }[];
   };
 
@@ -422,80 +426,132 @@ export default function ServicesPage() {
   // Load legacy categories for fallback
   const { sectors: legacySectors } = useSectors(true, true);
   
-  // Load service categories for all sectors
-  const [allServiceCategories, setAllServiceCategories] = useState<ServiceCategory[]>([]);
-  const [serviceCategoriesLoading, setServiceCategoriesLoading] = useState(true);
-  
+  // Debug: Track sectors loading
   useEffect(() => {
-    const fetchAllServiceCategories = async () => {
-      try {
-        setServiceCategoriesLoading(true);
-        if (apiSectors.length > 0) {
-          // Fetch service categories for each sector
-          const { resolveApiUrl } = await import("../config/api");
-          const serviceCategoriesPromises = apiSectors.map(async (sector: Sector) => {
-            try {
-              const response = await fetch(
-                resolveApiUrl(`/api/service-categories?sectorId=${sector._id}&activeOnly=true&includeSubCategories=true&sortBy=order&sortOrder=asc`),
-                { credentials: 'include' }
-              );
-              if (response.ok) {
-                const data = await response.json();
-                return data.serviceCategories || [];
-              }
-              return [];
-            } catch (error) {
-              // console.error(`Error fetching service categories for sector ${sector._id}:`, error);
-              return [];
-            }
-          });
-          
-          const allCategories = await Promise.all(serviceCategoriesPromises);
-          const flattened = allCategories.flat();
-          setAllServiceCategories(flattened);
-        }
-      } catch (error) {
-        // console.error('Error fetching service categories:', error);
-      } finally {
-        setServiceCategoriesLoading(false);
-      }
-    };
-    
-    if (apiSectors.length > 0) {
-      fetchAllServiceCategories();
-    } else {
-      setServiceCategoriesLoading(false);
+    console.log('[ServicesPage] Sectors loading state:', {
+      sectorsLoading,
+      apiSectorsCount: apiSectors.length,
+      apiSectors: apiSectors,
+      legacySectorsCount: legacySectors.length
+    });
+  }, [sectorsLoading, apiSectors, legacySectors]);
+  
+  // Load service categories lazily per sector (Map: sectorId -> ServiceCategory[])
+  const [serviceCategoriesBySector, setServiceCategoriesBySector] = useState<Map<string, ServiceCategory[]>>(new Map());
+  const [loadingSectors, setLoadingSectors] = useState<Set<string>>(new Set());
+  const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+  
+  // Fetch service categories for a specific sector (lazy loading)
+  const fetchServiceCategoriesForSector = async (sectorId: string) => {
+    // Skip if already loaded or loading
+    if (serviceCategoriesBySector.has(sectorId) || loadingSectors.has(sectorId)) {
+      return;
     }
-  }, [apiSectors]);
+    
+    try {
+      setLoadingSectors(prev => new Set(prev).add(sectorId));
+      const { resolveApiUrl } = await import("../config/api");
+      
+      const response = await fetch(
+        resolveApiUrl(`/api/service-categories?sectorId=${sectorId}&activeOnly=true&includeSubCategories=false&sortBy=order&sortOrder=asc`),
+        { credentials: 'include' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const categories = data.serviceCategories || [];
+        setServiceCategoriesBySector(prev => {
+          const newMap = new Map(prev);
+          newMap.set(sectorId, categories);
+          return newMap;
+        });
+      }
+    } catch (error) {
+      // console.error(`Error fetching service categories for sector ${sectorId}:`, error);
+    } finally {
+      setLoadingSectors(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(sectorId);
+        return newSet;
+      });
+    }
+  };
+  
+  // Fetch subcategories for a specific service category (lazy loading)
+  const fetchSubCategoriesForCategory = async (categoryId: string, sectorId: string) => {
+    // Skip if already loading
+    if (loadingCategories.has(categoryId)) {
+      return;
+    }
+    
+    try {
+      setLoadingCategories(prev => new Set(prev).add(categoryId));
+      const { resolveApiUrl } = await import("../config/api");
+      
+      const response = await fetch(
+        resolveApiUrl(`/api/service-categories/${categoryId}?includeSubCategories=true&activeOnly=true`),
+        { credentials: 'include' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const category = data.serviceCategory;
+        if (category && category.subCategories) {
+          // Update the category in the map with subcategories
+          setServiceCategoriesBySector(prev => {
+            const newMap = new Map(prev);
+            const categories = newMap.get(sectorId) || [];
+            const updatedCategories = categories.map((cat: ServiceCategory) => 
+              cat._id === categoryId ? { ...cat, subCategories: category.subCategories } : cat
+            );
+            newMap.set(sectorId, updatedCategories);
+            return newMap;
+          });
+        }
+      }
+    } catch (error) {
+      // console.error(`Error fetching subcategories for category ${categoryId}:`, error);
+    } finally {
+      setLoadingCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(categoryId);
+        return newSet;
+      });
+    }
+  };
   
   // Convert API data to categoryTree format, sorted by order
-  // Priority: Service Categories (new system) > Legacy Categories > Static data
+  // Lazy loading: Only show categories for sectors that have been expanded/loaded
   const categoryTree: CategoryTree[] = useMemo(() => {
-    if (allServiceCategories.length > 0 && apiSectors.length > 0) {
-      // Use service categories (new system)
+    console.log('[ServicesPage] categoryTree useMemo triggered:', {
+      apiSectorsLength: apiSectors.length,
+      legacySectorsLength: legacySectors.length,
+      serviceCategoriesBySectorSize: serviceCategoriesBySector.size
+    });
+    
+    if (apiSectors.length > 0) {
       const sortedSectors = [...apiSectors].sort((a, b) => (a.order || 0) - (b.order || 0));
       
       return sortedSectors.map((sector: Sector) => {
-        // Get service categories for this sector
-        const sectorServiceCategories = allServiceCategories
-          .filter((sc: ServiceCategory) => {
-            const sectorId = typeof sc.sector === 'object' ? sc.sector._id : sc.sector;
-            return sectorId === sector._id;
-          })
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        // Get service categories for this sector (if loaded)
+        const sectorServiceCategories = serviceCategoriesBySector.get(sector._id) || [];
+        const sortedCategories = [...sectorServiceCategories].sort((a, b) => (a.order || 0) - (b.order || 0));
         
         return {
           sector: sector.name,
           sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
-          mainCategories: sectorServiceCategories.map((serviceCategory: ServiceCategory) => {
-            // Sort subcategories by order
+          sectorId: sector._id, // Add sectorId for lazy loading
+          mainCategories: sortedCategories.map((serviceCategory: ServiceCategory) => {
+            // Only include subcategories if they've been loaded
             const sortedSubCategories = ((serviceCategory.subCategories || []) as ServiceSubCategory[])
               .sort((a, b) => (a.order || 0) - (b.order || 0));
             
             return {
               name: serviceCategory.name,
               value: serviceCategory.slug || serviceCategory.name.toLowerCase().replace(/\s+/g, '-'),
-              subCategories: sortedSubCategories.map((subCat: ServiceSubCategory) => subCat.name)
+              categoryId: serviceCategory._id, // Add categoryId for lazy loading
+              subCategories: sortedSubCategories.map((subCat: ServiceSubCategory) => subCat.name),
+              hasSubCategories: serviceCategory.subCategories !== undefined // Track if subcategories are loaded
             };
           })
         };
@@ -513,6 +569,7 @@ export default function ServicesPage() {
         return {
           sector: sector.name,
           sectorValue: sector.slug || sector.name.toLowerCase().replace(/\s+/g, '-'),
+          sectorId: sector._id,
           mainCategories: sortedCategories.map((category: Category) => {
             const sortedSubCategories = ((category.subCategories || []) as SubCategory[])
               .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -520,7 +577,8 @@ export default function ServicesPage() {
             return {
               name: category.name,
               value: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
-              subCategories: sortedSubCategories.map((subCat: SubCategory) => subCat.name)
+              subCategories: sortedSubCategories.map((subCat: SubCategory) => subCat.name),
+              hasSubCategories: true
             };
           })
         };
@@ -528,8 +586,18 @@ export default function ServicesPage() {
     }
     
     // Return empty array if no data available
-    return [];
-  }, [allServiceCategories, apiSectors, legacySectors]);
+    const result: CategoryTree[] = [];
+    console.log('[ServicesPage] categoryTree useMemo returning empty array - no sectors available');
+    return result;
+  }, [apiSectors, legacySectors, serviceCategoriesBySector]);
+  
+  // Debug: Track categoryTree changes
+  useEffect(() => {
+    console.log('[ServicesPage] categoryTree changed:', {
+      categoryTreeLength: categoryTree.length,
+      categoryTree: categoryTree.map(s => ({ sector: s.sector, mainCategoriesCount: s.mainCategories.length }))
+    });
+  }, [categoryTree]);
 
   // Selected filters - new approach with type and value
   type SelectedFilter = {
@@ -544,10 +612,43 @@ export default function ServicesPage() {
   const [expandedSectors, setExpandedSectors] = useState<Set<string>>(new Set());
   const [expandedMainCategories, setExpandedMainCategories] = useState<Set<string>>(new Set());
 
+  // Refs to prevent infinite loops and concurrent fetches
+  const isFetchingRef = useRef(false);
+  const prevFetchKeyRef = useRef<string>("");
+
+  // Create stable string representations for dependency comparison
+  const filtersKey = useMemo(() => JSON.stringify(selectedFilters), [selectedFilters]);
+  const apiSectorsKey = useMemo(() => apiSectors.map(s => s._id).join(','), [apiSectors]);
+  const allServiceCategoriesKey = useMemo(() => {
+    const allCategories: ServiceCategory[] = [];
+    serviceCategoriesBySector.forEach(categories => allCategories.push(...categories));
+    return allCategories.map(sc => sc._id).join(',');
+  }, [serviceCategoriesBySector]);
+  const urlParamsKey = useMemo(() => 
+    `${sectorSlugParam || ''}-${serviceCategorySlugParam || ''}-${serviceSubCategorySlugParam || ''}`, 
+    [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParam]
+  );
+
   // Fetch services from API when filters change
   useEffect(() => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    // Check if anything actually changed
+    const currentKey = `${filtersKey}-${searchQuery}-${urlParamsKey}-${apiSectorsKey}-${allServiceCategoriesKey}`;
+    if (currentKey === prevFetchKeyRef.current) {
+      return;
+    }
+
     const fetchServices = async () => {
+      if (isFetchingRef.current) {
+        return;
+      }
+      
       try {
+        isFetchingRef.current = true;
         setServicesLoading(true);
         const { resolveApiUrl } = await import("../config/api");
 
@@ -606,24 +707,30 @@ export default function ServicesPage() {
           
           if (subCategoryFilter) {
             // Find subcategory ID by name
-            const matchingCategory = allServiceCategories.find(sc => 
-              sc.name === subCategoryFilter.mainCategory
-            );
-            if (matchingCategory && matchingCategory.subCategories) {
-              const matchingSubCategory = (matchingCategory.subCategories as ServiceSubCategory[]).find(
-                sub => sub.name === subCategoryFilter.subCategory
+            for (const [sectorId, categories] of serviceCategoriesBySector.entries()) {
+              const matchingCategory = categories.find(sc => 
+                sc.name === subCategoryFilter.mainCategory
               );
-              if (matchingSubCategory) {
-                params.append('serviceSubCategoryId', matchingSubCategory._id);
+              if (matchingCategory && matchingCategory.subCategories) {
+                const matchingSubCategory = (matchingCategory.subCategories as ServiceSubCategory[]).find(
+                  sub => sub.name === subCategoryFilter.subCategory
+                );
+                if (matchingSubCategory) {
+                  params.append('serviceSubCategoryId', matchingSubCategory._id);
+                  break;
+                }
               }
             }
           } else if (mainCategoryFilter) {
             // Find category ID by name
-            const matchingCategory = allServiceCategories.find(sc => 
-              sc.name === mainCategoryFilter.mainCategory
-            );
-            if (matchingCategory) {
-              params.append('serviceCategoryId', matchingCategory._id);
+            for (const [sectorId, categories] of serviceCategoriesBySector.entries()) {
+              const matchingCategory = categories.find(sc => 
+                sc.name === mainCategoryFilter.mainCategory
+              );
+              if (matchingCategory) {
+                params.append('serviceCategoryId', matchingCategory._id);
+                break;
+              }
             }
           } else if (sectorFilter) {
             // Find sector ID by name
@@ -759,11 +866,13 @@ export default function ServicesPage() {
         setAllServices([]);
       } finally {
         setServicesLoading(false);
+        isFetchingRef.current = false;
+        prevFetchKeyRef.current = currentKey;
       }
     };
 
     fetchServices();
-  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParam, selectedFilters, searchQuery, apiSectors, allServiceCategories]);
+  }, [filtersKey, searchQuery, urlParamsKey, apiSectorsKey, allServiceCategoriesKey, sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParam]);
 
   // Sector icon mapping for sidebar
   const getSectorIcon = (sectorName: string) => {
@@ -813,6 +922,17 @@ export default function ServicesPage() {
 
   // Initialize filters from URL parameters and auto-expand categories
   useEffect(() => {
+    // Don't run if data isn't ready yet
+    if (apiSectors.length === 0) {
+      return;
+    }
+    
+    // Wait for categoryTree to be populated (either from service categories or legacy)
+    const hasLoadedCategories = Array.from(serviceCategoriesBySector.values()).some(cats => cats.length > 0);
+    if (categoryTree.length === 0 && !hasLoadedCategories) {
+      return;
+    }
+
     const filters: SelectedFilter[] = [];
     
     // Priority: New service category URL params > Legacy category params
@@ -821,11 +941,33 @@ export default function ServicesPage() {
       const matchedSector = apiSectors.find((s: Sector) => s.slug === sectorSlugParam);
       
       if (matchedSector) {
-        // Find the service category by slug
-        const matchedServiceCategory = allServiceCategories.find((sc: ServiceCategory) => {
-          const sectorId = typeof sc.sector === 'object' ? sc.sector._id : sc.sector;
-          return sectorId === matchedSector._id && sc.slug === serviceCategorySlugParam;
-        });
+        // Find the service category by slug (load if not already loaded)
+        const sectorCategories = serviceCategoriesBySector.get(matchedSector._id) || [];
+        let matchedServiceCategory = sectorCategories.find((sc: ServiceCategory) => 
+          sc.slug === serviceCategorySlugParam
+        );
+        
+        // If not found and not loading, trigger fetch and expand sector
+        if (!matchedServiceCategory && !loadingSectors.has(matchedSector._id)) {
+          const sectorValue = matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-');
+          setExpandedSectors(prev => new Set(prev).add(sectorValue));
+          fetchServiceCategoriesForSector(matchedSector._id);
+        } else if (matchedServiceCategory) {
+          // Auto-expand the sector
+          const sectorValue = matchedSector.slug || matchedSector.name.toLowerCase().replace(/\s+/g, '-');
+          setExpandedSectors(prev => new Set(prev).add(sectorValue));
+          
+          // If subcategory is specified, expand main category and load subcategories
+          if (serviceSubCategorySlugParams.length > 0 || serviceSubCategorySlugParam) {
+            const mainCatKey = `${sectorValue}-${matchedServiceCategory.slug || matchedServiceCategory.name.toLowerCase().replace(/\s+/g, '-')}`;
+            setExpandedMainCategories(prev => new Set(prev).add(mainCatKey));
+            
+            // Load subcategories if not already loaded
+            if (!matchedServiceCategory.subCategories && !loadingCategories.has(matchedServiceCategory._id)) {
+              fetchSubCategoriesForCategory(matchedServiceCategory._id, matchedSector._id);
+            }
+          }
+        }
         
         if (matchedServiceCategory) {
           // Handle multiple serviceSubCategory parameters (nested subcategories)
@@ -1003,10 +1145,39 @@ export default function ServicesPage() {
       }
     }
     
-    if (filters.length > 0) {
-      setSelectedFilters(filters);
-    }
-  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParams, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, allServiceCategories, categoryTree]);
+    // Only update if filters actually changed
+    const newFiltersKey = JSON.stringify(filters);
+    const currentFiltersKey = JSON.stringify(selectedFilters);
+    
+    // Use functional update to avoid dependency on selectedFilters
+    // Only update filters if URL params have changed and filters need to be set
+    // Don't clear filters if user manually removed them (URL will be updated by removeFilter)
+    setSelectedFilters(prev => {
+      const prevKey = JSON.stringify(prev);
+      
+      // If URL params exist and filters need to be set
+      if (filters.length > 0) {
+        // Only update if the new filters are different from current
+        if (newFiltersKey !== prevKey) {
+          return filters;
+        }
+      } 
+      // If URL params don't exist and no filters should be generated, clear filters
+      else if (filters.length === 0 && prev.length > 0) {
+        // Check if URL params exist
+        const hasUrlParams = !!(sectorSlugParam || serviceCategorySlugParam || serviceSubCategorySlugParam || 
+                                categoryParam || subcategoryParam || detailedSubcategoryParam);
+        // If no URL params, clear filters (URL was cleared by removeFilter)
+        if (!hasUrlParams) {
+          return [];
+        }
+        // URL params exist but no filters generated - clear filters
+        return [];
+      }
+      
+      return prev; // No change needed
+    });
+  }, [sectorSlugParam, serviceCategorySlugParam, serviceSubCategorySlugParams, serviceSubCategorySlugParam, categoryParam, subcategoryParam, detailedSubcategoryParam, apiSectors, serviceCategoriesBySector, categoryTree]);
 
   // Auto-expand categories when filters change
   useEffect(() => {
@@ -1169,29 +1340,54 @@ export default function ServicesPage() {
     // Otherwise, show all sectors that match the selected filters
     const selectedSectors = new Set(selectedFilters.map(f => f.sector));
     return categoryTree.filter(sector => selectedSectors.has(sector.sector));
-  }, [selectedFilters]);
+  }, [selectedFilters, categoryTree]);
 
   // New filter management functions
-  const toggleSectorExpansion = (sector: string) => {
+  const toggleSectorExpansion = async (sectorValue: string) => {
     setExpandedSectors(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(sector)) {
-        newSet.delete(sector);
+      const isExpanding = !newSet.has(sectorValue);
+      
+      if (isExpanding) {
+        newSet.add(sectorValue);
+        // Find the sector and fetch its categories
+        const sector = apiSectors.find((s: Sector) => 
+          (s.slug || s.name.toLowerCase().replace(/\s+/g, '-')) === sectorValue
+        );
+        if (sector) {
+          fetchServiceCategoriesForSector(sector._id);
+        }
       } else {
-        newSet.add(sector);
+        newSet.delete(sectorValue);
       }
       return newSet;
     });
   };
 
-  const toggleMainCategoryExpansion = (sectorValue: string, mainCategoryValue: string) => {
+  const toggleMainCategoryExpansion = async (sectorValue: string, mainCategoryValue: string) => {
     const key = `${sectorValue}-${mainCategoryValue}`;
     setExpandedMainCategories(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
+      const isExpanding = !newSet.has(key);
+      
+      if (isExpanding) {
         newSet.add(key);
+        // Find the sector and category to fetch subcategories
+        const sector = apiSectors.find((s: Sector) => 
+          (s.slug || s.name.toLowerCase().replace(/\s+/g, '-')) === sectorValue
+        );
+        if (sector) {
+          const categories = serviceCategoriesBySector.get(sector._id) || [];
+          const category = categories.find((cat: ServiceCategory) => 
+            (cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')) === mainCategoryValue
+          );
+          if (category && !category.subCategories) {
+            // Fetch subcategories if not already loaded
+            fetchSubCategoriesForCategory(category._id, sector._id);
+          }
+        }
+      } else {
+        newSet.delete(key);
       }
       return newSet;
     });
@@ -1238,7 +1434,46 @@ export default function ServicesPage() {
   };
 
   const removeFilter = (index: number) => {
+    const filterToRemove = selectedFilters[index];
+    if (!filterToRemove) return;
+    
+    // Remove from state first
     setSelectedFilters(prev => prev.filter((_, i) => i !== index));
+    
+    // Then update URL to match the state
+    if (sectorSlugFromPath || serviceCategorySlugFromPath || serviceSubCategorySplat) {
+      // If path params exist, navigate to base services page
+      const newSearchParams = new URLSearchParams(searchParams);
+      // Remove filter-related query params
+      newSearchParams.delete('sector');
+      newSearchParams.delete('serviceCategory');
+      newSearchParams.delete('serviceSubCategory');
+      newSearchParams.delete('category');
+      newSearchParams.delete('subcategory');
+      newSearchParams.delete('detailedSubcategory');
+      
+      const queryString = newSearchParams.toString();
+      const newPath = queryString ? `/services?${queryString}` : '/services';
+      navigate(newPath, { replace: true });
+    } else {
+      // If only query params exist, remove them
+      const newSearchParams = new URLSearchParams(searchParams);
+      
+      if (filterToRemove.type === 'subCategory') {
+        newSearchParams.delete('serviceSubCategory');
+        newSearchParams.delete('detailedSubcategory');
+      } else if (filterToRemove.type === 'mainCategory') {
+        newSearchParams.delete('serviceCategory');
+        newSearchParams.delete('subcategory');
+      } else if (filterToRemove.type === 'sector') {
+        newSearchParams.delete('sector');
+        newSearchParams.delete('category');
+      }
+      
+      const queryString = newSearchParams.toString();
+      const newPath = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+      navigate(newPath, { replace: true });
+    }
   };
 
   const toggleDelivery = (delivery: string) => {
@@ -1326,19 +1561,30 @@ export default function ServicesPage() {
           Categories
         </h3>
         
-        {/* Loading state */}
-        {serviceCategoriesLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-[#FE8A0F]" />
-          </div>
-        ) : categoryTree.length === 0 ? (
-          <div className="text-center py-4 text-[#6b6b6b] text-[13px] font-['Poppins',sans-serif]">
-            No categories available
+        {/* Loading state with skeleton - Show skeleton only while loading */}
+        {(() => {
+          console.log('[ServicesPage] FilterPanel - Skeleton display check:', {
+            sectorsLoading,
+            apiSectorsLength: apiSectors.length,
+            categoryTreeLength: categoryTree.length
+          });
+          return sectorsLoading;
+        })() ? (
+          <div className="space-y-1">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="border border-gray-200 rounded-lg p-2">
+                <div className="flex items-center gap-1.5">
+                  <Skeleton className="w-4 h-4 rounded" />
+                  <Skeleton className="w-4 h-4 rounded" />
+                  <Skeleton className="h-4 flex-1 rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : null}
         
         {/* Selected Filters */}
-        {!serviceCategoriesLoading && selectedFilters.length > 0 && (
+        {!sectorsLoading && selectedFilters.length > 0 && (
           <TooltipProvider>
             <div className="flex flex-wrap gap-2 mb-4">
               {selectedFilters.map((filter, index) => {
@@ -1369,8 +1615,8 @@ export default function ServicesPage() {
           </TooltipProvider>
         )}
 
-        {/* Category Tree */}
-        {!serviceCategoriesLoading && categoryTree.length > 0 && (
+        {/* Category Tree - Always show sectors when loaded */}
+        {!sectorsLoading && apiSectors.length > 0 && categoryTree.length > 0 && (
         <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
           {filteredCategoryTree.map((sector) => {
             // Check if we have a subCategory filter - if so, show only subcategories
@@ -1418,25 +1664,18 @@ export default function ServicesPage() {
               <div key={sector.sectorValue} className="border border-gray-200 rounded-lg">
                 {/* Sector Level */}
                 <div className="flex items-center gap-1.5 p-2 hover:bg-gray-50 transition-colors">
-                  <button
-                    onClick={() => toggleSectorExpansion(sector.sectorValue)}
-                    className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
-                  >
-                    <ChevronDown 
-                      className={`w-4 h-4 text-[#FE8A0F] transition-transform ${
-                        expandedSectors.has(sector.sectorValue) ? 'rotate-0' : '-rotate-90'
-                      }`}
-                    />
-                  </button>
                   <div className="flex-shrink-0 flex items-center justify-center">
                     {getSectorIcon(sector.sector)}
                   </div>
                   <button
-                    onClick={() => addFilter({
-                      type: 'sector',
-                      sector: sector.sector,
-                      displayName: sector.sector
-                    })}
+                    onClick={() => {
+                      toggleSectorExpansion(sector.sectorValue);
+                      addFilter({
+                        type: 'sector',
+                        sector: sector.sector,
+                        displayName: sector.sector
+                      });
+                    }}
                     className="flex-1 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f] hover:text-[#FE8A0F] transition-colors"
                   >
                     {sector.sector}
@@ -1446,57 +1685,90 @@ export default function ServicesPage() {
                 {/* Main Categories (shown when sector expanded) */}
                 {expandedSectors.has(sector.sectorValue) && (
                   <div className="pl-4 pb-2 space-y-1">
-                    {sector.mainCategories.map((mainCat) => {
-                      const mainCatKey = `${sector.sectorValue}-${mainCat.value}`;
-                      return (
-                        <div key={mainCat.value} className="border-l-2 border-gray-200 pl-2">
-                          <div className="flex items-center gap-1 py-1 hover:bg-gray-50 transition-colors">
-                            <button
-                              onClick={() => toggleMainCategoryExpansion(sector.sectorValue, mainCat.value)}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
-                            >
-                              <ChevronDown 
-                                className={`w-3.5 h-3.5 text-[#FE8A0F] transition-transform ${
-                                  expandedMainCategories.has(mainCatKey) ? 'rotate-0' : '-rotate-90'
-                                }`}
-                              />
-                            </button>
-                            <button
-                              onClick={() => addFilter({
-                                type: 'mainCategory',
-                                sector: sector.sector,
-                                mainCategory: mainCat.name,
-                                displayName: `${sector.sector} > ${mainCat.name}`
-                              })}
-                              className="flex-1 text-left font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] hover:text-[#10B981] transition-colors"
-                            >
-                              {mainCat.name}
-                            </button>
+                    {loadingSectors.has(sector.sectorId || '') ? (
+                      <div className="space-y-2">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex items-center gap-1 py-1">
+                            <Skeleton className="w-3.5 h-3.5 rounded" />
+                            <Skeleton className="h-3.5 flex-1 rounded" />
                           </div>
-
-                          {/* Sub Categories (shown when main category expanded) */}
-                          {expandedMainCategories.has(mainCatKey) && mainCat.subCategories.length > 0 && (
-                            <div className="pl-4 space-y-0.5">
-                              {mainCat.subCategories.map((subCat) => (
+                        ))}
+                      </div>
+                    ) : sector.mainCategories.length === 0 ? (
+                      <div className="text-center py-2 text-[#6b6b6b] text-[12px] font-['Poppins',sans-serif]">
+                        No categories available
+                      </div>
+                    ) : (
+                      sector.mainCategories.map((mainCat) => {
+                        const mainCatKey = `${sector.sectorValue}-${mainCat.value}`;
+                        const isLoadingSubCategories = loadingCategories.has(mainCat.categoryId || '');
+                        return (
+                          <div key={mainCat.value} className="border-l-2 border-gray-200 pl-2">
+                            <div className="flex items-center gap-1 py-1 hover:bg-gray-50 transition-colors">
+                              {mainCat.hasSubCategories !== false && (
                                 <button
-                                  key={subCat}
-                                  onClick={() => addFilter({
-                                    type: 'subCategory',
-                                    sector: sector.sector,
-                                    mainCategory: mainCat.name,
-                                    subCategory: subCat,
-                                    displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
-                                  })}
-                                  className="block w-full text-left py-1 px-2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50 rounded transition-colors"
+                                  onClick={() => toggleMainCategoryExpansion(sector.sectorValue, mainCat.value)}
+                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                  disabled={isLoadingSubCategories}
                                 >
-                                  • {subCat}
+                                  {isLoadingSubCategories ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FE8A0F]" />
+                                  ) : (
+                                    <ChevronDown 
+                                      className={`w-3.5 h-3.5 text-[#FE8A0F] transition-transform ${
+                                        expandedMainCategories.has(mainCatKey) ? 'rotate-0' : '-rotate-90'
+                                      }`}
+                                    />
+                                  )}
                                 </button>
-                              ))}
+                              )}
+                              <button
+                                onClick={() => addFilter({
+                                  type: 'mainCategory',
+                                  sector: sector.sector,
+                                  mainCategory: mainCat.name,
+                                  displayName: `${sector.sector} > ${mainCat.name}`
+                                })}
+                                className="flex-1 text-left font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] hover:text-[#10B981] transition-colors"
+                              >
+                                {mainCat.name}
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+
+                            {/* Sub Categories (shown when main category expanded) */}
+                            {expandedMainCategories.has(mainCatKey) && (
+                              <>
+                                {isLoadingSubCategories ? (
+                                  <div className="pl-4 space-y-1 py-2">
+                                    {[1, 2, 3].map((i) => (
+                                      <Skeleton key={i} className="h-3 w-3/4 rounded" />
+                                    ))}
+                                  </div>
+                                ) : mainCat.subCategories.length > 0 ? (
+                                  <div className="pl-4 space-y-0.5">
+                                    {mainCat.subCategories.map((subCat) => (
+                                      <button
+                                        key={subCat}
+                                        onClick={() => addFilter({
+                                          type: 'subCategory',
+                                          sector: sector.sector,
+                                          mainCategory: mainCat.name,
+                                          subCategory: subCat,
+                                          displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
+                                        })}
+                                        className="block w-full text-left py-1 px-2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50 rounded transition-colors"
+                                      >
+                                        • {subCat}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>
@@ -1595,10 +1867,12 @@ export default function ServicesPage() {
         {/* Custom Input Fields */}
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
+            <Label htmlFor="min-price-filter" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
               Min Price (£)
             </Label>
             <Input
+              id="min-price-filter"
+              name="minPrice"
               type="number"
               value={minPriceInput}
               onChange={(e) => handleMinPriceChange(e.target.value)}
@@ -1609,10 +1883,12 @@ export default function ServicesPage() {
             />
           </div>
           <div>
-            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
+            <Label htmlFor="max-price-filter" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
               Max Price (£)
             </Label>
             <Input
+              id="max-price-filter"
+              name="maxPrice"
               type="number"
               value={maxPriceInput}
               onChange={(e) => handleMaxPriceChange(e.target.value)}
@@ -1665,22 +1941,40 @@ export default function ServicesPage() {
   // Generate dynamic SEO content based on filters
   const generateSEOContent = () => {
     // Priority: New service category params > Legacy params > Selected filters
-    const categoryName = serviceCategorySlugParam 
-      ? allServiceCategories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)?.name
-      : categoryParam || (selectedFilters.length > 0 ? selectedFilters[0].sector : null);
+    let categoryName: string | null = null;
+    if (serviceCategorySlugParam) {
+      // Search through all loaded service categories
+      for (const categories of serviceCategoriesBySector.values()) {
+        const matched = categories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam);
+        if (matched) {
+          categoryName = matched.name;
+          break;
+        }
+      }
+    }
+    categoryName = categoryName || categoryParam || (selectedFilters.length > 0 ? selectedFilters[0].sector : null);
     
     // Handle multiple serviceSubCategory parameters - use the last one
-    const subcategoryName = serviceSubCategorySlugParams.length > 0
-      ? (() => {
-          const lastSlug = serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1];
-          const matchedServiceCategory = allServiceCategories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam);
-          return matchedServiceCategory?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === lastSlug)?.name;
-        })()
-      : serviceSubCategorySlugParam
-      ? allServiceCategories
-          .find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam)
-          ?.subCategories?.find((subCat: ServiceSubCategory) => subCat.slug === serviceSubCategorySlugParam)?.name
-      : subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
+    let subcategoryName: string | null = null;
+    if (serviceSubCategorySlugParams.length > 0 || serviceSubCategorySlugParam) {
+      // Search through all loaded service categories
+      for (const categories of serviceCategoriesBySector.values()) {
+        const matchedServiceCategory = categories.find((sc: ServiceCategory) => sc.slug === serviceCategorySlugParam);
+        if (matchedServiceCategory && matchedServiceCategory.subCategories) {
+          const slugToFind = serviceSubCategorySlugParams.length > 0 
+            ? serviceSubCategorySlugParams[serviceSubCategorySlugParams.length - 1]
+            : serviceSubCategorySlugParam;
+          const matchedSubCat = matchedServiceCategory.subCategories.find(
+            (subCat: ServiceSubCategory) => subCat.slug === slugToFind
+          );
+          if (matchedSubCat) {
+            subcategoryName = matchedSubCat.name;
+            break;
+          }
+        }
+      }
+    }
+    subcategoryName = subcategoryName || subcategoryParam || (selectedFilters.length > 0 ? selectedFilters[0].mainCategory : null);
     
     if (categoryName && subcategoryName) {
       return {
@@ -1733,6 +2027,8 @@ export default function ServicesPage() {
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <Input
+                        id="service-search-input"
+                        name="serviceSearch"
                         placeholder="Search services or providers..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -1746,6 +2042,8 @@ export default function ServicesPage() {
                         <div className="flex-1 relative">
                           <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                           <Input
+                            id="location-search-input"
+                            name="locationSearch"
                             placeholder="Postcode or location (e.g., SW1A 1AA)"
                             value={locationSearch}
                             onChange={(e) => setLocationSearch(e.target.value)}
@@ -1966,11 +2264,34 @@ export default function ServicesPage() {
           {/* Services Grid/List */}
           <div className="flex-1">
             {servicesLoading ? (
-              <div className="col-span-full flex items-center justify-center py-20">
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading services...</p>
-                </div>
+              <div className={`grid gap-4 md:gap-6 ${
+                viewMode === "grid" 
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 justify-items-center" 
+                  : "grid-cols-1"
+              }`}>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className={`bg-white rounded-[12px] shadow-sm overflow-hidden border border-gray-100 ${
+                    viewMode === "grid" ? "w-full sm:max-w-[330px] sm:mx-auto" : "w-full"
+                  }`}>
+                    <Skeleton className="w-full h-48 rounded-t-[12px]" />
+                    <div className="p-4 space-y-3">
+                      <Skeleton className="h-5 w-3/4 rounded" />
+                      <Skeleton className="h-4 w-full rounded" />
+                      <Skeleton className="h-4 w-2/3 rounded" />
+                      <div className="flex items-center gap-2 pt-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="flex-1 space-y-1">
+                          <Skeleton className="h-3 w-1/2 rounded" />
+                          <Skeleton className="h-3 w-1/3 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <Skeleton className="h-6 w-20 rounded" />
+                        <Skeleton className="h-8 w-24 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredAndSortedServices.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm p-12 text-center">

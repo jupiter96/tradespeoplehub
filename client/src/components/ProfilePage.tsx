@@ -11,6 +11,7 @@ import InviteToQuoteModal from "./InviteToQuoteModal";
 import { useCart } from "./CartContext";
 import type { Service as ServiceDataType } from "./servicesData";
 import ServiceAreaMap from "./ServiceAreaMap";
+import { Skeleton } from "./ui/skeleton";
 import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
 import { SEOHead } from "./SEOHead";
@@ -586,7 +587,46 @@ export default function ProfilePage() {
           <Nav />
         </header>
         <main className="pl-container py-10">
-          <div className="seller-profile-card text-center text-slate-600">Loading profile...</div>
+          {/* Cover Image Skeleton */}
+          <Skeleton className="w-full h-64 md:h-80 rounded-lg mb-6" />
+          
+          {/* Profile Header Skeleton */}
+          <div className="seller-profile-card mb-6">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+              <Skeleton className="w-24 h-24 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-3">
+                <Skeleton className="h-6 w-1/3 rounded" />
+                <Skeleton className="h-4 w-1/2 rounded" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-4 w-16 rounded" />
+                  <Skeleton className="h-4 w-16 rounded" />
+                  <Skeleton className="h-4 w-16 rounded" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* About Section Skeleton */}
+          <div className="seller-profile-card mb-6 space-y-3">
+            <Skeleton className="h-5 w-1/4 rounded" />
+            <Skeleton className="h-4 w-full rounded" />
+            <Skeleton className="h-4 w-full rounded" />
+            <Skeleton className="h-4 w-3/4 rounded" />
+          </div>
+          
+          {/* Services Section Skeleton */}
+          <div className="seller-profile-card mb-6">
+            <Skeleton className="h-5 w-1/3 rounded mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="w-full h-40 rounded-lg" />
+                  <Skeleton className="h-4 w-3/4 rounded" />
+                  <Skeleton className="h-4 w-1/2 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -829,9 +869,19 @@ export default function ProfilePage() {
             {activeTab === "services" && (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                 {servicesLoading ? (
-                  <div className="col-span-full text-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F] mx-auto mb-2" />
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading services...</p>
+                  <div className="col-span-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="bg-white rounded-[16px] shadow-sm overflow-hidden">
+                          <Skeleton className="w-full h-40 rounded-t-[16px]" />
+                          <div className="p-4 space-y-2">
+                            <Skeleton className="h-4 w-3/4 rounded" />
+                            <Skeleton className="h-4 w-1/2 rounded" />
+                            <Skeleton className="h-6 w-20 rounded" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : homeServiceCards.length === 0 ? (
                   <div className="col-span-full text-center py-8">

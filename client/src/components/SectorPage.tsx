@@ -16,6 +16,7 @@ import { resolveApiUrl } from "../config/api";
 import type { SubCategory } from "./unifiedCategoriesData";
 import { SEOHead } from "./SEOHead";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Skeleton } from "./ui/skeleton";
 import { Star, Heart, MapPin, Medal } from "lucide-react";
 
 // Helper function to check if professional is verified
@@ -1153,16 +1154,52 @@ export default function SectorPage() {
     (!sectorSlug && !serviceCategorySlug && !categorySlug);
   
   // Never show a visible loading overlay. If we don't have enough data to render yet,
-  // return a minimal shell while requests complete in the background.
+  // return a skeleton shell while requests complete in the background.
   if (isDataLoading && !hasRequiredData) {
     return (
       <div className="min-h-screen bg-[#FAFBFC] relative" aria-busy="true">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
           <Nav />
         </header>
-        <div className="pt-[50px] md:pt-0">
-          <span className="sr-only">Loading</span>
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-8 md:py-16">
+          {/* Banner Skeleton */}
+          <div className="mb-8">
+            <Skeleton className="w-full h-48 md:h-64 rounded-lg" />
+          </div>
+          
+          {/* Subcategories Slider Skeleton */}
+          <div className="mb-8 flex gap-4 overflow-x-auto pb-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-12 w-32 rounded-lg flex-shrink-0" />
+            ))}
+          </div>
+          
+          {/* Services Grid Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-[12px] shadow-sm overflow-hidden border border-gray-100">
+                <Skeleton className="w-full h-48 rounded-t-[12px]" />
+                <div className="p-4 space-y-3">
+                  <Skeleton className="h-5 w-3/4 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-2/3 rounded" />
+                  <div className="flex items-center gap-2 pt-2">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-3 w-1/2 rounded" />
+                      <Skeleton className="h-3 w-1/3 rounded" />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <Skeleton className="h-6 w-20 rounded" />
+                    <Skeleton className="h-8 w-24 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }

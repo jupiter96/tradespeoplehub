@@ -7,6 +7,7 @@ import { toast } from "sonner@2.0.3";
 import BookingModal from "./BookingModal";
 import AddToCartModal from "./AddToCartModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "./ui/sheet";
+import { Skeleton } from "./ui/skeleton";
 import { nameToSlug } from "./categoriesHierarchy";
 import { SEOHead } from "./SEOHead";
 
@@ -579,16 +580,74 @@ export default function ServiceDetailPage() {
     setReviewVoteCounts(initialCounts);
   }, [service, reviews]);
   
-  // Loading state
+  // Loading state with skeleton
   if (loading) {
     return (
       <div className="w-full min-h-screen bg-[#f0f0f0]">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
           <Nav />
         </header>
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-16 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F] mx-auto mb-4" />
-          <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">Loading service...</p>
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-8 md:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* Left Column - Images and Gallery */}
+            <div className="lg:col-span-2 space-y-4">
+              <Skeleton className="w-full h-[400px] md:h-[500px] rounded-lg" />
+              <div className="flex gap-2 overflow-x-auto">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="w-20 h-20 rounded-lg flex-shrink-0" />
+                ))}
+              </div>
+            </div>
+            
+            {/* Right Column - Service Info */}
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-3/4 rounded" />
+                <Skeleton className="h-4 w-full rounded" />
+                <Skeleton className="h-4 w-2/3 rounded" />
+              </div>
+              
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full rounded" />
+                <Skeleton className="h-10 w-full rounded" />
+              </div>
+              
+              <div className="space-y-3">
+                <Skeleton className="h-6 w-1/2 rounded" />
+                <Skeleton className="h-20 w-full rounded" />
+              </div>
+              
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full rounded" />
+                <Skeleton className="h-12 w-full rounded" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Description Section */}
+          <div className="mt-8 space-y-4">
+            <Skeleton className="h-6 w-1/3 rounded" />
+            <Skeleton className="h-4 w-full rounded" />
+            <Skeleton className="h-4 w-full rounded" />
+            <Skeleton className="h-4 w-3/4 rounded" />
+          </div>
+          
+          {/* Reviews Section */}
+          <div className="mt-8 space-y-4">
+            <Skeleton className="h-6 w-1/4 rounded" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-4">
+                  <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                    <Skeleton className="h-4 w-full rounded" />
+                    <Skeleton className="h-4 w-2/3 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <Footer />
       </div>
