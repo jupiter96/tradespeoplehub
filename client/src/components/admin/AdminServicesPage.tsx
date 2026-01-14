@@ -399,23 +399,8 @@ export default function AdminServicesPage({
         const updatedService = await response.json();
         const actionText = approvalAction === "approve" ? "approved" : approvalAction === "reject" ? "denied" : "marked for modification";
         toast.success(`Service ${actionText} successfully`);
-        // Immediately update the service in the local state
-        setServices(prevServices => 
-          prevServices.map(s => 
-            s._id === selectedService._id 
-              ? { ...s, status: newStatus, modificationReason: updatedService.service?.modificationReason || s.modificationReason }
-              : s
-          )
-        );
-        // Remove from current list if status doesn't match current filter
-        const currentFilter = getApprovalStatusFilter();
-        if (currentFilter && newStatus !== currentFilter) {
-          setServices(prevServices => prevServices.filter(s => s._id !== selectedService._id));
-          setTotalCount(prev => Math.max(0, prev - 1));
-        } else {
-          // Refresh to get latest data including any other changes
-          fetchServices();
-        }
+        // Refresh from server to ensure consistency
+        await fetchServices();
       } else {
         const error = await response.json();
         toast.error(error.error || `Failed to ${approvalAction} service`);
