@@ -13,54 +13,23 @@ const router = express.Router();
 function getStripeKeys(settings) {
   const environment = settings.stripeEnvironment || settings.environment || 'test';
   
-  console.log('[Payment Keys] getStripeKeys called');
-  console.log('[Payment Keys] Stripe environment setting:', environment);
-  console.log('[Payment Keys] stripeEnvironment field:', settings.stripeEnvironment);
-  console.log('[Payment Keys] environment field (legacy):', settings.environment);
   
   let keys;
   if (environment === 'live') {
-    console.log('[Payment Keys] Using LIVE mode Stripe keys');
     keys = {
       publishableKey: settings.stripeLivePublishableKey || settings.stripePublishableKey || null,
       secretKey: settings.stripeLiveSecretKey || settings.stripeSecretKey || null,
       webhookSecret: settings.stripeLiveWebhookSecret || settings.stripeWebhookSecret || null,
     };
-    console.log('[Payment Keys] Live publishable key source:', 
-      settings.stripeLivePublishableKey ? 'stripeLivePublishableKey' : 
-      (settings.stripePublishableKey ? 'stripePublishableKey (legacy)' : 'null'));
-    console.log('[Payment Keys] Live secret key source:', 
-      settings.stripeLiveSecretKey ? 'stripeLiveSecretKey' : 
-      (settings.stripeSecretKey ? 'stripeSecretKey (legacy)' : 'null'));
-    console.log('[Payment Keys] Live webhook secret source:', 
-      settings.stripeLiveWebhookSecret ? 'stripeLiveWebhookSecret' : 
-      (settings.stripeWebhookSecret ? 'stripeWebhookSecret (legacy)' : 'null'));
   } else {
-    console.log('[Payment Keys] Using TEST mode Stripe keys');
     keys = {
       publishableKey: settings.stripeTestPublishableKey || settings.stripePublishableKey || null,
       secretKey: settings.stripeTestSecretKey || settings.stripeSecretKey || null,
       webhookSecret: settings.stripeTestWebhookSecret || settings.stripeWebhookSecret || null,
     };
-    console.log('[Payment Keys] Test publishable key source:', 
-      settings.stripeTestPublishableKey ? 'stripeTestPublishableKey' : 
-      (settings.stripePublishableKey ? 'stripePublishableKey (legacy)' : 'null'));
-    console.log('[Payment Keys] Test secret key source:', 
-      settings.stripeTestSecretKey ? 'stripeTestSecretKey' : 
-      (settings.stripeSecretKey ? 'stripeSecretKey (legacy)' : 'null'));
-    console.log('[Payment Keys] Test webhook secret source:', 
-      settings.stripeTestWebhookSecret ? 'stripeTestWebhookSecret' : 
-      (settings.stripeWebhookSecret ? 'stripeWebhookSecret (legacy)' : 'null'));
   }
   
   // Log key presence and full keys (for debugging)
-  console.log('[Payment Keys] Publishable key present:', keys.publishableKey ? 'Yes' : 'No');
-  console.log('[Payment Keys] Publishable key value:', keys.publishableKey || 'null');
-  console.log('[Payment Keys] Secret key present:', keys.secretKey ? 'Yes' : 'No');
-  console.log('[Payment Keys] Secret key value:', keys.secretKey || 'null');
-  console.log('[Payment Keys] Webhook secret present:', keys.webhookSecret ? 'Yes' : 'No');
-  console.log('[Payment Keys] Webhook secret value:', keys.webhookSecret || 'null');
-  console.log('[Payment Keys] Full keys object:', JSON.stringify(keys, null, 2));
   
   return keys;
 }
@@ -69,73 +38,38 @@ function getStripeKeys(settings) {
 function getPayPalKeys(settings) {
   const environment = settings.paypalEnvironment || 'sandbox';
   
-  console.log('[Payment Keys] getPayPalKeys called');
-  console.log('[Payment Keys] PayPal environment setting:', environment);
-  console.log('[Payment Keys] paypalEnvironment field:', settings.paypalEnvironment);
   
   let keys;
   if (environment === 'live') {
-    console.log('[Payment Keys] Using LIVE mode PayPal keys');
     keys = {
       clientId: settings.paypalLiveClientId || settings.paypalClientId || settings.paypalPublicKey || null,
       secretKey: settings.paypalLiveSecretKey || settings.paypalSecretKey || null,
       environment: 'live',
     };
-    console.log('[Payment Keys] Live client ID source:', 
-      settings.paypalLiveClientId ? 'paypalLiveClientId' : 
-      (settings.paypalClientId ? 'paypalClientId (legacy)' : 
-      (settings.paypalPublicKey ? 'paypalPublicKey (legacy)' : 'null')));
-    console.log('[Payment Keys] Live secret key source:', 
-      settings.paypalLiveSecretKey ? 'paypalLiveSecretKey' : 
-      (settings.paypalSecretKey ? 'paypalSecretKey (legacy)' : 'null'));
   } else {
-    console.log('[Payment Keys] Using SANDBOX mode PayPal keys');
     keys = {
       clientId: settings.paypalSandboxClientId || settings.paypalClientId || settings.paypalPublicKey || null,
       secretKey: settings.paypalSandboxSecretKey || settings.paypalSecretKey || null,
       environment: 'sandbox',
     };
-    console.log('[Payment Keys] Sandbox client ID source:', 
-      settings.paypalSandboxClientId ? 'paypalSandboxClientId' : 
-      (settings.paypalClientId ? 'paypalClientId (legacy)' : 
-      (settings.paypalPublicKey ? 'paypalPublicKey (legacy)' : 'null')));
-    console.log('[Payment Keys] Sandbox secret key source:', 
-      settings.paypalSandboxSecretKey ? 'paypalSandboxSecretKey' : 
-      (settings.paypalSecretKey ? 'paypalSecretKey (legacy)' : 'null'));
   }
   
   // Log key presence and full keys (for debugging)
-  console.log('[Payment Keys] PayPal client ID present:', keys.clientId ? 'Yes' : 'No');
-  console.log('[Payment Keys] PayPal client ID value:', keys.clientId || 'null');
-  console.log('[Payment Keys] PayPal secret key present:', keys.secretKey ? 'Yes' : 'No');
-  console.log('[Payment Keys] PayPal secret key value:', keys.secretKey || 'null');
-  console.log('[Payment Keys] PayPal environment:', keys.environment);
-  console.log('[Payment Keys] Full PayPal keys object:', JSON.stringify(keys, null, 2));
   
   return keys;
 }
 
 // Get payment settings (for clients to see available payment methods)
 router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
-  console.log('[Payment Settings] GET /payment/publishable-key - Request received');
-  console.log('[Payment Settings] User ID:', req.user.id);
   
   try {
-    console.log('[Payment Settings] Fetching payment settings from database...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Payment Settings] Payment settings loaded from database');
     
-    console.log('[Payment Settings] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
-    console.log('[Payment Settings] Stripe keys retrieved');
     
-    console.log('[Payment Settings] Retrieving PayPal keys...');
     const paypalKeys = getPayPalKeys(settings);
-    console.log('[Payment Settings] PayPal keys retrieved');
     
     const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
-    console.log('[Payment Settings] Stripe environment:', stripeEnvironment);
-    console.log('[Payment Settings] PayPal environment:', paypalKeys.environment);
     
     // Debug logs (can be removed in production)
     
@@ -164,7 +98,6 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching payment settings:', error);
     res.status(500).json({ error: 'Failed to fetch payment settings' });
   }
 });
@@ -185,7 +118,6 @@ router.get('/wallet/balance', authenticateToken, async (req, res) => {
     
     res.json({ balance: user.walletBalance || 0 });
   } catch (error) {
-    console.error('Error fetching wallet balance:', error);
     res.status(500).json({ error: 'Failed to fetch wallet balance' });
   }
 });
@@ -225,35 +157,23 @@ router.get('/wallet/transactions', authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching wallet transactions:', error);
     res.status(500).json({ error: 'Failed to fetch wallet transactions' });
   }
 });
 
 // Create setup intent for adding payment method
 router.post('/payment-methods/create-setup-intent', authenticateToken, async (req, res) => {
-  console.log('[Stripe Setup Intent] POST /payment-methods/create-setup-intent - Request received');
-  console.log('[Stripe Setup Intent] User ID:', req.user.id);
   
   try {
-    console.log('[Stripe Setup Intent] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Stripe Setup Intent] Payment settings loaded');
     
-    console.log('[Stripe Setup Intent] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
-    console.log('[Stripe Setup Intent] Stripe keys retrieved');
     
     if (!settings.isActive || !stripeKeys.secretKey) {
-      console.error('[Stripe Setup Intent] Stripe payments not configured or secret key missing');
-      console.error('[Stripe Setup Intent] isActive:', settings.isActive);
-      console.error('[Stripe Setup Intent] secretKey present:', !!stripeKeys.secretKey);
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
-    console.log('[Stripe Setup Intent] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
-    console.log('[Stripe Setup Intent] Stripe instance created');
     const user = await User.findById(req.user.id);
     
     if (!user) {
@@ -285,7 +205,6 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
       clientSecret: setupIntent.client_secret,
     });
   } catch (error) {
-    console.error('Error creating setup intent:', error);
     res.status(500).json({ error: 'Failed to create setup intent' });
   }
 });
@@ -312,7 +231,6 @@ router.get('/payment-methods', authenticateToken, async (req, res) => {
           await stripe.paymentMethods.retrieve(pm.paymentMethodId);
           validPaymentMethods.push(pm);
         } catch (error) {
-          console.log(`[Stripe Backend] PaymentMethod ${pm.paymentMethodId} is invalid in current environment, removing from list`);
           invalidPaymentMethodIds.push(pm.paymentMethodId);
         }
       }
@@ -337,44 +255,29 @@ router.get('/payment-methods', authenticateToken, async (req, res) => {
       stripeCustomerId: user.stripeCustomerId,
     });
   } catch (error) {
-    console.error('Error fetching payment methods:', error);
     res.status(500).json({ error: 'Failed to fetch payment methods' });
   }
 });
 
 // Setup payment method (create Stripe customer and attach payment method)
 router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
-  console.log('[Stripe Setup] POST /payment-methods/setup - Request received');
-  console.log('[Stripe Setup] User ID:', req.user.id);
-  console.log('[Stripe Setup] Request body:', req.body);
   
   try {
     const { paymentMethodId } = req.body;
-    console.log('[Stripe Setup] Payment method ID:', paymentMethodId);
     
     if (!paymentMethodId) {
-      console.error('[Stripe Setup] Payment method ID is missing');
       return res.status(400).json({ error: 'Payment method ID is required' });
     }
     
-    console.log('[Stripe Setup] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Stripe Setup] Payment settings loaded');
     
-    console.log('[Stripe Setup] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
-    console.log('[Stripe Setup] Stripe keys retrieved');
     
     if (!settings.isActive || !stripeKeys.secretKey) {
-      console.error('[Stripe Setup] Stripe payments not configured or secret key missing');
-      console.error('[Stripe Setup] isActive:', settings.isActive);
-      console.error('[Stripe Setup] secretKey present:', !!stripeKeys.secretKey);
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
-    console.log('[Stripe Setup] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
-    console.log('[Stripe Setup] Stripe instance created');
     const user = await User.findById(req.user.id);
     
     if (!user) {
@@ -428,7 +331,6 @@ router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
       paymentMethod: cardInfo,
     });
   } catch (error) {
-    console.error('Error setting up payment method:', error);
     res.status(500).json({ error: error.message || 'Failed to setup payment method' });
   }
 });
@@ -456,31 +358,21 @@ router.post('/payment-methods/set-default', authenticateToken, async (req, res) 
     
     res.json({ message: 'Default payment method updated' });
   } catch (error) {
-    console.error('Error setting default payment method:', error);
     res.status(500).json({ error: 'Failed to set default payment method' });
   }
 });
 
 // Delete payment method
 router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req, res) => {
-  console.log('[Stripe Delete] DELETE /payment-methods/:paymentMethodId - Request received');
-  console.log('[Stripe Delete] User ID:', req.user.id);
-  console.log('[Stripe Delete] Payment method ID:', req.params.paymentMethodId);
   
   try {
     const { paymentMethodId } = req.params;
     
-    console.log('[Stripe Delete] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Stripe Delete] Payment settings loaded');
     
-    console.log('[Stripe Delete] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
-    console.log('[Stripe Delete] Stripe keys retrieved');
     
-    console.log('[Stripe Delete] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
-    console.log('[Stripe Delete] Stripe instance created');
     const user = await User.findById(req.user.id);
     
     if (!user || !user.paymentMethods) {
@@ -491,7 +383,6 @@ router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req
     try {
       await stripe.paymentMethods.detach(paymentMethodId);
     } catch (error) {
-      console.error('Error detaching payment method from Stripe:', error);
     }
     
     // Remove from user
@@ -508,148 +399,73 @@ router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req
     
     res.json({ message: 'Payment method deleted successfully' });
   } catch (error) {
-    console.error('Error deleting payment method:', error);
     res.status(500).json({ error: 'Failed to delete payment method' });
   }
 });
 
 // Create Stripe payment intent for wallet funding (requires saved payment method)
 router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
-  console.log('[Stripe Backend] ========== POST /wallet/fund/stripe ==========');
-  console.log('[Stripe Backend] Request received at:', new Date().toISOString());
-  console.log('[Stripe Backend] Full request object:', JSON.stringify(req, null, 2));
-  console.log('[Stripe Backend] Request body:', JSON.stringify(req.body, null, 2));
-  console.log('[Stripe Backend] User ID:', req.user.id);
-  console.log('[Stripe Backend] User object:', JSON.stringify(req.user, null, 2));
   
   try {
-    console.log('[Stripe Backend] Step 1: Extracting request body values');
     const { amount, paymentMethodId } = req.body;
-    console.log('[Stripe Backend] Step 1 Complete: Values extracted');
-    console.log('[Stripe Backend] Request body values:');
-    console.log('  - amount:', amount, '(type:', typeof amount, ')');
-    console.log('  - paymentMethodId:', paymentMethodId, '(type:', typeof paymentMethodId, ')');
     
     if (!amount || amount <= 0) {
-      console.error('[Stripe Backend] Step 1 Failed: Invalid amount');
-      console.error('[Stripe Backend] Amount value:', amount);
-      console.error('[Stripe Backend] Amount type:', typeof amount);
       return res.status(400).json({ error: 'Invalid amount' });
     }
     
-    console.log('[Stripe Backend] Step 2: Fetching payment settings from database');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Stripe Backend] Step 2 Complete: Payment settings loaded');
-    console.log('[Stripe Backend] Full settings object:', JSON.stringify(settings, null, 2));
-    console.log('[Stripe Backend] Settings values:');
-    console.log('  - isActive:', settings.isActive);
-    console.log('  - stripeEnvironment:', settings.stripeEnvironment);
-    console.log('  - environment (legacy):', settings.environment);
-    console.log('  - stripeTestPublishableKey:', settings.stripeTestPublishableKey);
-    console.log('  - stripeTestSecretKey:', settings.stripeTestSecretKey);
-    console.log('  - stripeLivePublishableKey:', settings.stripeLivePublishableKey);
-    console.log('  - stripeLiveSecretKey:', settings.stripeLiveSecretKey);
-    console.log('  - stripeSecretKey (legacy):', settings.stripeSecretKey);
-    console.log('  - minDepositAmount:', settings.minDepositAmount);
-    console.log('  - maxDepositAmount:', settings.maxDepositAmount);
     
     if (!settings.isActive || !settings.stripeSecretKey) {
-      console.error('[Stripe Backend] Step 2 Failed: Stripe payments are not configured');
-      console.error('[Stripe Backend] isActive:', settings.isActive);
-      console.error('[Stripe Backend] stripeSecretKey present:', !!settings.stripeSecretKey);
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
-    console.log('[Stripe Backend] Step 3: Validating amount range');
-    console.log('[Stripe Backend] Amount validation:');
-    console.log('  - amount:', amount);
-    console.log('  - minDepositAmount:', settings.minDepositAmount);
-    console.log('  - maxDepositAmount:', settings.maxDepositAmount);
-    console.log('  - amount >= minDepositAmount:', amount >= settings.minDepositAmount);
-    console.log('  - amount <= maxDepositAmount:', amount <= settings.maxDepositAmount);
     
     if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
-      console.error('[Stripe Backend] Step 3 Failed: Amount out of range');
-      console.error('[Stripe Backend] Amount:', amount, 'Min:', settings.minDepositAmount, 'Max:', settings.maxDepositAmount);
       return res.status(400).json({ 
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
       });
     }
-    console.log('[Stripe Backend] Step 3 Complete: Amount validation passed');
     
-    console.log('[Stripe Backend] Step 4: Fetching user from database');
     const user = await User.findById(req.user.id);
     if (!user) {
-      console.error('[Stripe Backend] Step 4 Failed: User not found');
-      console.error('[Stripe Backend] User ID:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
-    console.log('[Stripe Backend] Step 4 Complete: User found');
-    console.log('[Stripe Backend] User values:');
-    console.log('  - email:', user.email);
-    console.log('  - stripeCustomerId:', user.stripeCustomerId);
-    console.log('  - paymentMethods count:', user.paymentMethods?.length || 0);
-    console.log('  - Full user payment methods:', JSON.stringify(user.paymentMethods, null, 2));
     
     // Check if user has saved payment methods
     if (!user.paymentMethods || user.paymentMethods.length === 0) {
-      console.error('[Stripe Backend] Step 4 Failed: User has no payment methods');
       return res.status(400).json({ error: 'Please add a payment method first' });
     }
     
-    console.log('[Stripe Backend] Step 5: Selecting payment method');
     // Use provided payment method or default
     const selectedPaymentMethod = paymentMethodId 
       ? user.paymentMethods.find(pm => pm.paymentMethodId === paymentMethodId)
       : user.paymentMethods.find(pm => pm.isDefault) || user.paymentMethods[0];
     
-    console.log('[Stripe Backend] Step 5 Complete: Payment method selected');
-    console.log('[Stripe Backend] Selected payment method:', JSON.stringify(selectedPaymentMethod, null, 2));
-    console.log('[Stripe Backend] Selected payment method ID:', selectedPaymentMethod?.paymentMethodId);
     
     if (!selectedPaymentMethod) {
-      console.error('[Stripe Backend] Step 5 Failed: Payment method not found');
       return res.status(400).json({ error: 'Payment method not found' });
     }
     
     if (!user.stripeCustomerId) {
-      console.error('[Stripe Backend] Step 5 Failed: Stripe customer not found');
       return res.status(400).json({ error: 'Stripe customer not found. Please add a payment method first.' });
     }
-    console.log('[Stripe Backend] Stripe customer ID:', user.stripeCustomerId);
     
-    console.log('[Stripe Backend] Step 6: Retrieving Stripe keys');
     const stripeKeys = getStripeKeys(settings);
-    console.log('[Stripe Backend] Step 6 Complete: Stripe keys retrieved');
     
     const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
-    console.log('[Stripe Backend] Stripe environment:', stripeEnvironment);
-    console.log('[Stripe Backend] Using Stripe keys for environment:', stripeEnvironment);
-    console.log('[Stripe Backend] Stripe secret key to use:', stripeKeys.secretKey);
     
-    console.log('[Stripe Backend] Step 7: Creating Stripe instance');
     const stripe = new Stripe(stripeKeys.secretKey);
-    console.log('[Stripe Backend] Step 7 Complete: Stripe instance created');
     
     // Verify payment method exists in current Stripe environment
-    console.log('[Stripe Backend] Verifying payment method:', selectedPaymentMethod.paymentMethodId);
     try {
       const paymentMethod = await stripe.paymentMethods.retrieve(selectedPaymentMethod.paymentMethodId);
-      console.log('[Stripe Backend] PaymentMethod verified successfully:', paymentMethod.id);
-      console.log('[Stripe Backend] PaymentMethod type:', paymentMethod.type);
-      console.log('[Stripe Backend] PaymentMethod card:', paymentMethod.card?.brand, paymentMethod.card?.last4);
     } catch (error) {
-      console.error('[Stripe Backend] PaymentMethod verification failed:', error.message);
-      console.error('[Stripe Backend] Error code:', error.code);
-      console.error('[Stripe Backend] Error type:', error.type);
       
       // Remove invalid payment method from user's saved methods
-      console.log('[Stripe Backend] Removing invalid payment method from user account');
       user.paymentMethods = user.paymentMethods.filter(
         pm => pm.paymentMethodId !== selectedPaymentMethod.paymentMethodId
       );
       await user.save();
-      console.log('[Stripe Backend] Invalid payment method removed from user account');
       
       return res.status(400).json({ 
         error: 'The selected payment method is no longer valid. Please add a new payment method.',
@@ -663,21 +479,8 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
     const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
     const stripeCommission = (amount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
     
-    console.log('[Stripe Backend] Commission calculation:');
-    console.log('[Stripe Backend]   - Deposit amount:', amount);
-    console.log('[Stripe Backend]   - Commission percentage:', stripeCommissionPercentage + '%');
-    console.log('[Stripe Backend]   - Commission fixed:', stripeCommissionFixed);
-    console.log('[Stripe Backend]   - Commission total:', stripeCommission);
-    console.log('[Stripe Backend]   - Total amount to charge:', amount + stripeCommission);
     
     // Create payment intent with saved payment method (charge full amount)
-    console.log('[Stripe Backend] Creating payment intent...');
-    console.log('[Stripe Backend] Payment intent parameters:', {
-      amount: Math.round(amount * 100),
-      currency: 'gbp',
-      customer: user.stripeCustomerId,
-      payment_method: selectedPaymentMethod.paymentMethodId,
-    });
     
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to pence - charge full amount user entered
@@ -693,11 +496,6 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       },
     });
     
-    console.log('[Stripe Backend] Payment intent created successfully');
-    console.log('[Stripe Backend] Payment intent ID:', paymentIntent.id);
-    console.log('[Stripe Backend] Payment intent status:', paymentIntent.status);
-    console.log('[Stripe Backend] Payment intent amount:', paymentIntent.amount);
-    console.log('[Stripe Backend] Payment intent currency:', paymentIntent.currency);
     
     // Create pending wallet transaction (full amount deposited, fee stored separately)
     const transaction = new Wallet({
@@ -752,7 +550,6 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
           );
         } catch (emailError) {
           // Don't fail the request if email fails
-          console.error('Failed to send card transaction successful email:', emailError);
         }
       }
     } else if (paymentIntent.status === 'requires_payment_method' || paymentIntent.status === 'canceled') {
@@ -781,7 +578,6 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
           );
         } catch (emailError) {
           // Don't fail the request if email fails
-          console.error('Failed to send card transaction failed email:', emailError);
         }
       }
     }
@@ -796,43 +592,29 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       balance: paymentIntent.status === 'succeeded' ? user.walletBalance : null,
     });
   } catch (error) {
-    console.error('Error creating Stripe payment intent:', error);
     res.status(500).json({ error: error.message || 'Failed to create payment intent' });
   }
 });
 
 // Confirm Stripe payment and update wallet
 router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) => {
-  console.log('[Stripe Confirm] POST /wallet/fund/stripe/confirm - Request received');
-  console.log('[Stripe Confirm] User ID:', req.user.id);
-  console.log('[Stripe Confirm] Request body:', req.body);
   
   try {
     const { paymentIntentId, transactionId } = req.body;
-    console.log('[Stripe Confirm] Payment intent ID:', paymentIntentId);
-    console.log('[Stripe Confirm] Transaction ID:', transactionId);
     
     if (!paymentIntentId || !transactionId) {
-      console.error('[Stripe Confirm] Missing required parameters');
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
-    console.log('[Stripe Confirm] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[Stripe Confirm] Payment settings loaded');
     
-    console.log('[Stripe Confirm] Retrieving Stripe keys...');
     const stripeKeys = getStripeKeys(settings);
-    console.log('[Stripe Confirm] Stripe keys retrieved');
     
     if (!stripeKeys.secretKey) {
-      console.error('[Stripe Confirm] Stripe secret key is missing');
       return res.status(400).json({ error: 'Stripe is not configured' });
     }
     
-    console.log('[Stripe Confirm] Creating Stripe instance with secret key');
     const stripe = new Stripe(stripeKeys.secretKey);
-    console.log('[Stripe Confirm] Stripe instance created');
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== 'succeeded') {
@@ -899,7 +681,6 @@ router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) =
         );
       } catch (emailError) {
         // Don't fail the request if email fails
-        console.error('Failed to send card transaction successful email:', emailError);
       }
     }
     
@@ -909,7 +690,6 @@ router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) =
       transaction,
     });
   } catch (error) {
-    console.error('Error confirming Stripe payment:', error);
     res.status(500).json({ error: 'Failed to confirm payment' });
   }
 });
@@ -935,7 +715,6 @@ router.get('/wallet/fund/manual/reference', authenticateToken, async (req, res) 
       referenceId: user.referenceId,
     });
   } catch (error) {
-    console.error('Error generating deposit reference:', error);
     res.status(500).json({ error: 'Failed to generate deposit reference' });
   }
 });
@@ -1019,7 +798,6 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
         );
       } catch (emailError) {
         // Don't fail the request if email fails
-        console.error('Failed to send bank transfer initiated email:', emailError);
       }
     }
     
@@ -1030,25 +808,16 @@ router.post('/wallet/fund/manual', authenticateToken, async (req, res) => {
       instructions: settings.manualTransferInstructions,
     });
   } catch (error) {
-    console.error('Error creating manual transfer request:', error);
     res.status(500).json({ error: 'Failed to create manual transfer request' });
   }
 });
 
 // Helper function to create PayPal client
 function createPayPalClient(settings) {
-  console.log('[PayPal Backend] createPayPalClient called');
   const paypalKeys = getPayPalKeys(settings);
-  console.log('[PayPal Backend] PayPal keys retrieved from getPayPalKeys');
-  console.log('[PayPal Backend] PayPal Client ID present:', paypalKeys.clientId ? `Yes (${paypalKeys.clientId.substring(0, 20)}...)` : 'No');
-  console.log('[PayPal Backend] PayPal Secret Key present:', paypalKeys.secretKey ? `Yes (${paypalKeys.secretKey.substring(0, 20)}...)` : 'No');
-  console.log('[PayPal Backend] PayPal Environment:', paypalKeys.environment);
   
   // Validate keys before creating client
   if (!paypalKeys.clientId || !paypalKeys.secretKey) {
-    console.error('[PayPal Backend] PayPal credentials are missing');
-    console.error('[PayPal Backend] Client ID missing:', !paypalKeys.clientId);
-    console.error('[PayPal Backend] Secret Key missing:', !paypalKeys.secretKey);
     throw new Error('PayPal credentials are missing. Please configure PayPal Client ID and Secret Key in payment settings.');
   }
   
@@ -1057,60 +826,42 @@ function createPayPalClient(settings) {
     ? new paypal.core.LiveEnvironment(paypalKeys.clientId, paypalKeys.secretKey)
     : new paypal.core.SandboxEnvironment(paypalKeys.clientId, paypalKeys.secretKey);
   
-  console.log(`[PayPal Backend] Creating ${paypalKeys.environment === 'live' ? 'Live' : 'Sandbox'}Environment`);
-  console.log(`[PayPal Backend] Using PayPal ${paypalKeys.environment === 'live' ? 'Live' : 'Sandbox'} mode`);
   const environment = paypalEnvironment;
   
-  console.log('[PayPal Backend] Creating PayPalHttpClient');
   const client = new paypal.core.PayPalHttpClient(environment);
-  console.log('[PayPal Backend] PayPal client created successfully');
   
   return client;
 }
 
 // Create PayPal order for wallet funding
 router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
-  console.log('[PayPal Backend] POST /wallet/fund/paypal - Request received');
-  console.log('[PayPal Backend] Request body:', req.body);
-  console.log('[PayPal Backend] User ID:', req.user.id);
   
   try {
     const { amount } = req.body;
-    console.log('[PayPal Backend] Amount received:', amount);
     
     if (!amount || amount <= 0) {
-      console.error('[PayPal Backend] Invalid amount:', amount);
       return res.status(400).json({ error: 'Invalid amount' });
     }
     
-    console.log('[PayPal Backend] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[PayPal Backend] Payment settings loaded');
     
     // Check for PayPal credentials (prefer paypalClientId, fallback to paypalPublicKey for legacy)
     const paypalClientId = settings.paypalClientId || settings.paypalPublicKey;
-    console.log('[PayPal Backend] PayPal Client ID:', paypalClientId ? 'Present' : 'Missing');
-    console.log('[PayPal Backend] PayPal Secret Key:', settings.paypalSecretKey ? 'Present' : 'Missing');
     
     if (!paypalClientId || !settings.paypalSecretKey) {
-      console.error('[PayPal Backend] PayPal is not configured');
       return res.status(400).json({ error: 'PayPal is not configured' });
     }
     
     if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
-      console.error('[PayPal Backend] Amount out of range:', amount, 'Min:', settings.minDepositAmount, 'Max:', settings.maxDepositAmount);
       return res.status(400).json({ 
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
       });
     }
     
-    console.log('[PayPal Backend] Fetching user...');
     const user = await User.findById(req.user.id);
     if (!user) {
-      console.error('[PayPal Backend] User not found:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
-    console.log('[PayPal Backend] User found:', user.email);
     
     // Calculate PayPal commission (fee is taken separately, full amount is deposited)
     const paypalCommissionPercentage = settings.paypalCommissionPercentage || 3.00;
@@ -1118,20 +869,11 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
     const paypalCommission = (amount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
     const totalAmount = amount + paypalCommission; // Total amount to charge
     
-    console.log('[PayPal Backend] Commission calculation:');
-    console.log('[PayPal Backend]   - Deposit amount:', amount);
-    console.log('[PayPal Backend]   - Commission percentage:', paypalCommissionPercentage + '%');
-    console.log('[PayPal Backend]   - Commission fixed:', paypalCommissionFixed);
-    console.log('[PayPal Backend]   - Commission total:', paypalCommission);
-    console.log('[PayPal Backend]   - Total amount to charge:', totalAmount);
     
     // Create PayPal client
-    console.log('[PayPal Backend] Creating PayPal client...');
     const client = createPayPalClient(settings);
-    console.log('[PayPal Backend] PayPal client created successfully');
     
     // Create PayPal order
-    console.log('[PayPal Backend] Creating PayPal order request...');
     const request = new paypal.orders.OrdersCreateRequest();
     request.prefer("return=representation");
     const requestBody = {
@@ -1152,17 +894,10 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
       },
     };
     request.requestBody(requestBody);
-    console.log('[PayPal Backend] Order request body:', JSON.stringify(requestBody, null, 2));
     
-    console.log('[PayPal Backend] Executing PayPal order request...');
     const order = await client.execute(request);
-    console.log('[PayPal Backend] PayPal order created successfully');
-    console.log('[PayPal Backend] Order ID:', order.result.id);
-    console.log('[PayPal Backend] Order status:', order.result.status);
-    console.log('[PayPal Backend] Order links:', order.result.links);
     
     // Create pending wallet transaction
-    console.log('[PayPal Backend] Creating wallet transaction...');
     const transaction = new Wallet({
       userId: req.user.id,
       type: 'deposit',
@@ -1182,71 +917,46 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
     });
     
     await transaction.save();
-    console.log('[PayPal Backend] Wallet transaction created:', transaction._id);
     
     const approvalUrl = order.result.links.find(link => link.rel === 'approve')?.href;
-    console.log('[PayPal Backend] Approval URL:', approvalUrl);
     
     const response = {
       orderId: order.result.id,
       transactionId: transaction._id,
       approvalUrl: approvalUrl,
     };
-    console.log('[PayPal Backend] Sending response:', response);
     
     res.json(response);
   } catch (error) {
-    console.error('[PayPal Backend] Error creating PayPal order:', error);
-    console.error('[PayPal Backend] Error stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
   }
 });
 
 // Capture PayPal payment and update wallet
 router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) => {
-  console.log('[PayPal Backend] POST /wallet/fund/paypal/capture - Request received');
-  console.log('[PayPal Backend] Request body:', req.body);
-  console.log('[PayPal Backend] User ID:', req.user.id);
   
   try {
     const { orderId, transactionId } = req.body;
-    console.log('[PayPal Backend] Order ID:', orderId);
-    console.log('[PayPal Backend] Transaction ID:', transactionId);
     
     if (!orderId || !transactionId) {
-      console.error('[PayPal Backend] Missing required parameters');
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
-    console.log('[PayPal Backend] Fetching payment settings...');
     const settings = await PaymentSettings.getSettings();
-    console.log('[PayPal Backend] Payment settings loaded');
     
-    console.log('[PayPal Backend] Retrieving PayPal keys...');
     const paypalKeys = getPayPalKeys(settings);
-    console.log('[PayPal Backend] PayPal keys retrieved');
     
     if (!paypalKeys.clientId || !paypalKeys.secretKey) {
-      console.error('[PayPal Backend] PayPal is not configured');
-      console.error('[PayPal Backend] Client ID missing:', !paypalKeys.clientId);
-      console.error('[PayPal Backend] Secret Key missing:', !paypalKeys.secretKey);
       return res.status(400).json({ error: 'PayPal is not configured' });
     }
     
     // Verify transaction belongs to user
-    console.log('[PayPal Backend] Fetching transaction from database...');
     const transaction = await Wallet.findById(transactionId);
     if (!transaction || transaction.userId.toString() !== req.user.id.toString()) {
-      console.error('[PayPal Backend] Transaction not found or does not belong to user');
       return res.status(404).json({ error: 'Transaction not found' });
     }
-    console.log('[PayPal Backend] Transaction found:', transaction._id);
-    console.log('[PayPal Backend] Transaction status:', transaction.status);
-    console.log('[PayPal Backend] Transaction amount:', transaction.amount);
-    console.log('[PayPal Backend] Transaction metadata:', transaction.metadata);
     
     if (transaction.status === 'completed') {
-      console.log('[PayPal Backend] Transaction already completed');
       const user = await User.findById(req.user.id);
       return res.json({ 
         message: 'Transaction already processed', 
@@ -1256,66 +966,44 @@ router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) =
     }
     
     // Create PayPal client
-    console.log('[PayPal Backend] Creating PayPal client...');
     const client = createPayPalClient(settings);
-    console.log('[PayPal Backend] PayPal client created successfully');
     
     // Capture the order
-    console.log('[PayPal Backend] Creating capture request for order:', orderId);
     const request = new paypal.orders.OrdersCaptureRequest(orderId);
     request.requestBody({});
     
-    console.log('[PayPal Backend] Executing PayPal capture request...');
     const capture = await client.execute(request);
-    console.log('[PayPal Backend] Capture response received');
-    console.log('[PayPal Backend] Capture status:', capture.result.status);
-    console.log('[PayPal Backend] Capture ID:', capture.result.id);
-    console.log('[PayPal Backend] Capture result:', JSON.stringify(capture.result, null, 2));
     
     if (capture.result.status !== 'COMPLETED') {
-      console.error('[PayPal Backend] Payment not completed. Status:', capture.result.status);
       return res.status(400).json({ error: 'Payment not completed' });
     }
     
     // Update user wallet balance (deposit full amount, fee was already charged)
-    console.log('[PayPal Backend] Fetching user...');
     const user = await User.findById(req.user.id);
     if (!user) {
-      console.error('[PayPal Backend] User not found:', req.user.id);
       return res.status(404).json({ error: 'User not found' });
     }
-    console.log('[PayPal Backend] User found:', user.email);
-    console.log('[PayPal Backend] Current wallet balance:', user.walletBalance);
     
     const depositAmount = transaction.metadata?.depositAmount || transaction.amount;
-    console.log('[PayPal Backend] Deposit amount:', depositAmount);
     
     const previousBalance = user.walletBalance || 0;
     user.walletBalance = previousBalance + depositAmount;
     await user.save();
-    console.log('[PayPal Backend] Wallet balance updated');
-    console.log('[PayPal Backend] Previous balance:', previousBalance);
-    console.log('[PayPal Backend] New balance:', user.walletBalance);
     
     // Update transaction
-    console.log('[PayPal Backend] Updating transaction status...');
     transaction.status = 'completed';
     transaction.balance = user.walletBalance;
     transaction.paypalCaptureId = capture.result.id;
     await transaction.save();
-    console.log('[PayPal Backend] Transaction updated successfully');
     
     const response = { 
       message: 'Wallet funded successfully',
       balance: user.walletBalance,
       transaction,
     };
-    console.log('[PayPal Backend] Sending response:', { ...response, transaction: { ...response.transaction.toObject(), _id: response.transaction._id } });
     
     res.json(response);
   } catch (error) {
-    console.error('[PayPal Backend] Error capturing PayPal payment:', error);
-    console.error('[PayPal Backend] Error stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to capture PayPal payment' });
   }
 });
@@ -1395,7 +1083,6 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
         );
       } catch (emailError) {
         // Don't fail the request if email fails
-        console.error('Failed to send bank transfer approved email:', emailError);
       }
     }
     
@@ -1404,7 +1091,6 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
       const { notifyBankTransferApproved } = await import('../services/notificationService.js');
       await notifyBankTransferApproved(user._id, transaction._id, depositAmount);
     } catch (notifError) {
-      console.error('Failed to create bank transfer approved notification:', notifError);
     }
     
     res.json({ 
@@ -1412,7 +1098,6 @@ router.post('/admin/wallet/approve/:transactionId', authenticateToken, requireRo
       transaction,
     });
   } catch (error) {
-    console.error('Error approving manual transfer:', error);
     res.status(500).json({ error: 'Failed to approve manual transfer' });
   }
 });
@@ -1464,7 +1149,6 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
         );
       } catch (emailError) {
         // Don't fail the request if email fails
-        console.error('Failed to send bank transfer rejected email:', emailError);
       }
     }
     
@@ -1473,7 +1157,6 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
       const { notifyBankTransferRejected } = await import('../services/notificationService.js');
       await notifyBankTransferRejected(user._id, transaction._id, transaction.amount, adminNotes);
     } catch (notifError) {
-      console.error('Failed to create bank transfer rejected notification:', notifError);
     }
     
     res.json({ 
@@ -1481,7 +1164,6 @@ router.post('/admin/wallet/reject/:transactionId', authenticateToken, requireRol
       transaction,
     });
   } catch (error) {
-    console.error('Error rejecting manual transfer:', error);
     res.status(500).json({ error: 'Failed to reject manual transfer' });
   }
 });
@@ -1604,7 +1286,6 @@ router.get('/admin/bank-transfer-requests', authenticateToken, requireRole(['adm
       },
     });
   } catch (error) {
-    console.error('Error fetching bank transfer requests:', error);
     res.status(500).json({ error: 'Failed to fetch bank transfer requests' });
   }
 });
@@ -1622,7 +1303,6 @@ router.get('/admin/wallet/pending-transfers', authenticateToken, requireRole(['a
     
     res.json({ transactions });
   } catch (error) {
-    console.error('Error fetching pending transfers:', error);
     res.status(500).json({ error: 'Failed to fetch pending transfers' });
   }
 });
@@ -1709,7 +1389,6 @@ router.get('/admin/wallet/transactions', authenticateToken, requireRole(['admin'
       },
     });
   } catch (error) {
-    console.error('Error fetching admin transactions:', error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
@@ -1730,7 +1409,6 @@ router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }),
     try {
       event = stripe.webhooks.constructEvent(req.body, sig, stripeKeys.webhookSecret);
     } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
     
@@ -1785,7 +1463,6 @@ router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }),
               );
             } catch (emailError) {
               // Don't fail the request if email fails
-              console.error('Failed to send card transaction successful email:', emailError);
             }
           }
         }
@@ -1829,7 +1506,6 @@ router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }),
             );
           } catch (emailError) {
             // Don't fail the request if email fails
-            console.error('Failed to send card transaction failed email:', emailError);
           }
         }
       }
@@ -1837,7 +1513,6 @@ router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }),
     
     res.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });

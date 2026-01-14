@@ -33,10 +33,6 @@ export default function AdminPaymentSettingsPage() {
     // PayPal Live Mode Keys
     paypalLiveClientId: "",
     paypalLiveSecretKey: "",
-    // Legacy PayPal fields (for backward compatibility)
-    paypalClientId: "",
-    paypalSecretKey: "",
-    paypalPublicKey: "", // Legacy
     paypalEnabled: true,
     // PayPal environment
     paypalEnvironment: "sandbox",
@@ -400,43 +396,46 @@ export default function AdminPaymentSettingsPage() {
                     </p>
                   </div>
 
-                  {/* Sandbox Keys */}
-                  <div className="space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-yellow-800 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                      PayPal Sandbox API Keys (Test Mode)
-                    </h4>
-                    
-                    <div>
-                      <Label htmlFor="paypalSandboxClientId" className="font-['Poppins',sans-serif] text-[13px]">
-                        PayPal Sandbox Client ID
-                      </Label>
-                      <Input
-                        id="paypalSandboxClientId"
-                        type="text"
-                        value={settings.paypalSandboxClientId || ""}
-                        onChange={(e) => updateField("paypalSandboxClientId", e.target.value)}
-                        placeholder="Enter PayPal Sandbox Client ID"
-                        className="mt-1 font-['Poppins',sans-serif]"
-                      />
-                    </div>
+                  {/* Sandbox Keys - Only show when sandbox mode is selected */}
+                  {settings.paypalEnvironment === "sandbox" && (
+                    <div className="space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-yellow-800 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                        PayPal Sandbox API Keys (Test Mode)
+                      </h4>
+                      
+                      <div>
+                        <Label htmlFor="paypalSandboxClientId" className="font-['Poppins',sans-serif] text-[13px]">
+                          PayPal Sandbox Client ID
+                        </Label>
+                        <Input
+                          id="paypalSandboxClientId"
+                          type="text"
+                          value={settings.paypalSandboxClientId || ""}
+                          onChange={(e) => updateField("paypalSandboxClientId", e.target.value)}
+                          placeholder="Enter PayPal Sandbox Client ID"
+                          className="mt-1 font-['Poppins',sans-serif]"
+                        />
+                      </div>
 
-                    <div>
-                      <Label htmlFor="paypalSandboxSecretKey" className="font-['Poppins',sans-serif] text-[13px]">
-                        PayPal Sandbox Secret Key
-                      </Label>
-                      <Input
-                        id="paypalSandboxSecretKey"
-                        type="password"
-                        value={settings.paypalSandboxSecretKey || ""}
-                        onChange={(e) => updateField("paypalSandboxSecretKey", e.target.value)}
-                        placeholder="Enter PayPal Sandbox Secret Key"
-                        className="mt-1 font-['Poppins',sans-serif]"
-                      />
+                      <div>
+                        <Label htmlFor="paypalSandboxSecretKey" className="font-['Poppins',sans-serif] text-[13px]">
+                          PayPal Sandbox Secret Key
+                        </Label>
+                        <Input
+                          id="paypalSandboxSecretKey"
+                          type="password"
+                          value={settings.paypalSandboxSecretKey || ""}
+                          onChange={(e) => updateField("paypalSandboxSecretKey", e.target.value)}
+                          placeholder="Enter PayPal Sandbox Secret Key"
+                          className="mt-1 font-['Poppins',sans-serif]"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Live Keys */}
+                  {/* Live Keys - Only show when live mode is selected */}
+                  {settings.paypalEnvironment === "live" && (
                   <div className="space-y-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-green-800 flex items-center gap-2">
                       <span className="w-2 h-2 bg-green-500 rounded-full"></span>
@@ -471,48 +470,8 @@ export default function AdminPaymentSettingsPage() {
                       />
                     </div>
                   </div>
+                  )}
 
-                  {/* Legacy Keys (for backward compatibility) */}
-                  <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-gray-700 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                      Legacy PayPal Keys (for backward compatibility)
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-gray-600">
-                      These fields are kept for backward compatibility. Please use Sandbox/Live keys above.
-                    </p>
-                    
-                    <div>
-                      <Label htmlFor="paypalClientId" className="font-['Poppins',sans-serif] text-[13px]">
-                        PayPal Client ID (Legacy)
-                      </Label>
-                      <Input
-                        id="paypalClientId"
-                        type="text"
-                        value={settings.paypalClientId || settings.paypalPublicKey || ""}
-                        onChange={(e) => {
-                          updateField("paypalClientId", e.target.value);
-                          if (settings.paypalPublicKey) updateField("paypalPublicKey", e.target.value);
-                        }}
-                        placeholder="Enter PayPal Client ID (Legacy)"
-                        className="mt-1 font-['Poppins',sans-serif]"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="paypalSecretKey" className="font-['Poppins',sans-serif] text-[13px]">
-                        PayPal Secret Key (Legacy)
-                      </Label>
-                      <Input
-                        id="paypalSecretKey"
-                        type="password"
-                        value={settings.paypalSecretKey || ""}
-                        onChange={(e) => updateField("paypalSecretKey", e.target.value)}
-                        placeholder="Enter PayPal Secret Key (Legacy)"
-                        className="mt-1 font-['Poppins',sans-serif]"
-                      />
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
