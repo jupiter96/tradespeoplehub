@@ -309,7 +309,6 @@ export default function AccountPage() {
           setNotificationUnreadCount(data.unreadCount || 0);
         }
       } catch (error) {
-        console.error('Error fetching notification count:', error);
       }
     };
 
@@ -330,7 +329,6 @@ export default function AccountPage() {
     
     // Handler for new notification
     const handleNewNotification = (data: { notification: any; unreadCount: number }) => {
-      console.log('📢 [AccountPage] Real-time notification received:', data);
       setNotificationUnreadCount(data.unreadCount);
     };
 
@@ -584,7 +582,7 @@ export default function AccountPage() {
                           });
                           setVerificationPendingCount(pendingCount);
                         })
-                        .catch(err => console.error("Error refreshing verification:", err));
+                        .catch(() => {});
                     }
                   }}
                 />
@@ -2719,6 +2717,7 @@ function BillingSection() {
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   const [paypalTransactionId, setPaypalTransactionId] = useState<string | null>(null);
+  const [stripePaymentError, setStripePaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (billingTab === "wallet") {
@@ -2740,7 +2739,6 @@ function BillingSection() {
         setWalletBalance(data.balance || 0);
       }
     } catch (error) {
-      console.error("Error fetching wallet balance:", error);
     } finally {
       setLoadingBalance(false);
     }
@@ -2757,7 +2755,6 @@ function BillingSection() {
         setTransactions(data.transactions || []);
       }
     } catch (error) {
-      console.error("Error fetching transactions:", error);
     } finally {
       setLoadingTransactions(false);
     }
@@ -2774,50 +2771,23 @@ function BillingSection() {
         setPaymentMethods(data.paymentMethods || []);
       }
     } catch (error) {
-      console.error("Error fetching payment methods:", error);
     } finally {
       setLoadingPaymentMethods(false);
     }
   };
 
   const fetchPublishableKey = async () => {
-    console.log("[Payment Frontend] ========== fetchPublishableKey ==========");
-    console.log("[Payment Frontend] Step 1: Starting fetchPublishableKey");
-    console.log("[Payment Frontend] API URL:", resolveApiUrl("/api/payment/publishable-key"));
     
     try {
-      console.log("[Payment Frontend] Step 2: Sending request to /api/payment/publishable-key");
       const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
         credentials: "include",
       });
-      console.log("[Payment Frontend] Step 2 Complete: Response received");
-      console.log("[Payment Frontend] Response status:", response.status);
-      console.log("[Payment Frontend] Response ok:", response.ok);
       
       if (response.ok) {
-        console.log("[Payment Frontend] Step 3: Parsing response JSON");
         const data = await response.json();
-        console.log("[Payment Frontend] Step 3 Complete: Response parsed");
-        console.log("[Payment Frontend] Full response data:", JSON.stringify(data, null, 2));
-        console.log("[Payment Frontend] Response values:");
-        console.log("  - publishableKey:", data.publishableKey);
-        console.log("  - paypalClientId:", data.paypalClientId);
-        console.log("  - paypalEnvironment:", data.paypalEnvironment);
-        console.log("  - stripeEnabled:", data.stripeEnabled);
-        console.log("  - paypalEnabled:", data.paypalEnabled);
-        console.log("  - manualTransferEnabled:", data.manualTransferEnabled);
-        console.log("  - stripeEnvironment:", data.stripeEnvironment);
-        console.log("  - stripeCommissionPercentage:", data.stripeCommissionPercentage);
-        console.log("  - stripeCommissionFixed:", data.stripeCommissionFixed);
-        console.log("  - paypalCommissionPercentage:", data.paypalCommissionPercentage);
-        console.log("  - paypalCommissionFixed:", data.paypalCommissionFixed);
-        console.log("  - bankProcessingFeePercentage:", data.bankProcessingFeePercentage);
         
-        console.log("[Payment Frontend] Step 4: Setting state values");
         setPublishableKey(data.publishableKey);
-        console.log("[Payment Frontend] publishableKey state set to:", data.publishableKey);
         setPaypalClientId(data.paypalClientId || null);
-        console.log("[Payment Frontend] paypalClientId state set to:", data.paypalClientId || null);
         
         // Only update commission rates, preserve enabled states
         const newPaymentSettings = {
@@ -2830,21 +2800,14 @@ function BillingSection() {
           paypalEnabled: data.paypalEnabled === true,
           manualTransferEnabled: data.manualTransferEnabled === true,
         };
-        console.log("[Payment Frontend] New payment settings object:", JSON.stringify(newPaymentSettings, null, 2));
         setPaymentSettings(prev => ({
           ...prev,
           ...newPaymentSettings,
         }));
-        console.log("[Payment Frontend] Step 4 Complete: State values set");
-        console.log("[Payment Frontend] ========== fetchPublishableKey completed ==========");
       } else {
-        console.error("[Payment Frontend] Response not ok, status:", response.status);
         const errorText = await response.text();
-        console.error("[Payment Frontend] Error response:", errorText);
       }
     } catch (error) {
-      console.error("[Payment Frontend] Error in fetchPublishableKey:", error);
-      console.error("[Payment Frontend] Error details:", JSON.stringify(error, null, 2));
     }
   };
 
@@ -3020,10 +2983,8 @@ function BillingSection() {
           setExpandedPaymentType("bank");
         }
       } else {
-        console.error("[fetchPaymentSettings] Response not ok:", await response.text());
       }
     } catch (error) {
-      console.error("Error fetching payment settings:", error);
     } finally {
       setLoadingPaymentSettings(false);
     }
@@ -3046,7 +3007,6 @@ function BillingSection() {
         }
       }
     } catch (error) {
-      console.error("Error fetching bank account details:", error);
     }
   };
 
@@ -3068,15 +3028,21 @@ function BillingSection() {
         }
       }
     } catch (error) {
-      console.error("Error fetching payment methods:", error);
     } finally {
       setLoadingMethods(false);
     }
   };
 
   const handlePayment = async () => {
+    // Clear previous error
+    setStripePaymentError(null);
+    
     if (!amount || parseFloat(amount) <= 0) {
-      toast.error("Please enter a valid amount");
+      const errorMsg = "Please enter a valid amount";
+      toast.error(errorMsg);
+      if (selectedPaymentType === "card") {
+        setStripePaymentError(errorMsg);
+      }
       return;
     }
 
@@ -3097,39 +3063,25 @@ function BillingSection() {
   };
 
   const handleStripePayment = async () => {
-    console.log("[Stripe Frontend] ========== handleStripePayment ==========");
-    console.log("[Stripe Frontend] Step 1: Function called");
-    console.log("[Stripe Frontend] Current state values:");
-    console.log("  - amount (string):", amount);
-    console.log("  - amount (parsed):", parseFloat(amount));
-    console.log("  - selectedPaymentMethod:", selectedPaymentMethod);
-    console.log("  - fundPaymentMethods count:", fundPaymentMethods.length);
-    console.log("  - fundPaymentMethods:", JSON.stringify(fundPaymentMethods, null, 2));
-    console.log("  - paymentSettings:", JSON.stringify(paymentSettings, null, 2));
+    // Clear previous error
+    setStripePaymentError(null);
     
     if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
-      console.error("[Stripe Frontend] Step 1 Failed: No payment method available");
-      toast.error("Please add a payment method first");
+      const errorMsg = "Please add a payment method first";
+      toast.error(errorMsg);
+      setStripePaymentError(errorMsg);
       setShowAddCardModal(true);
       return;
     }
 
-    console.log("[Stripe Frontend] Step 2: Setting loading state to true");
     setLoading(true);
     
     try {
-      console.log("[Stripe Frontend] Step 3: Preparing request body");
       const requestBody = { 
         amount: parseFloat(amount),
         paymentMethodId: selectedPaymentMethod,
       };
-      console.log("[Stripe Frontend] Request body:", JSON.stringify(requestBody, null, 2));
-      console.log("[Stripe Frontend] Request body values:");
-      console.log("  - amount:", requestBody.amount);
-      console.log("  - paymentMethodId:", requestBody.paymentMethodId);
       
-      console.log("[Stripe Frontend] Step 4: Sending request to /api/wallet/fund/stripe");
-      console.log("[Stripe Frontend] API URL:", resolveApiUrl("/api/wallet/fund/stripe"));
       const response = await fetch(resolveApiUrl("/api/wallet/fund/stripe"), {
         method: "POST",
         headers: {
@@ -3139,33 +3091,24 @@ function BillingSection() {
         body: JSON.stringify(requestBody),
       });
 
-      console.log("[Stripe Frontend] Step 4 Complete: Response received");
-      console.log("[Stripe Frontend] Response status:", response.status);
-      console.log("[Stripe Frontend] Response ok:", response.ok);
-      console.log("[Stripe Frontend] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
       
-      console.log("[Stripe Frontend] Step 5: Parsing response JSON");
       const data = await response.json();
-      console.log("[Stripe Frontend] Step 5 Complete: Response parsed");
-      console.log("[Stripe Frontend] Full response data:", JSON.stringify(data, null, 2));
 
       if (!response.ok) {
-        console.error("[Stripe Frontend] Error response:", data);
         // If payment method was removed due to environment mismatch, refresh payment methods
         if (data.removedPaymentMethod) {
-          console.log("[Stripe Frontend] Payment method was removed, refreshing payment methods");
           await fetchFundPaymentMethods();
           setSelectedPaymentMethod(null);
         }
-        throw new Error(data.error || "Failed to create payment");
+        const errorMsg = data.error || "Failed to process payment";
+        setStripePaymentError(errorMsg);
+        throw new Error(errorMsg);
       }
       
-      console.log("[Stripe Frontend] Payment intent created successfully");
-      console.log("[Stripe Frontend] Payment status:", data.status);
+      // Clear error on success
+      setStripePaymentError(null);
 
       if (data.status === 'succeeded') {
-        console.log("[Stripe Frontend] Payment succeeded immediately");
-        console.log("[Stripe Frontend] New balance:", data.balance);
         toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
         await fetchWalletBalance();
         await fetchTransactions();
@@ -3174,13 +3117,9 @@ function BillingSection() {
           await refreshUser();
         }
       } else if (data.requiresAction) {
-        console.log("[Stripe Frontend] Payment requires action");
-        console.log("[Stripe Frontend] Transaction ID:", data.transactionId);
-        console.log("[Stripe Frontend] Client secret:", data.clientSecret);
         toast.info("Please complete the authentication");
         pollPaymentStatus(data.transactionId, data.clientSecret);
       } else {
-        console.log("[Stripe Frontend] Payment processed successfully");
         toast.success("Payment processed successfully!");
         await fetchWalletBalance();
         await fetchTransactions();
@@ -3190,8 +3129,9 @@ function BillingSection() {
         }
       }
     } catch (error: any) {
-      console.error("[Stripe Frontend] Error in handleStripePayment:", error);
-      toast.error(error.message || "Failed to process payment");
+      const errorMsg = error.message || "Failed to process payment";
+      setStripePaymentError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -3239,11 +3179,8 @@ function BillingSection() {
   };
 
   const handlePayPalCreateOrder = async (): Promise<string> => {
-    console.log("[PayPal Frontend] handlePayPalCreateOrder called");
-    console.log("[PayPal Frontend] Amount:", parseFloat(amount));
     
     try {
-      console.log("[PayPal Frontend] Sending request to /api/wallet/fund/paypal");
       const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
         method: "POST",
         headers: {
@@ -3255,38 +3192,27 @@ function BillingSection() {
         }),
       });
 
-      console.log("[PayPal Frontend] Response status:", response.status);
       const data = await response.json();
-      console.log("[PayPal Frontend] Response data:", data);
 
       if (!response.ok) {
-        console.error("[PayPal Frontend] Error response:", data);
         throw new Error(data.error || "Failed to create PayPal order");
       }
 
-      console.log("[PayPal Frontend] Order created successfully");
-      console.log("[PayPal Frontend] Order ID:", data.orderId);
-      console.log("[PayPal Frontend] Transaction ID:", data.transactionId);
       
       setPaypalOrderId(data.orderId);
       setPaypalTransactionId(data.transactionId);
       
       return data.orderId;
     } catch (error: any) {
-      console.error("[PayPal Frontend] Error in handlePayPalCreateOrder:", error);
       toast.error(error.message || "Failed to create PayPal order");
       throw error;
     }
   };
 
   const handlePayPalApprove = async (data: { orderID: string }) => {
-    console.log("[PayPal Frontend] handlePayPalApprove called");
-    console.log("[PayPal Frontend] Order ID from PayPal:", data.orderID);
-    console.log("[PayPal Frontend] Transaction ID:", paypalTransactionId);
     
     try {
       setLoading(true);
-      console.log("[PayPal Frontend] Sending capture request to /api/wallet/fund/paypal/capture");
       
       const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal/capture"), {
         method: "POST",
@@ -3300,17 +3226,12 @@ function BillingSection() {
         }),
       });
 
-      console.log("[PayPal Frontend] Capture response status:", response.status);
       const result = await response.json();
-      console.log("[PayPal Frontend] Capture response data:", result);
 
       if (!response.ok) {
-        console.error("[PayPal Frontend] Capture error response:", result);
         throw new Error(result.error || "Failed to capture PayPal payment");
       }
 
-      console.log("[PayPal Frontend] Payment captured successfully");
-      console.log("[PayPal Frontend] New balance:", result.balance);
       
       toast.success(`Wallet funded successfully! New balance: £${result.balance?.toFixed(2)}`);
       await fetchWalletBalance();
@@ -3323,7 +3244,6 @@ function BillingSection() {
         await refreshUser();
       }
     } catch (error: any) {
-      console.error("[PayPal Frontend] Error in handlePayPalApprove:", error);
       toast.error(error.message || "Failed to process PayPal payment");
     } finally {
       setLoading(false);
@@ -3785,19 +3705,15 @@ function BillingSection() {
                             createOrder={handlePayPalCreateOrder}
                             onApprove={handlePayPalApprove}
                             onError={(err) => {
-                              console.error("[PayPal Frontend] PayPal button error:", err);
                               toast.error("PayPal payment failed. Please try again.");
                               setLoading(false);
                             }}
                             onCancel={() => {
-                              console.log("[PayPal Frontend] PayPal payment cancelled by user");
                               toast.info("PayPal payment cancelled");
                               setPaypalOrderId(null);
                               setPaypalTransactionId(null);
                             }}
                             onClick={(data, actions) => {
-                              console.log("[PayPal Frontend] PayPal button clicked");
-                              console.log("[PayPal Frontend] Click data:", data);
                               return actions.resolve();
                             }}
                             style={{
@@ -3818,53 +3734,100 @@ function BillingSection() {
                       
                       {/* Debit or Credit Card Button */}
                       {paymentSettings.stripeEnabled && (
-                        <Button
-                          onClick={async () => {
-                            if (!amount || parseFloat(amount) <= 0) {
-                              toast.error("Please enter a valid amount");
-                              return;
-                            }
-                            
-                            if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
-                              toast.error("Please add a payment method first");
-                              setShowAddCardModal(true);
-                              return;
-                            }
-                            
-                            // Directly trigger card payment without changing selectedPaymentType
-                            await handleStripePayment();
-                          }}
-                          disabled={loading || !amount || parseFloat(amount) <= 0 || (!selectedPaymentMethod && fundPaymentMethods.length === 0)}
-                          className="w-full bg-gray-800 hover:bg-gray-900 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold flex items-center justify-center gap-2"
-                        >
-                          <CreditCard className="w-5 h-5" />
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            `Pay with Debit or Credit Card`
+                        <>
+                          <Button
+                            onClick={async () => {
+                              if (!amount || parseFloat(amount) <= 0) {
+                                toast.error("Please enter a valid amount");
+                                return;
+                              }
+                              
+                              if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
+                                toast.error("Please add a payment method first");
+                                setShowAddCardModal(true);
+                                return;
+                              }
+                              
+                              // Directly trigger card payment without changing selectedPaymentType
+                              setStripePaymentError(null);
+                              await handleStripePayment();
+                            }}
+                            disabled={loading || !amount || parseFloat(amount) <= 0 || (!selectedPaymentMethod && fundPaymentMethods.length === 0)}
+                            className="w-full bg-gray-800 hover:bg-gray-900 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold flex items-center justify-center gap-2"
+                          >
+                            <CreditCard className="w-5 h-5" />
+                            {loading ? (
+                              <>
+                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                Processing payment...
+                              </>
+                            ) : (
+                              `Pay with Debit or Credit Card`
+                            )}
+                          </Button>
+                          {/* Loading Indicator */}
+                          {loading && (
+                            <div className="mt-3">
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div className="flex items-center justify-center gap-3">
+                                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                                  <p className="font-['Poppins',sans-serif] text-[14px] text-blue-700">
+                                    Processing your payment, please wait...
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
                           )}
-                        </Button>
+                          {/* Error Message */}
+                          {stripePaymentError && !loading && (
+                            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-red-600 text-center">
+                                {stripePaymentError}
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   ) : (
                     /* Confirm Button for Card and Bank Transfer */
-                    <Button
-                      onClick={handlePayment}
-                      disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && fundPaymentMethods.length === 0)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        `Confirm and pay £${calculateFees().paymentDue.toFixed(2)} GBP`
+                    <>
+                      <Button
+                        onClick={handlePayment}
+                        disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && fundPaymentMethods.length === 0)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Processing payment...
+                          </>
+                        ) : (
+                          `Confirm and pay £${calculateFees().paymentDue.toFixed(2)} GBP`
+                        )}
+                      </Button>
+                      {/* Loading Indicator */}
+                      {loading && selectedPaymentType === "card" && (
+                        <div className="mt-3">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-center gap-3">
+                              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-blue-700">
+                                Processing your payment, please wait...
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       )}
-                    </Button>
+                      {/* Error Message */}
+                      {stripePaymentError && selectedPaymentType === "card" && !loading && (
+                        <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-red-600 text-center">
+                            {stripePaymentError}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -4247,7 +4210,6 @@ function TransactionHistoryTab() {
         setTotal(data.pagination?.total || 0);
       }
     } catch (error) {
-      console.error("Error fetching transactions:", error);
     } finally {
       setLoading(false);
     }
@@ -5618,7 +5580,6 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
         onUnreadCountChange(data.unreadCount || 0);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
@@ -5678,7 +5639,6 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
         onUnreadCountChange(data.unreadCount || 0);
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -5696,7 +5656,6 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
         toast.success('All notifications marked as read');
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
     }
   };
 
@@ -5714,7 +5673,6 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
         onUnreadCountChange(data.unreadCount || 0);
       }
     } catch (error) {
-      console.error('Error deleting notification:', error);
     }
   };
 
@@ -5732,7 +5690,6 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
         toast.success('All notifications deleted');
       }
     } catch (error) {
-      console.error('Error deleting all notifications:', error);
     }
   };
 
@@ -7201,11 +7158,9 @@ function ServicesSection() {
           // console.log('Draft services count:', services.filter((s: any) => s.status === 'draft').length);
           setMyServices(services);
         } else {
-          console.error("Failed to fetch services");
           setMyServices([]);
         }
       } catch (error) {
-        console.error("Error fetching services:", error);
         setMyServices([]);
       } finally {
         setLoading(false);
@@ -7281,7 +7236,6 @@ function ServicesSection() {
         setMyServices(data.services || []);
       }
     } catch (error) {
-      console.error("Error refreshing services:", error);
     } finally {
       setRefreshing(false);
       setIsAddServiceOpen(false);
@@ -7322,7 +7276,6 @@ function ServicesSection() {
         setMyServices(data.services || []);
       }
     } catch (error) {
-      console.error("Error refreshing services:", error);
       toast.error("Failed to refresh services list");
     } finally {
       setRefreshing(false);
@@ -7375,7 +7328,6 @@ function ServicesSection() {
         toast.error(error.error || "Failed to toggle service status");
       }
     } catch (error) {
-      console.error("Error toggling service disable:", error);
       toast.error("Failed to toggle service status");
     }
   };
@@ -7410,7 +7362,6 @@ function ServicesSection() {
         toast.error(error.error || "Failed to delete service");
       }
     } catch (error: any) {
-      console.error("Error deleting service:", error);
       toast.error("Failed to delete service. Please try again.");
     } finally {
       setRefreshing(false);
@@ -7686,7 +7637,6 @@ function ServicesSection() {
 
                     // Debug logging for draft services
                     if (service.status === 'draft') {
-                      console.log('Draft service found');
                     }
 
                     return matchesSearch && matchesStatus;
