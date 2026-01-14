@@ -162,6 +162,7 @@ import { Progress } from "./ui/progress";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useCart } from "./CartContext";
+import { useAccount } from "./AccountContext";
 import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import serviceVector from "../assets/service_vector.jpg";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
@@ -266,6 +267,7 @@ export default function ServiceDetailPage() {
   const searchParams = new URLSearchParams(location.search);
   const isAdminAccess = searchParams.get('admin') === 'true' || (location.state as any)?.adminAccess === true;
   const { addToCart } = useCart();
+  const { isLoggedIn, userRole } = useAccount();
   const [isFavorite, setIsFavorite] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -409,6 +411,23 @@ export default function ServiceDetailPage() {
             setIsPendingService(true);
             setServiceStatus(s.status);
           }
+          
+          // Check if service is in favourites (only for logged-in clients)
+          if (isLoggedIn && userRole === 'client' && s._id) {
+            try {
+              const { resolveApiUrl } = await import("../config/api");
+              const favResponse = await fetch(
+                resolveApiUrl(`/api/auth/favourites/check/${s._id}`),
+                { credentials: 'include' }
+              );
+              if (favResponse.ok) {
+                const favData = await favResponse.json();
+                setIsFavorite(favData.isFavourite || false);
+              }
+            } catch (error) {
+              // Silently fail - favourite check is not critical
+            }
+          }
         } else {
           // console.error("Service not found");
           setService(null);
@@ -422,7 +441,7 @@ export default function ServiceDetailPage() {
     };
 
     fetchService();
-  }, [id, isAdminAccess]);
+  }, [id, isAdminAccess, isLoggedIn, userRole]);
 
   // Handle pending service redirect
   useEffect(() => {
@@ -1288,7 +1307,62 @@ export default function ServiceDetailPage() {
           {/* Like & Share Buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!isLoggedIn || userRole !== 'client') {
+                  toast.error("Please login as a client to add favourites", {
+                    action: {
+                      label: "Login",
+                      onClick: () => navigate("/login"),
+                    },
+                  });
+                  return;
+                }
+                if (!service?._id) return;
+                
+                // Optimistic update: immediately update UI
+                const previousFavorite = isFavorite;
+                setIsFavorite(!isFavorite);
+                
+                try {
+                  const { resolveApiUrl } = await import("../config/api");
+                  if (previousFavorite) {
+                    // Remove from favourites
+                    const response = await fetch(
+                      resolveApiUrl(`/api/auth/favourites/${service._id}`),
+                      {
+                        method: 'DELETE',
+                        credentials: 'include',
+                      }
+                    );
+                    if (response.ok) {
+                      toast.success("Removed from favourites");
+                    } else {
+                      // Rollback on error
+                      setIsFavorite(previousFavorite);
+                      throw new Error("Failed to remove from favourites");
+                    }
+                  } else {
+                    // Add to favourites
+                    const response = await fetch(
+                      resolveApiUrl(`/api/auth/favourites/${service._id}`),
+                      {
+                        method: 'POST',
+                        credentials: 'include',
+                      }
+                    );
+                    if (response.ok) {
+                      toast.success("Added to favourites");
+                    } else {
+                      // Rollback on error
+                      setIsFavorite(previousFavorite);
+                      throw new Error("Failed to add to favourites");
+                    }
+                  }
+                } catch (error: any) {
+                  toast.error(error.message || "Failed to update favourites");
+                }
+              }}
               className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg hover:bg-white transition-all"
             >
               <Heart className={`w-5 h-5 ${isFavorite ? 'fill-[#FE8A0F] text-[#FE8A0F]' : 'text-gray-900'}`} />
@@ -1475,10 +1549,65 @@ export default function ServiceDetailPage() {
                   </div>
                 )}
                 <div className="flex items-center gap-3">
-                  <Button
+                  <Button 
                     variant="outline"
                     size="sm"
-                    onClick={() => setIsFavorite(!isFavorite)}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!isLoggedIn || userRole !== 'client') {
+                        toast.error("Please login as a client to add favourites", {
+                          action: {
+                            label: "Login",
+                            onClick: () => navigate("/login"),
+                          },
+                        });
+                        return;
+                      }
+                      if (!service?._id) return;
+                      
+                      // Optimistic update: immediately update UI
+                      const previousFavorite = isFavorite;
+                      setIsFavorite(!isFavorite);
+                      
+                      try {
+                        const { resolveApiUrl } = await import("../config/api");
+                        if (previousFavorite) {
+                          // Remove from favourites
+                          const response = await fetch(
+                            resolveApiUrl(`/api/auth/favourites/${service._id}`),
+                            {
+                              method: 'DELETE',
+                              credentials: 'include',
+                            }
+                          );
+                          if (response.ok) {
+                            toast.success("Removed from favourites");
+                          } else {
+                            // Rollback on error
+                            setIsFavorite(previousFavorite);
+                            throw new Error("Failed to remove from favourites");
+                          }
+                        } else {
+                          // Add to favourites
+                          const response = await fetch(
+                            resolveApiUrl(`/api/auth/favourites/${service._id}`),
+                            {
+                              method: 'POST',
+                              credentials: 'include',
+                            }
+                          );
+                          if (response.ok) {
+                            toast.success("Added to favourites");
+                          } else {
+                            // Rollback on error
+                            setIsFavorite(previousFavorite);
+                            throw new Error("Failed to add to favourites");
+                          }
+                        }
+                      } catch (error: any) {
+                        toast.error(error.message || "Failed to update favourites");
+                      }
+                    }}
                     className={`border-2 ${isFavorite ? 'border-[#FE8A0F] bg-[#FFF5EB]' : 'border-gray-300'}`}
                   >
                     <Heart className={`w-4 h-4 ${isFavorite ? 'fill-[#FE8A0F] text-[#FE8A0F]' : ''}`} />

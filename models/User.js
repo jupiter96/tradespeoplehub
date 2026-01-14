@@ -473,6 +473,11 @@ const userSchema = new mongoose.Schema(
         trim: true,
       },
     },
+    // Favourite services (array of service IDs)
+    favourites: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Service',
+    }],
   },
   {
     timestamps: true,

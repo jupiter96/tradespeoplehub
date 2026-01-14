@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Star, ChevronLeft, ChevronRight, Grid, List, Heart, MapPin, BadgeCheck, Medal, Play } from "lucide-react";
+import { toast } from "sonner@2.0.3";
 import ServicesBannerSection from "./ServicesBannerSection";
 import type { Service as ServiceDataType } from "./servicesData";
+import { useAccount } from "./AccountContext";
+import { resolveApiUrl } from "../config/api";
 import {
   Carousel,
   CarouselContent,
@@ -233,9 +236,32 @@ type ViewMode = 'pane' | 'list';
 
 function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGridProps & { initialCount?: number }) {
   const navigate = useNavigate();
+  const { isLoggedIn, userRole } = useAccount();
   const [visibleCount, setVisibleCount] = useState(initialCount);
   const [viewMode, setViewMode] = useState<ViewMode>('pane');
-  const [likedServices, setLikedServices] = useState<Set<number>>(new Set());
+  const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
+  
+  // Fetch favourites on mount (only for logged-in clients)
+  useEffect(() => {
+    const fetchFavourites = async () => {
+      if (!isLoggedIn || userRole !== 'client') return;
+      
+      try {
+        const response = await fetch(resolveApiUrl('/api/auth/favourites'), {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const favouriteIds = new Set((data.favourites || []).map((fav: any) => fav._id || fav.id || fav));
+          setLikedServices(favouriteIds);
+        }
+      } catch (error) {
+        // Silently fail - favourite check is not critical
+      }
+    };
+    
+    fetchFavourites();
+  }, [isLoggedIn, userRole]);
 
   const handleViewMore = () => {
     setVisibleCount(prev => Math.min(prev + 8, services.length));
@@ -246,17 +272,75 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
     navigate(`/service/${identifier}`);
   };
 
-  const toggleLike = (e: React.MouseEvent, serviceId: number) => {
+  const toggleLike = async (e: React.MouseEvent, service: ServiceDataType) => {
     e.stopPropagation();
+    
+    if (!isLoggedIn || userRole !== 'client') {
+      toast.error("Please login as a client to add favourites", {
+        action: {
+          label: "Login",
+          onClick: () => navigate("/login"),
+        },
+      });
+      return;
+    }
+    
+    const serviceId = (service as any)._id || service.id;
+    if (!serviceId) return;
+    
+    const serviceIdStr = String(serviceId);
+    const isCurrentlyLiked = likedServices.has(serviceIdStr);
+    
+    // Optimistic update: immediately update UI
     setLikedServices(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(serviceId)) {
-        newSet.delete(serviceId);
+      if (isCurrentlyLiked) {
+        newSet.delete(serviceIdStr);
       } else {
-        newSet.add(serviceId);
+        newSet.add(serviceIdStr);
       }
       return newSet;
     });
+    
+    try {
+      if (isCurrentlyLiked) {
+        // Remove from favourites
+        const response = await fetch(resolveApiUrl(`/api/auth/favourites/${serviceIdStr}`), {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          toast.success("Removed from favourites");
+        } else {
+          // Rollback on error
+          setLikedServices(prev => {
+            const newSet = new Set(prev);
+            newSet.add(serviceIdStr);
+            return newSet;
+          });
+          throw new Error("Failed to remove from favourites");
+        }
+      } else {
+        // Add to favourites
+        const response = await fetch(resolveApiUrl(`/api/auth/favourites/${serviceIdStr}`), {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          toast.success("Added to favourites");
+        } else {
+          // Rollback on error
+          setLikedServices(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(serviceIdStr);
+            return newSet;
+          });
+          throw new Error("Failed to add to favourites");
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update favourites");
+    }
   };
 
   const hasMore = visibleCount < services.length;
@@ -350,11 +434,11 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   
                   {/* Heart Icon - Top Right */}
                   <button
-                    onClick={(e) => toggleLike(e, service.id)}
+                    onClick={(e) => toggleLike(e, service)}
                     className="absolute top-2 md:top-3 right-2 md:right-3 bg-white rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"
                   >
                     <Heart 
-                      className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                      className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-[#FE8A0F] text-[#FE8A0F]' : 'text-gray-600'}`}
                     />
                   </button>
                 </div>
@@ -678,12 +762,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      toggleLike(e, service.id);
+                      toggleLike(e, service);
                     }}
                     className="absolute top-2 right-2 bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"
                   >
                     <Heart 
-                      className={`w-3.5 h-3.5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                      className={`w-3.5 h-3.5 ${isLiked ? 'fill-[#FE8A0F] text-[#FE8A0F]' : 'text-gray-600'}`}
                     />
                   </button>
                       </div>
@@ -905,24 +989,105 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 // Service Carousel Component for Best Sellers
 function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
   const navigate = useNavigate();
-  const [likedServices, setLikedServices] = useState<Set<number>>(new Set());
+  const { isLoggedIn, userRole } = useAccount();
+  const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
+  
+  // Fetch favourites on mount (only for logged-in clients)
+  useEffect(() => {
+    const fetchFavourites = async () => {
+      if (!isLoggedIn || userRole !== 'client') return;
+      
+      try {
+        const response = await fetch(resolveApiUrl('/api/auth/favourites'), {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const favouriteIds = new Set((data.favourites || []).map((fav: any) => fav._id || fav.id || fav));
+          setLikedServices(favouriteIds);
+        }
+      } catch (error) {
+        // Silently fail - favourite check is not critical
+      }
+    };
+    
+    fetchFavourites();
+  }, [isLoggedIn, userRole]);
 
   const handleServiceClick = (service: Service) => {
     const identifier = service.slug || service._id || service.id;
     navigate(`/service/${identifier}`);
   };
 
-  const toggleLike = (e: React.MouseEvent, serviceId: number) => {
+  const toggleLike = async (e: React.MouseEvent, service: ServiceDataType) => {
     e.stopPropagation();
+    
+    if (!isLoggedIn || userRole !== 'client') {
+      toast.error("Please login as a client to add favourites", {
+        action: {
+          label: "Login",
+          onClick: () => navigate("/login"),
+        },
+      });
+      return;
+    }
+    
+    const serviceId = (service as any)._id || service.id;
+    if (!serviceId) return;
+    
+    const serviceIdStr = String(serviceId);
+    const isCurrentlyLiked = likedServices.has(serviceIdStr);
+    
+    // Optimistic update: immediately update UI
     setLikedServices(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(serviceId)) {
-        newSet.delete(serviceId);
+      if (isCurrentlyLiked) {
+        newSet.delete(serviceIdStr);
       } else {
-        newSet.add(serviceId);
+        newSet.add(serviceIdStr);
       }
       return newSet;
     });
+    
+    try {
+      if (isCurrentlyLiked) {
+        // Remove from favourites
+        const response = await fetch(resolveApiUrl(`/api/auth/favourites/${serviceIdStr}`), {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          toast.success("Removed from favourites");
+        } else {
+          // Rollback on error
+          setLikedServices(prev => {
+            const newSet = new Set(prev);
+            newSet.add(serviceIdStr);
+            return newSet;
+          });
+          throw new Error("Failed to remove from favourites");
+        }
+      } else {
+        // Add to favourites
+        const response = await fetch(resolveApiUrl(`/api/auth/favourites/${serviceIdStr}`), {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          toast.success("Added to favourites");
+        } else {
+          // Rollback on error
+          setLikedServices(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(serviceIdStr);
+            return newSet;
+          });
+          throw new Error("Failed to add to favourites");
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update favourites");
+    }
   };
 
   return (
@@ -948,7 +1113,8 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
               const bestSeller = isBestSeller(service);
               const purchaseStatsText = getPurchaseStats(service);
               const categoryTag = getCategoryTag(service);
-              const isLiked = likedServices.has(service.id);
+              const serviceId = (service as any)._id || service.id;
+              const isLiked = likedServices.has(String(serviceId));
               const verified = isVerified(service);
               const topRated = hasTopRated(service);
               
@@ -985,11 +1151,11 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                       
                       {/* Heart Icon - Top Right */}
                       <button
-                        onClick={(e) => toggleLike(e, service.id)}
+                        onClick={(e) => toggleLike(e, service)}
                         className="absolute top-2 md:top-3 right-2 md:right-3 bg-white rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"
                       >
                         <Heart 
-                          className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                          className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-[#FE8A0F] text-[#FE8A0F]' : 'text-gray-600'}`}
                         />
                       </button>
                   </div>

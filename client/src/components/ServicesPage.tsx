@@ -1,7 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useSearchParams, Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner@2.0.3";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
+import { useAccount } from "./AccountContext";
+import { resolveApiUrl } from "../config/api";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 // Import icons from lucide-react
 import { 
@@ -265,6 +268,7 @@ const geocodePostcode = (postcode: string): { latitude: number; longitude: numbe
 
 export default function ServicesPage() {
   const { addToCart } = useCart();
+  const { isLoggedIn, userRole } = useAccount();
   const navigate = useNavigate();
   const { sectorSlug: sectorSlugFromPath, serviceCategorySlug: serviceCategorySlugFromPath, '*': serviceSubCategorySplat } =
     useParams<{
@@ -323,19 +327,99 @@ export default function ServicesPage() {
   const [selectedServiceForCart, setSelectedServiceForCart] = useState<Service | null>(null);
   
   // Liked services
-  const [likedServices, setLikedServices] = useState<Set<number>>(new Set());
+  const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
   
-  const toggleLike = (e: React.MouseEvent, serviceId: number) => {
+  // Fetch favourites on mount (only for logged-in clients)
+  useEffect(() => {
+    const fetchFavourites = async () => {
+      if (!isLoggedIn || userRole !== 'client') return;
+      
+      try {
+        const response = await fetch(resolveApiUrl('/api/auth/favourites'), {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const favouriteIds = new Set((data.favourites || []).map((fav: any) => fav._id || fav.id || fav));
+          setLikedServices(favouriteIds);
+        }
+      } catch (error) {
+        // Silently fail - favourite check is not critical
+      }
+    };
+    
+    fetchFavourites();
+  }, [isLoggedIn, userRole]);
+  
+  const toggleLike = async (e: React.MouseEvent, service: any) => {
     e.stopPropagation();
+    
+    if (!isLoggedIn || userRole !== 'client') {
+      toast.error("Please login as a client to add favourites", {
+        action: {
+          label: "Login",
+          onClick: () => navigate("/login"),
+        },
+      });
+      return;
+    }
+    
+    const serviceId = service._id || service.id;
+    if (!serviceId) return;
+    
+    const serviceIdStr = String(serviceId);
+    const isCurrentlyLiked = likedServices.has(serviceIdStr);
+    
+    // Optimistic update: immediately update UI
     setLikedServices(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(serviceId)) {
-        newSet.delete(serviceId);
+      if (isCurrentlyLiked) {
+        newSet.delete(serviceIdStr);
       } else {
-        newSet.add(serviceId);
+        newSet.add(serviceIdStr);
       }
       return newSet;
     });
+    
+    try {
+      if (isCurrentlyLiked) {
+        // Remove from favourites
+        const response = await fetch(resolveApiUrl(`/api/auth/favourites/${serviceIdStr}`), {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          toast.success("Removed from favourites");
+        } else {
+          // Rollback on error
+          setLikedServices(prev => {
+            const newSet = new Set(prev);
+            newSet.add(serviceIdStr);
+            return newSet;
+          });
+          throw new Error("Failed to remove from favourites");
+        }
+      } else {
+        // Add to favourites
+        const response = await fetch(resolveApiUrl(`/api/auth/favourites/${serviceIdStr}`), {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          toast.success("Added to favourites");
+        } else {
+          // Rollback on error
+          setLikedServices(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(serviceIdStr);
+            return newSet;
+          });
+          throw new Error("Failed to add to favourites");
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update favourites");
+    }
   };
   
   // Location-based filtering
@@ -2656,7 +2740,8 @@ export default function ServicesPage() {
                   const bestSeller = isBestSeller(service);
                   const purchaseStatsText = getPurchaseStats(service);
                   const categoryTag = getCategoryTag(service);
-                  const isLiked = likedServices.has(service.id);
+                  const serviceId = service._id || service.id;
+                  const isLiked = likedServices.has(String(serviceId));
                   const verified = isVerified(service);
                   const topRated = hasTopRated(service);
                   
@@ -2693,11 +2778,11 @@ export default function ServicesPage() {
                       
                       {/* Heart Icon - Top Right */}
                       <button
-                        onClick={(e) => toggleLike(e, service.id)}
+                        onClick={(e) => toggleLike(e, service)}
                         className="absolute top-2 md:top-3 right-2 md:right-3 bg-white rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"
                       >
                         <Heart 
-                          className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                          className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-[#FE8A0F] text-[#FE8A0F]' : 'text-gray-600'}`}
                         />
                       </button>
                               </div>

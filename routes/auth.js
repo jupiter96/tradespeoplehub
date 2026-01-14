@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
+import Service from '../models/Service.js';
 import Review from '../models/Review.js';
 import PendingRegistration from '../models/PendingRegistration.js';
 import SEOContent from '../models/SEOContent.js';
@@ -4122,6 +4123,119 @@ router.get('/profile/:identifier', async (req, res) => {
   } catch (error) {
     // console.error('Get public profile error', error);
     return res.status(500).json({ error: 'Failed to get profile' });
+  }
+});
+
+// Favourites endpoints
+// Get user's favourite services
+router.get('/favourites', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId).populate({
+      path: 'favourites',
+      match: { status: { $ne: 'deleted' } }, // Only get non-deleted services
+      select: '-__v'
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const favouriteServices = (user.favourites || []).filter(Boolean); // Filter out nulls
+    
+    return res.json({ favourites: favouriteServices });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch favourites' });
+  }
+});
+
+// Add service to favourites
+router.post('/favourites/:serviceId', requireAuth, async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(serviceId)) {
+      return res.status(400).json({ error: 'Invalid service ID' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if service exists
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // Initialize favourites array if it doesn't exist
+    if (!user.favourites) {
+      user.favourites = [];
+    }
+
+    // Check if already in favourites
+    if (user.favourites.some(id => id.toString() === serviceId)) {
+      return res.json({ message: 'Service already in favourites', isFavourite: true });
+    }
+
+    // Add to favourites
+    user.favourites.push(serviceId);
+    await user.save();
+
+    return res.json({ message: 'Service added to favourites', isFavourite: true });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to add to favourites' });
+  }
+});
+
+// Remove service from favourites
+router.delete('/favourites/:serviceId', requireAuth, async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(serviceId)) {
+      return res.status(400).json({ error: 'Invalid service ID' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Initialize favourites array if it doesn't exist
+    if (!user.favourites) {
+      user.favourites = [];
+    }
+
+    // Remove from favourites
+    user.favourites = user.favourites.filter(id => id.toString() !== serviceId);
+    await user.save();
+
+    return res.json({ message: 'Service removed from favourites', isFavourite: false });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to remove from favourites' });
+  }
+});
+
+// Check if service is in favourites
+router.get('/favourites/check/:serviceId', requireAuth, async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(serviceId)) {
+      return res.json({ isFavourite: false });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.json({ isFavourite: false });
+    }
+
+    const isFavourite = (user.favourites || []).some(id => id.toString() === serviceId);
+    
+    return res.json({ isFavourite });
+  } catch (error) {
+    return res.json({ isFavourite: false });
   }
 });
 
