@@ -123,7 +123,9 @@ export default function AdminServicesPage({
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [isModificationDialogOpen, setIsModificationDialogOpen] = useState(false);
+  const [isDeniedDialogOpen, setIsDeniedDialogOpen] = useState(false);
   const [modificationReason, setModificationReason] = useState("");
+  const [deniedReason, setDeniedReason] = useState("");
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject" | "request_modification">("approve");
   const [newStatus, setNewStatus] = useState<"pending" | "required_modification" | "denied" | "paused" | "inactive" | "approved">("approved");
   const [page, setPage] = useState(1);
@@ -233,7 +235,13 @@ export default function AdminServicesPage({
   const handleStatusChange = (service: Service, newStatus: "pending" | "required_modification" | "denied" | "paused" | "inactive" | "approved") => {
     setSelectedService(service);
     setNewStatus(newStatus as any);
-    setIsStatusDialogOpen(true);
+    if (newStatus === "denied") {
+      setIsDeniedDialogOpen(true);
+    } else if (newStatus === "required_modification") {
+      setIsModificationDialogOpen(true);
+    } else {
+      setIsStatusDialogOpen(true);
+    }
   };
 
   const confirmStatusChange = async () => {
@@ -246,8 +254,8 @@ export default function AdminServicesPage({
         statusToSet = "approved";
       }
 
-      // For required_modification, use approval endpoint to allow modificationReason
-      if (statusToSet === "required_modification") {
+      // For required_modification or denied, use approval endpoint to allow reason
+      if (statusToSet === "required_modification" || statusToSet === "denied") {
         const response = await fetch(
           resolveApiUrl(`/api/services/${selectedService._id}/approval`),
           {
@@ -258,7 +266,9 @@ export default function AdminServicesPage({
             credentials: "include",
             body: JSON.stringify({ 
               status: statusToSet,
-              modificationReason: modificationReason || "Status changed to Required Modification"
+              ...(statusToSet === "required_modification" 
+                ? { modificationReason: modificationReason || "Status changed to Required Modification" }
+                : { deniedReason: deniedReason || "Service denied" })
             }),
           }
         );
@@ -270,7 +280,12 @@ export default function AdminServicesPage({
           setServices(prevServices => 
             prevServices.map(s => 
               s._id === selectedService._id 
-                ? { ...s, status: statusToSet, modificationReason: updatedService.service?.modificationReason || s.modificationReason }
+                ? { 
+                    ...s, 
+                    status: statusToSet, 
+                    modificationReason: updatedService.service?.modificationReason || s.modificationReason,
+                    deniedReason: updatedService.service?.deniedReason || (s as any).deniedReason
+                  }
                 : s
             )
           );
@@ -329,8 +344,10 @@ export default function AdminServicesPage({
     } finally {
       setIsStatusDialogOpen(false);
       setIsModificationDialogOpen(false);
+      setIsDeniedDialogOpen(false);
       setSelectedService(null);
       setModificationReason("");
+      setDeniedReason("");
     }
   };
 
@@ -759,7 +776,11 @@ export default function AdminServicesPage({
                                   )}
                                   {service.status !== "denied" && (
                                     <DropdownMenuItem
-                                      onClick={() => handleStatusChange(service, "denied")}
+                                      onClick={() => {
+                                        setSelectedService(service);
+                                        setNewStatus("denied");
+                                        setIsDeniedDialogOpen(true);
+                                      }}
                                       className="text-red-600"
                                     >
                                       <XCircle className="w-4 h-4 mr-2" />
@@ -953,6 +974,44 @@ export default function AdminServicesPage({
               className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif] disabled:opacity-50"
             >
               Change Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Denied Dialog */}
+      <Dialog open={isDeniedDialogOpen} onOpenChange={setIsDeniedDialogOpen}>
+        <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] text-[#2c353f]">Deny Service</DialogTitle>
+            <DialogDescription className="text-[14px] text-[#6b6b6b]">
+              Please provide a reason for denying "{selectedService?.title}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="deniedReason" className="text-[14px] text-[#2c353f] mb-2 block">
+                Denial Reason <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="deniedReason"
+                value={deniedReason}
+                onChange={(e) => setDeniedReason(e.target.value)}
+                placeholder="Please specify why this service is being denied..."
+                className="min-h-[120px] font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#FE8A0F] focus:ring-[#FE8A0F]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeniedDialogOpen(false)} className="font-['Poppins',sans-serif]">
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmStatusChange}
+              disabled={!deniedReason.trim()}
+              className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50"
+            >
+              Deny Service
             </Button>
           </DialogFooter>
         </DialogContent>

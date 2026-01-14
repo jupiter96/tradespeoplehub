@@ -2858,7 +2858,7 @@ function BillingSection() {
   };
 
   const handleAddCardSuccess = async () => {
-    await fetchPaymentMethods();
+    await fetchFundPaymentMethods();
     setShowAddCardModal(false);
   };
 
@@ -7121,6 +7121,7 @@ function ServicesSection() {
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
   const [isCreatePackageOpen, setIsCreatePackageOpen] = useState(false);
   const [isModificationReasonDialogOpen, setIsModificationReasonDialogOpen] = useState(false);
+  const [isDeniedReasonDialogOpen, setIsDeniedReasonDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   const [isToggleDisableDialogOpen, setIsToggleDisableDialogOpen] = useState(false);
@@ -7732,9 +7733,24 @@ function ServicesSection() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={`${getStatusBadge(statusDisplay)} border font-['Poppins',sans-serif] text-[11px]`}>
-                              {statusDisplay}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`${getStatusBadge(statusDisplay)} border font-['Poppins',sans-serif] text-[11px]`}>
+                                {statusDisplay}
+                              </Badge>
+                              {service.status === 'denied' && service.deniedReason && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedService(service);
+                                    setIsDeniedReasonDialogOpen(true);
+                                  }}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-colors"
+                                  title="View denial reason"
+                                >
+                                  <AlertCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -8232,9 +8248,24 @@ function ServicesSection() {
                               £{service.price?.toFixed(2) || "0.00"}
                             </TableCell>
                             <TableCell>
-                              <Badge className={`font-['Poppins',sans-serif] text-[11px] ${getStatusBadge(service.status)}`}>
-                                {getStatusLabel(service.status)}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge className={`font-['Poppins',sans-serif] text-[11px] ${getStatusBadge(service.status)}`}>
+                                  {getStatusLabel(service.status)}
+                                </Badge>
+                                {service.status === 'denied' && service.deniedReason && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedService(service);
+                                      setIsDeniedReasonDialogOpen(true);
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-colors"
+                                    title="View denial reason"
+                                  >
+                                    <AlertCircle className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -8394,6 +8425,46 @@ function ServicesSection() {
                   ) : (
                     "Delete"
                   )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Denied Reason Dialog */}
+          <Dialog
+            open={isDeniedReasonDialogOpen}
+            onOpenChange={(open) => {
+              setIsDeniedReasonDialogOpen(open);
+              if (!open) {
+                setSelectedService(null);
+              }
+            }}
+          >
+            <DialogContent className="font-['Poppins',sans-serif] max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-[18px] text-[#2c353f] flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  Service Denied
+                </DialogTitle>
+                <DialogDescription className="text-[14px] text-[#6b6b6b]">
+                  Your service "{selectedService?.title || "Unknown"}" has been denied.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-[14px] text-[#2c353f] font-medium mb-2">Reason:</p>
+                <p className="text-[14px] text-[#6b6b6b] whitespace-pre-wrap">
+                  {selectedService?.deniedReason || "No reason provided."}
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <Button
+                  onClick={() => {
+                    setIsDeniedReasonDialogOpen(false);
+                    setSelectedService(null);
+                  }}
+                  className="bg-[#FE8A0F] hover:bg-[#FF9E2C] text-white font-['Poppins',sans-serif]"
+                >
+                  Understood
                 </Button>
               </div>
             </DialogContent>

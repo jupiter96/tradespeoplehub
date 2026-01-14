@@ -314,6 +314,11 @@ const serviceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Denied reason from admin
+    deniedReason: {
+      type: String,
+      trim: true,
+    },
     // Admin who reviewed the service
     reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,

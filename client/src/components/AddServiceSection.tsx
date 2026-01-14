@@ -4592,7 +4592,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             </div>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 px-6 [&_[data-slot=scroll-area-scrollbar]]:w-2.5 [&_[data-slot=scroll-area-scrollbar]]:bg-gray-100 [&_[data-slot=scroll-area-thumb]]:bg-[#FE8A0F] [&_[data-slot=scroll-area-thumb]]:rounded-full [&_[data-slot=scroll-area-thumb]]:hover:bg-[#FFB347]">
+          <ScrollArea className="h-[600px] px-6 [&_[data-slot=scroll-area-scrollbar]]:w-2.5 [&_[data-slot=scroll-area-scrollbar]]:bg-gray-100 [&_[data-slot=scroll-area-scrollbar]]:!opacity-100 [&_[data-slot=scroll-area-scrollbar]]:!pointer-events-auto [&_[data-slot=scroll-area-thumb]]:!bg-[#FE8A0F] [&_[data-slot=scroll-area-thumb]]:rounded-full [&_[data-slot=scroll-area-thumb]]:hover:!bg-[#FFB347]">
             {/* Service Details Tab */}
             <TabsContent value="service-details" className="mt-0 py-6">
               <div className="space-y-6">
@@ -6268,7 +6268,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           </ScrollArea>
 
           {/* Footer Actions */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white flex-shrink-0 rounded-[15px]">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white flex-shrink-0 rounded-b-2xl">
             {!isFirstTab() && (
               <Button
                 variant="outline"

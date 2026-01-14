@@ -1108,6 +1108,13 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
       service.reviewedBy = null;
       service.reviewedAt = null;
     }
+    // If service was denied and pro updates the service, send back to pending review
+    else if (originalStatus === 'denied') {
+      service.status = 'pending';
+      service.deniedReason = null;
+      service.reviewedBy = null;
+      service.reviewedAt = null;
+    }
     // If service was approved and content fields were changed, send back to pending for admin review
     else if (originalStatus === 'approved' && contentFieldsChanged && !isDraftUpdate) {
       service.status = 'pending';
@@ -1275,7 +1282,7 @@ router.patch('/:id/toggle-disable', authenticateToken, requireRole(['professiona
 router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { approvalStatus, status: desiredStatus, modificationReason } = req.body;
+    const { approvalStatus, status: desiredStatus, modificationReason, deniedReason } = req.body;
 
     // Find service
     const service = await Service.findById(id);
@@ -1299,6 +1306,11 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
       service.modificationReason = modificationReason || null;
     }
 
+    // Update denied reason if provided
+    if (deniedReason !== undefined) {
+      service.deniedReason = deniedReason || null;
+    }
+
     // Set review information
     service.reviewedBy = req.user.id;
     service.reviewedAt = new Date();
@@ -1306,6 +1318,11 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
     // Keep modification reason only for required_modification
     if (service.status !== 'required_modification') {
       service.modificationReason = null;
+    }
+
+    // Keep denied reason only for denied
+    if (service.status !== 'denied') {
+      service.deniedReason = null;
     }
 
     // Automatically set isActive based on status
@@ -1372,7 +1389,7 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
                 serviceId: service._id.toString(),
                 serviceSlug: service.slug,
                 categoryName: service.serviceCategory?.name || 'Service',
-                rejectionReason: service.modificationReason || 'Your listing did not meet our requirements. Please review our guidelines and try again.',
+                rejectionReason: service.deniedReason || service.modificationReason || 'Your listing did not meet our requirements. Please review our guidelines and try again.',
                 rejectedDate: new Date().toLocaleDateString('en-GB', { 
                   year: 'numeric', 
                   month: 'long', 
@@ -1386,7 +1403,7 @@ router.patch('/:id/approval', authenticateToken, requireRole(['admin', 'subadmin
             );
           }
           // Create in-app notification
-          await notifyListingRejected(service.professional._id, service._id, service.title, service.modificationReason);
+          await notifyListingRejected(service.professional._id, service._id, service.title, service.deniedReason || service.modificationReason);
         } else if (service.status === 'required_modification') {
           // Send modification required email
           if (service.professional.email) {
