@@ -398,7 +398,9 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
             const bestSeller = isBestSeller(service);
             const purchaseStatsText = getPurchaseStats(service);
             const categoryTag = getCategoryTag(service);
-            const isLiked = likedServices.has(service.id);
+            const serviceId = (service as any)._id || service.id;
+            const serviceIdStr = String(serviceId);
+            const isLiked = likedServices.has(serviceIdStr);
             const verified = isVerified(service);
             const topRated = hasTopRated(service);
             
@@ -723,7 +725,9 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
             const bestSeller = isBestSeller(service);
             const purchaseStatsText = getPurchaseStats(service);
             const categoryTag = getCategoryTag(service);
-            const isLiked = likedServices.has(service.id);
+            const serviceId = (service as any)._id || service.id;
+            const serviceIdStr = String(serviceId);
+            const isLiked = likedServices.has(serviceIdStr);
             const verified = isVerified(service);
             const topRated = hasTopRated(service);
             
