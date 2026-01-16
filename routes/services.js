@@ -463,11 +463,13 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('[Service API] GET /api/services/:id - Requested ID:', id, 'Type:', typeof id);
 
     // Try to find by slug first (if it's not a MongoDB ObjectId)
     let service;
     if (id.match(/^[0-9a-fA-F]{24}$/)) {
       // It's a MongoDB ObjectId, find by ID
+      console.log('[Service API] ID is MongoDB ObjectId format, searching by _id');
       const doc = await Service.findById(id);
       if (doc && !doc.slug) {
         const newSlug = await buildUniqueServiceSlug({ title: doc.title, excludeId: doc._id });
@@ -504,11 +506,14 @@ router.get('/:id', async (req, res) => {
             service.professional.publicProfile.portfolio = fullUser.publicProfile.portfolio;
           }
         }
+        console.log('[Service API] Service found by ObjectId:', service._id);
       } else {
         service = null;
+        console.log('[Service API] Service not found by ObjectId');
       }
     } else {
-      // It's likely a slug, find by slug
+      // It's likely a slug or numeric ID, find by slug first
+      console.log('[Service API] ID is not ObjectId format, searching by slug:', id);
       service = await Service.findOne({ slug: id })
         .populate([
           { 
@@ -529,6 +534,7 @@ router.get('/:id', async (req, res) => {
       
       // Debug: Log professional portfolio data
       if (service) {
+        console.log('[Service API] Service found by slug:', service._id);
         // If portfolio is not populated, fetch it separately
         if (service.professional && (!service.professional.publicProfile?.portfolio || service.professional.publicProfile.portfolio.length === 0)) {
           const fullUser = await User.findById(service.professional._id).select('publicProfile.portfolio').lean();
@@ -542,52 +548,66 @@ router.get('/:id', async (req, res) => {
       }
       
       // If not found by slug, try by ID as fallback (for backward compatibility)
-      if (!service) {
-        const doc = await Service.findById(id);
-        if (doc && !doc.slug) {
-          const newSlug = await buildUniqueServiceSlug({ title: doc.title, excludeId: doc._id });
-          if (newSlug) {
-            doc.slug = newSlug;
-            await doc.save();
-          }
-        }
-        if (doc) {
-          await doc.populate([
-            { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
-            { 
-              path: 'serviceCategory', 
-              select: 'name slug icon bannerImage sector',
-              populate: {
-                path: 'sector',
-                select: 'name slug'
-              }
-            },
-            { path: 'serviceSubCategory', select: 'name slug icon' },
-          ]);
-          service = doc.toObject();
-          // If portfolio is not populated, fetch it separately
-          if (service.professional && (!service.professional.publicProfile?.portfolio || service.professional.publicProfile.portfolio.length === 0)) {
-            const fullUser = await User.findById(service.professional._id).select('publicProfile.portfolio').lean();
-            if (fullUser?.publicProfile?.portfolio) {
-              if (!service.professional.publicProfile) {
-                service.professional.publicProfile = {};
-              }
-              service.professional.publicProfile.portfolio = fullUser.publicProfile.portfolio;
+      // But only if it's a valid ObjectId format (to avoid CastError)
+      if (!service && id.match(/^[0-9a-fA-F]{24}$/)) {
+        console.log('[Service API] Service not found by slug, trying ObjectId as fallback');
+        try {
+          const doc = await Service.findById(id);
+          if (doc && !doc.slug) {
+            const newSlug = await buildUniqueServiceSlug({ title: doc.title, excludeId: doc._id });
+            if (newSlug) {
+              doc.slug = newSlug;
+              await doc.save();
             }
           }
-        } else {
+          if (doc) {
+            await doc.populate([
+              { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
+              { 
+                path: 'serviceCategory', 
+                select: 'name slug icon bannerImage sector',
+                populate: {
+                  path: 'sector',
+                  select: 'name slug'
+                }
+              },
+              { path: 'serviceSubCategory', select: 'name slug icon' },
+            ]);
+            service = doc.toObject();
+            // If portfolio is not populated, fetch it separately
+            if (service.professional && (!service.professional.publicProfile?.portfolio || service.professional.publicProfile.portfolio.length === 0)) {
+              const fullUser = await User.findById(service.professional._id).select('publicProfile.portfolio').lean();
+              if (fullUser?.publicProfile?.portfolio) {
+                if (!service.professional.publicProfile) {
+                  service.professional.publicProfile = {};
+                }
+                service.professional.publicProfile.portfolio = fullUser.publicProfile.portfolio;
+              }
+            }
+            console.log('[Service API] Service found by ObjectId fallback:', service._id);
+          } else {
+            service = null;
+            console.log('[Service API] Service not found by ObjectId fallback');
+          }
+        } catch (findByIdError) {
+          console.error('[Service API] Error trying to find by ObjectId:', findByIdError.message);
           service = null;
         }
+      } else if (!service) {
+        console.log('[Service API] Service not found by slug and ID is not valid ObjectId format');
       }
     }
 
     if (!service) {
+      console.log('[Service API] Service not found, returning 404');
       return res.status(404).json({ error: 'Service not found' });
     }
 
+    console.log('[Service API] Service found successfully, returning service data');
     return res.json({ service });
   } catch (error) {
-    // console.error('Get service error', error);
+    console.error('[Service API] Get service error:', error);
+    console.error('[Service API] Error stack:', error.stack);
     return res.status(500).json({ error: error.message || 'Failed to fetch service' });
   }
 });

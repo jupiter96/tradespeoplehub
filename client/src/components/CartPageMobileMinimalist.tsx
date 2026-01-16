@@ -6,7 +6,8 @@ import {
   Briefcase,
   X,
   Plus,
-  CreditCard
+  CreditCard,
+  Landmark
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -27,11 +28,13 @@ interface Address {
 
 interface PaymentMethod {
   id: string;
-  type: "card";
-  cardNumber: string;
-  cardHolder: string;
-  expiryDate: string;
+  type: "account_balance" | "card" | "paypal" | "bank_transfer";
+  cardNumber?: string;
+  cardHolder?: string;
+  expiryDate?: string;
   isDefault?: boolean;
+  balance?: number; // For account_balance
+  brand?: string; // Card brand (visa, mastercard, etc.) from Stripe
 }
 
 interface CartItem {
@@ -57,8 +60,8 @@ interface Props {
   setSkipAddress: (value: boolean) => void;
   onPlaceOrder: () => void;
   subtotal: number;
-  deliveryFee: number;
   discount: number;
+  serviceFee?: number;
   total: number;
   appliedPromo: string | null;
   onApplyPromo: (code: string) => void;
@@ -84,7 +87,10 @@ const MastercardLogo = () => (
   </svg>
 );
 
-const getCardType = (cardNumber: string): 'visa' | 'mastercard' => {
+const getCardType = (cardNumber?: string): 'visa' | 'mastercard' => {
+  if (!cardNumber || typeof cardNumber !== 'string' || cardNumber.length < 4) {
+    return 'visa'; // Default to visa if cardNumber is invalid
+  }
   const lastFourDigits = cardNumber.slice(-4);
   if (lastFourDigits === '4242' || lastFourDigits.startsWith('4')) return 'visa';
   return 'mastercard';
@@ -102,8 +108,8 @@ export default function CartPageMobileMinimalist({
   setSkipAddress,
   onPlaceOrder,
   subtotal,
-  deliveryFee,
   discount,
+  serviceFee = 0,
   total,
   appliedPromo,
   onApplyPromo,
@@ -271,18 +277,51 @@ export default function CartPageMobileMinimalist({
         {/* Selected Payment Method */}
         {selectedPaymentData && (
           <div className="flex items-center gap-3">
-            <div className="shrink-0 scale-75">
-              {getCardType(selectedPaymentData.cardNumber) === 'visa' ? (
-                <VisaLogo />
-              ) : (
-                <MastercardLogo />
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                •••• •••• {selectedPaymentData.cardNumber.slice(-4)}
-              </p>
-            </div>
+            {selectedPaymentData.type === "card" && selectedPaymentData.cardNumber && (
+              <>
+                <div className="shrink-0 scale-75">
+                  {getCardType(selectedPaymentData.brand, selectedPaymentData.cardNumber) === 'visa' ? (
+                    <VisaLogo />
+                  ) : (
+                    <MastercardLogo />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                    •••• •••• {selectedPaymentData.cardNumber.slice(-4)}
+                  </p>
+                </div>
+              </>
+            )}
+            {selectedPaymentData.type === "account_balance" && (
+              <div className="flex-1">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  Account Balance
+                </p>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                  Available: £{selectedPaymentData.balance?.toFixed(2) || '0.00'}
+                </p>
+              </div>
+            )}
+            {selectedPaymentData.type === "paypal" && (
+              <div className="flex-1">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  PayPal
+                </p>
+              </div>
+            )}
+            {selectedPaymentData.type === "bank_transfer" && (
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-6 flex items-center justify-center bg-white rounded shrink-0 border border-gray-200">
+                  <Landmark className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                    Bank Transfer
+                  </p>
+                </div>
+              </div>
+            )}
             <button
               onClick={() => setShowPaymentSection(!showPaymentSection)}
               className="font-['Poppins',sans-serif] text-[13px] text-[#3B82F6]"
@@ -304,21 +343,62 @@ export default function CartPageMobileMinimalist({
                 }`}>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value={method.id} id={`payment-${method.id}`} />
+                    {method.type === "card" && method.cardNumber && (
+                      <>
                     <div className="shrink-0 scale-75">
-                      {getCardType(method.cardNumber) === 'visa' ? (
+                      {getCardType(method.brand, method.cardNumber) === 'visa' ? (
                         <VisaLogo />
                       ) : (
                         <MastercardLogo />
                       )}
                     </div>
-                    <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                        {method.cardNumber}
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                        Exp. {method.expiryDate}
-                      </p>
-                    </Label>
+                        <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                            {method.cardNumber}
+                          </p>
+                          {method.expiryDate && (
+                            <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                              Exp. {method.expiryDate}
+                            </p>
+                          )}
+                        </Label>
+                      </>
+                    )}
+                    {method.type === "account_balance" && (
+                      <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                          Account Balance
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                          Available: £{method.balance?.toFixed(2) || '0.00'}
+                        </p>
+                      </Label>
+                    )}
+                    {method.type === "paypal" && (
+                      <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                          PayPal
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                          Pay securely with PayPal
+                        </p>
+                      </Label>
+                    )}
+                    {method.type === "bank_transfer" && (
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="w-10 h-6 flex items-center justify-center bg-white rounded shrink-0 border border-gray-200">
+                          <Landmark className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                            Bank Transfer
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            Transfer funds directly from your bank
+                          </p>
+                        </Label>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -387,20 +467,6 @@ export default function CartPageMobileMinimalist({
           </span>
         </div>
 
-        {/* Service Fee */}
-        <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300">
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-            Service fee
-          </span>
-          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-            {deliveryFee === 0 ? (
-              <span className="text-green-600">FREE</span>
-            ) : (
-              `£${deliveryFee.toFixed(2)}`
-            )}
-          </span>
-        </div>
-
         {/* Discount */}
         {discount > 0 && (
           <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300 text-green-600">
@@ -409,6 +475,18 @@ export default function CartPageMobileMinimalist({
             </span>
             <span className="font-['Poppins',sans-serif] text-[14px]">
               -£{discount.toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        {/* Service Fee */}
+        {serviceFee > 0 && (
+          <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300">
+            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+              Service Fee
+            </span>
+            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+              £{serviceFee.toFixed(2)}
             </span>
           </div>
         )}

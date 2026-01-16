@@ -25,7 +25,8 @@ import {
   Calendar,
   Clock,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Landmark
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -39,36 +40,48 @@ import Footer from "./Footer";
 import { toast } from "sonner@2.0.3";
 import CartPageMobileMinimalist from "./CartPageMobileMinimalist";
 import AddressAutocomplete from "./AddressAutocomplete";
+import { resolveApiUrl } from "../config/api";
+import paypalLogo from "../assets/paypal-logo.png";
+import BookingModal from "./BookingModal";
 
 interface Address {
   id: string;
-  type: "home" | "work" | "other";
-  name: string;
-  addressLine1: string;
-  addressLine2?: string;
-  address?: string;
-  city?: string;
   postcode: string;
+  address: string;
+  city: string; // Town/City
+  county?: string; // Borough/Council (optional)
   phone: string;
   isDefault?: boolean;
 }
 
 interface PaymentMethod {
   id: string;
-  type: "card" | "applepay" | "googlepay";
+  type: "account_balance" | "card" | "paypal" | "bank_transfer";
   cardNumber?: string;
   cardHolder?: string;
   expiryDate?: string;
   isDefault?: boolean;
+  balance?: number; // For account_balance
 }
 
-// Helper function to determine card type from card number
-const getCardType = (cardNumber: string): 'visa' | 'mastercard' | 'unknown' => {
-  const lastFourDigits = cardNumber.slice(-4);
-  // Visa cards typically start with 4, Mastercard with 5
-  if (lastFourDigits === '4242' || lastFourDigits.startsWith('4')) return 'visa';
-  if (lastFourDigits === '5555' || lastFourDigits.startsWith('5')) return 'mastercard';
-  // Default to visa for demonstration
+// Helper function to determine card type from brand or card number
+const getCardType = (brand?: string, cardNumber?: string): 'visa' | 'mastercard' | 'unknown' => {
+  // First try to use brand if available
+  if (brand) {
+    const brandLower = brand.toLowerCase();
+    if (brandLower.includes('visa')) return 'visa';
+    if (brandLower.includes('mastercard') || brandLower.includes('master')) return 'mastercard';
+  }
+  
+  // Fallback to card number if brand is not available
+  if (cardNumber) {
+    const lastFourDigits = cardNumber.slice(-4);
+    // Visa cards typically start with 4, Mastercard with 5
+    if (lastFourDigits === '4242' || lastFourDigits.startsWith('4')) return 'visa';
+    if (lastFourDigits === '5555' || lastFourDigits.startsWith('5')) return 'mastercard';
+  }
+  
+  // Default to visa
   return 'visa';
 };
 
@@ -94,17 +107,38 @@ const MastercardLogo = () => (
 
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
-  const { isLoggedIn } = useAccount();
-  const { addOrder } = useOrders();
+  const { cartItems, removeFromCart, updateQuantity, updateCartItem, cartTotal, clearCart } = useCart();
+  const { isLoggedIn, authReady } = useAccount();
+  const { refreshOrders } = useOrders();
   const navigate = useNavigate();
   
-  // Redirect to login if not logged in
+  // Redirect to login if not logged in (only after auth is ready)
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (authReady && !isLoggedIn) {
       navigate("/login");
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, authReady, navigate]);
+
+  // Log cart items to console whenever cartItems change
+  useEffect(() => {
+    console.log('[Cart Page] Cart Items Updated:', {
+      totalItems: cartItems.length,
+      items: cartItems.map(item => ({
+        id: item.id, // Item key for uniqueness
+        serviceId: (item as any).serviceId || item.id, // Actual MongoDB service ID
+        title: item.title,
+        seller: item.seller,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+        rating: item.rating,
+        addons: item.addons,
+        booking: item.booking,
+        packageType: item.packageType,
+      })),
+      cartTotal: cartTotal,
+    });
+  }, [cartItems, cartTotal]);
   
   // Promo code state
   const [promoCode, setPromoCode] = useState("");
@@ -112,65 +146,208 @@ export default function CartPage() {
   const [discount, setDiscount] = useState(0);
 
   // Address state
-  const [selectedAddress, setSelectedAddress] = useState<string>("1");
+  const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [skipAddress, setSkipAddress] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: "1",
-      type: "home",
-      name: "John Smith",
-      addressLine1: "123 High Street",
-      addressLine2: "Flat 4B",
-      city: "London",
-      postcode: "SW1A 1AA",
-      phone: "07123 456789",
-      isDefault: true
-    },
-    {
-      id: "2",
-      type: "work",
-      name: "John Smith",
-      addressLine1: "456 Business Park",
-      city: "London",
-      postcode: "EC1A 1BB",
-      phone: "07123 456789"
-    }
-  ]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
 
   // Payment method state
-  const [selectedPayment, setSelectedPayment] = useState<string>("1");
-  const [paymentMethods] = useState<PaymentMethod[]>([
-    {
-      id: "1",
-      type: "card",
-      cardNumber: "**** **** **** 4242",
-      cardHolder: "John Smith",
-      expiryDate: "12/25",
-      isDefault: true
-    },
-    {
-      id: "2",
-      type: "card",
-      cardNumber: "**** **** **** 5555",
-      cardHolder: "John Smith",
-      expiryDate: "09/26"
-    }
-  ]);
+  const [selectedPayment, setSelectedPayment] = useState<string>("account_balance");
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+  const [serviceFee, setServiceFee] = useState<number>(0);
+  
+  // Booking modal state
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [currentBookingItemIndex, setCurrentBookingItemIndex] = useState<number>(0);
+  const [servicesNeedingBooking, setServicesNeedingBooking] = useState<Array<{ item: any; serviceId: string; availability: any }>>([]);
+  const [isProcessingBooking, setIsProcessingBooking] = useState(false);
+  
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!isLoggedIn) return;
+      
+      try {
+        const response = await fetch(resolveApiUrl("/api/wallet/balance"), {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setWalletBalance(data.balance || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch wallet balance:", error);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+    
+    fetchBalance();
+  }, [isLoggedIn]);
+
+  // Fetch service fee from payment settings
+  useEffect(() => {
+    const fetchServiceFee = async () => {
+      if (!isLoggedIn) return;
+      
+      try {
+        const response = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setServiceFee(data.serviceFees || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch service fee:", error);
+      }
+    };
+    
+    fetchServiceFee();
+  }, [isLoggedIn]);
+
+  // Fetch addresses
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      if (!isLoggedIn) return;
+      
+      try {
+        setLoadingAddresses(true);
+        const response = await fetch(resolveApiUrl("/api/auth/profile/addresses"), {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const fetchedAddresses: Address[] = (data.addresses || []).map((addr: any) => ({
+            id: addr.id || addr._id?.toString() || Date.now().toString(),
+            postcode: addr.postcode || "",
+            address: addr.address || "",
+            city: addr.city || "",
+            county: addr.county || "",
+            phone: addr.phone || "",
+            isDefault: addr.isDefault || false,
+          }));
+          setAddresses(fetchedAddresses);
+          
+          // Set default address as selected if available
+          const defaultAddress = fetchedAddresses.find(addr => addr.isDefault);
+          if (defaultAddress) {
+            setSelectedAddress(defaultAddress.id);
+          } else if (fetchedAddresses.length > 0) {
+            setSelectedAddress(fetchedAddresses[0].id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch addresses:", error);
+      } finally {
+        setLoadingAddresses(false);
+      }
+    };
+    
+    fetchAddresses();
+  }, [isLoggedIn]);
+
+  // Fetch payment methods (Stripe cards)
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      if (!isLoggedIn) return;
+      
+      try {
+        setLoadingPaymentMethods(true);
+        const response = await fetch(resolveApiUrl("/api/payment-methods"), {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const cards = (data.paymentMethods || []).map((pm: any) => ({
+            id: pm.paymentMethodId || pm.id,
+            type: "card" as const,
+            cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
+            cardHolder: pm.billing_details?.name || "Card Holder",
+            expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
+            isDefault: pm.isDefault || false,
+            brand: pm.card?.brand || 'visa', // Store card brand for accurate type detection
+          }));
+          
+          // Build payment methods list: Account Balance first, then cards, PayPal, Bank Transfer
+          const methods: PaymentMethod[] = [
+            {
+              id: "account_balance",
+              type: "account_balance",
+              isDefault: true,
+              balance: walletBalance,
+            },
+            ...cards,
+            {
+              id: "paypal",
+              type: "paypal",
+              isDefault: false,
+            },
+            {
+              id: "bank_transfer",
+              type: "bank_transfer",
+              isDefault: false,
+            },
+          ];
+          
+          setPaymentMethods(methods);
+          
+          // Set default payment method (account_balance if balance > 0, otherwise first card or paypal)
+          if (walletBalance > 0) {
+            setSelectedPayment("account_balance");
+          } else if (cards.length > 0) {
+            setSelectedPayment(cards[0].id);
+          } else {
+            setSelectedPayment("paypal");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch payment methods:", error);
+        // Fallback payment methods
+        const fallbackMethods: PaymentMethod[] = [
+          {
+            id: "account_balance",
+            type: "account_balance",
+            isDefault: true,
+            balance: walletBalance,
+          },
+          {
+            id: "paypal",
+            type: "paypal",
+            isDefault: false,
+          },
+          {
+            id: "bank_transfer",
+            type: "bank_transfer",
+            isDefault: false,
+          },
+        ];
+        setPaymentMethods(fallbackMethods);
+        setSelectedPayment("account_balance");
+      } finally {
+        setLoadingPaymentMethods(false);
+      }
+    };
+    
+    fetchPaymentMethods();
+  }, [isLoggedIn, walletBalance]);
 
   // New address form state
   const [newAddress, setNewAddress] = useState<Partial<Address>>({
-    type: "home",
-    name: "",
-    addressLine1: "",
-    addressLine2: "",
+    postcode: "",
     address: "",
     city: "",
-    postcode: "",
+    county: "",
     phone: ""
   });
-  const [newAddressTownCity, setNewAddressTownCity] = useState("");
-  const [newAddressCounty, setNewAddressCounty] = useState("");
 
   // Toggle states for mobile collapsible sections
   const [showAddressSection, setShowAddressSection] = useState(true);
@@ -205,47 +382,223 @@ export default function CartPage() {
     toast.info("Promo code removed");
   };
 
-  const handleAddAddress = () => {
-    if (!newAddress.name || !newAddress.addressLine1 || !newAddress.address || !newAddress.postcode || !newAddress.phone) {
+  const handleAddAddress = async () => {
+    if (!newAddress.postcode || !newAddress.address || !newAddress.city || !newAddress.phone) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const address: Address = {
-      id: (addresses.length + 1).toString(),
-      type: newAddress.type as "home" | "work" | "other",
-      name: newAddress.name,
-      addressLine1: newAddress.addressLine1,
-      addressLine2: newAddress.addressLine2,
-      address: newAddress.address,
-      postcode: newAddress.postcode,
-      phone: newAddress.phone
-    };
+    try {
+      const newAddressData = {
+        postcode: newAddress.postcode,
+        address: newAddress.address,
+        city: newAddress.city,
+        county: newAddress.county || "",
+        phone: newAddress.phone,
+        isDefault: addresses.length === 0, // First address is default
+      };
 
-    setAddresses([...addresses, address]);
-    setSelectedAddress(address.id);
-    setShowAddressDialog(false);
-    setNewAddress({
-      type: "home",
-      name: "",
-      addressLine1: "",
-      addressLine2: "",
-      address: "",
-      postcode: "",
-      phone: ""
-    });
-    toast.success("Address added successfully!");
-  };
+      // Save to API
+      const response = await fetch(resolveApiUrl("/api/auth/profile/addresses"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(newAddressData),
+      });
 
-  const handleRemoveAddress = (id: string) => {
-    setAddresses(addresses.filter(addr => addr.id !== id));
-    if (selectedAddress === id) {
-      setSelectedAddress(addresses[0]?.id || "");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save address");
+      }
+
+      const data = await response.json();
+      const savedAddress: Address = {
+        id: data.address?.id || data.address?._id || Date.now().toString(),
+        postcode: data.address?.postcode || newAddressData.postcode,
+        address: data.address?.address || newAddressData.address,
+        city: data.address?.city || newAddressData.city,
+        county: data.address?.county || newAddressData.county,
+        phone: data.address?.phone || newAddressData.phone,
+        isDefault: data.address?.isDefault || newAddressData.isDefault,
+      };
+
+      // Update local state
+      setAddresses([...addresses, savedAddress]);
+      setSelectedAddress(savedAddress.id);
+      setShowAddressDialog(false);
+      setNewAddress({
+        postcode: "",
+        address: "",
+        city: "",
+        county: "",
+        phone: ""
+      });
+      toast.success("Address added successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save address");
     }
-    toast.success("Address removed");
   };
 
-  const handlePlaceOrder = () => {
+  const handleRemoveAddress = async (id: string) => {
+    try {
+      // Delete from API
+      const response = await fetch(resolveApiUrl(`/api/auth/profile/addresses/${id}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete address");
+      }
+
+      // Update local state
+      const updatedAddresses = addresses.filter(addr => addr.id !== id);
+      setAddresses(updatedAddresses);
+      
+      if (selectedAddress === id) {
+        setSelectedAddress(updatedAddresses[0]?.id || "");
+      }
+      
+      toast.success("Address removed");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete address");
+    }
+  };
+
+  // Check which services need booking (have availability data)
+  const checkServicesNeedingBooking = async () => {
+    console.log('[Booking Check] Starting to check services for booking requirements');
+    console.log('[Booking Check] Cart items:', cartItems.map(item => ({ id: item.id, title: item.title, hasBooking: !!item.booking })));
+    
+    const servicesToCheck: Array<{ item: any; serviceId: string; availability: any }> = [];
+    
+    for (const item of cartItems) {
+      // Skip if item already has booking info
+      if (item.booking) {
+        console.log(`[Booking Check] Skipping item ${item.id} - already has booking info:`, item.booking);
+        continue;
+      }
+      
+      try {
+        console.log(`[Booking Check] Fetching service details for item ID: ${item.id} (Type: ${typeof item.id})`);
+        
+        // Check if item.id is a MongoDB ObjectId (24 hex characters)
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(item.id);
+        console.log(`[Booking Check] Item ID ${item.id} is ObjectId format: ${isObjectId}`);
+        
+        // If it's a numeric ID (like 17629339), we can't directly find the service
+        // In this case, skip the booking check (the service might not need booking or was added with old format)
+        if (!isObjectId && /^\d+$/.test(item.id)) {
+          console.warn(`[Booking Check] Item ID ${item.id} is numeric (not ObjectId). Cannot fetch service for booking check. Skipping.`);
+          console.warn(`[Booking Check] Note: This item was likely added with an old format. Consider re-adding to cart.`);
+          continue;
+        }
+        
+        // Fetch service details to check availability
+        // Try both ObjectId and slug formats
+        const serviceUrl = resolveApiUrl(`/api/services/${item.id}`);
+        console.log(`[Booking Check] Request URL: ${serviceUrl}`);
+        
+        const response = await fetch(serviceUrl, {
+          credentials: "include",
+        });
+        
+        console.log(`[Booking Check] Response status for ${item.id}:`, response.status, response.statusText);
+        
+        if (!response.ok) {
+          // If service not found (404), skip this item silently
+          // It might have been deleted or doesn't exist, but we don't want to block the order
+          if (response.status === 404) {
+            console.warn(`[Booking Check] Service ${item.id} not found (404), skipping booking check`);
+            continue;
+          }
+          // For other errors (500, etc.), log but continue
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+          } catch (e) {
+            console.error(`[Booking Check] Failed to parse error response for ${item.id}:`, e);
+          }
+          console.warn(`[Booking Check] Failed to fetch service ${item.id} (${response.status}):`, errorData.error || response.statusText);
+          continue;
+        }
+        
+        const serviceData = await response.json();
+        console.log(`[Booking Check] Service data received for ${item.id}:`, {
+          hasService: !!serviceData?.service,
+          hasAvailability: !!serviceData?.service?.availability,
+          availabilityKeys: serviceData?.service?.availability ? Object.keys(serviceData.service.availability) : [],
+        });
+        
+        // Check if service has availability data
+        if (serviceData?.service?.availability && Object.keys(serviceData.service.availability).length > 0) {
+          console.log(`[Booking Check] Service ${item.id} requires booking - adding to list`);
+          servicesToCheck.push({
+            item,
+            serviceId: serviceData.service._id?.toString() || serviceData.service.id || item.id,
+            availability: serviceData.service.availability,
+          });
+        } else {
+          console.log(`[Booking Check] Service ${item.id} does not require booking (no availability data)`);
+        }
+      } catch (error) {
+        // Network or other errors - log but continue to next item
+        console.error(`[Booking Check] Error checking service ${item.id} for booking:`, error);
+        // Continue to next item instead of breaking
+      }
+    }
+    
+    console.log(`[Booking Check] Completed. Services requiring booking: ${servicesToCheck.length}`, servicesToCheck.map(s => ({ id: s.item.id, title: s.item.title })));
+    return servicesToCheck;
+  };
+
+  const handleBookingConfirm = (date: Date, time: string, timeSlot: string) => {
+    if (currentBookingItemIndex >= servicesNeedingBooking.length) return;
+    
+    const currentItem = servicesNeedingBooking[currentBookingItemIndex].item;
+    
+    // Generate item key to find the item in cart
+    const generateItemKey = (item: any) => {
+      const parts = [item.id];
+      if (item.packageType) {
+        parts.push(item.packageType);
+      }
+      if (item.addons && item.addons.length > 0) {
+        const addonsKey = item.addons
+          .sort((a: any, b: any) => a.id - b.id)
+          .map((a: any) => `${a.id}-${a.price}`)
+          .join(',');
+        parts.push(addonsKey);
+      }
+      return parts.join('|');
+    };
+    
+    const itemKey = generateItemKey(currentItem);
+    
+    // Update cart item with booking info
+    updateCartItem(itemKey, {
+      booking: {
+        date: date.toISOString(),
+        time: time,
+        timeSlot: timeSlot,
+      },
+    });
+    
+    // Move to next item or proceed with order
+    if (currentBookingItemIndex < servicesNeedingBooking.length - 1) {
+      setCurrentBookingItemIndex(currentBookingItemIndex + 1);
+    } else {
+      // All bookings completed, proceed with order
+      setShowBookingModal(false);
+      setIsProcessingBooking(false);
+      proceedWithOrder();
+    }
+  };
+
+  const proceedWithOrder = async () => {
     if (!skipAddress && !selectedAddress) {
       toast.error("Please select a delivery address");
       return;
@@ -260,36 +613,242 @@ export default function CartPage() {
       ? undefined 
       : addresses.find(addr => addr.id === selectedAddress);
 
-    // Create order
-    const orderId = addOrder({
-      items: cartItems,
-      address: addressDetails ? {
-        name: addressDetails.name,
-        addressLine1: addressDetails.addressLine1,
-        addressLine2: addressDetails.addressLine2,
-        city: addressDetails.city,
-        postcode: addressDetails.postcode,
-        phone: addressDetails.phone
-      } : undefined,
-      skipAddress: skipAddress
-    });
+    const subtotal = cartTotal;
+    const orderTotal = subtotal - discount + serviceFee;
 
-    toast.success("Order placed successfully!", {
-      description: `Order ${orderId} created. You'll receive a confirmation email shortly`
-    });
-    
-    // Clear cart
-    clearCart();
-    
-    // Navigate to account orders page
-    setTimeout(() => {
-      navigate('/account');
-    }, 1500);
+    try {
+      // Handle different payment methods
+      if (selectedPayment === "account_balance") {
+        // Check if balance is sufficient
+        if (walletBalance < orderTotal) {
+          toast.error("Insufficient balance", {
+            description: `You need £${(orderTotal - walletBalance).toFixed(2)} more. Current balance: £${walletBalance.toFixed(2)}`
+          });
+          return;
+        }
+
+        // Create order with account balance payment
+        const response = await fetch(resolveApiUrl("/api/orders"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            items: cartItems,
+            address: addressDetails,
+            skipAddress: skipAddress,
+            paymentMethod: "account_balance",
+            total: orderTotal,
+            subtotal: subtotal,
+            discount: discount,
+            serviceFee: serviceFee,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to place order");
+        }
+
+        const result = await response.json();
+        
+        // Update local balance
+        setWalletBalance(result.newBalance || 0);
+        
+        // Refresh orders to show new order in account page
+        if (refreshOrders) {
+          await refreshOrders();
+        }
+        
+        toast.success("Order placed successfully!", {
+          description: `Order ${result.orderId} created. £${orderTotal.toFixed(2)} deducted from your account balance.`
+        });
+        
+        // Clear cart
+        clearCart();
+        
+        // Navigate to account orders page
+        setTimeout(() => {
+          navigate('/account?tab=orders');
+        }, 1500);
+      } else if (selectedPayment === "card" || paymentMethods.find(m => m.id === selectedPayment)?.type === "card") {
+        // Get selected card payment method
+        const selectedMethod = paymentMethods.find(m => m.id === selectedPayment && m.type === "card");
+        if (!selectedMethod) {
+          toast.error("Please select a valid payment method");
+          return;
+        }
+
+        // Create order with card payment (will fund wallet first, then deduct)
+        const response = await fetch(resolveApiUrl("/api/orders"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            items: cartItems,
+            address: addressDetails,
+            skipAddress: skipAddress,
+            paymentMethod: "card",
+            paymentMethodId: selectedMethod.id,
+            total: orderTotal,
+            subtotal: subtotal,
+            discount: discount,
+            serviceFee: serviceFee,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to place order");
+        }
+
+        const result = await response.json();
+        
+        // Update local balance if returned
+        if (result.newBalance !== undefined) {
+          setWalletBalance(result.newBalance);
+        }
+        
+        // Refresh orders to show new order in account page
+        if (refreshOrders) {
+          await refreshOrders();
+        }
+        
+        toast.success("Order placed successfully!", {
+          description: `Order ${result.orderId} created. Payment processed via card.`
+        });
+        
+        // Clear cart
+        clearCart();
+        
+        // Navigate to account orders page
+        setTimeout(() => {
+          navigate('/account?tab=orders');
+        }, 1500);
+      } else if (selectedPayment === "paypal") {
+        // Create order with PayPal payment (will fund wallet first, then deduct)
+        const response = await fetch(resolveApiUrl("/api/orders"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            items: cartItems,
+            address: addressDetails,
+            skipAddress: skipAddress,
+            paymentMethod: "paypal",
+            total: orderTotal,
+            subtotal: subtotal,
+            discount: discount,
+            serviceFee: serviceFee,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to place order");
+        }
+
+        const result = await response.json();
+        
+        // If PayPal order needs approval, redirect to PayPal
+        if (result.paypalOrderId && result.approveUrl) {
+          window.location.href = result.approveUrl;
+          return;
+        }
+        
+        // Update local balance if returned
+        if (result.newBalance !== undefined) {
+          setWalletBalance(result.newBalance);
+        }
+        
+        // Refresh orders to show new order in account page
+        if (refreshOrders) {
+          await refreshOrders();
+        }
+        
+        toast.success("Order placed successfully!", {
+          description: `Order ${result.orderId} created. Payment processed via PayPal.`
+        });
+        
+        // Clear cart
+        clearCart();
+        
+        // Navigate to account orders page
+        setTimeout(() => {
+          navigate('/account?tab=orders');
+        }, 1500);
+      } else if (selectedPayment === "bank_transfer") {
+        // Create order with bank transfer payment (will create pending transaction)
+        const response = await fetch(resolveApiUrl("/api/orders"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            items: cartItems,
+            address: addressDetails,
+            skipAddress: skipAddress,
+            paymentMethod: "bank_transfer",
+            total: orderTotal,
+            subtotal: subtotal,
+            discount: discount,
+            serviceFee: serviceFee,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to place order");
+        }
+
+        const result = await response.json();
+        
+        // Refresh orders to show new order in account page
+        if (refreshOrders) {
+          await refreshOrders();
+        }
+        
+        toast.success("Order placed successfully!", {
+          description: `Order ${result.orderId} created. Please complete bank transfer to finalize payment.`
+        });
+        
+        // Clear cart
+        clearCart();
+        
+        // Navigate to account orders page
+        setTimeout(() => {
+          navigate('/account?tab=orders');
+        }, 1500);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to place order. Please try again.");
+    }
   };
 
-  const subtotal = cartTotal;
-  const deliveryFee = cartTotal > 100 ? 0 : 4.99;
-  const total = subtotal - discount + deliveryFee;
+  const handlePlaceOrder = async () => {
+    // Check if any services need booking
+    const servicesToBook = await checkServicesNeedingBooking();
+    
+    if (servicesToBook.length > 0) {
+      // Show booking modal for first service
+      setServicesNeedingBooking(servicesToBook);
+      setCurrentBookingItemIndex(0);
+      setIsProcessingBooking(true);
+      setShowBookingModal(true);
+    } else {
+      // No services need booking, proceed directly
+      proceedWithOrder();
+    }
+  };
+
+    const subtotal = cartTotal;
+    const total = subtotal - discount + serviceFee;
 
   if (cartItems.length === 0) {
     return (
@@ -360,8 +919,8 @@ export default function CartPage() {
               setSkipAddress={setSkipAddress}
               onPlaceOrder={handlePlaceOrder}
               subtotal={subtotal}
-              deliveryFee={deliveryFee}
               discount={discount}
+              serviceFee={serviceFee}
               total={total}
               appliedPromo={appliedPromo}
               onApplyPromo={handleApplyPromo}
@@ -437,8 +996,22 @@ export default function CartPage() {
 
                     {!skipAddress && (
                       <>
-                        <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
-                          {addresses.map((address) => (
+                        {loadingAddresses ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="text-center">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-2"></div>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Loading addresses...</p>
+                            </div>
+                          </div>
+                        ) : addresses.length === 0 ? (
+                          <div className="text-center py-6">
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                              No addresses saved. Please add an address below.
+                            </p>
+                          </div>
+                        ) : (
+                          <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
+                            {addresses.map((address) => (
                             <div key={address.id} className="mb-3 md:mb-4">
                               <div className={`relative border-2 rounded-lg md:rounded-xl p-3 md:p-4 transition-all ${
                                 selectedAddress === address.id 
@@ -450,16 +1023,7 @@ export default function CartPage() {
                                   <div className="flex-1 min-w-0">
                                     <Label htmlFor={address.id} className="cursor-pointer">
                                       <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-                                        {address.type === "home" ? (
-                                          <Home className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#FE8A0F] shrink-0" />
-                                        ) : address.type === "work" ? (
-                                          <Briefcase className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#FE8A0F] shrink-0" />
-                                        ) : (
-                                          <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#FE8A0F] shrink-0" />
-                                        )}
-                                        <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium capitalize">
-                                          {address.type}
-                                        </span>
+                                        <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#FE8A0F] shrink-0" />
                                         {address.isDefault && (
                                           <Badge className="bg-[#10B981] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
                                         )}
@@ -467,10 +1031,10 @@ export default function CartPage() {
                                       {/* Mobile: Show minimal info */}
                                       <div className="md:hidden">
                                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium truncate">
-                                          {address.name}
+                                          {address.address}
                                         </p>
                                         <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] truncate">
-                                          {address.addressLine1}
+                                          {address.city}
                                         </p>
                                         <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
                                           {address.postcode}
@@ -479,14 +1043,14 @@ export default function CartPage() {
                                       {/* Desktop: Show full info */}
                                       <div className="hidden md:block">
                                         <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
-                                          {address.name}
+                                          {address.address}
                                         </p>
                                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                                          {address.addressLine1}
-                                          {address.addressLine2 && `, ${address.addressLine2}`}
+                                          {address.city}
+                                          {address.county && `, ${address.county}`}
                                         </p>
                                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                                          {address.city}, {address.postcode}
+                                          {address.postcode}
                                         </p>
                                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
                                           Phone: {address.phone}
@@ -506,7 +1070,8 @@ export default function CartPage() {
                               </div>
                             </div>
                           ))}
-                        </RadioGroup>
+                          </RadioGroup>
+                        )}
 
                         {/* Add New Address Button */}
                         <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
@@ -519,7 +1084,7 @@ export default function CartPage() {
                               Add New Address
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="w-[70vw]">
+                          <DialogContent className="w-full">
                             <DialogHeader>
                               <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
                                 Add New Address
@@ -530,77 +1095,23 @@ export default function CartPage() {
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
                               <div>
-                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
-                                  Address Type
-                                </Label>
-                                <RadioGroup 
-                                  value={newAddress.type} 
-                                  onValueChange={(value) => setNewAddress({...newAddress, type: value as "home" | "work" | "other"})}
-                                  className="flex gap-4 mt-2"
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="home" id="home" />
-                                    <Label htmlFor="home" className="font-['Poppins',sans-serif] text-[13px]">Home</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="work" id="work" />
-                                    <Label htmlFor="work" className="font-['Poppins',sans-serif] text-[13px]">Work</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="other" id="other" />
-                                    <Label htmlFor="other" className="font-['Poppins',sans-serif] text-[13px]">Other</Label>
-                                  </div>
-                                </RadioGroup>
-                              </div>
-                              <div>
-                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Full Name *</Label>
-                                <Input
-                                  value={newAddress.name}
-                                  onChange={(e) => setNewAddress({...newAddress, name: e.target.value})}
-                                  className="mt-1 font-['Poppins',sans-serif]"
-                                  placeholder="John Smith"
-                                />
-                              </div>
-                              <div>
-                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Address Line 1 *</Label>
-                                <Input
-                                  value={newAddress.addressLine1}
-                                  onChange={(e) => setNewAddress({...newAddress, addressLine1: e.target.value})}
-                                  className="mt-1 font-['Poppins',sans-serif]"
-                                  placeholder="123 High Street"
-                                />
-                              </div>
-                              <div>
-                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Address Line 2</Label>
-                                <Input
-                                  value={newAddress.addressLine2}
-                                  onChange={(e) => setNewAddress({...newAddress, addressLine2: e.target.value})}
-                                  className="mt-1 font-['Poppins',sans-serif]"
-                                  placeholder="Flat 4B (optional)"
-                                />
-                              </div>
-                              <div>
                                 <AddressAutocomplete
                                   postcode={newAddress.postcode || ""}
                                   onPostcodeChange={(value) => setNewAddress({...newAddress, postcode: value})}
                                   address={newAddress.address || ""}
                                   onAddressChange={(value) => setNewAddress({...newAddress, address: value})}
-                                  townCity={newAddressTownCity}
-                                  onTownCityChange={(value) => {
-                                    setNewAddressTownCity(value);
-                                    setNewAddress({...newAddress, city: value});
-                                  }}
-                                  county={newAddressCounty}
-                                  onCountyChange={(value) => setNewAddressCounty(value)}
+                                  townCity={newAddress.city || ""}
+                                  onTownCityChange={(value) => setNewAddress({...newAddress, city: value})}
+                                  county={newAddress.county || ""}
+                                  onCountyChange={(value) => setNewAddress({...newAddress, county: value})}
                                   onAddressSelect={(address) => {
                                     setNewAddress({
                                       ...newAddress,
                                       postcode: address.postcode || "",
                                       address: address.address || "",
                                       city: address.townCity || "",
+                                      county: address.county || "",
                                     });
-                                    setNewAddressTownCity(address.townCity || "");
-                                    setNewAddressCounty(address.county || "");
                                   }}
                                   label="Postcode"
                                   required
@@ -686,14 +1197,34 @@ export default function CartPage() {
                               <RadioGroupItem value={method.id} id={`payment-${method.id}`} className="mt-0.5 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <Label htmlFor={`payment-${method.id}`} className="cursor-pointer">
+                                  {method.type === "account_balance" && (
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                      <div className="w-10 h-10 md:w-12 md:h-12 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
+                                        <Gift className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
+                                            Account Balance
+                                          </span>
+                                          {method.isDefault && (
+                                            <Badge className="bg-[#10B981] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
+                                          )}
+                                        </div>
+                                        <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
+                                          Available: £{walletBalance.toFixed(2)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
                                   {method.type === "card" && (
                                     <>
                                       <div className="flex items-center gap-2 md:gap-3">
                                         {/* Display card brand logo - Mobile Smaller */}
                                         <div className="shrink-0 scale-90 md:scale-100">
-                                          {method.cardNumber && getCardType(method.cardNumber) === 'visa' ? (
+                                          {getCardType(method.brand, method.cardNumber) === 'visa' ? (
                                             <VisaLogo />
-                                          ) : method.cardNumber && getCardType(method.cardNumber) === 'mastercard' ? (
+                                          ) : getCardType(method.brand, method.cardNumber) === 'mastercard' ? (
                                             <MastercardLogo />
                                           ) : (
                                             <div className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
@@ -718,6 +1249,41 @@ export default function CartPage() {
                                       </div>
                                     </>
                                   )}
+                                  {method.type === "paypal" && (
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                      <div className="shrink-0">
+                                        <img 
+                                          src={paypalLogo} 
+                                          alt="PayPal" 
+                                          className="h-8 w-auto object-contain"
+                                          style={{ maxWidth: "100px" }}
+                                        />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
+                                          PayPal
+                                        </span>
+                                        <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
+                                          Pay securely with PayPal
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {method.type === "bank_transfer" && (
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                      <div className="w-10 h-6 md:w-12 md:h-7 flex items-center justify-center bg-white rounded shrink-0 border border-gray-200">
+                                        <Landmark className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
+                                          Bank Transfer
+                                        </span>
+                                        <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
+                                          Transfer funds directly from your bank
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
                                 </Label>
                               </div>
                             </div>
@@ -726,13 +1292,16 @@ export default function CartPage() {
                       ))}
                     </RadioGroup>
 
-                    <Button 
-                      variant="outline" 
-                      className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 mt-1 md:mt-2"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New Payment Method
-                    </Button>
+                    {selectedPayment !== "account_balance" && selectedPayment !== "paypal" && selectedPayment !== "bank_transfer" && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 mt-1 md:mt-2"
+                        onClick={() => navigate('/account?tab=billing&section=fund')}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add New Card
+                      </Button>
+                    )}
 
                     {/* Security Note */}
                     <div className="mt-3 md:mt-4 flex items-start gap-2 bg-gray-50 rounded-lg md:rounded-xl p-2.5 md:p-3">
@@ -946,26 +1515,17 @@ export default function CartPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      Service Fee
-                    </span>
-                    <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                      {deliveryFee === 0 ? (
-                        <span className="text-green-600">FREE</span>
-                      ) : (
-                        `£${deliveryFee.toFixed(2)}`
-                      )}
-                    </span>
-                  </div>
-
-                  {cartTotal < 100 && (
-                    <div className="bg-[#FFF5EB] border border-[#FE8A0F]/20 rounded-xl p-3">
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F]">
-                        Add £{(100 - cartTotal).toFixed(2)} more for FREE service fee!
-                      </p>
+                  {serviceFee > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        Service Fee
+                      </span>
+                      <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                        £{serviceFee.toFixed(2)}
+                      </span>
                     </div>
                   )}
+
                 </div>
 
                 <Separator className="my-6" />
@@ -1024,6 +1584,23 @@ export default function CartPage() {
         </div>
       </div>
       <Footer />
+      
+      {/* Booking Modal for services requiring date/time selection */}
+      {showBookingModal && servicesNeedingBooking.length > 0 && currentBookingItemIndex < servicesNeedingBooking.length && (
+        <BookingModal
+          isOpen={showBookingModal}
+          onClose={() => {
+            setShowBookingModal(false);
+            setIsProcessingBooking(false);
+            setServicesNeedingBooking([]);
+            setCurrentBookingItemIndex(0);
+          }}
+          onConfirm={handleBookingConfirm}
+          sellerName={servicesNeedingBooking[currentBookingItemIndex].item.seller}
+          serviceTitle={servicesNeedingBooking[currentBookingItemIndex].item.title}
+          availability={servicesNeedingBooking[currentBookingItemIndex].availability}
+        />
+      )}
     </div>
     </>
   );

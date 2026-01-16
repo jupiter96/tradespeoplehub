@@ -93,6 +93,9 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
       bankAccountDetails: settings.bankAccountDetails || {},
       manualTransferEnabled: Boolean(settings.manualTransferEnabled),
       bankProcessingFeePercentage: settings.bankProcessingFeePercentage || 2.00,
+      
+      // Service Fee
+      serviceFees: settings.serviceFees || 0,
     };
     
     

@@ -20,6 +20,8 @@ import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
 import paymentRoutes from './routes/payment.js';
 import notificationRoutes from './routes/notifications.js';
+import ordersRoutes from './routes/orders.js';
+import cartRoutes from './routes/cart.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
@@ -170,6 +172,8 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api', paymentRoutes);
 app.use('/api', notificationRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Log chat routes after mounting (non-blocking)
 setImmediate(() => {

@@ -6,12 +6,24 @@ import { Badge } from "./ui/badge";
 import { Clock, Calendar as CalendarIcon, CheckCircle2, X } from "lucide-react";
 import { Separator } from "./ui/separator";
 
+interface TimeBlock {
+  id: string;
+  from: string; // "09:00"
+  to: string; // "17:00"
+}
+
+interface DayAvailability {
+  enabled: boolean;
+  blocks: TimeBlock[];
+}
+
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (date: Date, time: string, timeSlot: string) => void;
   sellerName: string;
   serviceTitle: string;
+  availability?: Record<string, DayAvailability>; // { monday: { enabled, blocks }, ... }
 }
 
 const timeSlots = [
@@ -25,7 +37,8 @@ export default function BookingModal({
   onClose, 
   onConfirm, 
   sellerName,
-  serviceTitle 
+  serviceTitle,
+  availability 
 }: BookingModalProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
@@ -54,6 +67,9 @@ export default function BookingModal({
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
+    // Reset time selection when date changes
+    setSelectedTime("");
+    setSelectedTimeSlot("");
     if (date) {
       // Fade out calendar and show time picker
       setTimeout(() => {
@@ -80,6 +96,105 @@ export default function BookingModal({
       month: 'long', 
       day: 'numeric' 
     });
+  };
+
+  // Get day name from date (lowercase, e.g., "monday")
+  const getDayName = (date: Date): string => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[date.getDay()];
+  };
+
+  // Check if a date is available based on availability data
+  const isDateAvailable = (date: Date): boolean => {
+    if (!availability) return true; // If no availability data, allow all dates
+    
+    const dayName = getDayName(date);
+    const dayAvailability = availability[dayName];
+    
+    if (!dayAvailability) return false;
+    return dayAvailability.enabled && dayAvailability.blocks.length > 0;
+  };
+
+  // Generate available times for a selected date based on availability blocks
+  const getAvailableTimes = (date: Date): string[] => {
+    if (!availability || !selectedDate) return [];
+    
+    const dayName = getDayName(date);
+    const dayAvailability = availability[dayName];
+    
+    if (!dayAvailability || !dayAvailability.enabled || dayAvailability.blocks.length === 0) {
+      return [];
+    }
+
+    const availableTimes: string[] = [];
+    
+    // Process each time block
+    dayAvailability.blocks.forEach(block => {
+      const [fromHour, fromMin] = block.from.split(':').map(Number);
+      const [toHour, toMin] = block.to.split(':').map(Number);
+      
+      const fromMinutes = fromHour * 60 + fromMin;
+      const toMinutes = toHour * 60 + toMin;
+      
+      // Generate 30-minute intervals
+      for (let minutes = fromMinutes; minutes < toMinutes; minutes += 30) {
+        const hour = Math.floor(minutes / 60);
+        const min = minutes % 60;
+        const timeString = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+        availableTimes.push(timeString);
+      }
+    });
+    
+    return availableTimes.sort();
+  };
+
+  // Get time slot (Morning, Afternoon, Evening) for a time
+  const getTimeSlot = (time: string): string => {
+    const [hour] = time.split(':').map(Number);
+    if (hour < 12) return "Morning";
+    if (hour < 17) return "Afternoon";
+    return "Evening";
+  };
+
+  // Check if a time is available for the selected date
+  const isTimeAvailable = (time: string): boolean => {
+    if (!selectedDate || !availability) return true;
+    
+    const availableTimes = getAvailableTimes(selectedDate);
+    return availableTimes.includes(time);
+  };
+
+  // Get available time slots grouped by slot type
+  const getAvailableTimeSlots = () => {
+    if (!selectedDate || !availability) {
+      // If no availability data, return all time slots
+      return timeSlots;
+    }
+
+    const availableTimes = getAvailableTimes(selectedDate);
+    if (availableTimes.length === 0) {
+      return [];
+    }
+
+    // Group available times by slot
+    const grouped: Record<string, string[]> = {
+      Morning: [],
+      Afternoon: [],
+      Evening: []
+    };
+
+    availableTimes.forEach(time => {
+      const slot = getTimeSlot(time);
+      if (grouped[slot]) {
+        grouped[slot].push(time);
+      }
+    });
+
+    // Convert to timeSlots format
+    return timeSlots.map(slotGroup => ({
+      slot: slotGroup.slot,
+      times: slotGroup.times.filter(time => grouped[slotGroup.slot]?.includes(time))
+    })).filter(slotGroup => slotGroup.times.length > 0);
   };
 
   return (
@@ -132,7 +247,13 @@ export default function BookingModal({
                 mode="single"
                 selected={selectedDate}
                 onSelect={handleDateSelect}
-                disabled={(date) => date < today}
+                disabled={(date) => {
+                  // Disable past dates
+                  if (date < today) return true;
+                  // Disable dates not available based on availability data
+                  if (availability && !isDateAvailable(date)) return true;
+                  return false;
+                }}
                 className="font-['Poppins',sans-serif]"
               />
             </div>
@@ -191,36 +312,50 @@ export default function BookingModal({
 
             {/* Time Slots */}
             <div className="space-y-4 max-h-[280px] md:max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {timeSlots.map((slotGroup) => (
-                <div key={slotGroup.slot}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6b6b6b] flex-shrink-0" />
-                    <Badge 
-                      variant="outline" 
-                      className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] border-[#FE8A0F] text-[#FE8A0F]"
-                    >
-                      {slotGroup.slot}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-                    {slotGroup.times.map((time) => (
-                      <button
-                        key={time}
-                        onClick={() => handleTimeClick(time, slotGroup.slot)}
-                        className={`
-                          py-2 md:py-2.5 px-2 md:px-3 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[12px] md:text-[13px]
-                          ${selectedTime === time 
-                            ? "border-[#3B82F6] bg-blue-50 text-[#3B82F6] font-medium shadow-sm" 
-                            : "border-gray-200 bg-white hover:border-[#3B82F6] hover:bg-blue-50 text-[#2c353f]"
-                          }
-                        `}
+              {getAvailableTimeSlots().length > 0 ? (
+                getAvailableTimeSlots().map((slotGroup) => (
+                  <div key={slotGroup.slot}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6b6b6b] flex-shrink-0" />
+                      <Badge 
+                        variant="outline" 
+                        className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] border-[#FE8A0F] text-[#FE8A0F]"
                       >
-                        {time}
-                      </button>
-                    ))}
+                        {slotGroup.slot}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                      {slotGroup.times.map((time) => {
+                        const isAvailable = isTimeAvailable(time);
+                        return (
+                          <button
+                            key={time}
+                            onClick={() => isAvailable && handleTimeClick(time, slotGroup.slot)}
+                            disabled={!isAvailable}
+                            className={`
+                              py-2 md:py-2.5 px-2 md:px-3 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[12px] md:text-[13px]
+                              ${!isAvailable
+                                ? "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-50"
+                                : selectedTime === time 
+                                ? "border-[#3B82F6] bg-blue-50 text-[#3B82F6] font-medium shadow-sm" 
+                                : "border-gray-200 bg-white hover:border-[#3B82F6] hover:bg-blue-50 text-[#2c353f]"
+                              }
+                            `}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    No available time slots for this date
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Selected Time Confirmation */}

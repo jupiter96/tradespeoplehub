@@ -4021,6 +4021,132 @@ router.get('/session-debug', async (req, res) => {
   }
 });
 
+// Address management endpoints (must be before /profile/:identifier to avoid route conflict)
+router.get('/profile/addresses', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    // Map addresses to ensure id field is present
+    const addresses = (user.addresses || []).map(addr => ({
+      id: addr.id || addr._id?.toString() || Date.now().toString(),
+      postcode: addr.postcode || '',
+      address: addr.address || '',
+      city: addr.city || '',
+      county: addr.county || '',
+      phone: addr.phone || '',
+      isDefault: addr.isDefault || false,
+    }));
+
+    return res.json({ addresses });
+  } catch (error) {
+    console.error('Error fetching addresses:', error);
+    return res.status(500).json({ error: 'Failed to fetch addresses', details: error.message });
+  }
+});
+
+router.post('/profile/addresses', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const { postcode, address, city, county, phone, isDefault } = req.body;
+
+    if (!postcode || !address || !city || !phone) {
+      return res.status(400).json({ error: 'Please fill in all required fields' });
+    }
+
+    // Generate unique ID for address
+    const addressId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+    // Initialize addresses array if it doesn't exist
+    if (!user.addresses) {
+      user.addresses = [];
+    }
+
+    // If this is set as default, unset other defaults
+    if (isDefault) {
+      user.addresses = user.addresses.map(addr => {
+        const addrObj = addr.toObject ? addr.toObject() : addr;
+        return { ...addrObj, isDefault: false };
+      });
+    }
+
+    // If this is the first address, set it as default
+    const shouldBeDefault = user.addresses.length === 0 || isDefault;
+
+    const newAddress = {
+      id: addressId,
+      postcode: postcode.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      county: county?.trim() || '',
+      phone: phone.trim(),
+      isDefault: shouldBeDefault,
+      createdAt: new Date(),
+    };
+
+    user.addresses.push(newAddress);
+    await user.save();
+
+    // Return the saved address with proper id
+    const savedAddress = user.addresses[user.addresses.length - 1];
+    const addressResponse = {
+      id: savedAddress.id || savedAddress._id?.toString() || addressId,
+      postcode: savedAddress.postcode,
+      address: savedAddress.address,
+      city: savedAddress.city,
+      county: savedAddress.county || '',
+      phone: savedAddress.phone,
+      isDefault: savedAddress.isDefault || false,
+    };
+
+    return res.json({ address: addressResponse, message: 'Address added successfully' });
+  } catch (error) {
+    console.error('Error adding address:', error);
+    return res.status(500).json({ error: 'Failed to add address', details: error.message });
+  }
+});
+
+router.delete('/profile/addresses/:addressId', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const { addressId } = req.params;
+
+    if (!user.addresses || user.addresses.length === 0) {
+      return res.status(404).json({ error: 'Address not found' });
+    }
+
+    const addressIndex = user.addresses.findIndex(addr => addr.id === addressId || addr._id?.toString() === addressId);
+    if (addressIndex === -1) {
+      return res.status(404).json({ error: 'Address not found' });
+    }
+
+    // Remove address
+    user.addresses.splice(addressIndex, 1);
+
+    // If we removed the default address and there are other addresses, set the first one as default
+    if (user.addresses.length > 0 && !user.addresses.some(addr => addr.isDefault)) {
+      user.addresses[0].isDefault = true;
+    }
+
+    await user.save();
+
+    return res.json({ message: 'Address removed successfully' });
+  } catch (error) {
+    console.error('Error removing address:', error);
+    return res.status(500).json({ error: 'Failed to remove address', details: error.message });
+  }
+});
+
 // Get public profile by user ID only
 router.get('/profile/:identifier', async (req, res) => {
   try {

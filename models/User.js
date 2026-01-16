@@ -87,6 +87,47 @@ const userSchema = new mongoose.Schema(
       },
       trim: true,
     },
+    addresses: {
+      type: [{
+        id: {
+          type: String,
+          required: true,
+        },
+        postcode: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        address: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        city: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        county: {
+          type: String,
+          trim: true,
+        },
+        phone: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        isDefault: {
+          type: Boolean,
+          default: false,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }],
+      default: [],
+    },
     travelDistance: {
       type: String,
       trim: true,

@@ -266,7 +266,7 @@ export default function ServiceDetailPage() {
   // Check if this is an admin access (from URL params or location state)
   const searchParams = new URLSearchParams(location.search);
   const isAdminAccess = searchParams.get('admin') === 'true' || (location.state as any)?.adminAccess === true;
-  const { addToCart } = useCart();
+  const { addToCart, cartItems } = useCart();
   const { isLoggedIn, userRole } = useAccount();
   const [isFavorite, setIsFavorite] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
@@ -307,6 +307,7 @@ export default function ServiceDetailPage() {
           // Transform API data to match Service interface
           const transformedService = {
             id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            _id: s._id?.toString() || s.id?.toString(), // Store actual MongoDB _id for cart and API calls
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
             gallery: s.gallery || [], // Unified gallery array (images and videos in order)
             images: s.images || [],
@@ -904,13 +905,83 @@ export default function ServiceDetailPage() {
   const totalPrice = (basePrice + addonsTotal) * quantity;
 
   const handleAddToCart = () => {
-    // Open AddToCartModal instead of directly adding
-    setShowAddToCartModal(true);
+    // Get selected addons from package or service
+    const addonsSource = selectedPackage?.addons || service.addons;
+    const selectedAddonsData = addonsSource
+      ?.filter(addon => selectedAddons.has(addon.id))
+      .map(addon => ({
+        id: addon.id,
+        title: addon.name || addon.title,
+        price: addon.price
+      })) || [];
+    
+    // Build title with package name if package selected
+    const itemTitle = selectedPackage 
+      ? `${service.description} (${selectedPackage.name} Package)`
+      : service.description;
+    
+    // Add to cart directly without modal
+    // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
+    const serviceIdForCart = service._id || service.id?.toString();
+    addToCart({
+      id: serviceIdForCart, // Item key (will be generated on backend)
+      serviceId: serviceIdForCart, // Actual MongoDB service ID
+      title: itemTitle,
+      seller: service.providerName,
+      price: basePrice,
+      image: service.image,
+      rating: service.rating,
+      addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
+      packageType: selectedPackage?.name.toLowerCase() || undefined
+    }, quantity);
+    
+    // Show success toast
+    toast.success("Item added to cart");
   };
 
-  const handleOrderNow = () => {
-    // Show booking modal first
-    setShowBookingModal(true);
+  const handleBuyNow = () => {
+    // Build title with package name if package selected
+    const itemTitle = selectedPackage 
+      ? `${service.description} (${selectedPackage.name} Package)`
+      : service.description;
+    
+    // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
+    const serviceIdForCart = service._id || service.id?.toString();
+    
+    // Check if item already exists in cart
+    const existingItem = cartItems.find(item => item.id === serviceIdForCart);
+    
+    // If item already exists in cart, just navigate to cart page
+    if (existingItem) {
+      navigate('/cart');
+      return;
+    }
+    
+    // Get selected addons from package or service
+    const addonsSource = selectedPackage?.addons || service.addons;
+    const selectedAddonsData = addonsSource
+      ?.filter(addon => selectedAddons.has(addon.id))
+      .map(addon => ({
+        id: addon.id,
+        title: addon.name || addon.title,
+        price: addon.price
+      })) || [];
+    
+    // Add to cart only if not already in cart
+    addToCart({
+      id: serviceIdForCart, // Item key (will be generated on backend)
+      serviceId: serviceIdForCart, // Actual MongoDB service ID
+      title: itemTitle,
+      seller: service.providerName,
+      price: basePrice,
+      image: service.image,
+      rating: service.rating,
+      addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
+      packageType: selectedPackage?.name.toLowerCase() || undefined
+    }, quantity);
+    
+    // Navigate to cart page
+    navigate('/cart');
   };
 
   const handleBookingConfirm = (date: Date, time: string, timeSlot: string) => {
@@ -930,8 +1001,11 @@ export default function ServiceDetailPage() {
       : service.description;
     
     // Add to cart with booking info
+    // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
+    const serviceIdForCart = service._id || service.id?.toString();
     addToCart({
-      id: service.id.toString(),
+      id: serviceIdForCart, // Item key (will be generated on backend)
+      serviceId: serviceIdForCart, // Actual MongoDB service ID
       title: itemTitle,
       seller: service.providerName,
       price: basePrice,
@@ -2580,7 +2654,7 @@ export default function ServiceDetailPage() {
                                   />
                                   {pkgPriceUnit && (
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] pointer-events-none">
-                                      {pkgPriceUnit}
+                                      {pkgPriceUnit.replace(/^per\s+/i, '')}
                                     </span>
                                   )}
                                 </div>
@@ -2609,7 +2683,7 @@ export default function ServiceDetailPage() {
                           £{basePrice}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          / {service.priceUnit}
+                          / {service.priceUnit?.replace(/^per\s+/i, '') || service.priceUnit}
                         </span>
                       </div>
                       {originalPrice && (() => {
@@ -2850,7 +2924,7 @@ export default function ServiceDetailPage() {
                               />
                               {service.priceUnit && service.priceUnit !== "fixed" && (
                                 <span className="absolute right-2 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] pointer-events-none">
-                                  {service.priceUnit}
+                                  {service.priceUnit.replace(/^per\s+/i, '')}
                                 </span>
                               )}
                             </div>
@@ -2917,10 +2991,10 @@ export default function ServiceDetailPage() {
                   </Button>
                   
                   <Button 
-                    onClick={handleOrderNow}
+                    onClick={handleBuyNow}
                     className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
                   >
-                    Order Now
+                    Buy Now
                   </Button>
                   
                   <Separator className="my-6" />
@@ -3031,7 +3105,7 @@ export default function ServiceDetailPage() {
                           £{basePrice}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          / {selectedPackage ? selectedPackage.priceUnit : service.priceUnit}
+                          / {(selectedPackage ? selectedPackage.priceUnit : service.priceUnit)?.replace(/^per\s+/i, '') || (selectedPackage ? selectedPackage.priceUnit : service.priceUnit)}
                         </span>
                       </div>
                       {originalPrice && (() => {
@@ -3352,10 +3426,10 @@ export default function ServiceDetailPage() {
                     </Button>
                     
                     <Button 
-                      onClick={handleOrderNow}
+                      onClick={handleBuyNow}
                       className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
                     >
-                      Order Now
+                      Buy Now
                     </Button>
                     
                     <Separator className="my-6" />
@@ -3416,8 +3490,11 @@ export default function ServiceDetailPage() {
             ? `${service.description} (${selectedPackage.name} Package)`
             : service.description;
 
+          // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
+          const serviceIdForCart = service._id || service.id?.toString();
           addToCart({
-            id: service.id.toString(),
+            id: serviceIdForCart, // Item key (will be generated on backend)
+            serviceId: serviceIdForCart, // Actual MongoDB service ID
             title: itemTitle,
             seller: service.providerName,
             price: basePrice,
