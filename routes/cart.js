@@ -36,7 +36,8 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
 
     // Map cart items to frontend format
     const items = cart.items.map(item => ({
-      id: item.serviceId,
+      id: item.itemKey || item.serviceId, // Use itemKey for uniqueness
+      serviceId: item.serviceId, // Actual MongoDB service ID
       title: item.title,
       seller: item.seller,
       price: item.price,
@@ -46,6 +47,7 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
       addons: item.addons || [],
       booking: item.booking,
       packageType: item.packageType,
+      thumbnailVideo: item.thumbnailVideo || undefined,
     }));
 
     return res.json({ items });
@@ -100,6 +102,7 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
         addons: item.addons || [],
         booking: item.booking,
         packageType: item.packageType,
+        thumbnailVideo: item.thumbnailVideo || undefined,
         itemKey: itemKey,
       });
     }
@@ -119,6 +122,7 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
       addons: i.addons || [],
       booking: i.booking,
       packageType: i.packageType,
+      thumbnailVideo: i.thumbnailVideo || undefined,
     }));
 
     return res.json({ items, message: 'Item added to cart' });
@@ -159,9 +163,15 @@ router.put('/items/:itemKey', authenticateToken, requireRole(['client']), async 
       cart.items[itemIndex].booking = booking;
     }
 
-    // Update other properties if provided
-    if (otherUpdates && Object.keys(otherUpdates).length > 0) {
-      Object.assign(cart.items[itemIndex], otherUpdates);
+    // Update thumbnailVideo if provided
+    if (otherUpdates.thumbnailVideo !== undefined) {
+      cart.items[itemIndex].thumbnailVideo = otherUpdates.thumbnailVideo;
+    }
+
+    // Update other properties if provided (excluding thumbnailVideo which is already handled)
+    const { thumbnailVideo, ...restUpdates } = otherUpdates || {};
+    if (restUpdates && Object.keys(restUpdates).length > 0) {
+      Object.assign(cart.items[itemIndex], restUpdates);
     }
 
     await cart.save();
@@ -179,6 +189,7 @@ router.put('/items/:itemKey', authenticateToken, requireRole(['client']), async 
       addons: i.addons || [],
       booking: i.booking,
       packageType: i.packageType,
+      thumbnailVideo: i.thumbnailVideo || undefined,
     }));
 
     return res.json({ items, message: 'Cart item updated' });
@@ -215,6 +226,7 @@ router.delete('/items/:itemKey', authenticateToken, requireRole(['client']), asy
       addons: i.addons || [],
       booking: i.booking,
       packageType: i.packageType,
+      thumbnailVideo: i.thumbnailVideo || undefined,
     }));
 
     return res.json({ items, message: 'Item removed from cart' });

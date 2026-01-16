@@ -30,6 +30,16 @@ const bookingInfoSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
+const thumbnailVideoSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    required: true,
+  },
+  thumbnail: {
+    type: String,
+  },
+}, { _id: false });
+
 const cartItemSchema = new mongoose.Schema({
   serviceId: {
     type: String,
@@ -69,6 +79,9 @@ const cartItemSchema = new mongoose.Schema({
   },
   packageType: {
     type: String, // "basic", "standard", "premium"
+  },
+  thumbnailVideo: {
+    type: thumbnailVideoSchema,
   },
   // Unique identifier for cart items (serviceId + packageType + addons hash)
   itemKey: {

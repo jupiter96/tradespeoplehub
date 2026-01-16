@@ -24,6 +24,7 @@ interface BookingModalProps {
   sellerName: string;
   serviceTitle: string;
   availability?: Record<string, DayAvailability>; // { monday: { enabled, blocks }, ... }
+  deliveryType?: "same-day" | "standard"; // Service delivery type
 }
 
 const timeSlots = [
@@ -38,7 +39,8 @@ export default function BookingModal({
   onConfirm, 
   sellerName,
   serviceTitle,
-  availability 
+  availability,
+  deliveryType = "standard"
 }: BookingModalProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
@@ -106,6 +108,18 @@ export default function BookingModal({
 
   // Check if a date is available based on availability data
   const isDateAvailable = (date: Date): boolean => {
+    // For standard delivery, disable today (must be ordered at least 1 day in advance)
+    if (deliveryType === "standard") {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const selectedDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      
+      // Disable today for standard delivery
+      if (selectedDateOnly.getTime() === today.getTime()) {
+        return false;
+      }
+    }
+    
     if (!availability) return true; // If no availability data, allow all dates
     
     const dayName = getDayName(date);
@@ -127,6 +141,13 @@ export default function BookingModal({
     }
 
     const availableTimes: string[] = [];
+    const now = new Date();
+    
+    // For same-day delivery, calculate minimum time (current time + 2 hours)
+    const isToday = date.toDateString() === now.toDateString();
+    const minTimeMinutes = isToday && deliveryType === "same-day" 
+      ? now.getHours() * 60 + now.getMinutes() + 120 // Add 2 hours (120 minutes)
+      : 0;
     
     // Process each time block
     dayAvailability.blocks.forEach(block => {
@@ -138,6 +159,11 @@ export default function BookingModal({
       
       // Generate 30-minute intervals
       for (let minutes = fromMinutes; minutes < toMinutes; minutes += 30) {
+        // For same-day delivery on today, skip times that are too soon
+        if (isToday && deliveryType === "same-day" && minutes < minTimeMinutes) {
+          continue;
+        }
+        
         const hour = Math.floor(minutes / 60);
         const min = minutes % 60;
         const timeString = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
@@ -161,7 +187,26 @@ export default function BookingModal({
     if (!selectedDate || !availability) return true;
     
     const availableTimes = getAvailableTimes(selectedDate);
-    return availableTimes.includes(time);
+    if (!availableTimes.includes(time)) return false;
+    
+    // For same-day delivery on today, check if time is at least 2 hours from now
+    if (deliveryType === "same-day") {
+      const now = new Date();
+      const isToday = selectedDate.toDateString() === now.toDateString();
+      
+      if (isToday) {
+        const [timeHour, timeMin] = time.split(':').map(Number);
+        const timeMinutes = timeHour * 60 + timeMin;
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const minRequiredMinutes = currentMinutes + 120; // 2 hours ahead
+        
+        if (timeMinutes < minRequiredMinutes) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
   };
 
   // Get available time slots grouped by slot type
@@ -250,6 +295,14 @@ export default function BookingModal({
                 disabled={(date) => {
                   // Disable past dates
                   if (date < today) return true;
+                  // For standard delivery, disable today (must order at least 1 day in advance)
+                  if (deliveryType === "standard") {
+                    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    if (dateOnly.getTime() === todayOnly.getTime()) {
+                      return true;
+                    }
+                  }
                   // Disable dates not available based on availability data
                   if (availability && !isDateAvailable(date)) return true;
                   return false;

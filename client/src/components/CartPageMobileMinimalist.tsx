@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { 
   ChevronDown, 
   Edit2, 
@@ -7,12 +7,118 @@ import {
   X,
   Plus,
   CreditCard,
-  Landmark
+  Landmark,
+  Play
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
+
+// Video Thumbnail Component with Play Button
+function VideoThumbnail({
+  videoUrl,
+  thumbnail,
+  fallbackImage,
+  className = "",
+  style = {},
+}: {
+  videoUrl: string;
+  thumbnail?: string;
+  fallbackImage?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Set video to middle frame when metadata loads
+  useEffect(() => {
+    if (!videoRef.current || isPlaying) return;
+    
+    const video = videoRef.current;
+    
+    const handleLoadedMetadata = () => {
+      if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+        // Seek to middle of video for thumbnail
+        video.currentTime = video.duration / 2;
+      }
+    };
+    
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [isPlaying]);
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      setIsPlaying(true);
+      videoRef.current.play().catch(() => {
+        // Handle play error (e.g., autoplay blocked)
+        setIsPlaying(false);
+      });
+    }
+  };
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Allow clicking video to play/pause
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        setIsPlaying(true);
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const handleVideoEnd = () => {
+    if (videoRef.current) {
+      // Seek back to middle when video ends
+      if (videoRef.current.duration && !isNaN(videoRef.current.duration)) {
+        videoRef.current.currentTime = videoRef.current.duration / 2;
+      }
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} style={style}>
+      {/* Video element - always shown, plays on button click */}
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        poster={thumbnail || fallbackImage || undefined}
+        className="w-full h-full object-cover object-center"
+        style={{ minWidth: '100%', minHeight: '100%' }}
+        muted
+        playsInline
+        loop
+        onEnded={handleVideoEnd}
+        onClick={handleVideoClick}
+        preload="metadata"
+      />
+      
+      {/* Play Button Overlay - shown when video is paused */}
+      {!isPlaying && (
+        <button
+          onClick={handlePlayClick}
+          className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group z-10"
+          aria-label="Play video"
+        >
+          <div className="bg-white/90 group-hover:bg-white rounded-full p-2 md:p-3 shadow-lg transform group-hover:scale-110 transition-transform">
+            <Play className="w-4 h-4 md:w-6 md:h-6 text-[#FE8A0F] fill-[#FE8A0F]" />
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
 
 interface Address {
   id: string;
@@ -46,6 +152,7 @@ interface CartItem {
   image: string;
   addons?: { id: string; title: string; price: number }[];
   booking?: { date: string; time: string };
+  thumbnailVideo?: { url: string; thumbnail?: string };
 }
 
 interface Props {
@@ -137,11 +244,20 @@ export default function CartPageMobileMinimalist({
           {cartItems.map((item) => (
             <div key={item.id} className="flex items-start gap-3 pb-3 border-b last:border-b-0 border-gray-100">
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
+                {item.thumbnailVideo ? (
+                  <VideoThumbnail
+                    videoUrl={item.thumbnailVideo.url}
+                    thumbnail={item.thumbnailVideo.thumbnail}
+                    fallbackImage={item.image}
+                    className="w-full h-full"
+                  />
+                ) : (
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1 line-clamp-2">

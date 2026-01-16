@@ -920,6 +920,15 @@ export default function ServiceDetailPage() {
       ? `${service.description} (${selectedPackage.name} Package)`
       : service.description;
     
+    // Determine thumbnail video - prioritize gallery first item if it's a video
+    let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+    if (galleryItems && galleryItems.length > 0 && galleryItems[0].type === 'video') {
+      thumbnailVideo = {
+        url: galleryItems[0].url,
+        thumbnail: galleryItems[0].thumbnail
+      };
+    }
+    
     // Add to cart directly without modal
     // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
     const serviceIdForCart = service._id || service.id?.toString();
@@ -932,7 +941,8 @@ export default function ServiceDetailPage() {
       image: service.image,
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
-      packageType: selectedPackage?.name.toLowerCase() || undefined
+      packageType: selectedPackage?.name.toLowerCase() || undefined,
+      thumbnailVideo: thumbnailVideo || undefined
     }, quantity);
     
     // Show success toast
@@ -967,6 +977,15 @@ export default function ServiceDetailPage() {
         price: addon.price
       })) || [];
     
+    // Determine thumbnail video - prioritize gallery first item if it's a video
+    let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+    if (galleryItems && galleryItems.length > 0 && galleryItems[0].type === 'video') {
+      thumbnailVideo = {
+        url: galleryItems[0].url,
+        thumbnail: galleryItems[0].thumbnail
+      };
+    }
+    
     // Add to cart only if not already in cart
     addToCart({
       id: serviceIdForCart, // Item key (will be generated on backend)
@@ -977,7 +996,8 @@ export default function ServiceDetailPage() {
       image: service.image,
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
-      packageType: selectedPackage?.name.toLowerCase() || undefined
+      packageType: selectedPackage?.name.toLowerCase() || undefined,
+      thumbnailVideo: thumbnailVideo || undefined
     }, quantity);
     
     // Navigate to cart page
@@ -1003,6 +1023,16 @@ export default function ServiceDetailPage() {
     // Add to cart with booking info
     // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
     const serviceIdForCart = service._id || service.id?.toString();
+    
+    // Determine thumbnail video - prioritize gallery first item if it's a video
+    let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+    if (galleryItems && galleryItems.length > 0 && galleryItems[0].type === 'video') {
+      thumbnailVideo = {
+        url: galleryItems[0].url,
+        thumbnail: galleryItems[0].thumbnail
+      };
+    }
+    
     addToCart({
       id: serviceIdForCart, // Item key (will be generated on backend)
       serviceId: serviceIdForCart, // Actual MongoDB service ID
@@ -1016,7 +1046,8 @@ export default function ServiceDetailPage() {
         date: date.toISOString(),
         time: time,
         timeSlot: timeSlot
-      }
+      },
+      thumbnailVideo: thumbnailVideo || undefined
     }, quantity);
     
     // Navigate to cart page
@@ -3492,6 +3523,16 @@ export default function ServiceDetailPage() {
 
           // Use _id (MongoDB ObjectId) if available, otherwise fallback to id
           const serviceIdForCart = service._id || service.id?.toString();
+          
+          // Determine thumbnail video - prioritize gallery first item if it's a video
+          let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+          if (galleryItems && galleryItems.length > 0 && galleryItems[0].type === 'video') {
+            thumbnailVideo = {
+              url: galleryItems[0].url,
+              thumbnail: galleryItems[0].thumbnail
+            };
+          }
+          
           addToCart({
             id: serviceIdForCart, // Item key (will be generated on backend)
             serviceId: serviceIdForCart, // Actual MongoDB service ID
@@ -3506,7 +3547,8 @@ export default function ServiceDetailPage() {
               time: data.booking.time,
               timeSlot: data.booking.timeSlot
             } : undefined,
-            packageType: data.packageType
+            packageType: data.packageType,
+            thumbnailVideo: thumbnailVideo || undefined
           }, data.quantity);
           
           setShowAddToCartModal(false);

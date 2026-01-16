@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useCart } from "./CartContext";
 import { useAccount } from "./AccountContext";
 import { useOrders } from "./OrdersContext";
@@ -26,7 +26,8 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  Landmark
+  Landmark,
+  Play
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -43,6 +44,111 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import { resolveApiUrl } from "../config/api";
 import paypalLogo from "../assets/paypal-logo.png";
 import BookingModal from "./BookingModal";
+
+// Video Thumbnail Component with Play Button
+function VideoThumbnail({
+  videoUrl,
+  thumbnail,
+  fallbackImage,
+  className = "",
+  style = {},
+}: {
+  videoUrl: string;
+  thumbnail?: string;
+  fallbackImage?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Set video to middle frame when metadata loads
+  useEffect(() => {
+    if (!videoRef.current || isPlaying) return;
+    
+    const video = videoRef.current;
+    
+    const handleLoadedMetadata = () => {
+      if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+        // Seek to middle of video for thumbnail
+        video.currentTime = video.duration / 2;
+      }
+    };
+    
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [isPlaying]);
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      setIsPlaying(true);
+      videoRef.current.play().catch(() => {
+        // Handle play error (e.g., autoplay blocked)
+        setIsPlaying(false);
+      });
+    }
+  };
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Allow clicking video to play/pause
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        setIsPlaying(true);
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const handleVideoEnd = () => {
+    if (videoRef.current) {
+      // Seek back to middle when video ends
+      if (videoRef.current.duration && !isNaN(videoRef.current.duration)) {
+        videoRef.current.currentTime = videoRef.current.duration / 2;
+      }
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} style={style}>
+      {/* Video element - always shown, plays on button click */}
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        poster={thumbnail || fallbackImage || undefined}
+        className="w-full h-full object-cover object-center"
+        style={{ minWidth: '100%', minHeight: '100%' }}
+        muted
+        playsInline
+        loop
+        onEnded={handleVideoEnd}
+        onClick={handleVideoClick}
+        preload="metadata"
+      />
+      
+      {/* Play Button Overlay - shown when video is paused */}
+      {!isPlaying && (
+        <button
+          onClick={handlePlayClick}
+          className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group z-10"
+          aria-label="Play video"
+        >
+          <div className="bg-white/90 group-hover:bg-white rounded-full p-3 md:p-4 shadow-lg transform group-hover:scale-110 transition-transform">
+            <Play className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] fill-[#FE8A0F]" />
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
 
 interface Address {
   id: string;
@@ -135,6 +241,7 @@ export default function CartPage() {
         addons: item.addons,
         booking: item.booking,
         packageType: item.packageType,
+        thumbnailVideo: item.thumbnailVideo, // Include thumbnailVideo for debugging
       })),
       cartTotal: cartTotal,
     });
@@ -163,7 +270,7 @@ export default function CartPage() {
   // Booking modal state
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [currentBookingItemIndex, setCurrentBookingItemIndex] = useState<number>(0);
-  const [servicesNeedingBooking, setServicesNeedingBooking] = useState<Array<{ item: any; serviceId: string; availability: any }>>([]);
+  const [servicesNeedingBooking, setServicesNeedingBooking] = useState<Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard" }>>([]);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   
   // Fetch wallet balance
@@ -473,7 +580,7 @@ export default function CartPage() {
     console.log('[Booking Check] Starting to check services for booking requirements');
     console.log('[Booking Check] Cart items:', cartItems.map(item => ({ id: item.id, title: item.title, hasBooking: !!item.booking })));
     
-    const servicesToCheck: Array<{ item: any; serviceId: string; availability: any }> = [];
+    const servicesToCheck: Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard" }> = [];
     
     for (const item of cartItems) {
       // Skip if item already has booking info
@@ -540,6 +647,7 @@ export default function CartPage() {
             item,
             serviceId: serviceData.service._id?.toString() || serviceData.service.id || item.id,
             availability: serviceData.service.availability,
+            deliveryType: serviceData.service.deliveryType || "standard",
           });
         } else {
           console.log(`[Booking Check] Service ${item.id} does not require booking (no availability data)`);
@@ -1314,139 +1422,155 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Step 3: Review Items - Minimalist */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Header with Toggle */}
-                <button
-                  onClick={() => setShowItemsSection(!showItemsSection)}
-                  className="w-full px-4 md:px-6 py-3 md:py-4 border-b border-gray-100"
-                >
-                  <div className="flex items-center justify-between gap-2 md:gap-3">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <div className="w-6 h-6 md:w-7 md:h-7 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">3</span>
-                      </div>
-                      <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
-                        Review Items
-                      </h2>
-                      <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px] ml-auto">{cartItems.length}</Badge>
-                    </div>
-                    {/* Toggle Icon */}
-                    <div>
-                      {showItemsSection ? (
-                        <ChevronUp className="w-5 h-5 text-[#6b6b6b]" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
-                      )}
-                    </div>
-                  </div>
-                </button>
-
-                {/* Collapsible Content */}
-                <div className={`${showItemsSection ? 'block' : 'hidden'}`}>
-                  <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-                    {cartItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="border border-gray-200 rounded-lg md:rounded-xl p-3 md:p-4 hover:border-gray-300 hover:shadow-sm transition-all"
-                      >
-                        <div className="flex gap-3 md:gap-4">
-                          {/* Service Image - Minimalist */}
-                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                            <img
-                              src={item.image}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-
-                          {/* Service Details */}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium mb-0.5 line-clamp-2">
-                              {item.title}
-                            </h3>
-                            <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">
-                              by {item.seller}
-                            </p>
-                            
-                            {/* Selected Addons - Minimalist */}
-                            {item.addons && item.addons.length > 0 && (
-                              <div className="mb-2 space-y-0.5">
-                                {item.addons.map((addon) => (
-                                  <p key={addon.id} className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#FE8A0F]">
-                                    + {addon.title} (£{addon.price})
-                                  </p>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Booking Information - Minimalist */}
-                            {item.booking && (
-                              <div className="bg-blue-50/70 border border-blue-200 rounded-md md:rounded-lg p-2 mb-2">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <Calendar className="w-3 h-3 text-[#3B82F6]" />
-                                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
-                                    Appointment Scheduled
-                                  </p>
-                                </div>
-                                <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
-                                  {new Date(item.booking.date).toLocaleDateString('en-GB', { 
-                                    weekday: 'short',
-                                    month: 'short', 
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  })} • {item.booking.time}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Quantity and Price - Mobile Optimized */}
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center gap-1.5 md:gap-2">
-                                <button
-                                  onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                                <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </div>
-                              
-                              <div className="flex items-center gap-2 md:gap-3">
-                                <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
-                                  £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
-                                </p>
-                                <button
-                                  onClick={() => removeFromCart(item.id)}
-                                  className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors active:scale-95"
-                                >
-                                  <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1 order-1 lg:order-2">
-              <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6 sticky top-32">
-                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
-                  Order Summary
-                </h2>
+              <div className="space-y-4 md:space-y-5">
+                {/* Step 3: Review Items - Moved to top of Order Summary */}
+                <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Header with Toggle */}
+                  <button
+                    onClick={() => setShowItemsSection(!showItemsSection)}
+                    className="w-full px-4 md:px-6 py-3 md:py-4 border-b border-gray-100"
+                  >
+                    <div className="flex items-center justify-between gap-2 md:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-7 md:h-7 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
+                          <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">3</span>
+                        </div>
+                        <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+                          Review Items
+                        </h2>
+                        <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px] ml-auto">{cartItems.length}</Badge>
+                      </div>
+                      {/* Toggle Icon */}
+                      <div>
+                        {showItemsSection ? (
+                          <ChevronUp className="w-5 h-5 text-[#6b6b6b]" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Collapsible Content */}
+                  <div className={`${showItemsSection ? 'block' : 'hidden'}`}>
+                    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+                      {cartItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="border border-gray-200 rounded-lg md:rounded-xl p-3 md:p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+                        >
+                          <div className="flex gap-3 md:gap-4">
+                            {/* Service Image/Video - Minimalist */}
+                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                              {item.thumbnailVideo && item.thumbnailVideo.url ? (
+                                <VideoThumbnail
+                                  videoUrl={item.thumbnailVideo.url}
+                                  thumbnail={item.thumbnailVideo.thumbnail}
+                                  fallbackImage={item.image}
+                                  className="w-full h-full"
+                                />
+                              ) : item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                  <ShoppingBag className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Service Details */}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium mb-0.5 line-clamp-2">
+                                {item.title}
+                              </h3>
+                              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">
+                                by {item.seller}
+                              </p>
+                              
+                              {/* Selected Addons - Minimalist */}
+                              {item.addons && item.addons.length > 0 && (
+                                <div className="mb-2 space-y-0.5">
+                                  {item.addons.map((addon) => (
+                                    <p key={addon.id} className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#FE8A0F]">
+                                      + {addon.title} (£{addon.price})
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Booking Information - Minimalist */}
+                              {item.booking && (
+                                <div className="bg-blue-50/70 border border-blue-200 rounded-md md:rounded-lg p-2 mb-2">
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <Calendar className="w-3 h-3 text-[#3B82F6]" />
+                                    <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
+                                      Appointment Scheduled
+                                    </p>
+                                  </div>
+                                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
+                                    {new Date(item.booking.date).toLocaleDateString('en-GB', { 
+                                      weekday: 'short',
+                                      month: 'short', 
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    })} • {item.booking.time}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Quantity and Price - Mobile Optimized */}
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-1.5 md:gap-2">
+                                  <button
+                                    onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                    className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                    className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 md:gap-3">
+                                  <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
+                                    £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
+                                  </p>
+                                  <button
+                                    onClick={() => removeFromCart(item.id)}
+                                    className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors active:scale-95"
+                                  >
+                                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Summary */}
+                <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6 sticky top-32">
+                  <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
+                    Order Summary
+                  </h2>
 
                 {/* Promo Code */}
                 <div className="mb-6">
@@ -1578,6 +1702,7 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
+              </div>
             </div>
             </div>
           </div>
@@ -1599,6 +1724,7 @@ export default function CartPage() {
           sellerName={servicesNeedingBooking[currentBookingItemIndex].item.seller}
           serviceTitle={servicesNeedingBooking[currentBookingItemIndex].item.title}
           availability={servicesNeedingBooking[currentBookingItemIndex].availability}
+          deliveryType={servicesNeedingBooking[currentBookingItemIndex].deliveryType || "standard"}
         />
       )}
     </div>

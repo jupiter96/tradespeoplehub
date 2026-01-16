@@ -26,6 +26,7 @@ export interface CartItem {
   addons?: CartItemAddon[];
   booking?: BookingInfo;
   packageType?: string; // "basic", "standard", "premium"
+  thumbnailVideo?: { url: string; thumbnail?: string }; // Video thumbnail for cart display
 }
 
 interface CartContextType {
