@@ -345,6 +345,10 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
   const hasMore = visibleCount < services.length;
 
+  const handleViewAllClick = () => {
+    navigate('/services');
+  };
+
   return (
     <div className="w-full mb-12">
       {/* Header */}
@@ -353,6 +357,16 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
           {title}
         </h2>
         <div className="flex items-center gap-2">
+          {/* View More Button - Show for Featured Services only */}
+          {title === "Featured Services" && (
+            <button 
+              onClick={handleViewAllClick}
+              className="text-[#3d78cb] font-['Poppins',sans-serif] text-[14px] hover:text-[#2d68bb] transition-colors cursor-pointer font-medium"
+            >
+              View More
+            </button>
+          )}
+          
           {/* View Mode Toggle - Mobile Only */}
           <div className="md:hidden flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button
@@ -426,12 +440,12 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       style={{ minWidth: '100%', minHeight: '100%' }}
                     />
                   ) : (
-                    <img
-                      src={service.image}
-                      alt={service.description}
-                      className="w-full h-full object-cover object-center"
-                      style={{ minWidth: '100%', minHeight: '100%' }}
-                    />
+                  <img
+                    src={service.image}
+                    alt={service.description}
+                    className="w-full h-full object-cover object-center"
+                    style={{ minWidth: '100%', minHeight: '100%' }}
+                  />
                   )}
                   
                   {/* Heart Icon - Top Right */}
@@ -753,14 +767,14 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                       style={{ minWidth: '100%', minHeight: '100%' }}
                     />
                   ) : (
-                    <img
-                      src={service.image}
-                      alt={service.description}
-                      className="w-full h-full object-cover object-center"
-                      style={{ minWidth: '100%', minHeight: '100%' }}
-                    />
+                  <img
+                    src={service.image}
+                    alt={service.description}
+                    className="w-full h-full object-cover object-center"
+                    style={{ minWidth: '100%', minHeight: '100%' }}
+                  />
                   )}
-                  
+
                   {/* Heart Icon - Top Right */}
                   <button
                     onClick={(e) => {
@@ -1145,12 +1159,12 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                         style={{ minWidth: '100%', minHeight: '100%' }}
                       />
                     ) : (
-                      <img
-                        src={service.image}
-                        alt={service.description}
+                    <img
+                      src={service.image}
+                      alt={service.description}
                         className="w-full h-full object-cover object-center"
                         style={{ minWidth: '100%', minHeight: '100%' }}
-                      />
+                    />
                     )}
                       
                       {/* Heart Icon - Top Right */}

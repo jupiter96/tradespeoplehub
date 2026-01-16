@@ -240,7 +240,7 @@ export default function AdminServicesPage({
     } else if (newStatus === "required_modification") {
       setIsModificationDialogOpen(true);
     } else {
-      setIsStatusDialogOpen(true);
+    setIsStatusDialogOpen(true);
     }
   };
 

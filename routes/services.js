@@ -950,6 +950,19 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
     const { id } = req.params;
     const updateData = req.body;
 
+    // If no fields to update, return early without making any changes
+    if (!updateData || Object.keys(updateData).length === 0) {
+      const service = await Service.findById(id).populate([
+        { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity' },
+        { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
+        { path: 'serviceSubCategory', select: 'name slug icon' },
+      ]);
+      if (!service) {
+        return res.status(404).json({ error: 'Service not found' });
+      }
+      return res.json({ service });
+    }
+
     // Find service
     const service = await Service.findById(id);
     if (!service) {
@@ -1090,13 +1103,39 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
 
     // Determine if content fields were changed (requires admin approval)
     // Content fields: title, description, aboutMe, image, images, serviceCategory, serviceSubCategory, etc.
-    // Price/Availability fields: price, originalPrice, originalPriceValidFrom, originalPriceValidUntil, availability
+    // Price/Availability fields: price, originalPrice, originalPriceValidFrom, originalPriceValidUntil, availability, priceUnit
     const priceAndAvailabilityFields = ['price', 'originalPrice', 'originalPriceValidFrom', 'originalPriceValidUntil', 'availability', 'priceUnit'];
-    const changedFields = Object.keys(updateData);
-    const contentFieldsChanged = changedFields.some(field => !priceAndAvailabilityFields.includes(field) && field !== 'status');
     
     // Store original status before update
     const originalStatus = service.status;
+    
+    // Compare actual values to determine what really changed (not just what was sent in updateData)
+    // This ensures we only change status based on actual differences, not just presence in updateData
+    const actuallyChangedFields = [];
+    const contentFieldsChanged = Object.keys(updateData).some(field => {
+      if (field === 'status') return false;
+      
+      const oldValue = service[field];
+      const newValue = updateData[field];
+      
+      // Deep comparison for objects and arrays
+      let hasChanged = false;
+      if (typeof oldValue === 'object' && typeof newValue === 'object' && oldValue !== null && newValue !== null) {
+        hasChanged = JSON.stringify(oldValue) !== JSON.stringify(newValue);
+      } else {
+        hasChanged = oldValue !== newValue;
+      }
+      
+      if (hasChanged) {
+        actuallyChangedFields.push(field);
+        // Return true if this is a content field (not price/availability)
+        return !priceAndAvailabilityFields.includes(field);
+      }
+      return false;
+    });
+    
+    // Check if only availability was changed
+    const onlyAvailabilityChanged = actuallyChangedFields.length === 1 && actuallyChangedFields[0] === 'availability';
     
     // Update service
     Object.assign(service, updateData);
@@ -1114,6 +1153,10 @@ router.put('/:id', authenticateToken, requireRole(['professional']), async (req,
       service.deniedReason = null;
       service.reviewedBy = null;
       service.reviewedAt = null;
+    }
+    // If service was approved and only availability was changed, keep it approved (no admin review needed)
+    else if (originalStatus === 'approved' && onlyAvailabilityChanged && !isDraftUpdate) {
+      // Keep status as 'approved' - no need to change
     }
     // If service was approved and content fields were changed, send back to pending for admin review
     else if (originalStatus === 'approved' && contentFieldsChanged && !isDraftUpdate) {

@@ -2539,12 +2539,12 @@ export default function SectorPage() {
                           style={{ minWidth: '100%', minHeight: '100%' }}
                         />
                       ) : (
-                        <img
-                          src={service.image}
-                          alt={service.description}
-                          className="w-full h-full object-cover object-center"
-                          style={{ minWidth: '100%', minHeight: '100%' }}
-                        />
+                      <img
+                        src={service.image}
+                        alt={service.description}
+                              className="w-full h-full object-cover object-center"
+                              style={{ minWidth: '100%', minHeight: '100%' }}
+                      />
                       )}
                       
                             {/* Heart Icon - Top Right */}
@@ -2895,12 +2895,12 @@ export default function SectorPage() {
                               style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
                             />
                           ) : (
-                            <img
-                              src={service.image}
-                              alt={service.description}
-                              className="w-full h-full object-cover"
-                              style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
-                            />
+                          <img
+                            src={service.image}
+                            alt={service.description}
+                            className="w-full h-full object-cover"
+                            style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
+                          />
                           )}
                           {/* Badges */}
                           {service.badges && service.badges.length > 0 && (

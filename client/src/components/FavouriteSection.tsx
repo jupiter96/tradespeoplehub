@@ -180,7 +180,7 @@ export default function FavouriteSection() {
       });
       if (response.ok) {
         setFavourites(favourites.filter(fav => (fav._id || fav.id) !== serviceId));
-        toast.success("Removed from favourites");
+    toast.success("Removed from favourites");
       } else {
         throw new Error("Failed to remove from favourites");
       }
@@ -329,7 +329,7 @@ export default function FavouriteSection() {
                 key={serviceId}
                 onClick={() => handleViewService(service)}
                 className="bg-white rounded-[12px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 h-full w-full"
-              >
+            >
                 {/* Image/Video Section */}
                 <div className="relative w-full overflow-hidden" style={{ height: '225px' }}>
                   {service.thumbnailVideo ? (
@@ -341,8 +341,8 @@ export default function FavouriteSection() {
                       style={{ minWidth: '100%', minHeight: '100%' }}
                     />
                   ) : (
-                    <img
-                      src={service.image}
+                <img
+                  src={service.image}
                       alt={service.description || service.title}
                       className="w-full h-full object-cover object-center"
                       style={{ minWidth: '100%', minHeight: '100%' }}
@@ -366,7 +366,7 @@ export default function FavouriteSection() {
                   {/* Title/Description */}
                   <h3 className="font-['Poppins',sans-serif] text-gray-800 font-normal mb-1 md:mb-1.5 line-clamp-2 min-h-[40px] md:min-h-[50px] -mx-2 md:-mx-3 px-1 md:px-1" style={{ fontSize: '16px', fontFamily: "'Poppins', sans-serif" }}>
                     {service.description || service.title}
-                  </h3>
+                </h3>
 
                   {/* Star Rating */}
                   <div className="flex items-center gap-1 mb-2 md:mb-2.5">
@@ -391,7 +391,7 @@ export default function FavouriteSection() {
                         </div>
                         <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
                           ({service.reviewCount || 0})
-                        </span>
+                    </span>
                       </>
                     ) : null}
                   </div>
@@ -405,17 +405,17 @@ export default function FavouriteSection() {
                     ) : (
                       <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
                         {service.originalPrice || service.price || '£0.00'}
-                      </span>
+                  </span>
                     )}
-                  </div>
+                </div>
 
                   {/* Category Badge */}
                   {service.serviceCategory?.name && (
                     <div className="mb-2 md:mb-2.5">
                       <span className="inline-block bg-gray-100 text-[#2c353f] text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-md">
                         {service.serviceCategory.name}
-                      </span>
-                    </div>
+                  </span>
+                </div>
                   )}
 
                   {/* Provider Info */}
@@ -461,7 +461,7 @@ export default function FavouriteSection() {
                         <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
                         <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
                           {service.townCity || service.location || "Location not available"}
-                        </p>
+                    </p>
                       </div>
                     </div>
                   </div>

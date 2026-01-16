@@ -1329,9 +1329,8 @@ function SubCategoryLevelDisplay({
             for (const subCat of subCats) {
               if (!nestedSubCategories[subCat._id] && !loadingSubCategories[subCat._id]) {
                 // Trigger fetch for children (will be handled by this same effect)
-                setTimeout(() => {
-                  fetchNestedSubCategories(subCat._id);
-                }, 100); // Small delay to avoid too many simultaneous requests
+                // For package services editing, we need to recursively fetch to determine last level
+                fetchNestedSubCategories(subCat._id);
               }
             }
           }
@@ -1568,6 +1567,9 @@ function SubCategoryLevelDisplay({
 
 export default function AddServiceSection({ onClose, onSave, initialService, isPackageService = false }: AddServiceSectionProps) {
   const { userInfo } = useAccount();
+
+  // Store original service data for comparison (deep clone to avoid mutations)
+  const originalServiceData = useRef<any>(null);
 
   // Check if user is a professional
   useEffect(() => {
@@ -1934,6 +1936,102 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   // Initialize form with existing service data when editing
   useEffect(() => {
     if (initialService && isEditMode) {
+      // Convert original service data to API format for comparison
+      // This ensures we compare apples-to-apples (same format as what we send)
+      const normalizedOriginal: any = {
+        serviceCategoryId: typeof initialService.serviceCategory === 'object' 
+          ? initialService.serviceCategory._id 
+          : initialService.serviceCategory || initialService.serviceCategoryId,
+        serviceSubCategoryId: typeof initialService.serviceSubCategory === 'object'
+          ? initialService.serviceSubCategory._id
+          : initialService.serviceSubCategory || initialService.serviceSubCategoryId,
+        serviceSubCategoryPath: initialService.serviceSubCategoryPath || [],
+        selectedLastLevelSubCategories: isPackageService 
+          ? (Array.isArray(initialService.selectedLastLevelSubCategories) ? initialService.selectedLastLevelSubCategories : [])
+          : undefined,
+        title: initialService.title || "",
+        description: initialService.description || "",
+        aboutMe: initialService.aboutMe || "",
+        price: initialService.price,
+        originalPrice: initialService.originalPrice,
+        // Convert date fields to "YYYY-MM-DD" format to match form format
+        originalPriceValidFrom: initialService.originalPriceValidFrom 
+          ? (typeof initialService.originalPriceValidFrom === 'string' 
+              ? initialService.originalPriceValidFrom.split('T')[0] 
+              : new Date(initialService.originalPriceValidFrom).toISOString().split('T')[0])
+          : undefined,
+        originalPriceValidUntil: initialService.originalPriceValidUntil 
+          ? (typeof initialService.originalPriceValidUntil === 'string' 
+              ? initialService.originalPriceValidUntil.split('T')[0] 
+              : new Date(initialService.originalPriceValidUntil).toISOString().split('T')[0])
+          : undefined,
+        priceUnit: initialService.priceUnit || "fixed",
+        // Convert gallery to same format as what we send
+        gallery: initialService.gallery && Array.isArray(initialService.gallery)
+          ? initialService.gallery.map((item: any) => ({
+              type: item.type || 'image',
+              url: item.url,
+              thumbnail: item.thumbnail,
+              duration: item.duration,
+              size: item.size,
+            }))
+          : [],
+        // Legacy fields
+        images: Array.isArray(initialService.images) ? initialService.images : [],
+        portfolioImages: Array.isArray(initialService.portfolioImages) ? initialService.portfolioImages : [],
+        videos: Array.isArray(initialService.videos) 
+          ? initialService.videos.map((video: any) => ({
+              url: typeof video === 'string' ? video : (video.url || video),
+              thumbnail: typeof video === 'object' ? video.thumbnail : undefined,
+              duration: typeof video === 'object' ? video.duration : undefined,
+              size: typeof video === 'object' ? video.size : undefined,
+            }))
+          : [],
+        packages: Array.isArray(initialService.packages) 
+          ? initialService.packages.map((pkg: any) => ({
+              id: pkg.id,
+              name: pkg.name,
+              description: pkg.description || "",
+              price: typeof pkg.price === 'number' ? pkg.price : (pkg.price ? parseFloat(String(pkg.price)) : 0),
+              originalPrice: pkg.originalPrice ? (typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice))) : undefined,
+              originalPriceValidFrom: pkg.originalPriceValidFrom ? (typeof pkg.originalPriceValidFrom === 'string' ? pkg.originalPriceValidFrom : new Date(pkg.originalPriceValidFrom).toISOString()) : undefined,
+              originalPriceValidUntil: pkg.originalPriceValidUntil ? (typeof pkg.originalPriceValidUntil === 'string' ? pkg.originalPriceValidUntil : new Date(pkg.originalPriceValidUntil).toISOString()) : undefined,
+              deliveryDays: typeof pkg.deliveryDays === 'number' ? pkg.deliveryDays : (pkg.deliveryDays ? parseFloat(String(pkg.deliveryDays)) : 7),
+              revisions: pkg.revisions || "",
+              features: Array.isArray(pkg.features) ? pkg.features : [],
+              order: pkg.order || 0,
+            }))
+          : [],
+        addons: Array.isArray(initialService.addons)
+          ? initialService.addons.map((addon: any, index: number) => ({
+              id: addon.id || `extra-${index}`,
+              name: addon.name || addon.title || "",
+              description: addon.description || "",
+              price: typeof addon.price === 'number' ? addon.price : (addon.price ? parseFloat(String(addon.price)) : 0),
+              order: addon.order !== undefined ? addon.order : index,
+            }))
+          : [],
+        highlights: Array.isArray(initialService.highlights) ? initialService.highlights : [],
+        idealFor: Array.isArray(initialService.idealFor) ? initialService.idealFor : [],
+        deliveryType: initialService.deliveryType || "standard",
+        availability: initialService.availability,
+        skills: Array.isArray(initialService.skills) ? initialService.skills : [],
+        county: initialService.county || "",
+        badges: Array.isArray(initialService.badges) ? initialService.badges : [],
+        faqs: Array.isArray(initialService.faqs)
+          ? initialService.faqs
+              .filter((f: any) => f && f.question && f.answer)
+              .map((f: any, index: number) => ({
+                id: f.id || `faq-${index}`,
+                question: typeof f.question === 'string' ? f.question.trim() : "",
+                answer: typeof f.answer === 'string' ? f.answer.trim() : "",
+              }))
+          : [],
+      };
+      
+      // Store normalized original data for comparison
+      originalServiceData.current = normalizedOriginal;
+
       // Set basic fields
       setServiceTitle(initialService.title || "");
       setDescription(initialService.description || "");
@@ -2078,8 +2176,18 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       if (initialService.serviceSubCategoryPath && Array.isArray(initialService.serviceSubCategoryPath)) {
         setSelectedSubCategoryPath(initialService.serviceSubCategoryPath);
       }
+      
+      // Set selected last level subcategories for package services
+      // Note: This should be set after subcategory path is set, but we'll also ensure it's set
+      // when subcategories are loaded (see separate useEffect below)
+      if (isPackageService && initialService.selectedLastLevelSubCategories && Array.isArray(initialService.selectedLastLevelSubCategories) && initialService.selectedLastLevelSubCategories.length > 0) {
+        // Use setTimeout to ensure this happens after state updates for subcategory path
+        setTimeout(() => {
+          setSelectedLastLevelSubCategories(initialService.selectedLastLevelSubCategories);
+        }, 100);
+      }
     }
-  }, [initialService, isEditMode]);
+  }, [initialService, isEditMode, isPackageService]);
   const [serviceTitle, setServiceTitle] = useState("");
   const [townCity, setTownCity] = useState("");
   const [county, setCounty] = useState("");
@@ -2330,6 +2438,83 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     }
     return "";
   }, [nestedSubCategories, selectedSubCategoryPath]);
+
+  // Restore selectedLastLevelSubCategories when editing package service and subcategories are loaded
+  useEffect(() => {
+    if (isPackageService && isEditMode && initialService?.selectedLastLevelSubCategories && Array.isArray(initialService.selectedLastLevelSubCategories) && initialService.selectedLastLevelSubCategories.length > 0) {
+      // Only restore if not already set (avoid overwriting user selections)
+      if (selectedLastLevelSubCategories.length > 0) {
+        return;
+      }
+
+      // Check if we have a subcategory path
+      const pathLength = selectedSubCategoryPath.length;
+      if (pathLength === 0) {
+        return;
+      }
+
+      // Get the last subcategory ID in the path (this is the parent of the last level)
+      const lastSubCategoryId = selectedSubCategoryPath[pathLength - 1];
+      
+      // Check if nested subcategories for this level are loaded
+      const lastLevelSubCats = nestedSubCategories[lastSubCategoryId];
+      const isLoading = loadingSubCategories[lastSubCategoryId];
+      
+      // Only proceed if subcategories are loaded and not currently loading
+      if (isLoading || !lastLevelSubCats || lastLevelSubCats.length === 0) {
+        return;
+      }
+      
+      // Check if any of the subcategories at this level have children
+      // We need to check all of them to determine if this is truly the last level
+      let hasAnyGrandChildren = false;
+      let allChildrenChecked = true;
+      
+      for (const subCat of lastLevelSubCats) {
+        // Check if children loading status is known (either loaded or confirmed to have no children)
+        const childrenLoading = loadingSubCategories[subCat._id];
+        const childrenLoaded = nestedSubCategories[subCat._id] !== undefined;
+        
+        // If we're still loading children, wait
+        if (childrenLoading === true) {
+          allChildrenChecked = false;
+          break;
+        }
+        
+        // If children are loaded, check if they exist
+        if (childrenLoaded) {
+          const children = nestedSubCategories[subCat._id];
+          if (children && children.length > 0) {
+            hasAnyGrandChildren = true;
+            break; // Found grandchildren, this is NOT the last level
+          }
+        } else {
+          // Children haven't been checked yet - we need to wait
+          // But for package services, we recursively load all levels, so if this subcategory
+          // is in our selectedLastLevelSubCategories, it means it's a leaf node (no children)
+          // So we can assume no grandchildren if it's in the selection list
+          const isInSelection = initialService.selectedLastLevelSubCategories.includes(subCat._id);
+          if (!isInSelection) {
+            // Not in selection, so we can't be sure - wait for it to be checked
+            // But actually, let's just wait a bit and try again
+            allChildrenChecked = false;
+          }
+          // If it's in the selection, we know it's a leaf, so continue
+        }
+      }
+      
+      // If all children are checked and no grandchildren exist, this is the last level
+      if (allChildrenChecked && !hasAnyGrandChildren) {
+        // This is confirmed to be the last level - restore selections
+        console.log('🔄 Restoring selectedLastLevelSubCategories (confirmed last level):', initialService.selectedLastLevelSubCategories);
+        setSelectedLastLevelSubCategories(initialService.selectedLastLevelSubCategories);
+      } else if (!hasAnyGrandChildren && allChildrenChecked) {
+        // No grandchildren found and all checked - restore (safe assumption)
+        console.log('🔄 Restoring selectedLastLevelSubCategories (no grandchildren detected):', initialService.selectedLastLevelSubCategories);
+        setSelectedLastLevelSubCategories(initialService.selectedLastLevelSubCategories);
+      }
+    }
+  }, [isPackageService, isEditMode, initialService?.selectedLastLevelSubCategories, selectedSubCategoryPath, nestedSubCategories, loadingSubCategories, selectedLastLevelSubCategories]);
 
   // Fetch attributes for each selected last-level subcategory (for package services)
   useEffect(() => {
@@ -4268,7 +4453,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         skills: keywordArray,
         county: county || userInfo?.county || "",
         badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
-        status: "pending", // Set to pending when publishing
+        // Don't set status here - let backend decide based on what fields changed
+        // For new services/drafts, status will be set to pending by backend
+        // For existing approved services, backend will keep approved if only availability changed
         faqs: (faqs || [])
           .filter((f) => f && f.question && f.answer && f.question.trim() && f.answer.trim())
           .map((f, index) => ({
@@ -4289,6 +4476,154 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // If we have a draftId and it's in edit mode, update the draft; otherwise create new
       // For new services, always use POST even if draftId exists (to avoid ownership issues)
       const isUpdatingExisting = isEditMode && initialService?._id;
+
+      // Initialize finalServiceData
+      let finalServiceData = serviceData;
+      let onlyAvailabilityChanged = false; // Track if only availability was changed
+
+      // If updating existing service, compare with original data and send only changed fields
+      if (isUpdatingExisting && originalServiceData.current) {
+        // Helper function to deep compare values without modifying data
+        const deepEqual = (obj1: any, obj2: any): boolean => {
+          if (obj1 === obj2) return true;
+          if (obj1 == null || obj2 == null) return obj1 === obj2;
+          if (typeof obj1 !== typeof obj2) return false;
+
+          if (Array.isArray(obj1) && Array.isArray(obj2)) {
+            if (obj1.length !== obj2.length) return false;
+            for (let i = 0; i < obj1.length; i++) {
+              if (!deepEqual(obj1[i], obj2[i])) return false;
+            }
+            return true;
+          }
+
+          if (typeof obj1 === 'object' && typeof obj2 === 'object') {
+            const keys1 = Object.keys(obj1);
+            const keys2 = Object.keys(obj2);
+
+            if (keys1.length !== keys2.length) return false;
+
+            for (const key of keys1) {
+              if (!keys2.includes(key)) return false;
+              if (!deepEqual(obj1[key], obj2[key])) return false;
+            }
+
+            return true;
+          }
+
+          return obj1 === obj2;
+        };
+
+        // Helper function to normalize value for comparison (preserve order for arrays)
+        const normalizeForComparison = (value: any): any => {
+          if (value === null || value === undefined) return null;
+          if (typeof value === 'string') return value.trim();
+          if (Array.isArray(value)) {
+            // For arrays, preserve order but normalize items
+            return value.map(item => normalizeForComparison(item));
+          }
+          if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+            // For objects, normalize values but preserve key order for comparison
+            const normalized: any = {};
+            Object.keys(value).forEach(key => {
+              normalized[key] = normalizeForComparison(value[key]);
+            });
+            return normalized;
+          }
+          return value;
+        };
+
+        // Compare each field and keep only changed ones
+        const changedFields: any = {};
+        const originalData = originalServiceData.current;
+
+        // Get all unique fields from both serviceData and originalData
+        const allFields = new Set([
+          ...Object.keys(serviceData),
+          ...Object.keys(originalData)
+        ]);
+
+        // Fields to compare (exclude status and internal fields)
+        const fieldsToCompare = Array.from(allFields).filter(field =>
+          field !== 'status' &&
+          field !== '_id' &&
+          field !== '__v' &&
+          field !== 'createdAt' &&
+          field !== 'updatedAt' &&
+          field !== 'professional' &&
+          field !== 'slug' && // slug is auto-generated
+          field !== 'reviews' && // reviews are read-only
+          field !== 'rating' && // rating is calculated
+          field !== 'reviewCount' // reviewCount is calculated
+        );
+
+        for (const field of fieldsToCompare) {
+          const newValue = serviceData[field as keyof typeof serviceData];
+          const oldValue = originalData[field];
+
+          // Normalize both values for comparison
+          const normalizedNew = normalizeForComparison(newValue);
+          const normalizedOld = normalizeForComparison(oldValue);
+
+          // Compare using deep equality check
+          if (!deepEqual(normalizedNew, normalizedOld)) {
+            // Only include the field if it's actually in serviceData (not just in originalData)
+            if (field in serviceData) {
+              changedFields[field] = serviceData[field as keyof typeof serviceData];
+            }
+          }
+        }
+
+        const changedFieldNames = Object.keys(changedFields);
+
+        // Always log comparison details for debugging - compare all fields (BEFORE checking if nothing changed)
+        console.log('\n=== FRONTEND: Service Update Comparison ===');
+        console.log(`Service ID: ${originalData._id}`);
+        console.log(`Original Status: ${originalData.status}`);
+        console.log(`\n📋 All compared fields (${fieldsToCompare.length}):`, fieldsToCompare);
+
+        // Log details for ALL fields being compared
+        fieldsToCompare.forEach(field => {
+          const newValue = serviceData[field as keyof typeof serviceData];
+          const oldValue = originalData[field];
+
+          // Normalize both values for comparison
+          const normalizedNew = normalizeForComparison(newValue);
+          const normalizedOld = normalizeForComparison(oldValue);
+
+          // Check if they are equal
+          const isEqual = deepEqual(normalizedNew, normalizedOld);
+
+          console.log(`\n  ${isEqual ? '✅' : '📝'} ${field} ${isEqual ? '(UNCHANGED)' : '(CHANGED)'}:`);
+          if (typeof oldValue === 'object' && typeof newValue === 'object' && oldValue !== null && newValue !== null) {
+            const oldStr = JSON.stringify(normalizedOld);
+            const newStr = JSON.stringify(normalizedNew);
+            console.log(`     Database (old):`, oldStr.length > 200 ? oldStr.substring(0, 200) + '...' : oldStr);
+            console.log(`     Sending (new):`, newStr.length > 200 ? newStr.substring(0, 200) + '...' : newStr);
+          } else {
+            console.log(`     Database (old):`, normalizedOld);
+            console.log(`     Sending (new):`, normalizedNew);
+          }
+        });
+
+        console.log(`\n✅ Actually changed fields (${changedFieldNames.length}):`, changedFieldNames.length > 0 ? changedFieldNames : 'None');
+
+        // Check if only availability was changed
+        onlyAvailabilityChanged = changedFieldNames.length === 1 && changedFieldNames[0] === 'availability';
+        console.log(`\n🔍 Only availability changed: ${onlyAvailabilityChanged}`);
+        console.log(`=== END FRONTEND COMPARISON ===\n`);
+
+        // If no fields changed, show message and return early
+        if (changedFieldNames.length === 0) {
+          toast.info("You updated nothing!");
+          setLoading(false);
+          return;
+        }
+
+        // Send only changed fields
+        finalServiceData = changedFields as typeof serviceData;
+      }
+
       const url = isUpdatingExisting
         ? resolveApiUrl(`/api/services/${initialService._id}`)
         : resolveApiUrl("/api/services");
@@ -4310,7 +4645,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(serviceData),
+        body: JSON.stringify(finalServiceData),
       });
 
       if (!response.ok) {
@@ -4339,12 +4674,19 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
       
       // Show appropriate message based on service status
-      // If it's a draft being published or a new service, show approval message
+      // PRIORITY: Check onlyAvailabilityChanged FIRST - this takes precedence over everything else
       const isDraftUpdate = draftId || initialService?.status === 'draft';
+      const wasApprovedRemainsApproved = initialService?.status === 'approved' && updatedService?.status === 'approved';
       const wasApprovedNowPending = initialService?.status === 'approved' && updatedService?.status === 'pending';
-      
-      if (!isEditMode || isDraftUpdate) {
+
+      // If only availability was changed, show "live now" message (highest priority check)
+      if (onlyAvailabilityChanged && isEditMode && !isDraftUpdate) {
+        toast.success("Your service is live now.");
+      } else if (!isEditMode || isDraftUpdate) {
         toast.success("Your listing has been submitted to approval and will go live shortly if approved.");
+      } else if (wasApprovedRemainsApproved) {
+        // Service was approved and remains approved (only availability or price/availability fields changed)
+        toast.success("Your service is live now.");
       } else if (wasApprovedNowPending) {
         toast.success("Your service content has been updated and submitted for admin approval. Price and availability changes are live.");
       } else if (isEditMode && updatedService?.status === 'pending') {

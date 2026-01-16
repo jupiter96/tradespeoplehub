@@ -1887,22 +1887,22 @@ export default function ServicesPage() {
       return;
     }
     
-    // If only query params exist, remove the specific filter params
-    const newSearchParams = new URLSearchParams(searchParams);
-    
-    if (filterToRemove.type === 'subCategory') {
-      newSearchParams.delete('serviceSubCategory');
-      newSearchParams.delete('detailedSubcategory');
-    } else if (filterToRemove.type === 'mainCategory') {
-      newSearchParams.delete('serviceCategory');
-      newSearchParams.delete('subcategory');
-    } else if (filterToRemove.type === 'sector') {
-      newSearchParams.delete('sector');
-      newSearchParams.delete('category');
-    }
-    
-    const queryString = newSearchParams.toString();
-    navigate(queryString ? `/services?${queryString}` : '/services', { replace: true });
+      // If only query params exist, remove the specific filter params
+      const newSearchParams = new URLSearchParams(searchParams);
+      
+      if (filterToRemove.type === 'subCategory') {
+        newSearchParams.delete('serviceSubCategory');
+        newSearchParams.delete('detailedSubcategory');
+      } else if (filterToRemove.type === 'mainCategory') {
+        newSearchParams.delete('serviceCategory');
+        newSearchParams.delete('subcategory');
+      } else if (filterToRemove.type === 'sector') {
+        newSearchParams.delete('sector');
+        newSearchParams.delete('category');
+      }
+      
+      const queryString = newSearchParams.toString();
+      navigate(queryString ? `/services?${queryString}` : '/services', { replace: true });
   };
 
   const toggleDelivery = (delivery: string) => {
@@ -2004,7 +2004,7 @@ export default function ServicesPage() {
             ))}
           </div>
         ) : null}
-        
+
         {/* Category Tree - Always show sectors when loaded */}
         {!sectorsLoading && apiSectors.length > 0 && categoryTree.length > 0 && (
         <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
@@ -2030,11 +2030,11 @@ export default function ServicesPage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleFilter({
-                              type: 'subCategory',
-                              sector: sector.sector,
-                              mainCategory: mainCat.name,
-                              subCategory: subCat,
-                              displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
+                            type: 'subCategory',
+                            sector: sector.sector,
+                            mainCategory: mainCat.name,
+                            subCategory: subCat,
+                            displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
                             });
                           }}
                           className={`block w-full text-left py-2 px-3 font-['Poppins',sans-serif] text-[13px] rounded transition-colors ${
@@ -2124,10 +2124,10 @@ export default function ServicesPage() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleFilter({
-                                    type: 'mainCategory',
-                                    sector: sector.sector,
-                                    mainCategory: mainCat.name,
-                                    displayName: `${sector.sector} > ${mainCat.name}`
+                                  type: 'mainCategory',
+                                  sector: sector.sector,
+                                  mainCategory: mainCat.name,
+                                  displayName: `${sector.sector} > ${mainCat.name}`
                                   });
                                 }}
                                 className={`flex-1 text-left font-['Poppins',sans-serif] text-[13px] transition-colors ${
@@ -2160,16 +2160,16 @@ export default function ServicesPage() {
                                       );
                                       
                                       return (
-                                        <button
-                                          key={subCat}
+                                      <button
+                                        key={subCat}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             toggleFilter({
-                                              type: 'subCategory',
-                                              sector: sector.sector,
-                                              mainCategory: mainCat.name,
-                                              subCategory: subCat,
-                                              displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
+                                          type: 'subCategory',
+                                          sector: sector.sector,
+                                          mainCategory: mainCat.name,
+                                          subCategory: subCat,
+                                          displayName: `${sector.sector} > ${mainCat.name} > ${subCat}`
                                             });
                                           }}
                                           className={`block w-full text-left py-1 px-2 font-['Poppins',sans-serif] text-[12px] rounded transition-colors ${
@@ -2177,9 +2177,9 @@ export default function ServicesPage() {
                                               ? 'text-[#FE8A0F] font-medium bg-[#FFF5EB]'
                                               : 'text-[#6b6b6b] hover:text-[#3D78CB] hover:bg-gray-50'
                                           }`}
-                                        >
-                                          • {subCat}
-                                        </button>
+                                      >
+                                        • {subCat}
+                                      </button>
                                       );
                                     })}
                                   </div>
@@ -2768,12 +2768,12 @@ export default function ServicesPage() {
                           style={{ minWidth: '100%', minHeight: '100%' }}
                         />
                       ) : (
-                        <img
-                          src={service.image}
-                          alt={service.description}
-                          className="w-full h-full object-cover object-center"
-                          style={{ minWidth: '100%', minHeight: '100%' }}
-                        />
+                      <img
+                        src={service.image}
+                        alt={service.description}
+                        className="w-full h-full object-cover object-center"
+                        style={{ minWidth: '100%', minHeight: '100%' }}
+                      />
                       )}
                       
                       {/* Heart Icon - Top Right */}
@@ -3117,12 +3117,12 @@ export default function ServicesPage() {
                             style={{ minWidth: '100%', minHeight: '100%' }}
                           />
                         ) : (
-                          <img
-                            src={service.image}
-                            alt={service.description}
-                            className="w-full h-full object-cover object-center"
-                            style={{ minWidth: '100%', minHeight: '100%' }}
-                          />
+                        <img
+                          src={service.image}
+                          alt={service.description}
+                          className="w-full h-full object-cover object-center"
+                          style={{ minWidth: '100%', minHeight: '100%' }}
+                        />
                         )}
                         
                         {/* Heart Icon - Top Right */}

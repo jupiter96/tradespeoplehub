@@ -996,6 +996,41 @@ router.post('/wallet/fund/paypal/capture', authenticateToken, async (req, res) =
     transaction.paypalCaptureId = capture.result.id;
     await transaction.save();
     
+    // Send email notification when PayPal transaction is successful
+    if (user.email) {
+      try {
+        const { sendTemplatedEmail } = await import('../services/notifier.js');
+        const paypalCommission = transaction.metadata?.fee || 
+          ((depositAmount * (settings.paypalCommissionPercentage || 3.00) / 100) + (settings.paypalCommissionFixed || 0.30));
+        const totalAmount = depositAmount + paypalCommission;
+        
+        await sendTemplatedEmail(
+          user.email,
+          'paypal-transaction-successful',
+          {
+            firstName: user.firstName || 'User',
+            lastName: user.lastName || '',
+            depositAmount: depositAmount.toFixed(2),
+            fee: paypalCommission.toFixed(2),
+            totalAmount: totalAmount.toFixed(2),
+            transactionId: transaction._id.toString(),
+            paypalOrderId: orderId || transaction.paypalOrderId || 'N/A',
+            walletBalance: user.walletBalance.toFixed(2),
+            paymentDate: new Date().toLocaleDateString('en-GB', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+          },
+          'no-reply'
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails
+      }
+    }
+    
     const response = { 
       message: 'Wallet funded successfully',
       balance: user.walletBalance,

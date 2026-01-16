@@ -2690,7 +2690,7 @@ function BillingSection() {
   // Fund wallet states
   const [selectedPaymentType, setSelectedPaymentType] = useState<"card" | "paypal" | "bank">("card");
   const [expandedPaymentType, setExpandedPaymentType] = useState<"card" | "paypal" | "bank" | null>("card");
-  const [amount, setAmount] = useState("20");
+  const [amount, setAmount] = useState("0");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [fundPaymentMethods, setFundPaymentMethods] = useState<any[]>([]);
@@ -3066,6 +3066,14 @@ function BillingSection() {
     // Clear previous error
     setStripePaymentError(null);
     
+    // Validate amount
+    if (!amount || parseFloat(amount) <= 0) {
+      const errorMsg = "Please enter a valid amount";
+      toast.error(errorMsg);
+      setStripePaymentError(errorMsg);
+      return;
+    }
+    
     if (!selectedPaymentMethod && fundPaymentMethods.length === 0) {
       const errorMsg = "Please add a payment method first";
       toast.error(errorMsg);
@@ -3112,7 +3120,7 @@ function BillingSection() {
         toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
         await fetchWalletBalance();
         await fetchTransactions();
-        setAmount("20");
+        setAmount("0");
         if (refreshUser) {
           await refreshUser();
         }
@@ -3123,7 +3131,7 @@ function BillingSection() {
         toast.success("Payment processed successfully!");
         await fetchWalletBalance();
         await fetchTransactions();
-        setAmount("20");
+        setAmount("0");
         if (refreshUser) {
           await refreshUser();
         }
@@ -3162,7 +3170,7 @@ function BillingSection() {
           toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
           await fetchWalletBalance();
           await fetchTransactions();
-          setAmount("20");
+          setAmount("0");
           if (refreshUser) {
             await refreshUser();
           }
@@ -3179,6 +3187,11 @@ function BillingSection() {
   };
 
   const handlePayPalCreateOrder = async (): Promise<string> => {
+    // Validate amount
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      throw new Error("Please enter a valid amount");
+    }
     
     try {
       const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
@@ -3251,6 +3264,12 @@ function BillingSection() {
   };
 
   const handleManualTransfer = async () => {
+    // Validate amount
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
     if (!fullName || !fullName.trim()) {
       toast.error("Please enter your full name");
       return;

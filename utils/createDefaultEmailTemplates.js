@@ -781,7 +781,7 @@ const defaultTemplates = [
   <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
     <div style="text-align: center; margin-bottom: 20px;">
       <div style="font-size: 60px; margin-bottom: 10px;">✅</div>
-      <h1 style="color: #27ae60; margin-top: 0;">Payment Successful, {{firstName}}!</h1>
+      <h1 style="color: #27ae60; margin-top: 0;">Card Payment Successful, {{firstName}}!</h1>
     </div>
     
     <p>Your card payment has been processed successfully and your wallet has been funded.</p>
@@ -793,7 +793,8 @@ const defaultTemplates = [
     
     <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
       <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transaction Details</p>
-      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Amount Deposited:</strong> £{{depositAmount}}</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Payment Method:</strong> Card (Stripe)</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Amount Deposited:</strong> £{{depositAmount}}</p>
       <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Processing Fee:</strong> £{{fee}}</p>
       <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total Charged:</strong> £{{totalAmount}}</p>
       <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Transaction ID:</strong> {{transactionId}}</p>
@@ -815,6 +816,63 @@ const defaultTemplates = [
 </html>
     `,
     variables: ['firstName', 'lastName', 'depositAmount', 'fee', 'totalAmount', 'transactionId', 'walletBalance', 'paymentDate', 'logoUrl'],
+  },
+  {
+    type: 'paypal-transaction-successful',
+    category: 'no-reply',
+    subject: '✅ PayPal Payment Successful - Wallet Funded',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PayPal Payment Successful</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 60px; margin-bottom: 10px;">✅</div>
+      <h1 style="color: #27ae60; margin-top: 0;">PayPal Payment Successful, {{firstName}}!</h1>
+    </div>
+    
+    <p>Your PayPal payment has been processed successfully and your wallet has been funded.</p>
+    
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold; color: #155724;">✓ Payment Status: Successful</p>
+      <p style="margin: 5px 0 0 0; color: #155724;">Your funds have been added to your wallet balance.</p>
+    </div>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Transaction Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Payment Method:</strong> PayPal</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Amount Deposited:</strong> £{{depositAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Processing Fee:</strong> £{{fee}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total Charged:</strong> £{{totalAmount}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Transaction ID:</strong> {{transactionId}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>PayPal Order ID:</strong> {{paypalOrderId}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>New Wallet Balance:</strong> £{{walletBalance}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Payment Date:</strong> {{paymentDate}}</p>
+    </div>
+    
+    <p>Your wallet balance has been updated and you can now use these funds for your transactions on Sortars.</p>
+    
+    <p>If you have any questions or notice any discrepancies, please contact our support team immediately.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'lastName', 'depositAmount', 'fee', 'totalAmount', 'transactionId', 'paypalOrderId', 'walletBalance', 'paymentDate', 'logoUrl'],
   },
   {
     type: 'card-transaction-failed',

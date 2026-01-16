@@ -59,6 +59,18 @@ export default function LoginPage() {
   // Email & Phone Verification states (after registration)
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationStep, setVerificationStep] = useState(1); // 1: email, 2: phone
+  
+  // Timer states for resend functionality (2 minutes = 120 seconds)
+  const [emailResendTimer, setEmailResendTimer] = useState(0);
+  const [phoneResendTimer, setPhoneResendTimer] = useState(0);
+  
+  // Helper function to format timer as MM:SS
+  const formatTimer = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
   // Redirect to account page if already logged in (but not during registration)
   useEffect(() => {
     // Don't redirect if user is in the middle of registration process
@@ -67,6 +79,50 @@ export default function LoginPage() {
       navigate("/account", { replace: true });
     }
   }, [isLoggedIn, navigate, showEmailVerification, userInfo, isCompletingRegistration]);
+
+  // Start email resend timer when email verification modal opens
+  useEffect(() => {
+    if (showEmailVerification && verificationStep === 1 && emailResendTimer === 0) {
+      setEmailResendTimer(120); // Start with 2 minutes
+    }
+  }, [showEmailVerification, verificationStep, emailResendTimer]);
+
+  // Countdown email resend timer
+  useEffect(() => {
+    if (emailResendTimer > 0) {
+      const interval = setInterval(() => {
+        setEmailResendTimer((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [emailResendTimer]);
+
+  // Start phone resend timer when phone verification step is shown
+  useEffect(() => {
+    if (showEmailVerification && verificationStep === 2 && phoneResendTimer === 0) {
+      setPhoneResendTimer(120); // Start with 2 minutes
+    }
+  }, [showEmailVerification, verificationStep, phoneResendTimer]);
+
+  // Countdown phone resend timer
+  useEffect(() => {
+    if (phoneResendTimer > 0) {
+      const interval = setInterval(() => {
+        setPhoneResendTimer((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [phoneResendTimer]);
   const [emailVerificationCode, setEmailVerificationCode] = useState("");
   const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
@@ -553,7 +609,7 @@ export default function LoginPage() {
   };
 
   const handleResendEmailCode = async () => {
-    if (isResendingEmail) return;
+    if (isResendingEmail || emailResendTimer > 0) return;
     
     setIsResendingEmail(true);
     setRegisterError(null);
@@ -572,6 +628,8 @@ export default function LoginPage() {
         throw new Error(data.error || 'Failed to resend verification code');
       }
       
+      // Reset timer to 2 minutes (120 seconds) after successful resend
+      setEmailResendTimer(120);
       toast.success('Verification code resent to your email');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to resend code';
@@ -583,7 +641,7 @@ export default function LoginPage() {
   };
 
   const handleResendPhoneCode = async () => {
-    if (isResendingPhone) return;
+    if (isResendingPhone || phoneResendTimer > 0) return;
     
     setIsResendingPhone(true);
     setRegisterError(null);
@@ -602,6 +660,8 @@ export default function LoginPage() {
         throw new Error(data.error || 'Failed to resend verification code');
       }
       
+      // Reset timer to 2 minutes (120 seconds) after successful resend
+      setPhoneResendTimer(120);
       toast.success('Verification code resent to your phone');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to resend code';
@@ -1461,10 +1521,14 @@ export default function LoginPage() {
                           <button
                             type="button"
                             onClick={handleResendEmailCode}
-                            disabled={isResendingEmail}
+                            disabled={isResendingEmail || emailResendTimer > 0}
                             className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {isResendingEmail ? "Resending..." : "Resend"}
+                            {isResendingEmail 
+                              ? "Resending..." 
+                              : emailResendTimer > 0 
+                                ? `Resend (${formatTimer(emailResendTimer)})`
+                                : "Resend"}
                           </button>
                         </p>
                       </div>
@@ -1531,10 +1595,14 @@ export default function LoginPage() {
                           <button
                             type="button"
                             onClick={handleResendPhoneCode}
-                            disabled={isResendingPhone}
+                            disabled={isResendingPhone || phoneResendTimer > 0}
                             className="text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {isResendingPhone ? "Resending..." : "Resend"}
+                            {isResendingPhone 
+                              ? "Resending..." 
+                              : phoneResendTimer > 0 
+                                ? `Resend (${formatTimer(phoneResendTimer)})`
+                                : "Resend"}
                           </button>
                         </p>
                       </div>
