@@ -479,15 +479,6 @@ export default function CartPage() {
           serviceId: item.serviceId,
         })),
       };
-
-      console.log('[CartPage] Applying promo code:', promoCode);
-      console.log('[CartPage] Request payload:', JSON.stringify(requestPayload, null, 2));
-      console.log('[CartPage] Cart items:', cartItems.map(item => ({
-        id: item.id,
-        serviceId: item.serviceId,
-        title: item.title
-      })));
-
       const response = await fetch(resolveApiUrl("/api/promo-codes/validate"), {
         method: "POST",
         headers: {
@@ -635,43 +626,32 @@ export default function CartPage() {
 
   // Check which services need booking (have availability data)
   const checkServicesNeedingBooking = async () => {
-    console.log('[Booking Check] Starting to check services for booking requirements');
-    console.log('[Booking Check] Cart items:', cartItems.map(item => ({ id: item.id, title: item.title, hasBooking: !!item.booking })));
-    
     const servicesToCheck: Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard"; serviceType?: "in-person" | "online" }> = [];
     
     for (const item of cartItems) {
       // Skip if item already has booking info
       if (item.booking) {
-        console.log(`[Booking Check] Skipping item ${item.id} - already has booking info:`, item.booking);
         continue;
       }
       
       try {
-        console.log(`[Booking Check] Fetching service details for item ID: ${item.id} (Type: ${typeof item.id})`);
         
         // Check if item.id is a MongoDB ObjectId (24 hex characters)
         const isObjectId = /^[0-9a-fA-F]{24}$/.test(item.id);
-        console.log(`[Booking Check] Item ID ${item.id} is ObjectId format: ${isObjectId}`);
         
         // If it's a numeric ID (like 17629339), we can't directly find the service
         // In this case, skip the booking check (the service might not need booking or was added with old format)
         if (!isObjectId && /^\d+$/.test(item.id)) {
-          console.warn(`[Booking Check] Item ID ${item.id} is numeric (not ObjectId). Cannot fetch service for booking check. Skipping.`);
-          console.warn(`[Booking Check] Note: This item was likely added with an old format. Consider re-adding to cart.`);
           continue;
         }
         
         // Fetch service details to check availability
         // Try both ObjectId and slug formats
         const serviceUrl = resolveApiUrl(`/api/services/${item.id}`);
-        console.log(`[Booking Check] Request URL: ${serviceUrl}`);
         
         const response = await fetch(serviceUrl, {
           credentials: "include",
         });
-        
-        console.log(`[Booking Check] Response status for ${item.id}:`, response.status, response.statusText);
         
         if (!response.ok) {
           // If service not found (404), skip this item silently
@@ -692,18 +672,11 @@ export default function CartPage() {
         }
         
         const serviceData = await response.json();
-        console.log(`[Booking Check] Service data received for ${item.id}:`, {
-          hasService: !!serviceData?.service,
-          hasAvailability: !!serviceData?.service?.availability,
-          availabilityKeys: serviceData?.service?.availability ? Object.keys(serviceData.service.availability) : [],
-        });
         
         // Check if service is in-person and has availability data
         const serviceType = serviceData?.service?.serviceType || "in-person";
         if (serviceType === "online") {
-          console.log(`[Booking Check] Service ${item.id} is online - skipping booking`);
         } else if (serviceData?.service?.availability && Object.keys(serviceData.service.availability).length > 0) {
-          console.log(`[Booking Check] Service ${item.id} requires booking - adding to list`);
           servicesToCheck.push({
             item,
             serviceId: serviceData.service._id?.toString() || serviceData.service.id || item.id,
@@ -721,28 +694,16 @@ export default function CartPage() {
       }
     }
     
-    console.log(`[Booking Check] Completed. Services requiring booking: ${servicesToCheck.length}`, servicesToCheck.map(s => ({ id: s.item.id, title: s.item.title })));
     return servicesToCheck;
   };
 
   const handleBookingConfirm = async (date: Date, time: string, timeSlot: string) => {
-    console.log('========== CartPage - handleBookingConfirm ==========');
-    console.log('[Booking] Current booking item index:', currentBookingItemIndex);
-    console.log('[Booking] Total services needing booking:', servicesNeedingBooking.length);
     
     if (currentBookingItemIndex >= servicesNeedingBooking.length) {
-      console.warn('[Booking] Index out of range, returning');
-      console.log('==================================================');
       return;
     }
     
     const currentItem = servicesNeedingBooking[currentBookingItemIndex].item;
-    console.log('[Booking] Current item:', {
-      id: currentItem.id,
-      serviceId: currentItem.serviceId,
-      title: currentItem.title,
-      seller: currentItem.seller,
-    });
     
     // Generate item key to find the item in cart
     const generateItemKey = (item: any) => {
@@ -761,44 +722,25 @@ export default function CartPage() {
     };
     
     const itemKey = generateItemKey(currentItem);
-    console.log('[Booking] Generated item key:', itemKey);
     
     const bookingData = {
       date: date.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD format
       time: time,
       timeSlot: timeSlot,
     };
-    console.log('[Booking] Booking data to save:', {
-      originalDate: date,
-      formattedDate: bookingData.date,
-      time: bookingData.time,
-      timeSlot: bookingData.timeSlot,
-    });
     
-    // Update cart item with booking info and wait for it to complete
-    console.log('[Booking] Updating cart item with booking info...');
     await updateCartItem(itemKey, {
       booking: bookingData,
     });
     
-    // Wait for state to update and API sync to complete
-    console.log('[Booking] Waiting for state update...');
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Refresh cart from API to get latest data with booking
-    console.log('[Booking] Refreshing cart from API to get latest data...');
     try {
       const response = await fetch(resolveApiUrl("/api/cart"), {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('[Booking] Refreshed cart items:', data.items?.map((item: any) => ({
-          id: item.id,
-          title: item.title,
-          booking: item.booking,
-          hasBooking: !!item.booking,
-        })));
       }
     } catch (error) {
       console.error('[Booking] Failed to refresh cart:', error);
@@ -806,10 +748,8 @@ export default function CartPage() {
     
     // Move to next item or proceed with order
     if (currentBookingItemIndex < servicesNeedingBooking.length - 1) {
-      console.log('[Booking] Moving to next item');
       setCurrentBookingItemIndex(currentBookingItemIndex + 1);
     } else {
-      console.log('[Booking] All bookings completed, proceeding with order');
       // All bookings completed, proceed with order
       setShowBookingModal(false);
       setIsProcessingBooking(false);
@@ -818,17 +758,9 @@ export default function CartPage() {
       await new Promise(resolve => setTimeout(resolve, 200));
       proceedWithOrder();
     }
-    console.log('==================================================');
   };
 
   const proceedWithOrder = async () => {
-    console.log('========== CartPage - proceedWithOrder ==========');
-    console.log('[Order] Starting order creation process');
-    console.log('[Order] Skip address:', skipAddress);
-    console.log('[Order] Selected address:', selectedAddress);
-    console.log('[Order] Selected payment:', selectedPayment);
-    console.log('[Order] Cart items count:', cartItems.length);
-    
     if (!skipAddress && !selectedAddress) {
       console.error('[Order] No address selected');
       toast.error("Please select a delivery address");
@@ -845,21 +777,10 @@ export default function CartPage() {
       ? undefined 
       : addresses.find(addr => addr.id === selectedAddress);
 
-    console.log('[Order] Address details:', addressDetails);
     
     const subtotal = cartTotal;
     const orderTotal = subtotal - discount + serviceFee;
     
-    console.log('[Order] Financial breakdown:', {
-      cartTotal,
-      subtotal,
-      discount,
-      serviceFee,
-      orderTotal,
-    });
-    
-    // Refresh cart from API to ensure we have latest data with booking info
-    console.log('[Order] Refreshing cart from API before creating order...');
     let finalCartItems = cartItems;
     try {
       const cartResponse = await fetch(resolveApiUrl("/api/cart"), {
@@ -868,15 +789,6 @@ export default function CartPage() {
       if (cartResponse.ok) {
         const cartData = await cartResponse.json();
         finalCartItems = cartData.items || cartItems;
-        console.log('[Order] Refreshed cart items from API:', finalCartItems.map((item: any) => ({
-          id: item.id,
-          serviceId: item.serviceId,
-          title: item.title,
-          booking: item.booking,
-          hasBooking: !!item.booking,
-          bookingDate: item.booking?.date,
-          bookingTime: item.booking?.time,
-        })));
       } else {
         console.warn('[Order] Failed to refresh cart, using existing cartItems');
       }
@@ -885,23 +797,6 @@ export default function CartPage() {
       console.warn('[Order] Using existing cartItems');
     }
     
-    // Log all cart items with full details
-    console.log('[Order] Final cart items details (used for order):', finalCartItems.map((item: any) => ({
-      id: item.id,
-      serviceId: item.serviceId,
-      title: item.title,
-      seller: item.seller,
-      price: item.price,
-      quantity: item.quantity,
-      packageType: item.packageType,
-      addons: item.addons,
-      booking: item.booking,
-      hasBooking: !!item.booking,
-      bookingDate: item.booking?.date,
-      bookingTime: item.booking?.time,
-      bookingTimeSlot: item.booking?.timeSlot,
-    })));
-
     try {
       // Handle different payment methods
       if (selectedPayment === "account_balance") {
@@ -912,25 +807,12 @@ export default function CartPage() {
           });
           return;
         }
-
-        // Log cart items with booking info before sending to server
-        console.log('[Order] ===== SENDING ORDER REQUEST (account_balance) =====');
-        console.log('[Order] Request URL:', '/api/orders');
-        console.log('[Order] Final cart items before mapping:', finalCartItems);
-        
         const orderItems = finalCartItems.map((item: any) => ({
           ...item,
           // Ensure booking is included if it exists
           booking: item.booking || undefined,
         }));
         
-        console.log('[Order] Order items after mapping:', orderItems.map(item => ({
-          id: item.id,
-          serviceId: item.serviceId,
-          title: item.title,
-          booking: item.booking,
-          hasBooking: !!item.booking,
-        })));
         
         const orderPayload = {
           items: orderItems,
@@ -942,16 +824,6 @@ export default function CartPage() {
           discount: discount,
           serviceFee: serviceFee,
         };
-        
-        console.log('[Order] Full order payload:', JSON.stringify(orderPayload, null, 2));
-        console.log('[Order] Payload items booking check:', orderPayload.items.map((item: any) => ({
-          title: item.title,
-          booking: item.booking,
-          bookingType: typeof item.booking,
-          bookingDate: item.booking?.date,
-          bookingTime: item.booking?.time,
-        })));
-
         // Create order with account balance payment
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
@@ -962,8 +834,6 @@ export default function CartPage() {
           body: JSON.stringify(orderPayload),
         });
 
-        console.log('[Order] Response status:', response.status, response.statusText);
-        
         if (!response.ok) {
           const error = await response.json();
           console.error('[Order] Order creation failed:', error);
@@ -971,11 +841,6 @@ export default function CartPage() {
         }
 
         const result = await response.json();
-        console.log('[Order] ===== ORDER CREATION SUCCESS =====');
-        console.log('[Order] Response result:', result);
-        console.log('[Order] Order ID:', result.orderId || result.orderNumber);
-        console.log('[Order] New balance:', result.newBalance);
-        console.log('[Order] Order object:', result.order);
         if (result.order?.items) {
           console.log('[Order] Saved order items with booking:', result.order.items.map((item: any) => ({
             title: item.title,
@@ -1001,7 +866,6 @@ export default function CartPage() {
         toast.success("Order placed successfully!", {
           description: `Order ${result.orderId} created. £${orderTotal.toFixed(2)} deducted from your account balance.`
         });
-        console.log('==================================================');
       } else if (selectedPayment === "card" || paymentMethods.find(m => m.id === selectedPayment)?.type === "card") {
         // Get selected card payment method
         const selectedMethod = paymentMethods.find(m => m.id === selectedPayment && m.type === "card");
@@ -1010,18 +874,11 @@ export default function CartPage() {
           return;
         }
 
-        console.log('[Order] ===== SENDING ORDER REQUEST (card) =====');
-        
         // Create order with card payment (will fund wallet first, then deduct)
         const orderItemsCardFinal = finalCartItems.map((item: any) => ({
           ...item,
           booking: item.booking || undefined,
         }));
-        console.log('[Order] Order items for card payment:', orderItemsCardFinal.map((item: any) => ({
-          title: item.title,
-          booking: item.booking,
-          hasBooking: !!item.booking,
-        })));
         
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
@@ -1075,17 +932,10 @@ export default function CartPage() {
           navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
         }, 1500);
       } else if (selectedPayment === "paypal") {
-        console.log('[Order] ===== SENDING ORDER REQUEST (paypal) =====');
         const orderItemsPayPal = finalCartItems.map((item: any) => ({
           ...item,
           booking: item.booking || undefined,
         }));
-        console.log('[Order] Order items for PayPal payment:', orderItemsPayPal.map((item: any) => ({
-          title: item.title,
-          booking: item.booking,
-          hasBooking: !!item.booking,
-        })));
-        
         // Create order with PayPal payment (will fund wallet first, then deduct)
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
@@ -1144,17 +994,10 @@ export default function CartPage() {
           navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
         }, 1500);
       } else if (selectedPayment === "bank_transfer") {
-        console.log('[Order] ===== SENDING ORDER REQUEST (bank_transfer) =====');
         const orderItemsBank = finalCartItems.map((item: any) => ({
           ...item,
           booking: item.booking || undefined,
         }));
-        console.log('[Order] Order items for bank transfer:', orderItemsBank.map((item: any) => ({
-          title: item.title,
-          booking: item.booking,
-          hasBooking: !!item.booking,
-        })));
-        
         // Create order with bank transfer payment (will create pending transaction)
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",

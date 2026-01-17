@@ -77,7 +77,7 @@ import { toast } from "sonner@2.0.3";
 export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder } = useOrders();
+  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension } = useOrders();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
@@ -549,6 +549,102 @@ export default function ClientOrdersSection() {
                     <span className="text-[#2c353f]">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
                   )}. Feel free to reach out if you have any questions.
                 </p>
+
+                {/* Extension Request Alert */}
+                {currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending' && (
+                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-3 mb-3">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-yellow-700 mb-1">
+                          Extension Request Pending
+                        </h5>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                          {currentOrder.professional} has requested an extension for the delivery deadline.
+                        </p>
+                        <div className="space-y-1 mb-3">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                            <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                            <span className="font-medium">Requested new date:</span> {currentOrder.extensionRequest.newDeliveryDate ? formatDate(currentOrder.extensionRequest.newDeliveryDate) : 'N/A'}
+                          </p>
+                          {currentOrder.extensionRequest.reason && (
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                              <span className="font-medium">Reason:</span> {currentOrder.extensionRequest.reason}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-3 mt-3">
+                          <Button
+                            onClick={async () => {
+                              try {
+                                if (selectedOrder) {
+                                  await respondToExtension(selectedOrder, 'approve');
+                                  toast.success("Extension request approved");
+                                }
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to approve extension");
+                              }
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                          >
+                            <ThumbsUp className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              try {
+                                if (selectedOrder) {
+                                  await respondToExtension(selectedOrder, 'reject');
+                                  toast.success("Extension request rejected");
+                                }
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to reject extension");
+                              }
+                            }}
+                            variant="outline"
+                            className="border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
+                          >
+                            <ThumbsDown className="w-4 h-4 mr-2" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Extension Request Status (approved/rejected) */}
+                {currentOrder.extensionRequest && currentOrder.extensionRequest.status !== 'pending' && (
+                  <div className={`mb-4 p-4 rounded-lg border ${
+                    currentOrder.extensionRequest.status === 'approved' 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {currentOrder.extensionRequest.status === 'approved' && (
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      )}
+                      {currentOrder.extensionRequest.status === 'rejected' && (
+                        <XCircle className="w-5 h-5 text-red-600" />
+                      )}
+                      <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium ${
+                        currentOrder.extensionRequest.status === 'approved' 
+                          ? 'text-green-700' 
+                          : 'text-red-700'
+                      }`}>
+                        Extension Request {currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                      </h5>
+                    </div>
+                    {currentOrder.extensionRequest.status === 'approved' && currentOrder.extensionRequest.newDeliveryDate && (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        New delivery date: {formatDate(currentOrder.extensionRequest.newDeliveryDate)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex gap-3 flex-wrap">
                   <Button
                     onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}

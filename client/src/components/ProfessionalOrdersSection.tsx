@@ -76,7 +76,7 @@ import { toast } from "sonner@2.0.3";
 export default function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, startWork, deliverWork, createOrderDispute, getOrderDisputeById } = useOrders();
+  const { orders, cancelOrder, startWork, deliverWork, createOrderDispute, getOrderDisputeById, requestExtension } = useOrders();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -92,6 +92,9 @@ export default function ProfessionalOrdersSection() {
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
   const [showDisputeSection, setShowDisputeSection] = useState(false);
+  const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
+  const [extensionNewDate, setExtensionNewDate] = useState("");
+  const [extensionReason, setExtensionReason] = useState("");
 
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
@@ -524,13 +527,79 @@ export default function ProfessionalOrdersSection() {
 
                 {currentOrder.deliveryStatus === "active" && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    {(() => {
+                      console.log('[Service In Progress] Rendering active order section');
+                      console.log('[Service In Progress] Current order:', currentOrder);
+                      console.log('[Service In Progress] Delivery status:', currentOrder.deliveryStatus);
+                      console.log('[Service In Progress] Extension request:', currentOrder.extensionRequest);
+                      return null;
+                    })()}
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service In Progress
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
                       You are currently working on this service. Expected delivery: <span className="text-[#2c353f]">{currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}</span>. Make sure to deliver the work on time or request an extension if needed.
                     </p>
+                    
+                    {/* Extension Request Status */}
+                    {currentOrder.extensionRequest && (
+                      <div className={`mb-4 p-4 rounded-lg border ${
+                        currentOrder.extensionRequest.status === 'pending' 
+                          ? 'bg-yellow-50 border-yellow-200' 
+                          : currentOrder.extensionRequest.status === 'approved'
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {currentOrder.extensionRequest.status === 'pending' && (
+                            <Clock className="w-5 h-5 text-yellow-600" />
+                          )}
+                          {currentOrder.extensionRequest.status === 'approved' && (
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          )}
+                          {currentOrder.extensionRequest.status === 'rejected' && (
+                            <XCircle className="w-5 h-5 text-red-600" />
+                          )}
+                          <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium ${
+                            currentOrder.extensionRequest.status === 'pending' 
+                              ? 'text-yellow-700' 
+                              : currentOrder.extensionRequest.status === 'approved'
+                              ? 'text-green-700'
+                              : 'text-red-700'
+                          }`}>
+                            Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                          </h5>
+                        </div>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                          New delivery date: {currentOrder.extensionRequest.newDeliveryDate ? formatDate(currentOrder.extensionRequest.newDeliveryDate) : 'N/A'}
+                        </p>
+                        {currentOrder.extensionRequest.reason && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                            Reason: {currentOrder.extensionRequest.reason}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex gap-3 flex-wrap">
+                      {(() => {
+                        console.log('[Button Section] Rendering button section');
+                        console.log('[Button Section] Current order ID:', currentOrder.id);
+                        console.log('[Button Section] Extension request exists:', !!currentOrder.extensionRequest);
+                        console.log('[Button Section] Extension request:', currentOrder.extensionRequest);
+                        
+                        const hasExtensionRequest = !!currentOrder.extensionRequest;
+                        const extensionStatus = currentOrder.extensionRequest?.status;
+                        const hasPendingRequest = hasExtensionRequest && extensionStatus === 'pending';
+                        const shouldShowExtensionButton = !hasPendingRequest;
+                        
+                        console.log('[Button Section] Has extension request:', hasExtensionRequest);
+                        console.log('[Button Section] Extension status:', extensionStatus);
+                        console.log('[Button Section] Has pending request:', hasPendingRequest);
+                        console.log('[Button Section] Should show extension button:', shouldShowExtensionButton);
+                        
+                        return null;
+                      })()}
                       <Button
                         onClick={() => setIsDeliveryDialogOpen(true)}
                         className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
@@ -546,6 +615,51 @@ export default function ProfessionalOrdersSection() {
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Chat
                       </Button>
+                      {/* Delivery Time Extension Button - Show if no extension request or request is not pending */}
+                      {(() => {
+                        const hasExtensionRequest = !!currentOrder.extensionRequest;
+                        const extensionStatus = currentOrder.extensionRequest?.status;
+                        const hasPendingRequest = hasExtensionRequest && extensionStatus === 'pending';
+                        const shouldShowButton = !hasPendingRequest;
+                        
+                        console.log('[Extension Button Render] Evaluating render condition');
+                        console.log('[Extension Button Render] Has extension request:', hasExtensionRequest);
+                        console.log('[Extension Button Render] Extension status:', extensionStatus);
+                        console.log('[Extension Button Render] Has pending request:', hasPendingRequest);
+                        console.log('[Extension Button Render] Should show button:', shouldShowButton);
+                        console.log('[Extension Button Render] Will render button?', shouldShowButton);
+                        
+                        if (shouldShowButton) {
+                          console.log('[Extension Button Render] ✅ Rendering button');
+                        } else {
+                          console.log('[Extension Button Render] ❌ NOT rendering button - has pending request');
+                        }
+                        
+                        return shouldShowButton;
+                      })() && (
+                        <Button
+                          onClick={() => {
+                            console.log('[Extension Button] Clicked!');
+                            console.log('[Extension Button] Current scheduled date:', currentOrder.scheduledDate);
+                            // Set default date to 7 days from scheduled date or today
+                            const currentDate = currentOrder.scheduledDate 
+                              ? new Date(currentOrder.scheduledDate) 
+                              : new Date();
+                            currentDate.setDate(currentDate.getDate() + 7);
+                            const newDateString = currentDate.toISOString().split('T')[0];
+                            console.log('[Extension Button] Setting new date:', newDateString);
+                            setExtensionNewDate(newDateString);
+                            setExtensionReason("");
+                            setIsExtensionDialogOpen(true);
+                            console.log('[Extension Button] Dialog should open');
+                          }}
+                          variant="outline"
+                          className="font-['Poppins',sans-serif] border-blue-500 text-blue-600 hover:bg-blue-50"
+                        >
+                          <Clock className="w-4 h-4 mr-2" />
+                          Delivery Time Extension
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -599,6 +713,88 @@ export default function ProfessionalOrdersSection() {
                 {/* Delivery Countdown - Show for active and pending orders */}
                 {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") && currentOrder.expectedDelivery && (
                   <DeliveryCountdown expectedDelivery={currentOrder.expectedDelivery} />
+                )}
+
+                {/* Extension Request Section - Timeline Tab */}
+                {currentOrder.deliveryStatus === "active" && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Delivery Time Extension
+                        </h4>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          Need more time to complete the service? Request an extension for the delivery deadline.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Extension Request Status */}
+                    {currentOrder.extensionRequest && (
+                      <div className={`mb-4 p-4 rounded-lg border ${
+                        currentOrder.extensionRequest.status === 'pending' 
+                          ? 'bg-yellow-50 border-yellow-200' 
+                          : currentOrder.extensionRequest.status === 'approved'
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {currentOrder.extensionRequest.status === 'pending' && (
+                            <Clock className="w-5 h-5 text-yellow-600" />
+                          )}
+                          {currentOrder.extensionRequest.status === 'approved' && (
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          )}
+                          {currentOrder.extensionRequest.status === 'rejected' && (
+                            <XCircle className="w-5 h-5 text-red-600" />
+                          )}
+                          <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium ${
+                            currentOrder.extensionRequest.status === 'pending' 
+                              ? 'text-yellow-700' 
+                              : currentOrder.extensionRequest.status === 'approved'
+                              ? 'text-green-700'
+                              : 'text-red-700'
+                          }`}>
+                            Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                          </h5>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            <span className="font-medium">Requested new date:</span> {currentOrder.extensionRequest.newDeliveryDate ? formatDate(currentOrder.extensionRequest.newDeliveryDate) : 'N/A'}
+                          </p>
+                          {currentOrder.extensionRequest.reason && (
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                              <span className="font-medium">Reason:</span> {currentOrder.extensionRequest.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Request Extension Button */}
+                    {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && (
+                      <Button
+                        onClick={() => {
+                          // Set default date to 7 days from scheduled date or today
+                          const currentDate = currentOrder.scheduledDate 
+                            ? new Date(currentOrder.scheduledDate) 
+                            : new Date();
+                          currentDate.setDate(currentDate.getDate() + 7);
+                          setExtensionNewDate(currentDate.toISOString().split('T')[0]);
+                          setExtensionReason("");
+                          setIsExtensionDialogOpen(true);
+                        }}
+                        variant="outline"
+                        className="w-full font-['Poppins',sans-serif] border-blue-500 text-blue-600 hover:bg-blue-50 text-[14px] py-6"
+                      >
+                        <Clock className="w-5 h-5 mr-2" />
+                        Request Time Extension
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 {/* Dispute Timeline */}
@@ -1566,6 +1762,76 @@ export default function ProfessionalOrdersSection() {
                 <Upload className="w-4 h-4 mr-2" />
                 Submit Delivery
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Extension Request Dialog */}
+        <Dialog open={isExtensionDialogOpen} onOpenChange={setIsExtensionDialogOpen}>
+          <DialogContent className="w-[90vw] max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Request Extension
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Request an extension for the delivery deadline. The client will be notified and can approve or reject your request.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  New Delivery Date <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    value={extensionNewDate}
+                    onChange={(e) => setExtensionNewDate(e.target.value)}
+                    min={currentOrder?.scheduledDate ? new Date(new Date(currentOrder.scheduledDate).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                    className="font-['Poppins',sans-serif] text-[14px] pr-10"
+                  />
+                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+                {currentOrder?.scheduledDate && (
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                    Current delivery date: {formatDate(currentOrder.scheduledDate)}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Reason (Optional)
+                </Label>
+                <Textarea
+                  placeholder="Explain why you need an extension..."
+                  value={extensionReason}
+                  onChange={(e) => setExtensionReason(e.target.value)}
+                  rows={4}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsExtensionDialogOpen(false);
+                    setExtensionNewDate("");
+                    setExtensionReason("");
+                  }}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRequestExtension}
+                  className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px]"
+                >
+                  Submit Request
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

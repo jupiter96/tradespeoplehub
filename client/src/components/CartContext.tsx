@@ -104,34 +104,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, 0);
 
   const addToCart = async (item: Omit<CartItem, "quantity">, quantity: number = 1) => {
-    console.log('========== CartContext - addToCart ==========');
-    console.log('[CartContext] Adding item to cart:', {
-      id: item.id,
-      serviceId: item.serviceId,
-      title: item.title,
-      seller: item.seller,
-      price: item.price,
-      quantity: quantity,
-      booking: item.booking,
-      packageType: item.packageType,
-      addons: item.addons,
-    });
-    
     // Ensure serviceId is set (use id if serviceId is not provided for backward compatibility)
     const cartItem: Omit<CartItem, "quantity"> = {
       ...item,
       serviceId: (item as any).serviceId || item.id, // Use serviceId if provided, otherwise use id
     };
-    
-    console.log('[CartContext] Cart item after serviceId assignment:', {
-      id: cartItem.id,
-      serviceId: cartItem.serviceId,
-      booking: cartItem.booking,
-    });
-    
     const itemKey = generateItemKey(cartItem);
-    console.log('[CartContext] Generated item key:', itemKey);
-    
     // Optimistic update
     setCartItems((prev) => {
       const existingItem = prev.find((i) => {
@@ -141,47 +119,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       
       if (existingItem) {
-        console.log('[CartContext] Item already exists in cart, updating quantity');
         const updatedItems = prev.map((i) => {
           const existingKey = generateItemKey(i);
           const newKey = generateItemKey(cartItem);
           if (existingKey === newKey) {
-            console.log('[CartContext] Updating existing item:', {
-              oldQuantity: i.quantity,
-              newQuantity: i.quantity + quantity,
-              booking: i.booking,
-            });
             return { ...i, quantity: i.quantity + quantity };
           }
           return i;
         });
-        console.log('[CartContext] Updated cart items:', updatedItems.map(i => ({
-          id: i.id,
-          serviceId: i.serviceId,
-          title: i.title,
-          quantity: i.quantity,
-          booking: i.booking,
-        })));
         return updatedItems;
       }
       
-      console.log('[CartContext] Adding new item to cart');
       const newItems = [...prev, { ...cartItem, quantity }];
-      console.log('[CartContext] New cart items:', newItems.map(i => ({
-        id: i.id,
-        serviceId: i.serviceId,
-        title: i.title,
-        quantity: i.quantity,
-        booking: i.booking,
-      })));
       return newItems;
     });
 
     // Sync with API if logged in
     if (isLoggedIn) {
-      console.log('[CartContext] Syncing with API...');
-      console.log('[CartContext] Request payload:', JSON.stringify({ item: cartItem, quantity }, null, 2));
-      
       try {
         const response = await fetch(resolveApiUrl("/api/cart/items"), {
           method: "POST",
@@ -194,16 +148,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('[CartContext] API response - items:', data.items?.map((i: any) => ({
-            id: i.id,
-            serviceId: i.serviceId,
-            title: i.title,
-            quantity: i.quantity,
-            booking: i.booking,
-          })));
           setCartItems(data.items || []);
         } else {
-          console.error('[CartContext] API error response:', response.status, response.statusText);
           // Revert optimistic update on error
           const response = await fetch(resolveApiUrl("/api/cart"), {
             credentials: "include",
@@ -227,7 +173,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } else {
       console.log('[CartContext] User not logged in, skipping API sync');
     }
-    console.log('==========================================');
   };
 
   const removeFromCart = async (itemKey: string) => {
@@ -354,15 +299,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCartItem = async (itemKeyOrId: string, updates: Partial<CartItem>) => {
-    console.log('========== CartContext - updateCartItem ==========');
-    console.log('[CartContext] Updating cart item with key/id:', itemKeyOrId);
-    console.log('[CartContext] Updates to apply:', JSON.stringify(updates, null, 2));
-    console.log('[CartContext] Current cart items:', cartItems.map(i => ({
-      id: i.id,
-      serviceId: i.serviceId,
-      title: i.title,
-      booking: i.booking,
-    })));
     
     // Find item by itemKey or id
     const itemToUpdate = cartItems.find((i) => {
@@ -372,26 +308,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (!itemToUpdate) {
       console.error('[CartContext] Item not found in cart for key/id:', itemKeyOrId);
-      console.log('==========================================');
       return;
     }
 
     const key = generateItemKey(itemToUpdate);
-    console.log('[CartContext] Found item to update:', {
-      id: itemToUpdate.id,
-      serviceId: itemToUpdate.serviceId,
-      title: itemToUpdate.title,
-      currentBooking: itemToUpdate.booking,
-    });
     
     const updatedItem = { ...itemToUpdate, ...updates };
-    console.log('[CartContext] Updated item:', {
-      id: updatedItem.id,
-      serviceId: updatedItem.serviceId,
-      title: updatedItem.title,
-      newBooking: updatedItem.booking,
-    });
-
     // Optimistic update
     setCartItems((prev) => {
       const newItems = prev.map((item) => {
@@ -402,22 +324,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return item;
       });
       
-      console.log('[CartContext] Cart items after optimistic update:', newItems.map(i => ({
-        id: i.id,
-        serviceId: i.serviceId,
-        title: i.title,
-        booking: i.booking,
-      })));
-      
       return newItems;
     });
 
     // Sync with API if logged in
     if (isLoggedIn) {
-      console.log('[CartContext] Syncing update with API...');
-      console.log('[CartContext] API request URL:', `/api/cart/items/${encodeURIComponent(key)}`);
-      console.log('[CartContext] API request payload:', JSON.stringify(updates, null, 2));
-      
       try {
         // Update cart item via API
         const response = await fetch(resolveApiUrl(`/api/cart/items/${encodeURIComponent(key)}`), {
@@ -429,23 +340,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify(updates),
         });
 
-        console.log('[CartContext] API response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('[CartContext] API update response - items:', data.items?.map((i: any) => ({
-            id: i.id,
-            serviceId: i.serviceId,
-            title: i.title,
-            booking: i.booking,
-            hasBooking: !!i.booking,
-          })));
           setCartItems(data.items || []);
-          console.log('[CartContext] Cart items updated from API successfully');
         } else {
-          console.error('[CartContext] API update failed:', response.status, response.statusText);
           const errorData = await response.json().catch(() => ({}));
-          console.error('[CartContext] Error details:', errorData);
           // Revert optimistic update on error
           const response = await fetch(resolveApiUrl("/api/cart"), {
             credentials: "include",
@@ -456,7 +356,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error("[CartContext] Failed to update cart item:", error);
         // Revert optimistic update on error
         const response = await fetch(resolveApiUrl("/api/cart"), {
           credentials: "include",
@@ -469,7 +368,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } else {
       console.log('[CartContext] User not logged in, skipping API sync');
     }
-    console.log('==========================================');
   };
 
   const clearCart = async () => {

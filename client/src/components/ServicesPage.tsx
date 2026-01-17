@@ -713,11 +713,6 @@ export default function ServicesPage() {
   // Convert API data to categoryTree format, sorted by order
   // Lazy loading: Only show categories for sectors that have been expanded/loaded
   const categoryTree: CategoryTree[] = useMemo(() => {
-    console.log('[ServicesPage] categoryTree useMemo triggered:', {
-      apiSectorsLength: apiSectors.length,
-      legacySectorsLength: legacySectors.length,
-      serviceCategoriesBySectorSize: serviceCategoriesBySector.size
-    });
     
     if (apiSectors.length > 0) {
       const sortedSectors = [...apiSectors].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -777,7 +772,6 @@ export default function ServicesPage() {
     
     // Return empty array if no data available
     const result: CategoryTree[] = [];
-    console.log('[ServicesPage] categoryTree useMemo returning empty array - no sectors available');
     return result;
   }, [apiSectors, legacySectors, serviceCategoriesBySector]);
   
@@ -1421,7 +1415,6 @@ export default function ServicesPage() {
                                 categoryParam || subcategoryParam || detailedSubcategoryParam);
         // If no URL params, clear filters (URL was cleared by removeFilter)
         if (!hasUrlParams) {
-          console.log('[ServicesPage] Clearing filters - no URL params');
           return [];
         }
         // URL params exist but no filters generated - this shouldn't happen, keep current filters

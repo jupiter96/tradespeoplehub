@@ -51,17 +51,6 @@ function generateOrderNumber() {
 // Create order
 router.post('/', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
-    console.log('========== SERVER - Order Creation Request ==========');
-    console.log('[Server] Request body keys:', Object.keys(req.body));
-    console.log('[Server] Items count:', req.body.items?.length);
-    console.log('[Server] Items with booking info:', req.body.items?.map((item) => ({
-      id: item.id,
-      serviceId: item.serviceId,
-      title: item.title,
-      hasBooking: !!item.booking,
-      booking: item.booking,
-      bookingType: typeof item.booking,
-    })));
     
     const { items, address, skipAddress, paymentMethod, paymentMethodId, total, subtotal, discount = 0, serviceFee = 0, promoCode } = req.body;
 
@@ -407,20 +396,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       // When admin approves the bank transfer, the wallet will be funded and then deducted
     }
 
-    // Create order
-    console.log('[Server] ===== PROCESSING ORDER ITEMS =====');
-    console.log('[Server] Processing', items.length, 'items');
-    
     const processedItems = items.map((item, index) => {
-      console.log(`[Server] Processing item ${index + 1}/${items.length}:`, {
-        id: item.id,
-        serviceId: item.serviceId,
-        title: item.title,
-        rawBooking: item.booking,
-        bookingType: typeof item.booking,
-        hasBooking: !!item.booking,
-      });
-      
       const orderItem = {
         serviceId: item.serviceId || item.id, // Use serviceId if available, otherwise fall back to id
         title: item.title,
@@ -435,13 +411,11 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       
       // Explicitly include booking if it exists
       if (item.booking && (item.booking.date || item.booking.time)) {
-        console.log(`[Server] Item ${index + 1} has booking info:`, item.booking);
         orderItem.booking = {
           date: item.booking.date,
           time: item.booking.time || '',
           timeSlot: item.booking.timeSlot || undefined,
         };
-        console.log(`[Server] Item ${index + 1} booking added to orderItem:`, orderItem.booking);
       } else {
         console.log(`[Server] Item ${index + 1} has NO booking info`);
       }
@@ -449,11 +423,6 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       return orderItem;
     });
     
-    console.log('[Server] Processed items with booking:', processedItems.map((item) => ({
-      title: item.title,
-      hasBooking: !!item.booking,
-      booking: item.booking,
-    })));
 
     const order = new Order({
       orderNumber,
@@ -484,28 +453,10 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         promoCodeType: promoCodeData?.type || null,
       },
     });
-
-    console.log('[Server] Saving order to database...');
-    console.log('[Server] Order items before save:', order.items.map((item) => ({
-      title: item.title,
-      booking: item.booking,
-      hasBooking: !!item.booking,
-    })));
     
     await order.save();
     
-    console.log('[Server] ===== ORDER SAVED TO DATABASE =====');
-    console.log('[Server] Order ID:', order._id);
-    console.log('[Server] Order Number:', order.orderNumber);
     const savedOrder = await Order.findById(order._id);
-    console.log('[Server] Saved order items from DB:', savedOrder?.items?.map((item) => ({
-      title: item.title,
-      booking: item.booking,
-      hasBooking: !!item.booking,
-      bookingDate: item.booking?.date,
-      bookingTime: item.booking?.time,
-    })));
-
     // Update payment transaction with order ID if exists
     if (paymentTransactionId) {
       await Wallet.findByIdAndUpdate(paymentTransactionId, { orderId: order._id });
@@ -524,16 +475,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       message: 'Order created successfully',
     };
     
-    console.log('[Server] Response data - order items booking:', responseData.order.items?.map((item) => ({
-      title: item.title,
-      booking: item.booking,
-      hasBooking: !!item.booking,
-    })));
-    console.log('==================================================');
-    
     return res.json(responseData);
   } catch (error) {
-    console.error('Create order error:', error);
     return res.status(500).json({ error: error.message || 'Failed to create order' });
   }
 });
@@ -761,6 +704,14 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         subtotal: order.subtotal || 0,
         discount: order.discount || 0,
         serviceFee: order.serviceFee || 0,
+        extensionRequest: order.extensionRequest ? {
+          status: order.extensionRequest.status,
+          requestedDate: order.extensionRequest.requestedDate ? new Date(order.extensionRequest.requestedDate).toISOString() : undefined,
+          newDeliveryDate: order.extensionRequest.newDeliveryDate ? new Date(order.extensionRequest.newDeliveryDate).toISOString() : undefined,
+          reason: order.extensionRequest.reason,
+          requestedAt: order.extensionRequest.requestedAt ? new Date(order.extensionRequest.requestedAt).toISOString() : undefined,
+          respondedAt: order.extensionRequest.respondedAt ? new Date(order.extensionRequest.respondedAt).toISOString() : undefined,
+        } : undefined,
       };
     });
 
@@ -768,6 +719,109 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
   } catch (error) {
     console.error('Get orders error:', error);
     return res.status(500).json({ error: error.message || 'Failed to fetch orders' });
+  }
+});
+
+// Professional: Request delivery extension
+router.post('/:orderId/extension-request', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { newDeliveryDate, reason } = req.body;
+
+    if (!newDeliveryDate) {
+      return res.status(400).json({ error: 'New delivery date is required' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      professional: req.user.id 
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is in progress (can only request extension for active orders)
+    if (order.status !== 'In Progress') {
+      return res.status(400).json({ error: 'Can only request extension for orders in progress' });
+    }
+
+    // Check if there's already a pending extension request
+    if (order.extensionRequest && order.extensionRequest.status === 'pending') {
+      return res.status(400).json({ error: 'There is already a pending extension request' });
+    }
+
+    // Update extension request
+    order.extensionRequest = {
+      status: 'pending',
+      requestedDate: new Date(),
+      newDeliveryDate: new Date(newDeliveryDate),
+      reason: reason || '',
+      requestedAt: new Date(),
+      respondedAt: null,
+    };
+
+    await order.save();
+
+    res.json({ 
+      message: 'Extension request submitted successfully',
+      extensionRequest: order.extensionRequest
+    });
+  } catch (error) {
+    console.error('Extension request error:', error);
+    res.status(500).json({ error: error.message || 'Failed to request extension' });
+  }
+});
+
+// Client: Approve or reject extension request
+router.put('/:orderId/extension-request', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be either "approve" or "reject"' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      client: req.user.id 
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.extensionRequest || order.extensionRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'No pending extension request found' });
+    }
+
+    if (action === 'approve') {
+      // Update scheduled date if exists in metadata
+      if (order.extensionRequest.newDeliveryDate) {
+        if (order.metadata && typeof order.metadata === 'object') {
+          order.metadata.scheduledDate = order.extensionRequest.newDeliveryDate;
+        } else {
+          order.metadata = { scheduledDate: order.extensionRequest.newDeliveryDate };
+        }
+      }
+
+      order.extensionRequest.status = 'approved';
+    } else {
+      order.extensionRequest.status = 'rejected';
+    }
+
+    order.extensionRequest.respondedAt = new Date();
+
+    await order.save();
+
+    res.json({ 
+      message: `Extension request ${action}d successfully`,
+      extensionRequest: order.extensionRequest
+    });
+  } catch (error) {
+    console.error('Extension request response error:', error);
+    res.status(500).json({ error: error.message || 'Failed to respond to extension request' });
   }
 });
 

@@ -146,21 +146,6 @@ export default function AddToCartModal({
           timeSlot: selectedTimeSlot 
         }
       : null);
-
-    console.log('========== AddToCartModal - handleConfirm ==========');
-    console.log('[AddToCart] Service:', serviceTitle);
-    console.log('[AddToCart] Seller:', sellerName);
-    console.log('[AddToCart] Base Price:', basePrice);
-    console.log('[AddToCart] Quantity:', quantity);
-    console.log('[AddToCart] Selected Package:', selectedPackage);
-    console.log('[AddToCart] Selected Addons:', Array.from(selectedAddons));
-    console.log('[AddToCart] Booking Info:', booking);
-    console.log('[AddToCart] Selected Date (original):', selectedDate);
-    console.log('[AddToCart] Selected Time:', selectedTime);
-    console.log('[AddToCart] Selected Time Slot:', selectedTimeSlot);
-    console.log('[AddToCart] Booking Date (formatted):', booking?.date);
-    console.log('==================================================');
-
     onConfirm({
       quantity,
       selectedAddons: Array.from(selectedAddons),

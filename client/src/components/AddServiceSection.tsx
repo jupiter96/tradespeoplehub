@@ -2514,11 +2514,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // If all children are checked and no grandchildren exist, this is the last level
       if (allChildrenChecked && !hasAnyGrandChildren) {
         // This is confirmed to be the last level - restore selections
-        console.log('🔄 Restoring selectedLastLevelSubCategories (confirmed last level):', initialService.selectedLastLevelSubCategories);
         setSelectedLastLevelSubCategories(initialService.selectedLastLevelSubCategories);
       } else if (!hasAnyGrandChildren && allChildrenChecked) {
         // No grandchildren found and all checked - restore (safe assumption)
-        console.log('🔄 Restoring selectedLastLevelSubCategories (no grandchildren detected):', initialService.selectedLastLevelSubCategories);
         setSelectedLastLevelSubCategories(initialService.selectedLastLevelSubCategories);
       }
     }
@@ -4623,12 +4621,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
         const changedFieldNames = Object.keys(changedFields);
 
-        // Always log comparison details for debugging - compare all fields (BEFORE checking if nothing changed)
-        console.log('\n=== FRONTEND: Service Update Comparison ===');
-        console.log(`Service ID: ${originalData._id}`);
-        console.log(`Original Status: ${originalData.status}`);
-        console.log(`\n📋 All compared fields (${fieldsToCompare.length}):`, fieldsToCompare);
-
         // Log details for ALL fields being compared
         fieldsToCompare.forEach(field => {
           const newValue = serviceData[field as keyof typeof serviceData];
@@ -4641,24 +4633,17 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           // Check if they are equal
           const isEqual = deepEqual(normalizedNew, normalizedOld);
 
-          console.log(`\n  ${isEqual ? '✅' : '📝'} ${field} ${isEqual ? '(UNCHANGED)' : '(CHANGED)'}:`);
           if (typeof oldValue === 'object' && typeof newValue === 'object' && oldValue !== null && newValue !== null) {
             const oldStr = JSON.stringify(normalizedOld);
             const newStr = JSON.stringify(normalizedNew);
-            console.log(`     Database (old):`, oldStr.length > 200 ? oldStr.substring(0, 200) + '...' : oldStr);
-            console.log(`     Sending (new):`, newStr.length > 200 ? newStr.substring(0, 200) + '...' : newStr);
           } else {
             console.log(`     Database (old):`, normalizedOld);
             console.log(`     Sending (new):`, normalizedNew);
           }
         });
 
-        console.log(`\n✅ Actually changed fields (${changedFieldNames.length}):`, changedFieldNames.length > 0 ? changedFieldNames : 'None');
-
         // Check if only availability was changed
         onlyAvailabilityChanged = changedFieldNames.length === 1 && changedFieldNames[0] === 'availability';
-        console.log(`\n🔍 Only availability changed: ${onlyAvailabilityChanged}`);
-        console.log(`=== END FRONTEND COMPARISON ===\n`);
 
         // If no fields changed, show message and return early
         if (changedFieldNames.length === 0) {
@@ -4677,14 +4662,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
       const method = isUpdatingExisting ? "PUT" : "POST";
       
-      // console.log('[Service Publish] Publishing service:', {
-      //   isEditMode,
-      //   isUpdatingExisting,
-      //   draftId,
-      //   method,
-      //   url,
-      //   userId: userInfo?.id
-      // });
       
       const response = await fetch(url, {
         method,

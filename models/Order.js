@@ -158,6 +158,34 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    // Extension request for delivery time
+    extensionRequest: {
+      status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: null,
+      },
+      requestedDate: {
+        type: Date,
+        default: null,
+      },
+      newDeliveryDate: {
+        type: Date,
+        default: null,
+      },
+      reason: {
+        type: String,
+        trim: true,
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+      respondedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,

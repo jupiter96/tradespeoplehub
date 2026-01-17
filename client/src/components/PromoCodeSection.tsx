@@ -140,12 +140,6 @@ export default function PromoCodeSection() {
       ? formData.categories 
       : (formData.category ? [formData.category] : []);
 
-    console.log('[PromoCodeSection] Creating promo code with data:');
-    console.log('[PromoCodeSection] - Code:', formData.code);
-    console.log('[PromoCodeSection] - Category field:', formData.category);
-    console.log('[PromoCodeSection] - Categories array:', formData.categories);
-    console.log('[PromoCodeSection] - Categories to send:', categoriesToSend);
-
     const requestBody = {
       code: formData.code,
       discount: parseFloat(formData.discount || "0"),
@@ -159,8 +153,6 @@ export default function PromoCodeSection() {
       perUserLimit: parseInt(formData.perUserLimit) || 1,
       description: formData.description || "",
     };
-
-    console.log('[PromoCodeSection] Request body:', JSON.stringify(requestBody, null, 2));
 
     try {
       const response = await fetch(resolveApiUrl("/api/promo-codes/admin"), {
@@ -205,7 +197,6 @@ export default function PromoCodeSection() {
   };
 
   const handleEditPromoCode = (promo: PromoCode) => {
-    console.log('[PromoCodeSection] Editing promo code:', promo);
     
     // Extract category IDs
     const categoryIds = promo.categories?.map((cat: any) => 
@@ -258,9 +249,6 @@ export default function PromoCodeSection() {
       ? formData.categories 
       : (formData.category ? [formData.category] : []);
 
-    console.log('[PromoCodeSection] Updating promo code:', editingPromoCode._id);
-    console.log('[PromoCodeSection] - Categories to send:', categoriesToSend);
-
     const requestBody = {
       code: formData.code,
       discount: parseFloat(formData.discount || "0"),
@@ -275,8 +263,6 @@ export default function PromoCodeSection() {
       description: formData.description || "",
       status: formData.status,
     };
-
-    console.log('[PromoCodeSection] Update request body:', JSON.stringify(requestBody, null, 2));
 
     try {
       const response = await fetch(resolveApiUrl(`/api/promo-codes/admin/${editingPromoCode._id}`), {
@@ -727,8 +713,6 @@ export default function PromoCodeSection() {
               <Select
                 value={formData.category}
                 onValueChange={(value) => {
-                  console.log('[PromoCodeSection] Category selected:', value);
-                  console.log('[PromoCodeSection] Setting categories array to:', [value]);
                   setFormData({ ...formData, category: value, categories: value ? [value] : [] });
                 }}
                 disabled={!formData.sector}

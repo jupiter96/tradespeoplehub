@@ -40,34 +40,17 @@ router.post('/validate', authenticateToken, async (req, res) => {
     
     // For admin promo codes, check if items match categories
     if (promoCode.type === 'admin' && promoCode.categories && promoCode.categories.length > 0) {
-      console.log('[PromoCode Validate] Category-based promo code validation started');
-      console.log('[PromoCode Validate] Promo code categories:', promoCode.categories);
-      console.log('[PromoCode Validate] Promo code categories (stringified):', promoCode.categories.map(c => c.toString()));
-      
       if (!items || items.length === 0) {
-        console.log('[PromoCode Validate] No items provided for category-based promo code');
         return res.status(400).json({ error: 'Items are required for category-based promo codes' });
       }
-      
-      console.log('[PromoCode Validate] Items received:', items);
       
       // Get service categories from items
       const Service = (await import('../models/Service.js')).default;
       const itemServiceIds = items.map(item => item.serviceId || item.id).filter(Boolean);
       
-      console.log('[PromoCode Validate] Extracted service IDs:', itemServiceIds);
-      
       const services = await Service.find({
         _id: { $in: itemServiceIds }
       }).select('serviceCategory title');
-      
-      console.log('[PromoCode Validate] Found services:', services.map(s => ({
-        _id: s._id.toString(),
-        title: s.title,
-        serviceCategory: s.serviceCategory,
-        serviceCategoryType: typeof s.serviceCategory,
-        serviceCategoryId: s.serviceCategory?._id ? s.serviceCategory._id.toString() : (s.serviceCategory?.toString ? s.serviceCategory.toString() : null)
-      })));
       
       // Extract category IDs properly
       // serviceCategory should be ObjectId, but handle both cases
@@ -120,31 +103,18 @@ router.post('/validate', authenticateToken, async (req, res) => {
           return match ? match[1] : id;
         });
       
-      console.log('[PromoCode Validate] Service category IDs from cart items:', serviceCategoryIds);
-      
       // Check if any item's category matches promo code categories
       const promoCategoryIds = promoCode.categories.map(c => c.toString());
-      console.log('[PromoCode Validate] Promo code category IDs (for comparison):', promoCategoryIds);
-      
       const hasMatchingCategory = serviceCategoryIds.some(catId => 
         promoCategoryIds.includes(catId)
       );
       
-      console.log('[PromoCode Validate] Has matching category?', hasMatchingCategory);
-      console.log('[PromoCode Validate] Comparison details:', {
-        serviceCategoryIds,
-        promoCategoryIds,
-        matches: serviceCategoryIds.filter(catId => promoCategoryIds.includes(catId))
-      });
-      
       if (!hasMatchingCategory) {
-        console.log('[PromoCode Validate] ❌ Category mismatch - promo code not applicable');
         return res.status(400).json({ 
           error: 'This promo code is not applicable to the selected services' 
         });
       }
       
-      console.log('[PromoCode Validate] ✅ Category match found - promo code is applicable');
     }
     
     // Calculate discount

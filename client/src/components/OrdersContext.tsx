@@ -105,6 +105,14 @@ export interface Order {
   subtotal?: number;
   discount?: number;
   serviceFee?: number;
+  extensionRequest?: {
+    status: 'pending' | 'approved' | 'rejected';
+    requestedDate?: string;
+    newDeliveryDate?: string;
+    reason?: string;
+    requestedAt?: string;
+    respondedAt?: string;
+  };
 }
 
 interface OrdersContextType {
@@ -125,6 +133,8 @@ interface OrdersContextType {
   deliverWork: (orderId: string, deliveryMessage: string) => void;
   acceptDelivery: (orderId: string) => void;
   extendDeliveryTime: (orderId: string, days: number) => void;
+  requestExtension: (orderId: string, newDeliveryDate: string, reason?: string) => Promise<void>;
+  respondToExtension: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
   createOrderDispute: (orderId: string, reason: string, evidence?: string) => string;
   getOrderDisputeById: (disputeId: string) => OrderDispute | undefined;
   addOrderDisputeMessage: (disputeId: string, message: string) => void;
@@ -312,6 +322,105 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const requestExtension = async (orderId: string, newDeliveryDate: string, reason?: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/extension-request`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          newDeliveryDate,
+          reason: reason || '',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to request extension');
+      }
+
+      const data = await response.json();
+      
+      // Update order with extension request
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            extensionRequest: {
+              status: 'pending',
+              requestedDate: data.extensionRequest.requestedDate,
+              newDeliveryDate: data.extensionRequest.newDeliveryDate,
+              reason: data.extensionRequest.reason,
+              requestedAt: data.extensionRequest.requestedAt,
+              respondedAt: undefined,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Extension request error:', error);
+      throw error;
+    }
+  };
+
+  const respondToExtension = async (orderId: string, action: 'approve' | 'reject') => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/extension-request`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to respond to extension request');
+      }
+
+      const data = await response.json();
+      
+      // Update order with extension response
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          const updatedExtensionRequest = {
+            ...order.extensionRequest!,
+            status: data.extensionRequest.status,
+            respondedAt: data.extensionRequest.respondedAt,
+          };
+
+          // If approved, update scheduled date
+          if (action === 'approve' && data.extensionRequest.newDeliveryDate) {
+            return {
+              ...order,
+              scheduledDate: new Date(data.extensionRequest.newDeliveryDate).toISOString().split('T')[0],
+              extensionRequest: updatedExtensionRequest,
+            };
+          }
+
+          return {
+            ...order,
+            extensionRequest: updatedExtensionRequest,
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Extension response error:', error);
+      throw error;
+    }
+  };
+
   const addDirectOrder = (orderData: Partial<Order> & { id: string; service: string; professional: string; amount: string }) => {
     const amountValue = parseFloat(orderData.amount.replace(/[^0-9.]/g, ""));
     
@@ -452,6 +561,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         deliverWork,
         acceptDelivery,
         extendDeliveryTime,
+        requestExtension,
+        respondToExtension,
         createOrderDispute,
         getOrderDisputeById,
         addOrderDisputeMessage,
