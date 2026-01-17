@@ -343,7 +343,7 @@ export default function ProfessionalOrdersSection() {
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
             Scheduled: {formatDate(order.scheduledDate)}
-            {order.booking?.timeSlot && ` - ${order.booking.timeSlot}`}
+            {(order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.time || order.booking.timeSlot}${order.booking?.timeSlot && order.booking?.time ? ` (${order.booking.timeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -1037,6 +1037,18 @@ export default function ProfessionalOrdersSection() {
                             {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "10-12-2025"}
                           </td>
                         </tr>
+                        {(currentOrder.booking?.date || currentOrder.booking?.time) && (
+                          <tr className="border-t border-gray-200">
+                            <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              Delivery Date & Time
+                            </td>
+                            <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : "TBD"}
+                              {currentOrder.booking?.time && ` at ${currentOrder.booking.time}`}
+                              {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
+                            </td>
+                          </tr>
+                        )}
                         <tr className="bg-gray-50 border-t border-gray-200">
                           <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                             Total no. of Hours
@@ -1264,23 +1276,26 @@ export default function ProfessionalOrdersSection() {
                   </div>
                 </div>
 
-                {/* Due Date */}
-                {currentOrder.scheduledDate && (
+                {/* Delivery Date and Time */}
+                {(currentOrder.booking?.date || currentOrder.booking?.time || currentOrder.scheduledDate) && (
                   <div className="mb-6">
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                      Due Date
+                      Delivery Date & Time
                     </p>
-                    <div className="flex items-center gap-2 text-[#2c353f]">
-                      <Clock className="w-4 h-4 text-[#6b6b6b]" />
-                      <span className="font-['Poppins',sans-serif] text-[13px]">
-                        {formatDate(currentOrder.scheduledDate)}
-                      </span>
-                    </div>
-                    {currentOrder.booking?.timeSlot && (
-                      <div className="flex items-center gap-2 text-[#2c353f] mt-2">
-                        <div className="w-4 h-4" />
+                    {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
+                      <div className="flex items-center gap-2 text-[#2c353f]">
+                        <Calendar className="w-4 h-4 text-[#6b6b6b]" />
                         <span className="font-['Poppins',sans-serif] text-[13px]">
-                          {currentOrder.booking.timeSlot}
+                          {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : (currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD")}
+                        </span>
+                      </div>
+                    )}
+                    {(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
+                      <div className="flex items-center gap-2 text-[#2c353f] mt-2">
+                        <Clock className="w-4 h-4 text-[#6b6b6b]" />
+                        <span className="font-['Poppins',sans-serif] text-[13px]">
+                          {currentOrder.booking.time ? currentOrder.booking.time : currentOrder.booking.timeSlot}
+                          {currentOrder.booking.timeSlot && currentOrder.booking.time && ` (${currentOrder.booking.timeSlot})`}
                         </span>
                       </div>
                     )}

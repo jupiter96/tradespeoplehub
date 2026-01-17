@@ -102,6 +102,9 @@ export interface Order {
   };
   disputeId?: string;
   expectedDelivery?: string; // ISO date string for expected delivery time
+  subtotal?: number;
+  discount?: number;
+  serviceFee?: number;
 }
 
 interface OrdersContextType {

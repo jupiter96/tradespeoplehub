@@ -61,6 +61,7 @@ import AdminServicesPage from "./admin/AdminServicesPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
 import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
 import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
+import PromoCodeSection from "./PromoCodeSection";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -338,6 +339,8 @@ export default function AdminDashboardPage() {
         return <AdminTransactionHistoryPage />;
       case "bank-transfer-request":
         return <AdminBankTransferRequestPage />;
+      case "coupon-manage":
+        return <PromoCodeSection />;
       default:
         return (
           <AdminGenericPage

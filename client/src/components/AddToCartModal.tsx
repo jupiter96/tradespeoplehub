@@ -37,6 +37,8 @@ interface AddToCartModalProps {
   addons?: Addon[];
   packages?: Package[];
   serviceImage: string;
+  serviceType?: "in-person" | "online";
+  onlineDeliveryDays?: string;
 }
 
 const timeSlots = [
@@ -54,7 +56,9 @@ export default function AddToCartModal({
   basePrice,
   addons = [],
   packages = [],
-  serviceImage
+  serviceImage,
+  serviceType = "in-person",
+  onlineDeliveryDays
 }: AddToCartModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
@@ -134,9 +138,28 @@ export default function AddToCartModal({
   };
 
   const handleConfirm = () => {
-    const booking = selectedDate && selectedTime && selectedTimeSlot
-      ? { date: selectedDate, time: selectedTime, timeSlot: selectedTimeSlot }
-      : null;
+    // For online services, no booking needed
+    const booking = (serviceType === "online") ? null : (selectedDate && selectedTime && selectedTimeSlot
+      ? { 
+          date: selectedDate.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD format
+          time: selectedTime, 
+          timeSlot: selectedTimeSlot 
+        }
+      : null);
+
+    console.log('========== AddToCartModal - handleConfirm ==========');
+    console.log('[AddToCart] Service:', serviceTitle);
+    console.log('[AddToCart] Seller:', sellerName);
+    console.log('[AddToCart] Base Price:', basePrice);
+    console.log('[AddToCart] Quantity:', quantity);
+    console.log('[AddToCart] Selected Package:', selectedPackage);
+    console.log('[AddToCart] Selected Addons:', Array.from(selectedAddons));
+    console.log('[AddToCart] Booking Info:', booking);
+    console.log('[AddToCart] Selected Date (original):', selectedDate);
+    console.log('[AddToCart] Selected Time:', selectedTime);
+    console.log('[AddToCart] Selected Time Slot:', selectedTimeSlot);
+    console.log('[AddToCart] Booking Date (formatted):', booking?.date);
+    console.log('==================================================');
 
     onConfirm({
       quantity,
@@ -158,7 +181,9 @@ export default function AddToCartModal({
     });
   };
 
-  const canProceed = selectedDate && selectedTime;
+  // For online services, no booking needed, can proceed immediately
+  // For in-person services, require date and time selection
+  const canProceed = serviceType === "online" || (selectedDate && selectedTime);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -168,7 +193,9 @@ export default function AddToCartModal({
             Customize Your Order
           </DialogTitle>
           <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-            Configure service details and select appointment time
+            {serviceType === "online" 
+              ? "Configure service details and delivery time"
+              : "Configure service details and select appointment time"}
           </DialogDescription>
         </DialogHeader>
 
@@ -194,13 +221,15 @@ export default function AddToCartModal({
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className={`grid w-full ${serviceType === "online" ? "grid-cols-2" : "grid-cols-3"} mb-6`}>
               <TabsTrigger value="details" className="font-['Poppins',sans-serif]">
                 Service Details
               </TabsTrigger>
-              <TabsTrigger value="booking" className="font-['Poppins',sans-serif]">
-                Date & Time
-              </TabsTrigger>
+              {serviceType === "in-person" && (
+                <TabsTrigger value="booking" className="font-['Poppins',sans-serif]">
+                  Date & Time
+                </TabsTrigger>
+              )}
               <TabsTrigger value="summary" className="font-['Poppins',sans-serif]">
                 Summary
               </TabsTrigger>
@@ -320,8 +349,9 @@ export default function AddToCartModal({
               )}
             </TabsContent>
 
-            {/* Tab 2: Date & Time */}
-            <TabsContent value="booking" className="space-y-6">
+            {/* Tab 2: Date & Time (only for in-person services) */}
+            {serviceType === "in-person" && (
+              <TabsContent value="booking" className="space-y-6">
               {/* Single Unified Picker Box */}
               <div className="border-2 border-gray-200 rounded-2xl p-4 md:p-6 bg-gradient-to-br from-white to-gray-50 min-h-[400px] relative overflow-hidden">
                 
@@ -450,7 +480,29 @@ export default function AddToCartModal({
                   )}
                 </div>
               </div>
-            </TabsContent>
+              </TabsContent>
+            )}
+
+            {/* Tab 2/3: Delivery Time (for online services) */}
+            {serviceType === "online" && (
+              <TabsContent value="summary" className="space-y-6">
+                <div className="border-2 border-gray-200 rounded-2xl p-4 md:p-6 bg-gradient-to-br from-white to-gray-50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 bg-[#3B82F6] rounded-full flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
+                      Delivery Time
+                    </h3>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      This service will be delivered {onlineDeliveryDays || "within the specified time"} after order confirmation.
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+            )}
 
             {/* Tab 3: Summary */}
             <TabsContent value="summary">
@@ -515,8 +567,17 @@ export default function AddToCartModal({
                   </div>
                 </div>
 
-                {/* Appointment Info */}
-                {selectedDate && selectedTime ? (
+                {/* Appointment Info / Delivery Info */}
+                {serviceType === "online" ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                      Delivery Information:
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-blue-700">
+                      This service will be delivered {onlineDeliveryDays || "within the specified time"} after order confirmation.
+                    </p>
+                  </div>
+                ) : selectedDate && selectedTime ? (
                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 mt-4">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Appointment Scheduled:
@@ -556,7 +617,7 @@ export default function AddToCartModal({
                 £{calculateTotal().toFixed(2)}
               </p>
             </div>
-            {!canProceed && (
+            {serviceType === "in-person" && !canProceed && (
               <Badge variant="outline" className="text-yellow-600 border-yellow-600">
                 Select date & time
               </Badge>

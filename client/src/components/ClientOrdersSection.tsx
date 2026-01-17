@@ -359,13 +359,13 @@ export default function ClientOrdersSection() {
         </div>
       </div>
 
-      {/* Scheduled Date */}
-      {order.scheduledDate && (
+      {/* Appointment Date and Time */}
+      {(order.booking?.date || order.scheduledDate) && (
         <div className="flex items-center gap-2 mb-3 text-[#6b6b6b]">
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
-            Scheduled: {formatDate(order.scheduledDate)}
-            {order.booking?.timeSlot && ` - ${order.booking.timeSlot}`}
+            Appointment: {formatDate(order.booking?.date || order.scheduledDate)}
+            {(order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.time || order.booking.timeSlot}${order.booking?.timeSlot && order.booking?.time ? ` (${order.booking.timeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -522,7 +522,9 @@ export default function ClientOrdersSection() {
                   Waiting for Professional to Start
                 </h4>
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                  Your payment has been processed successfully. The professional will start working on your service soon. Expected delivery: <span className="text-[#2c353f]">{currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}</span>.
+                  Your payment has been processed successfully. The professional will start working on your service soon. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
+                    <span className="text-[#2c353f]">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
+                  )}
                 </p>
                 <div className="flex gap-3 flex-wrap">
                   <Button
@@ -543,7 +545,9 @@ export default function ClientOrdersSection() {
                   Service In Progress
                 </h4>
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                  {currentOrder.professional} is currently working on your service. Expected delivery: <span className="text-[#2c353f]">{currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}</span>. Feel free to reach out if you have any questions.
+                  {currentOrder.professional} is currently working on your service. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
+                    <span className="text-[#2c353f]">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
+                  )}. Feel free to reach out if you have any questions.
                 </p>
                 <div className="flex gap-3 flex-wrap">
                   <Button
@@ -856,36 +860,49 @@ export default function ClientOrdersSection() {
                     <p className="font-['Poppins',sans-serif] text-[13px] mb-3">
                       <span className="text-blue-600">{currentOrder.professional}</span>{" "}
                       <span className="text-[#6b6b6b]">delivered your order</span>{" "}
-                      <span className="text-[#6b6b6b] italic">Thu 13th November, 2025 15:39</span>
+                      <span className="text-[#6b6b6b] italic">
+                        {currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : formatDate(new Date().toISOString())}
+                      </span>
                     </p>
 
                     {/* Delivery Content Box */}
-                    <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                        hghghgh
-                      </p>
-                      
-                      {/* Attachments */}
-                      <div>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-                          Attachments
-                        </p>
-                        <div className="bg-white border border-gray-200 rounded-lg p-2 inline-block">
-                          <img 
-                            src={serviceVector}
-                            alt="Delivery attachment"
-                            className="w-48 h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                          />
-                        </div>
+                    {(currentOrder.description || (currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image)) && (
+                      <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                        {currentOrder.description && (
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
+                            {currentOrder.description}
+                          </p>
+                        )}
+                        
+                        {/* Attachments */}
+                        {currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image && (
+                          <div>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
+                              Attachments
+                            </p>
+                            <div className="bg-white border border-gray-200 rounded-lg p-2 inline-block">
+                              <img 
+                                src={currentOrder.items[0].image || serviceVector}
+                                alt="Delivery attachment"
+                                className="w-48 h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
 
                     {/* Approval Message */}
                     <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
                       <div className="flex gap-2 mb-4">
                         <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                         <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
-                          Your work has been delivered. Please approve the delivery or request a revision. You have until 14th November 2025 to respond. If no action is taken by then, the order will be automatically completed.
+                          Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
+                            const deliveryDate = new Date(currentOrder.deliveredDate);
+                            const deadlineDate = new Date(deliveryDate);
+                            deadlineDate.setDate(deadlineDate.getDate() + 1);
+                            return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                          })()} If no action is taken by then, the order will be automatically completed.
                         </p>
                       </div>
                       <div className="flex gap-3 justify-center">
@@ -1014,14 +1031,36 @@ export default function ClientOrdersSection() {
                             {formatDate(currentOrder.date)}
                           </p>
                         </div>
-                        {currentOrder.scheduledDate && (
+                        {/* Appointment Date and Time - Priority display */}
+                        {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Scheduled Date
+                              Appointment Date
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}
+                            </p>
+                          </div>
+                        )}
+                        {(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
+                          <div>
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Appointment Time
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.booking?.time || currentOrder.booking?.timeSlot || 'TBD'}
+                              {currentOrder.booking?.timeSlot && currentOrder.booking?.time && ` (${currentOrder.booking.timeSlot})`}
+                            </p>
+                          </div>
+                        )}
+                        {/* Fallback to scheduledDate if no booking info */}
+                        {!currentOrder.booking?.date && currentOrder.scheduledDate && (
+                          <div>
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Expected Delivery
                             </p>
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                               {formatDate(currentOrder.scheduledDate)}
-                              {currentOrder.booking?.timeSlot && ` - ${currentOrder.booking.timeSlot}`}
                             </p>
                           </div>
                         )}
@@ -1088,54 +1127,74 @@ export default function ClientOrdersSection() {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full">
                   <tbody>
-                    <tr className="bg-gray-50">
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Price
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £10.00/Hours
-                      </td>
-                    </tr>
+                    {currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0] && (
+                      <>
+                        <tr className="bg-gray-50">
+                          <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            Unit Price
+                          </td>
+                          <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            £{currentOrder.items[0].price?.toFixed(2) || "0.00"}
+                          </td>
+                        </tr>
+                        <tr className="border-t border-gray-200">
+                          <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            Quantity
+                          </td>
+                          <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            {currentOrder.items[0].quantity || 1}
+                          </td>
+                        </tr>
+                      </>
+                    )}
                     <tr className="border-t border-gray-200">
                       <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         Delivered by
                       </td>
                       <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "10-12-2025"}
+                        {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}
                       </td>
                     </tr>
-                    <tr className="bg-gray-50 border-t border-gray-200">
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Total no. of Hours
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        2
-                      </td>
-                    </tr>
-                    <tr className="border-t border-gray-200">
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Price
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £10.00
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-50 border-t border-gray-200">
+                    {(currentOrder.booking?.date || currentOrder.booking?.time) && (
+                      <tr className="border-t border-gray-200">
+                        <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          Delivery Date & Time
+                        </td>
+                        <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : "TBD"}
+                          {currentOrder.booking?.time && ` at ${currentOrder.booking.time}`}
+                          {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
+                        </td>
+                      </tr>
+                    )}
+                    {currentOrder.discount && currentOrder.discount > 0 && (
+                      <tr className="bg-gray-50 border-t border-gray-200">
+                        <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          Discount
+                        </td>
+                        <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-green-600">
+                          -£{currentOrder.discount.toFixed(2)}
+                        </td>
+                      </tr>
+                    )}
+                    <tr className={`${currentOrder.discount && currentOrder.discount > 0 ? '' : 'bg-gray-50'} border-t border-gray-200`}>
                       <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         Sub Total
                       </td>
                       <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £20.00
+                        £{(currentOrder.subtotal || currentOrder.amountValue || 0).toFixed(2)}
                       </td>
                     </tr>
-                    <tr className="border-t border-gray-200">
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Service Fee
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £5.00
-                      </td>
-                    </tr>
+                    {currentOrder.serviceFee && currentOrder.serviceFee > 0 && (
+                      <tr className="border-t border-gray-200">
+                        <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          Service Fee
+                        </td>
+                        <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                          £{currentOrder.serviceFee.toFixed(2)}
+                        </td>
+                      </tr>
+                    )}
                     <tr className="bg-gray-50 border-t-2 border-gray-300">
                       <td className="px-4 py-3 font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                         Total
@@ -1205,38 +1264,51 @@ export default function ClientOrdersSection() {
                       <p className="font-['Poppins',sans-serif] text-[13px]">
                         <span className="text-blue-600 hover:underline cursor-pointer">{currentOrder.professional}</span>
                         <span className="text-[#6b6b6b]"> delivered your order </span>
-                        <span className="text-[#6b6b6b] italic">Thu 13th November, 2025 15:39</span>
+                        <span className="text-[#6b6b6b] italic">
+                          {currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : formatDate(new Date().toISOString())}
+                        </span>
                       </p>
                     </div>
                   </div>
 
                   {/* Delivery Message */}
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                      hghghgh
-                    </p>
-                    
-                    {/* Attachments */}
-                    <div>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
-                        Attachments
-                      </p>
-                      <div className="bg-white border border-gray-200 rounded-lg p-2">
-                        <img 
-                          src="figma:asset/ceb5b6720e3269befdddcc705386f48bb0ee26a5.png" 
-                          alt="Delivery attachment"
-                          className="w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                        />
-                      </div>
+                  {(currentOrder.description || (currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image)) && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      {currentOrder.description && (
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
+                          {currentOrder.description}
+                        </p>
+                      )}
+                      
+                      {/* Attachments */}
+                      {currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image && (
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
+                            Attachments
+                          </p>
+                          <div className="bg-white border border-gray-200 rounded-lg p-2">
+                            <img 
+                              src={currentOrder.items[0].image || serviceVector}
+                              alt="Delivery attachment"
+                              className="w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Approval Message */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex gap-2 mb-3">
                       <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                        Your work has been delivered. Please approve the delivery or request a revision. You have until 14th November 2025 to respond. If no action is taken by then, the order will be automatically completed.
+                        Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
+                          const deliveryDate = new Date(currentOrder.deliveredDate);
+                          const deadlineDate = new Date(deliveryDate);
+                          deadlineDate.setDate(deadlineDate.getDate() + 1);
+                          return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                        })()} If no action is taken by then, the order will be automatically completed.
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -1320,7 +1392,7 @@ export default function ClientOrdersSection() {
                   </p>
                   <div className="flex gap-3 items-start">
                     <img 
-                      src={serviceVector}
+                      src={currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image ? currentOrder.items[0].image : serviceVector}
                       alt="Service thumbnail"
                       className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
                     />
@@ -1371,26 +1443,31 @@ export default function ClientOrdersSection() {
 
                 <Separator className="mb-6" />
 
-                {/* Delivery Date */}
-                <div className="mb-6">
-                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                    Delivery Date
-                  </p>
-                  <div className="flex items-center gap-2 text-[#2c353f]">
-                    <Calendar className="w-4 h-4 text-[#6b6b6b]" />
-                    <span className="font-['Poppins',sans-serif] text-[13px]">
-                      {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "14 Nov 2024"}
-                    </span>
+                {/* Delivery Date and Time */}
+                {(currentOrder.booking?.date || currentOrder.booking?.time || currentOrder.scheduledDate) && (
+                  <div className="mb-6">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                      Delivery Date & Time
+                    </p>
+                    {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
+                      <div className="flex items-center gap-2 text-[#2c353f]">
+                        <Calendar className="w-4 h-4 text-[#6b6b6b]" />
+                        <span className="font-['Poppins',sans-serif] text-[13px]">
+                          {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : (currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD")}
+                        </span>
+                      </div>
+                    )}
+                    {(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
+                      <div className="flex items-center gap-2 text-[#2c353f] mt-2">
+                        <Clock className="w-4 h-4 text-[#6b6b6b]" />
+                        <span className="font-['Poppins',sans-serif] text-[13px]">
+                          {currentOrder.booking.time ? currentOrder.booking.time : currentOrder.booking.timeSlot}
+                          {currentOrder.booking.timeSlot && currentOrder.booking.time && ` (${currentOrder.booking.timeSlot})`}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {currentOrder.booking?.timeSlot && (
-                    <div className="flex items-center gap-2 text-[#2c353f] mt-2">
-                      <Clock className="w-4 h-4 text-[#6b6b6b]" />
-                      <span className="font-['Poppins',sans-serif] text-[13px]">
-                        {currentOrder.booking.timeSlot}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <Separator className="mb-6" />
 

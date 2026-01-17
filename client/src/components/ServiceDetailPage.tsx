@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
-import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle, X, Play } from "lucide-react@0.487.0";
+import { Star, Clock, MapPin, ShoppingCart, Check, ChevronRight, Heart, Share2, MessageCircle, Award, Shield, RefreshCw, User, TrendingUp, ArrowLeft, Minus, Plus, Home, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, CheckSquare, Square, Menu, Loader2, AlertCircle, X, Play, Calendar as CalendarIcon } from "lucide-react@0.487.0";
 import { toast } from "sonner@2.0.3";
 import BookingModal from "./BookingModal";
 import AddToCartModal from "./AddToCartModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "./ui/sheet";
 import { Skeleton } from "./ui/skeleton";
+import { Calendar } from "./ui/calendar";
 import { nameToSlug } from "./categoriesHierarchy";
 import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
@@ -393,6 +394,7 @@ export default function ServiceDetailPage() {
             skills: s.skills || [],
             responseTime: s.responseTime || "",
             portfolioImages: s.portfolioImages || [],
+            availability: s.availability || {},
             _id: s._id,
             _serviceCategory: s.serviceCategory,
             _serviceSubCategory: s.serviceSubCategory,
@@ -2828,14 +2830,63 @@ export default function ServiceDetailPage() {
                         </span>
                       </div>
                     )}
-                    {!selectedPackage && (
+                    {/* Show availability for in-person services, delivery time for online services */}
+                    {!selectedPackage && (service.serviceType || "in-person") === "in-person" && service.availability && Object.keys(service.availability).length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarIcon className="w-4 h-4 text-[#6b6b6b]" />
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            Availability
+                          </span>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
+                          <Calendar
+                            mode="multiple"
+                            selected={[]}
+                            disabled={(date) => {
+                              // Disable past dates
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              if (date < today) return true;
+                              
+                              // For standard delivery, disable today (must order at least 1 day in advance)
+                              if (service.deliveryType === "standard") {
+                                const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                if (dateOnly.getTime() === todayOnly.getTime()) {
+                                  return true;
+                                }
+                              }
+                              
+                              // Check availability based on service availability data
+                              if (service.availability) {
+                                const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                const dayName = days[date.getDay()];
+                                const dayAvailability = service.availability[dayName];
+                                
+                                if (!dayAvailability) return true;
+                                if (!dayAvailability.enabled || !dayAvailability.blocks || dayAvailability.blocks.length === 0) {
+                                  return true;
+                                }
+                              }
+                              
+                              return false;
+                            }}
+                            className="font-['Poppins',sans-serif] pointer-events-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!selectedPackage && (service.serviceType || "in-person") === "online" && service.onlineDeliveryDays && (
                       <div className="flex items-center justify-between">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          <Clock className="w-4 h-4 inline mr-1.5" />
-                          Availability
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-[#6b6b6b]" />
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            Delivery Time
+                          </span>
+                        </div>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          {service.deliveryType === "same-day" ? "Same day" : "Standard"}
+                          {service.onlineDeliveryDays}
                         </span>
                       </div>
                     )}
@@ -3267,15 +3318,77 @@ export default function ServiceDetailPage() {
                           </span>
                         </div>
                       )}
-                      {!selectedPackage && (
-                        <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            <Clock className="w-4 h-4 inline mr-1.5" />
-                            Availability
-                          </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            {service.deliveryType === "same-day" ? "Same day" : "Standard"}
-                          </span>
+                      {!selectedPackage && service.availability && (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <CalendarIcon className="w-4 h-4 text-[#6b6b6b]" />
+                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              Availability
+                            </span>
+                          </div>
+                          <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
+                            <Calendar
+                              mode="multiple"
+                              selected={[]}
+                              disabled={(date) => {
+                                // Disable past dates
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                if (date < today) return true;
+                                
+                                // For standard delivery, disable today (must order at least 1 day in advance)
+                                if (service.deliveryType === "standard") {
+                                  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                  if (dateOnly.getTime() === todayOnly.getTime()) {
+                                    return true;
+                                  }
+                                }
+                                
+                                // Check availability based on service availability data
+                                if (service.availability) {
+                                  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                  const dayName = days[date.getDay()];
+                                  const dayAvailability = service.availability[dayName];
+                                  
+                                  if (!dayAvailability) return true;
+                                  if (!dayAvailability.enabled || !dayAvailability.blocks || dayAvailability.blocks.length === 0) {
+                                    return true;
+                                  }
+                                }
+                                
+                                return false;
+                              }}
+                              className="font-['Poppins',sans-serif] pointer-events-none"
+                              modifiers={{
+                                available: (date) => {
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  if (date < today) return false;
+                                  
+                                  if (service.deliveryType === "standard") {
+                                    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                    if (dateOnly.getTime() === todayOnly.getTime()) return false;
+                                  }
+                                  
+                                  if (service.availability) {
+                                    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                    const dayName = days[date.getDay()];
+                                    const dayAvailability = service.availability[dayName];
+                                    
+                                    if (!dayAvailability) return false;
+                                    return dayAvailability.enabled && dayAvailability.blocks && dayAvailability.blocks.length > 0;
+                                  }
+                                  
+                                  return true;
+                                }
+                              }}
+                              modifiersClassNames={{
+                                available: "bg-green-50 text-green-700 hover:bg-green-100"
+                              }}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3563,6 +3676,8 @@ export default function ServiceDetailPage() {
           price: parseMoney(pkg.price),
           features: pkg.highlights
         })) : []}
+        serviceType={service.serviceType || "in-person"}
+        onlineDeliveryDays={service.onlineDeliveryDays}
         serviceImage={service.image}
       />
 

@@ -123,6 +123,18 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    promoCode: {
+      code: String,
+      type: {
+        type: String,
+        enum: ['pro', 'admin'],
+      },
+      discount: Number,
+      discountType: {
+        type: String,
+        enum: ['percentage', 'fixed'],
+      },
+    },
     serviceFee: {
       type: Number,
       default: 0,

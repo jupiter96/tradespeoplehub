@@ -4,6 +4,7 @@ import Order from '../models/Order.js';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import PaymentSettings from '../models/PaymentSettings.js';
+import PromoCode from '../models/PromoCode.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
 
@@ -50,9 +51,22 @@ function generateOrderNumber() {
 // Create order
 router.post('/', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
-    const { items, address, skipAddress, paymentMethod, paymentMethodId, total, subtotal, discount = 0, serviceFee = 0 } = req.body;
+    console.log('========== SERVER - Order Creation Request ==========');
+    console.log('[Server] Request body keys:', Object.keys(req.body));
+    console.log('[Server] Items count:', req.body.items?.length);
+    console.log('[Server] Items with booking info:', req.body.items?.map((item) => ({
+      id: item.id,
+      serviceId: item.serviceId,
+      title: item.title,
+      hasBooking: !!item.booking,
+      booking: item.booking,
+      bookingType: typeof item.booking,
+    })));
+    
+    const { items, address, skipAddress, paymentMethod, paymentMethodId, total, subtotal, discount = 0, serviceFee = 0, promoCode } = req.body;
 
     if (!items || items.length === 0) {
+      console.error('[Server] No items provided');
       return res.status(400).json({ error: 'Order must contain at least one item' });
     }
 
@@ -72,12 +86,14 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
 
     // Get professional from first item (assuming all items are from same professional)
     const firstItem = items[0];
-    if (!firstItem || !firstItem.id) {
+    // Use serviceId if available, otherwise fall back to id (for backward compatibility)
+    const firstItemServiceId = firstItem.serviceId || firstItem.id;
+    if (!firstItem || !firstItemServiceId) {
       return res.status(400).json({ error: 'Invalid order items' });
     }
 
     // Find professional from service
-    // The item.id might be a numeric string or MongoDB ObjectId
+    // The serviceId might be a numeric string or MongoDB ObjectId
     // Try to find service by ObjectId first, then by slug if it's not a valid ObjectId
     const Service = (await import('../models/Service.js')).default;
     
@@ -85,11 +101,11 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     let professionalId = null;
     
     // Check if it's a valid MongoDB ObjectId (24 hex characters)
-    if (firstItem.id.match(/^[0-9a-fA-F]{24}$/)) {
-      service = await Service.findById(firstItem.id);
+    if (firstItemServiceId.match(/^[0-9a-fA-F]{24}$/)) {
+      service = await Service.findById(firstItemServiceId);
     } else {
       // If not a valid ObjectId, try to find by slug
-      service = await Service.findOne({ slug: firstItem.id });
+      service = await Service.findOne({ slug: firstItemServiceId });
       
       // If still not found and it's a numeric string, try to find professional by seller name
       if (!service && firstItem.seller) {
@@ -114,7 +130,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     if (!professionalId) {
       return res.status(404).json({ 
         error: 'Service not found',
-        details: `Could not find service with ID: ${firstItem.id} or professional with seller name: ${firstItem.seller}`
+        details: `Could not find service with ID: ${firstItemServiceId} or professional with seller name: ${firstItem.seller}`
       });
     }
 
@@ -129,6 +145,27 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         expected: serviceFeeAmount,
         received: serviceFee 
       });
+    }
+
+    // Handle promo code if provided
+    let promoCodeData = null;
+    if (promoCode && promoCode.code) {
+      const promoCodeDoc = await PromoCode.findOne({ 
+        code: promoCode.code.toUpperCase().trim(),
+        status: 'active'
+      });
+      
+      if (promoCodeDoc) {
+        // Record usage
+        await promoCodeDoc.recordUsage(user._id);
+        
+        promoCodeData = {
+          code: promoCodeDoc.code,
+          type: promoCodeDoc.type,
+          discount: discount,
+          discountType: promoCodeDoc.discountType,
+        };
+      }
     }
 
     // Recalculate total to include service fee (if not already included)
@@ -150,6 +187,14 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
 
     // Generate order number
     const orderNumber = generateOrderNumber();
+    
+    // Calculate professional payout amount based on promo code type
+    // For Pro promo: professional receives (subtotal - discount)
+    // For Admin promo: professional receives full subtotal
+    let professionalPayoutAmount = subtotal;
+    if (promoCodeData && promoCodeData.type === 'pro') {
+      professionalPayoutAmount = subtotal - discount;
+    }
 
     // Handle payment based on method
     let walletTransactionId = null;
@@ -210,7 +255,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
           currency: 'gbp',
           payment_method: paymentMethodId,
           confirm: true,
-          return_url: `${req.headers.origin || 'http://localhost:5000'}/account?tab=orders`,
+          return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
           metadata: {
             userId: user._id.toString(),
             type: 'order_payment',
@@ -266,11 +311,17 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
           balance: newBalance,
           status: 'completed',
           paymentMethod: 'wallet',
-          description: `Order Payment - ${orderNumber}`,
+          description: `Order Payment - ${orderNumber}${promoCodeData ? ` (Promo: ${promoCodeData.code})` : ''}`,
           orderId: null, // Will be updated after order creation
           metadata: {
             orderNumber,
             depositTransactionId: depositTransaction._id.toString(),
+            promoCode: promoCodeData ? {
+              code: promoCodeData.code,
+              type: promoCodeData.type,
+              discount: discount,
+            } : null,
+            professionalPayoutAmount,
           },
         });
         await paymentTransaction.save();
@@ -305,7 +356,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
             custom_id: orderNumber,
           }],
           application_context: {
-            return_url: `${req.headers.origin || 'http://localhost:5000'}/account?tab=orders`,
+            return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
             cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
             brand_name: "Sortars UK",
             locale: "en-GB",
@@ -357,12 +408,21 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     }
 
     // Create order
-    const order = new Order({
-      orderNumber,
-      client: user._id,
-      professional: professionalId,
-      items: items.map(item => ({
-        serviceId: item.id,
+    console.log('[Server] ===== PROCESSING ORDER ITEMS =====');
+    console.log('[Server] Processing', items.length, 'items');
+    
+    const processedItems = items.map((item, index) => {
+      console.log(`[Server] Processing item ${index + 1}/${items.length}:`, {
+        id: item.id,
+        serviceId: item.serviceId,
+        title: item.title,
+        rawBooking: item.booking,
+        bookingType: typeof item.booking,
+        hasBooking: !!item.booking,
+      });
+      
+      const orderItem = {
+        serviceId: item.serviceId || item.id, // Use serviceId if available, otherwise fall back to id
         title: item.title,
         seller: item.seller,
         price: item.price,
@@ -370,9 +430,36 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         rating: item.rating,
         quantity: item.quantity,
         addons: item.addons || [],
-        booking: item.booking,
         packageType: item.packageType,
-      })),
+      };
+      
+      // Explicitly include booking if it exists
+      if (item.booking && (item.booking.date || item.booking.time)) {
+        console.log(`[Server] Item ${index + 1} has booking info:`, item.booking);
+        orderItem.booking = {
+          date: item.booking.date,
+          time: item.booking.time || '',
+          timeSlot: item.booking.timeSlot || undefined,
+        };
+        console.log(`[Server] Item ${index + 1} booking added to orderItem:`, orderItem.booking);
+      } else {
+        console.log(`[Server] Item ${index + 1} has NO booking info`);
+      }
+      
+      return orderItem;
+    });
+    
+    console.log('[Server] Processed items with booking:', processedItems.map((item) => ({
+      title: item.title,
+      hasBooking: !!item.booking,
+      booking: item.booking,
+    })));
+
+    const order = new Order({
+      orderNumber,
+      client: user._id,
+      professional: professionalId,
+      items: processedItems,
       address: address ? {
         postcode: address.postcode,
         address: address.address,
@@ -386,16 +473,38 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       total,
       subtotal,
       discount,
+      promoCode: promoCodeData,
       serviceFee: serviceFeeAmount,
       status: paymentMethod === 'bank_transfer' ? 'Pending' : 'Pending',
       walletTransactionId,
       paymentTransactionId,
       metadata: {
         createdAt: new Date(),
+        professionalPayoutAmount, // Store professional payout amount
+        promoCodeType: promoCodeData?.type || null,
       },
     });
 
+    console.log('[Server] Saving order to database...');
+    console.log('[Server] Order items before save:', order.items.map((item) => ({
+      title: item.title,
+      booking: item.booking,
+      hasBooking: !!item.booking,
+    })));
+    
     await order.save();
+    
+    console.log('[Server] ===== ORDER SAVED TO DATABASE =====');
+    console.log('[Server] Order ID:', order._id);
+    console.log('[Server] Order Number:', order.orderNumber);
+    const savedOrder = await Order.findById(order._id);
+    console.log('[Server] Saved order items from DB:', savedOrder?.items?.map((item) => ({
+      title: item.title,
+      booking: item.booking,
+      hasBooking: !!item.booking,
+      bookingDate: item.booking?.date,
+      bookingTime: item.booking?.time,
+    })));
 
     // Update payment transaction with order ID if exists
     if (paymentTransactionId) {
@@ -408,12 +517,21 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       { path: 'professional', select: 'firstName lastName tradingName email phone' },
     ]);
 
-    return res.json({
+    const responseData = {
       orderId: order.orderNumber,
       order: order.toObject(),
       newBalance,
       message: 'Order created successfully',
-    });
+    };
+    
+    console.log('[Server] Response data - order items booking:', responseData.order.items?.map((item) => ({
+      title: item.title,
+      booking: item.booking,
+      hasBooking: !!item.booking,
+    })));
+    console.log('==================================================');
+    
+    return res.json(responseData);
   } catch (error) {
     console.error('Create order error:', error);
     return res.status(500).json({ error: error.message || 'Failed to create order' });
@@ -640,6 +758,9 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         booking,
         disputeId: order.disputeId || undefined,
         expectedDelivery: order.expectedDelivery || undefined,
+        subtotal: order.subtotal || 0,
+        discount: order.discount || 0,
+        serviceFee: order.serviceFee || 0,
       };
     });
 

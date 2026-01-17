@@ -249,8 +249,9 @@ export default function CartPage() {
   
   // Promo code state
   const [promoCode, setPromoCode] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: 'pro' | 'admin'; discount: number } | null>(null);
   const [discount, setDiscount] = useState(0);
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
 
   // Address state
   const [selectedAddress, setSelectedAddress] = useState<string>("");
@@ -270,7 +271,7 @@ export default function CartPage() {
   // Booking modal state
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [currentBookingItemIndex, setCurrentBookingItemIndex] = useState<number>(0);
-  const [servicesNeedingBooking, setServicesNeedingBooking] = useState<Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard" }>>([]);
+  const [servicesNeedingBooking, setServicesNeedingBooking] = useState<Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard"; serviceType?: "in-person" | "online" }>>([]);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   
   // Fetch wallet balance
@@ -462,22 +463,78 @@ export default function CartPage() {
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [showItemsSection, setShowItemsSection] = useState(true);
 
-  const handleApplyPromo = () => {
-    if (promoCode.toUpperCase() === "SAVE10") {
-      setAppliedPromo("SAVE10");
-      setDiscount(cartTotal * 0.1);
-      toast.success("Promo code applied!", {
-        description: "You saved 10% on your order"
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      toast.error("Please enter a promo code");
+      return;
+    }
+
+    // Validate promo code via API
+    try {
+      const requestPayload = {
+        code: promoCode,
+        subtotal: subtotal,
+        items: cartItems.map(item => ({
+          id: item.id,
+          serviceId: item.serviceId,
+        })),
+      };
+
+      console.log('[CartPage] Applying promo code:', promoCode);
+      console.log('[CartPage] Request payload:', JSON.stringify(requestPayload, null, 2));
+      console.log('[CartPage] Cart items:', cartItems.map(item => ({
+        id: item.id,
+        serviceId: item.serviceId,
+        title: item.title
+      })));
+
+      const response = await fetch(resolveApiUrl("/api/promo-codes/validate"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(requestPayload),
       });
-    } else if (promoCode.toUpperCase() === "WELCOME20") {
-      setAppliedPromo("WELCOME20");
-      setDiscount(cartTotal * 0.2);
-      toast.success("Promo code applied!", {
-        description: "You saved 20% on your order"
-      });
-    } else {
-      toast.error("Invalid promo code", {
-        description: "Try: SAVE10 or WELCOME20"
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setPromoCodeError(errorData.error || "Invalid promo code");
+        setAppliedPromo(null);
+        setDiscount(0);
+        toast.error("Invalid promo code", {
+          description: errorData.error || "Please check and try again"
+        });
+        return;
+      }
+
+      const data = await response.json();
+      if (data.valid && data.promoCode) {
+        setAppliedPromo({
+          code: data.promoCode.code,
+          type: data.promoCode.type,
+          discount: data.promoCode.discount,
+        });
+        setDiscount(data.promoCode.discount);
+        setPromoCodeError(null);
+        toast.success("Promo code applied!", {
+          description: `You saved £${data.promoCode.discount.toFixed(2)} on your order`
+        });
+      } else {
+        setPromoCodeError("Invalid promo code");
+        setAppliedPromo(null);
+        setDiscount(0);
+        toast.error("Invalid promo code", {
+          description: "Please check and try again"
+        });
+      }
+    } catch (error) {
+      console.error("Error applying promo code:", error);
+      setPromoCodeError("Failed to validate promo code");
+      setAppliedPromo(null);
+      setDiscount(0);
+      toast.error("Failed to apply promo code", {
+        description: "Please try again later"
       });
     }
   };
@@ -486,6 +543,7 @@ export default function CartPage() {
     setAppliedPromo(null);
     setDiscount(0);
     setPromoCode("");
+    setPromoCodeError(null);
     toast.info("Promo code removed");
   };
 
@@ -580,7 +638,7 @@ export default function CartPage() {
     console.log('[Booking Check] Starting to check services for booking requirements');
     console.log('[Booking Check] Cart items:', cartItems.map(item => ({ id: item.id, title: item.title, hasBooking: !!item.booking })));
     
-    const servicesToCheck: Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard" }> = [];
+    const servicesToCheck: Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard"; serviceType?: "in-person" | "online" }> = [];
     
     for (const item of cartItems) {
       // Skip if item already has booking info
@@ -640,14 +698,18 @@ export default function CartPage() {
           availabilityKeys: serviceData?.service?.availability ? Object.keys(serviceData.service.availability) : [],
         });
         
-        // Check if service has availability data
-        if (serviceData?.service?.availability && Object.keys(serviceData.service.availability).length > 0) {
+        // Check if service is in-person and has availability data
+        const serviceType = serviceData?.service?.serviceType || "in-person";
+        if (serviceType === "online") {
+          console.log(`[Booking Check] Service ${item.id} is online - skipping booking`);
+        } else if (serviceData?.service?.availability && Object.keys(serviceData.service.availability).length > 0) {
           console.log(`[Booking Check] Service ${item.id} requires booking - adding to list`);
           servicesToCheck.push({
             item,
             serviceId: serviceData.service._id?.toString() || serviceData.service.id || item.id,
             availability: serviceData.service.availability,
             deliveryType: serviceData.service.deliveryType || "standard",
+            serviceType: serviceType,
           });
         } else {
           console.log(`[Booking Check] Service ${item.id} does not require booking (no availability data)`);
@@ -663,10 +725,24 @@ export default function CartPage() {
     return servicesToCheck;
   };
 
-  const handleBookingConfirm = (date: Date, time: string, timeSlot: string) => {
-    if (currentBookingItemIndex >= servicesNeedingBooking.length) return;
+  const handleBookingConfirm = async (date: Date, time: string, timeSlot: string) => {
+    console.log('========== CartPage - handleBookingConfirm ==========');
+    console.log('[Booking] Current booking item index:', currentBookingItemIndex);
+    console.log('[Booking] Total services needing booking:', servicesNeedingBooking.length);
+    
+    if (currentBookingItemIndex >= servicesNeedingBooking.length) {
+      console.warn('[Booking] Index out of range, returning');
+      console.log('==================================================');
+      return;
+    }
     
     const currentItem = servicesNeedingBooking[currentBookingItemIndex].item;
+    console.log('[Booking] Current item:', {
+      id: currentItem.id,
+      serviceId: currentItem.serviceId,
+      title: currentItem.title,
+      seller: currentItem.seller,
+    });
     
     // Generate item key to find the item in cart
     const generateItemKey = (item: any) => {
@@ -685,33 +761,81 @@ export default function CartPage() {
     };
     
     const itemKey = generateItemKey(currentItem);
+    console.log('[Booking] Generated item key:', itemKey);
     
-    // Update cart item with booking info
-    updateCartItem(itemKey, {
-      booking: {
-        date: date.toISOString(),
-        time: time,
-        timeSlot: timeSlot,
-      },
+    const bookingData = {
+      date: date.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD format
+      time: time,
+      timeSlot: timeSlot,
+    };
+    console.log('[Booking] Booking data to save:', {
+      originalDate: date,
+      formattedDate: bookingData.date,
+      time: bookingData.time,
+      timeSlot: bookingData.timeSlot,
     });
+    
+    // Update cart item with booking info and wait for it to complete
+    console.log('[Booking] Updating cart item with booking info...');
+    await updateCartItem(itemKey, {
+      booking: bookingData,
+    });
+    
+    // Wait for state to update and API sync to complete
+    console.log('[Booking] Waiting for state update...');
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Refresh cart from API to get latest data with booking
+    console.log('[Booking] Refreshing cart from API to get latest data...');
+    try {
+      const response = await fetch(resolveApiUrl("/api/cart"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Booking] Refreshed cart items:', data.items?.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          booking: item.booking,
+          hasBooking: !!item.booking,
+        })));
+      }
+    } catch (error) {
+      console.error('[Booking] Failed to refresh cart:', error);
+    }
     
     // Move to next item or proceed with order
     if (currentBookingItemIndex < servicesNeedingBooking.length - 1) {
+      console.log('[Booking] Moving to next item');
       setCurrentBookingItemIndex(currentBookingItemIndex + 1);
     } else {
+      console.log('[Booking] All bookings completed, proceeding with order');
       // All bookings completed, proceed with order
       setShowBookingModal(false);
       setIsProcessingBooking(false);
+      
+      // Wait a bit more to ensure all updates are complete
+      await new Promise(resolve => setTimeout(resolve, 200));
       proceedWithOrder();
     }
+    console.log('==================================================');
   };
 
   const proceedWithOrder = async () => {
+    console.log('========== CartPage - proceedWithOrder ==========');
+    console.log('[Order] Starting order creation process');
+    console.log('[Order] Skip address:', skipAddress);
+    console.log('[Order] Selected address:', selectedAddress);
+    console.log('[Order] Selected payment:', selectedPayment);
+    console.log('[Order] Cart items count:', cartItems.length);
+    
     if (!skipAddress && !selectedAddress) {
+      console.error('[Order] No address selected');
       toast.error("Please select a delivery address");
       return;
     }
     if (!selectedPayment) {
+      console.error('[Order] No payment method selected');
       toast.error("Please select a payment method");
       return;
     }
@@ -721,8 +845,62 @@ export default function CartPage() {
       ? undefined 
       : addresses.find(addr => addr.id === selectedAddress);
 
+    console.log('[Order] Address details:', addressDetails);
+    
     const subtotal = cartTotal;
     const orderTotal = subtotal - discount + serviceFee;
+    
+    console.log('[Order] Financial breakdown:', {
+      cartTotal,
+      subtotal,
+      discount,
+      serviceFee,
+      orderTotal,
+    });
+    
+    // Refresh cart from API to ensure we have latest data with booking info
+    console.log('[Order] Refreshing cart from API before creating order...');
+    let finalCartItems = cartItems;
+    try {
+      const cartResponse = await fetch(resolveApiUrl("/api/cart"), {
+        credentials: "include",
+      });
+      if (cartResponse.ok) {
+        const cartData = await cartResponse.json();
+        finalCartItems = cartData.items || cartItems;
+        console.log('[Order] Refreshed cart items from API:', finalCartItems.map((item: any) => ({
+          id: item.id,
+          serviceId: item.serviceId,
+          title: item.title,
+          booking: item.booking,
+          hasBooking: !!item.booking,
+          bookingDate: item.booking?.date,
+          bookingTime: item.booking?.time,
+        })));
+      } else {
+        console.warn('[Order] Failed to refresh cart, using existing cartItems');
+      }
+    } catch (error) {
+      console.error('[Order] Error refreshing cart:', error);
+      console.warn('[Order] Using existing cartItems');
+    }
+    
+    // Log all cart items with full details
+    console.log('[Order] Final cart items details (used for order):', finalCartItems.map((item: any) => ({
+      id: item.id,
+      serviceId: item.serviceId,
+      title: item.title,
+      seller: item.seller,
+      price: item.price,
+      quantity: item.quantity,
+      packageType: item.packageType,
+      addons: item.addons,
+      booking: item.booking,
+      hasBooking: !!item.booking,
+      bookingDate: item.booking?.date,
+      bookingTime: item.booking?.time,
+      bookingTimeSlot: item.booking?.timeSlot,
+    })));
 
     try {
       // Handle different payment methods
@@ -735,6 +913,45 @@ export default function CartPage() {
           return;
         }
 
+        // Log cart items with booking info before sending to server
+        console.log('[Order] ===== SENDING ORDER REQUEST (account_balance) =====');
+        console.log('[Order] Request URL:', '/api/orders');
+        console.log('[Order] Final cart items before mapping:', finalCartItems);
+        
+        const orderItems = finalCartItems.map((item: any) => ({
+          ...item,
+          // Ensure booking is included if it exists
+          booking: item.booking || undefined,
+        }));
+        
+        console.log('[Order] Order items after mapping:', orderItems.map(item => ({
+          id: item.id,
+          serviceId: item.serviceId,
+          title: item.title,
+          booking: item.booking,
+          hasBooking: !!item.booking,
+        })));
+        
+        const orderPayload = {
+          items: orderItems,
+          address: addressDetails,
+          skipAddress: skipAddress,
+          paymentMethod: "account_balance",
+          total: orderTotal,
+          subtotal: subtotal,
+          discount: discount,
+          serviceFee: serviceFee,
+        };
+        
+        console.log('[Order] Full order payload:', JSON.stringify(orderPayload, null, 2));
+        console.log('[Order] Payload items booking check:', orderPayload.items.map((item: any) => ({
+          title: item.title,
+          booking: item.booking,
+          bookingType: typeof item.booking,
+          bookingDate: item.booking?.date,
+          bookingTime: item.booking?.time,
+        })));
+
         // Create order with account balance payment
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
@@ -742,24 +959,30 @@ export default function CartPage() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({
-            items: cartItems,
-            address: addressDetails,
-            skipAddress: skipAddress,
-            paymentMethod: "account_balance",
-            total: orderTotal,
-            subtotal: subtotal,
-            discount: discount,
-            serviceFee: serviceFee,
-          }),
+          body: JSON.stringify(orderPayload),
         });
 
+        console.log('[Order] Response status:', response.status, response.statusText);
+        
         if (!response.ok) {
           const error = await response.json();
+          console.error('[Order] Order creation failed:', error);
           throw new Error(error.error || "Failed to place order");
         }
 
         const result = await response.json();
+        console.log('[Order] ===== ORDER CREATION SUCCESS =====');
+        console.log('[Order] Response result:', result);
+        console.log('[Order] Order ID:', result.orderId || result.orderNumber);
+        console.log('[Order] New balance:', result.newBalance);
+        console.log('[Order] Order object:', result.order);
+        if (result.order?.items) {
+          console.log('[Order] Saved order items with booking:', result.order.items.map((item: any) => ({
+            title: item.title,
+            booking: item.booking,
+            hasBooking: !!item.booking,
+          })));
+        }
         
         // Update local balance
         setWalletBalance(result.newBalance || 0);
@@ -769,17 +992,16 @@ export default function CartPage() {
           await refreshOrders();
         }
         
-        toast.success("Order placed successfully!", {
-          description: `Order ${result.orderId} created. £${orderTotal.toFixed(2)} deducted from your account balance.`
-        });
-        
         // Clear cart
         clearCart();
         
-        // Navigate to account orders page
-        setTimeout(() => {
-          navigate('/account?tab=orders');
-        }, 1500);
+        // Navigate to thank you page with order ID immediately
+        navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`, { replace: true });
+        
+        toast.success("Order placed successfully!", {
+          description: `Order ${result.orderId} created. £${orderTotal.toFixed(2)} deducted from your account balance.`
+        });
+        console.log('==================================================');
       } else if (selectedPayment === "card" || paymentMethods.find(m => m.id === selectedPayment)?.type === "card") {
         // Get selected card payment method
         const selectedMethod = paymentMethods.find(m => m.id === selectedPayment && m.type === "card");
@@ -788,7 +1010,19 @@ export default function CartPage() {
           return;
         }
 
+        console.log('[Order] ===== SENDING ORDER REQUEST (card) =====');
+        
         // Create order with card payment (will fund wallet first, then deduct)
+        const orderItemsCardFinal = finalCartItems.map((item: any) => ({
+          ...item,
+          booking: item.booking || undefined,
+        }));
+        console.log('[Order] Order items for card payment:', orderItemsCardFinal.map((item: any) => ({
+          title: item.title,
+          booking: item.booking,
+          hasBooking: !!item.booking,
+        })));
+        
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
           headers: {
@@ -796,7 +1030,7 @@ export default function CartPage() {
           },
           credentials: "include",
           body: JSON.stringify({
-            items: cartItems,
+            items: orderItemsCardFinal,
             address: addressDetails,
             skipAddress: skipAddress,
             paymentMethod: "card",
@@ -805,6 +1039,10 @@ export default function CartPage() {
             subtotal: subtotal,
             discount: discount,
             serviceFee: serviceFee,
+            promoCode: appliedPromo ? {
+              code: appliedPromo.code,
+              type: appliedPromo.type,
+            } : undefined,
           }),
         });
 
@@ -832,11 +1070,22 @@ export default function CartPage() {
         // Clear cart
         clearCart();
         
-        // Navigate to account orders page
+        // Navigate to thank you page with order ID
         setTimeout(() => {
-          navigate('/account?tab=orders');
+          navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
         }, 1500);
       } else if (selectedPayment === "paypal") {
+        console.log('[Order] ===== SENDING ORDER REQUEST (paypal) =====');
+        const orderItemsPayPal = finalCartItems.map((item: any) => ({
+          ...item,
+          booking: item.booking || undefined,
+        }));
+        console.log('[Order] Order items for PayPal payment:', orderItemsPayPal.map((item: any) => ({
+          title: item.title,
+          booking: item.booking,
+          hasBooking: !!item.booking,
+        })));
+        
         // Create order with PayPal payment (will fund wallet first, then deduct)
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
@@ -845,7 +1094,7 @@ export default function CartPage() {
           },
           credentials: "include",
           body: JSON.stringify({
-            items: cartItems,
+            items: orderItemsPayPal,
             address: addressDetails,
             skipAddress: skipAddress,
             paymentMethod: "paypal",
@@ -853,6 +1102,10 @@ export default function CartPage() {
             subtotal: subtotal,
             discount: discount,
             serviceFee: serviceFee,
+            promoCode: appliedPromo ? {
+              code: appliedPromo.code,
+              type: appliedPromo.type,
+            } : undefined,
           }),
         });
 
@@ -886,11 +1139,22 @@ export default function CartPage() {
         // Clear cart
         clearCart();
         
-        // Navigate to account orders page
+        // Navigate to thank you page with order ID
         setTimeout(() => {
-          navigate('/account?tab=orders');
+          navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
         }, 1500);
       } else if (selectedPayment === "bank_transfer") {
+        console.log('[Order] ===== SENDING ORDER REQUEST (bank_transfer) =====');
+        const orderItemsBank = finalCartItems.map((item: any) => ({
+          ...item,
+          booking: item.booking || undefined,
+        }));
+        console.log('[Order] Order items for bank transfer:', orderItemsBank.map((item: any) => ({
+          title: item.title,
+          booking: item.booking,
+          hasBooking: !!item.booking,
+        })));
+        
         // Create order with bank transfer payment (will create pending transaction)
         const response = await fetch(resolveApiUrl("/api/orders"), {
           method: "POST",
@@ -899,7 +1163,7 @@ export default function CartPage() {
           },
           credentials: "include",
           body: JSON.stringify({
-            items: cartItems,
+            items: orderItemsBank,
             address: addressDetails,
             skipAddress: skipAddress,
             paymentMethod: "bank_transfer",
@@ -907,6 +1171,10 @@ export default function CartPage() {
             subtotal: subtotal,
             discount: discount,
             serviceFee: serviceFee,
+            promoCode: appliedPromo ? {
+              code: appliedPromo.code,
+              type: appliedPromo.type,
+            } : undefined,
           }),
         });
 
@@ -929,9 +1197,9 @@ export default function CartPage() {
         // Clear cart
         clearCart();
         
-        // Navigate to account orders page
+        // Navigate to thank you page with order ID
         setTimeout(() => {
-          navigate('/account?tab=orders');
+          navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
         }, 1500);
       }
     } catch (error: any) {
@@ -1584,11 +1852,17 @@ export default function CartPage() {
                         type="text"
                         placeholder="Enter code"
                         value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        className="flex-1 font-['Poppins',sans-serif] text-[14px] rounded-xl border-gray-200"
+                        onChange={(e) => {
+                          setPromoCode(e.target.value);
+                          setPromoCodeError(null);
+                        }}
+                        className={`flex-1 font-['Poppins',sans-serif] text-[14px] rounded-xl ${
+                          promoCodeError ? 'border-red-300' : 'border-gray-200'
+                        }`}
                       />
                       <Button
                         onClick={handleApplyPromo}
+                        disabled={!promoCode.trim()}
                         className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl px-4 font-['Poppins',sans-serif] text-[14px]"
                       >
                         Apply
@@ -1599,7 +1873,7 @@ export default function CartPage() {
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
                         <span className="font-['Poppins',sans-serif] text-[13px] text-green-700">
-                          {appliedPromo} Applied
+                          {appliedPromo.code} Applied - £{appliedPromo.discount.toFixed(2)} off
                         </span>
                       </div>
                       <button
@@ -1610,9 +1884,11 @@ export default function CartPage() {
                       </button>
                     </div>
                   )}
-                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-2">
-                    Try: SAVE10 or WELCOME20
-                  </p>
+                  {promoCodeError && (
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-red-500 mt-2">
+                      {promoCodeError}
+                    </p>
+                  )}
                 </div>
 
                 <Separator className="my-6" />
@@ -1628,10 +1904,10 @@ export default function CartPage() {
                     </span>
                   </div>
 
-                  {discount > 0 && (
+                  {discount > 0 && appliedPromo && (
                     <div className="flex justify-between items-center text-green-600">
                       <span className="font-['Poppins',sans-serif] text-[14px]">
-                        Discount ({appliedPromo})
+                        Discount ({appliedPromo.code})
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[16px]">
                         -£{discount.toFixed(2)}
@@ -1672,13 +1948,6 @@ export default function CartPage() {
                   <CheckCircle2 className="w-5 h-5 mr-2" />
                   Place Order
                 </Button>
-
-                <Link to="/services">
-                  <Button variant="outline" className="w-full border-2 border-gray-300 text-[#6b6b6b] hover:bg-gray-50 py-6 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]">
-                    <ShoppingBag className="w-5 h-5 mr-2" />
-                    Continue Shopping
-                  </Button>
-                </Link>
 
                 {/* Trust Badges */}
                 <div className="mt-6 space-y-3">

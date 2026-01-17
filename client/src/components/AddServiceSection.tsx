@@ -1847,6 +1847,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               setBasePrice(draft.price?.toString() || "");
               setOriginalPrice(draft.originalPrice?.toString() || "");
               setPriceUnit(draft.priceUnit || "fixed");
+              setServiceType(draft.serviceType || "in-person");
+              setOnlineDeliveryDays(draft.onlineDeliveryDays || "");
               setDeliveryType(draft.deliveryType || "standard");
 
               // Set county field
@@ -2013,6 +2015,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           : [],
         highlights: Array.isArray(initialService.highlights) ? initialService.highlights : [],
         idealFor: Array.isArray(initialService.idealFor) ? initialService.idealFor : [],
+        serviceType: initialService.serviceType || "in-person",
+        onlineDeliveryDays: initialService.onlineDeliveryDays || "",
         deliveryType: initialService.deliveryType || "standard",
         availability: initialService.availability,
         skills: Array.isArray(initialService.skills) ? initialService.skills : [],
@@ -2039,6 +2043,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setBasePrice(initialService.price?.toString() || "");
       setOriginalPrice(initialService.originalPrice?.toString() || "");
       setPriceUnit(initialService.priceUnit || "fixed");
+      setServiceType(initialService.serviceType || "in-person");
+      setOnlineDeliveryDays(initialService.onlineDeliveryDays || "");
       setDeliveryType(initialService.deliveryType || "standard");
 
       // Set county field
@@ -2198,6 +2204,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   const [dynamicServiceAttributes, setDynamicServiceAttributes] = useState<string[]>([]);
   const [dynamicServiceIdealFor, setDynamicServiceIdealFor] = useState<string[]>([]);
   const [dynamicExtraServices, setDynamicExtraServices] = useState<Array<{ name: string; price: number; days: number; description?: string }>>([]);
+  const [serviceType, setServiceType] = useState<"in-person" | "online">("in-person");
+  const [onlineDeliveryDays, setOnlineDeliveryDays] = useState<string>("");
   const [deliveryType, setDeliveryType] = useState<"standard" | "same-day">("standard");
 
   // Fetch service attributes from all levels when subcategory path changes
@@ -3424,43 +3432,77 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
   // Tab order for navigation - conditionally include packages step
   const TAB_ORDER = isPackageService
-    ? [
-    "service-details",
-    "packages",
-    "extra-service",
-    "gallery",
-    "faqs",
-    "availability",
-    "profile"
-      ]
-    : [
+    ? serviceType === "in-person"
+      ? [
         "service-details",
-    "extra-service",
-    "gallery",
-    "faqs",
-    "availability",
-    "profile"
-  ];
+        "packages",
+        "extra-service",
+        "gallery",
+        "faqs",
+        "availability",
+        "profile"
+      ]
+      : [
+        "service-details",
+        "packages",
+        "extra-service",
+        "gallery",
+        "faqs",
+        "profile"
+      ]
+    : serviceType === "in-person"
+      ? [
+        "service-details",
+        "extra-service",
+        "gallery",
+        "faqs",
+        "availability",
+        "profile"
+      ]
+      : [
+        "service-details",
+        "extra-service",
+        "gallery",
+        "faqs",
+        "profile"
+      ];
 
   // Step configuration with icons - conditionally include packages step
   const STEPS = isPackageService
-    ? [
-    { id: "service-details", label: "Service Details", icon: FileText },
-    { id: "packages", label: "Package", icon: Package },
-    { id: "extra-service", label: "Extra Service", icon: Settings },
-    { id: "gallery", label: "Gallery", icon: ImagePlus },
-    { id: "faqs", label: "FAQs", icon: MessageSquare },
-    { id: "availability", label: "Availability", icon: CalendarDays },
-    { id: "profile", label: "Profile", icon: UserCircle },
-      ]
-    : [
+    ? serviceType === "in-person"
+      ? [
         { id: "service-details", label: "Service Details", icon: FileText },
-    { id: "extra-service", label: "Extra Service", icon: Settings },
-    { id: "gallery", label: "Gallery", icon: ImagePlus },
-    { id: "faqs", label: "FAQs", icon: MessageSquare },
-    { id: "availability", label: "Availability", icon: CalendarDays },
-    { id: "profile", label: "Profile", icon: UserCircle },
-  ];
+        { id: "packages", label: "Package", icon: Package },
+        { id: "extra-service", label: "Extra Service", icon: Settings },
+        { id: "gallery", label: "Gallery", icon: ImagePlus },
+        { id: "faqs", label: "FAQs", icon: MessageSquare },
+        { id: "availability", label: "Availability", icon: CalendarDays },
+        { id: "profile", label: "Profile", icon: UserCircle },
+      ]
+      : [
+        { id: "service-details", label: "Service Details", icon: FileText },
+        { id: "packages", label: "Package", icon: Package },
+        { id: "extra-service", label: "Extra Service", icon: Settings },
+        { id: "gallery", label: "Gallery", icon: ImagePlus },
+        { id: "faqs", label: "FAQs", icon: MessageSquare },
+        { id: "profile", label: "Profile", icon: UserCircle },
+      ]
+    : serviceType === "in-person"
+      ? [
+        { id: "service-details", label: "Service Details", icon: FileText },
+        { id: "extra-service", label: "Extra Service", icon: Settings },
+        { id: "gallery", label: "Gallery", icon: ImagePlus },
+        { id: "faqs", label: "FAQs", icon: MessageSquare },
+        { id: "availability", label: "Availability", icon: CalendarDays },
+        { id: "profile", label: "Profile", icon: UserCircle },
+      ]
+      : [
+        { id: "service-details", label: "Service Details", icon: FileText },
+        { id: "extra-service", label: "Extra Service", icon: Settings },
+        { id: "gallery", label: "Gallery", icon: ImagePlus },
+        { id: "faqs", label: "FAQs", icon: MessageSquare },
+        { id: "profile", label: "Profile", icon: UserCircle },
+      ];
 
   const getCurrentTabIndex = () => TAB_ORDER.indexOf(activeTab);
   const isLastTab = () => getCurrentTabIndex() === TAB_ORDER.length - 1;
@@ -3926,6 +3968,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     dynamicServiceAttributes,
     idealFor,
     dynamicServiceIdealFor,
+    serviceType,
+    onlineDeliveryDays,
     deliveryType,
     keywords,
     county,
@@ -4448,8 +4492,11 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           const index = parseInt(id.replace('ideal-', ''));
           return dynamicServiceIdealFor[index] || id;
         }),
-        deliveryType,
-        availability,
+        serviceType: serviceType || "in-person",
+        onlineDeliveryDays: serviceType === "online" ? onlineDeliveryDays : undefined,
+        deliveryType: serviceType === "in-person" ? deliveryType : undefined,
+        // Only include availability for in-person services
+        availability: serviceType === "in-person" ? availability : undefined,
         skills: keywordArray,
         county: county || userInfo?.county || "",
         badges: deliveryType === "same-day" ? ["Same-Day Service"] : [],
@@ -5377,8 +5424,76 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 </div>
                 )}
 
-                {/* Delivery Type - Only show for single services, not package services */}
+                {/* Service Type - How the service is provided */}
                 {!isPackageService && (
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Service Type <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setServiceType("in-person")}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
+                        serviceType === "in-person"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                          : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span className="font-['Poppins',sans-serif] text-[13px]">
+                        In-Person
+                      </span>
+                      {serviceType === "in-person" && (
+                        <CheckCircle className="w-4 h-4 ml-1" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setServiceType("online")}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all duration-200 ${
+                        serviceType === "online"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                          : "border-gray-300 bg-white text-[#2c353f] hover:border-gray-400"
+                      }`}
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span className="font-['Poppins',sans-serif] text-[13px]">
+                        Online
+                      </span>
+                      {serviceType === "online" && (
+                        <CheckCircle className="w-4 h-4 ml-1" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                )}
+
+                {/* Online Delivery Days - Only show for online services */}
+                {!isPackageService && serviceType === "online" && (
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Delivery Time <span className="text-red-500">*</span>
+                    </Label>
+                    <Select value={onlineDeliveryDays} onValueChange={setOnlineDeliveryDays}>
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-300">
+                        <SelectValue placeholder="Select delivery time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1-2 days">1-2 days</SelectItem>
+                        <SelectItem value="2-4 days">2-4 days</SelectItem>
+                        <SelectItem value="3-5 days">3-5 days</SelectItem>
+                        <SelectItem value="5-7 days">5-7 days</SelectItem>
+                        <SelectItem value="7-14 days">7-14 days</SelectItem>
+                        <SelectItem value="14-30 days">14-30 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Delivery Type - Only show for in-person services, not package services */}
+                {!isPackageService && serviceType === "in-person" && (
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Delivery Type
@@ -6426,8 +6541,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               </div>
             </TabsContent>
 
-            {/* Availability Tab */}
-            <TabsContent value="availability" className="mt-0 py-6">
+            {/* Availability Tab - Only show for in-person services */}
+            {serviceType === "in-person" && (
+              <TabsContent value="availability" className="mt-0 py-6">
               <div className="space-y-6">
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   Set your available time blocks for each day. Create multiple time slots per day as needed.
@@ -6523,7 +6639,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                   </div>
                 </div>
               </div>
-            </TabsContent>
+              </TabsContent>
+            )}
 
             {/* Profile Tab */}
             <TabsContent value="profile" className="mt-0 py-6">

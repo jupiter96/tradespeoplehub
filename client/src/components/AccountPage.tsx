@@ -94,6 +94,7 @@ import CustomOfferModal from "./CustomOfferModal";
 import AddServiceSection from "./AddServiceSection";
 import CreatePackageModal from "./CreatePackageModal";
 import PromoCodeSection from "./PromoCodeSection";
+import ProPromoCodeSection from "./ProPromoCodeSection";
 import FavouriteSection from "./FavouriteSection";
 import ProfileSection from "./ProfileSection";
 import VerificationProgressModal from "./VerificationProgressModal";
@@ -560,7 +561,7 @@ export default function AccountPage() {
               {/* Professional My Jobs (with tabs) */}
               {activeSection === "my-jobs" && userRole === "professional" && <ProfessionalJobsSection />}
               {/* Promo Code (Professional only) */}
-              {activeSection === "promo-code" && userRole === "professional" && <PromoCodeSection />}
+              {activeSection === "promo-code" && userRole === "professional" && <ProPromoCodeSection />}
               {activeSection === "verification" && (
                 <AccountVerificationSection 
                   onVerificationStatusChange={() => {

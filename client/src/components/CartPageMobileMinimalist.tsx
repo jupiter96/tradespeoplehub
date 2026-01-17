@@ -170,7 +170,7 @@ interface Props {
   discount: number;
   serviceFee?: number;
   total: number;
-  appliedPromo: string | null;
+  appliedPromo: { code: string; type: 'pro' | 'admin'; discount: number } | null;
   onApplyPromo: (code: string) => void;
   onRemovePromo: () => void;
 }
@@ -539,7 +539,7 @@ export default function CartPageMobileMinimalist({
           ) : appliedPromo ? (
             <div className="flex items-center gap-2">
               <span className="font-['Poppins',sans-serif] text-[13px] text-green-600">
-                {appliedPromo} Applied
+                {appliedPromo.code} Applied
               </span>
               <button onClick={onRemovePromo}>
                 <X className="w-4 h-4 text-red-500" />

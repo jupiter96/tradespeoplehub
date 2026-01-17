@@ -636,7 +636,9 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
       highlights,
       idealFor,
       faqs,
+      serviceType,
       deliveryType,
+      onlineDeliveryDays,
       responseTime,
       experienceYears,
       availability,
@@ -693,12 +695,15 @@ router.post('/draft', authenticateToken, requireRole(['professional']), async (r
     if (highlights && highlights.length > 0) draftServiceData.highlights = highlights;
     if (idealFor && idealFor.length > 0) draftServiceData.idealFor = idealFor;
     if (faqs && Array.isArray(faqs) && faqs.length > 0) draftServiceData.faqs = faqs;
+    if (serviceType) draftServiceData.serviceType = serviceType;
     if (deliveryType) draftServiceData.deliveryType = deliveryType;
+    if (onlineDeliveryDays) draftServiceData.onlineDeliveryDays = onlineDeliveryDays;
     if (responseTime) draftServiceData.responseTime = responseTime;
     if (experienceYears !== undefined && experienceYears !== null && experienceYears !== "") {
       draftServiceData.experienceYears = Number(experienceYears);
     }
-    if (availability && typeof availability === 'object') {
+    // Only include availability for in-person services
+    if (serviceType === 'in-person' && availability && typeof availability === 'object') {
       draftServiceData.availability = availability;
     }
     if (skills && skills.length > 0) draftServiceData.skills = skills;
@@ -748,7 +753,9 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       highlights,
       idealFor,
       faqs,
+      serviceType,
       deliveryType,
+      onlineDeliveryDays,
       responseTime,
       experienceYears,
       availability,
@@ -888,12 +895,15 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       highlights: highlights || [],
       idealFor: idealFor || [],
       faqs: faqs || [],
+      serviceType: serviceType || 'in-person',
       deliveryType: deliveryType || 'standard',
+      onlineDeliveryDays: onlineDeliveryDays || undefined,
       responseTime: responseTime || undefined,
       experienceYears: experienceYears !== undefined && experienceYears !== null && experienceYears !== ""
         ? Number(experienceYears)
         : undefined,
-      availability: availability && typeof availability === 'object' ? availability : undefined,
+      // Only include availability for in-person services
+      availability: (serviceType === 'in-person' && availability && typeof availability === 'object') ? availability : undefined,
       skills: skills || [],
       county: professional.county || county || undefined,
       badges: badges || [],

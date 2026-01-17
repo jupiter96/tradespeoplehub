@@ -232,11 +232,21 @@ const serviceSchema = new mongoose.Schema(
       ],
       default: [],
     },
-    // Delivery type
+    // Service type: how the service is provided
+    serviceType: {
+      type: String,
+      enum: ['in-person', 'online'],
+      default: 'in-person',
+    },
+    // Delivery type (for in-person services)
     deliveryType: {
       type: String,
       enum: ['same-day', 'standard'],
       default: 'standard',
+    },
+    // Online delivery time options (for online services)
+    onlineDeliveryDays: {
+      type: String, // e.g., "1-2 days", "2-4 days", "3-5 days", etc.
     },
     // Response time
     responseTime: {
@@ -247,7 +257,7 @@ const serviceSchema = new mongoose.Schema(
       type: Number,
       min: 0,
     },
-    // Weekly availability schedule (per day with time blocks)
+    // Weekly availability schedule (per day with time blocks) - only for in-person services
     availability: {
       type: mongoose.Schema.Types.Mixed, // { monday: { enabled, blocks: [...] }, ... }
       default: {},

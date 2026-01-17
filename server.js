@@ -22,6 +22,7 @@ import paymentRoutes from './routes/payment.js';
 import notificationRoutes from './routes/notifications.js';
 import ordersRoutes from './routes/orders.js';
 import cartRoutes from './routes/cart.js';
+import promoCodesRoutes from './routes/promo-codes.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
@@ -174,6 +175,7 @@ app.use('/api', paymentRoutes);
 app.use('/api', notificationRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/promo-codes', promoCodesRoutes);
 
 // Log chat routes after mounting (non-blocking)
 setImmediate(() => {
