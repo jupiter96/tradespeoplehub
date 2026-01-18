@@ -142,9 +142,26 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'In Progress', 'Completed', 'Cancelled'],
-      default: 'Pending',
+      enum: ['placed', 'In Progress', 'Completed', 'Cancelled', 'Rejected', 'disputed'],
+      default: 'placed',
       index: true,
+    },
+    // Order acceptance by professional
+    acceptedByProfessional: {
+      type: Boolean,
+      default: false,
+    },
+    acceptedAt: {
+      type: Date,
+      default: null,
+    },
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
     },
     walletTransactionId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -157,6 +174,34 @@ const orderSchema = new mongoose.Schema(
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
+    },
+    // Delivery files (images/videos) and message
+    deliveryFiles: [{
+      url: {
+        type: String,
+        required: true,
+      },
+      fileName: {
+        type: String,
+        required: true,
+      },
+      fileType: {
+        type: String,
+        enum: ['image', 'video'],
+        required: true,
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
+    deliveryMessage: {
+      type: String,
+      trim: true,
+    },
+    deliveredDate: {
+      type: Date,
+      default: null,
     },
     // Extension request for delivery time
     extensionRequest: {
@@ -184,6 +229,64 @@ const orderSchema = new mongoose.Schema(
       respondedAt: {
         type: Date,
         default: null,
+      },
+    },
+    // Cancellation request
+    cancellationRequest: {
+      status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected', 'withdrawn'],
+        default: null,
+      },
+      requestedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+      },
+      reason: {
+        type: String,
+        trim: true,
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+      responseDeadline: {
+        type: Date,
+        default: null,
+      },
+      respondedAt: {
+        type: Date,
+        default: null,
+      },
+      respondedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+      },
+    },
+    // Revision request (modification request)
+    revisionRequest: {
+      status: {
+        type: String,
+        enum: ['pending', 'in_progress', 'completed', 'rejected'],
+        default: null,
+      },
+      reason: {
+        type: String,
+        trim: true,
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+      respondedAt: {
+        type: Date,
+        default: null,
+      },
+      additionalNotes: {
+        type: String,
+        trim: true,
       },
     },
   },

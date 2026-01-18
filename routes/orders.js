@@ -1,14 +1,57 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
+import { existsSync, unlinkSync } from 'fs';
+import { fileURLToPath } from 'url';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import PromoCode from '../models/PromoCode.js';
+import Review from '../models/Review.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const router = express.Router();
+
+// Configure multer for delivery file uploads (images/videos)
+const deliveryDir = path.join(__dirname, '..', 'uploads', 'deliveries');
+// Create delivery directory if it doesn't exist
+fs.mkdir(deliveryDir, { recursive: true }).catch(() => {});
+
+const deliveryStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, deliveryDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const deliveryUpload = multer({
+  storage: deliveryStorage,
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images (PNG, JPG, GIF, WEBP) and videos (MP4, MPEG, MOV, AVI, WEBM) are allowed.'));
+    }
+  }
+});
 
 // Helper function to get Stripe instance
 function getStripeInstance(settings) {
@@ -444,7 +487,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       discount,
       promoCode: promoCodeData,
       serviceFee: serviceFeeAmount,
-      status: paymentMethod === 'bank_transfer' ? 'Pending' : 'Pending',
+      status: 'placed', // New orders start with 'placed' status awaiting professional response
       walletTransactionId,
       paymentTransactionId,
       metadata: {
@@ -617,8 +660,22 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       .sort({ createdAt: -1 })
       .lean();
 
+    // Fetch reviews for all orders
+    const orderIds = orders.map(o => o._id);
+    const reviews = await Review.find({ order: { $in: orderIds } })
+      .populate('reviewer', 'firstName lastName tradingName avatar')
+      .populate('responseBy', 'firstName lastName tradingName avatar')
+      .lean();
+    
+    // Create a map of orderId to review
+    const reviewMap = {};
+    reviews.forEach(review => {
+      reviewMap[review.order.toString()] = review;
+    });
+
     // Transform orders to match frontend format
     const transformedOrders = orders.map(order => {
+      const review = reviewMap[order._id.toString()];
       const client = order.client;
       const professional = order.professional;
       
@@ -629,11 +686,14 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       const amount = `£${order.total.toFixed(2)}`;
       
       // Map status
-      let status = order.status || 'Pending';
-      if (status === 'pending') status = 'Pending';
-      if (status === 'in_progress') status = 'In Progress';
-      if (status === 'completed') status = 'Completed';
-      if (status === 'cancelled') status = 'Cancelled';
+      let status = order.status || 'placed';
+      if (status === 'pending') status = 'placed';
+      if (status === 'placed') status = 'placed';
+      if (status === 'in_progress' || status === 'In Progress') status = 'In Progress';
+      if (status === 'completed' || status === 'Completed') status = 'Completed';
+      if (status === 'cancelled' || status === 'Cancelled') status = 'Cancelled';
+      if (status === 'rejected' || status === 'Rejected') status = 'Cancelled';
+      if (status === 'disputed') status = 'disputed';
       
       // Map delivery status
       let deliveryStatus = order.deliveryStatus || 'active';
@@ -683,6 +743,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         amount,
         amountValue: order.total,
         professional: professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional',
+        professionalId: professional?._id ? professional._id.toString() : undefined,
         professionalAvatar: professional?.avatar || '',
         professionalPhone: professional?.phone || '',
         professionalEmail: professional?.email || '',
@@ -711,6 +772,77 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           reason: order.extensionRequest.reason,
           requestedAt: order.extensionRequest.requestedAt ? new Date(order.extensionRequest.requestedAt).toISOString() : undefined,
           respondedAt: order.extensionRequest.respondedAt ? new Date(order.extensionRequest.respondedAt).toISOString() : undefined,
+        } : undefined,
+        deliveryFiles: order.deliveryFiles ? order.deliveryFiles.map(file => ({
+          url: file.url,
+          fileName: file.fileName,
+          fileType: file.fileType,
+          uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
+        })) : [],
+        deliveryMessage: order.deliveryMessage || undefined,
+        cancellationRequest: order.cancellationRequest ? {
+          status: order.cancellationRequest.status,
+          requestedBy: order.cancellationRequest.requestedBy ? order.cancellationRequest.requestedBy.toString() : undefined,
+          reason: order.cancellationRequest.reason,
+          requestedAt: order.cancellationRequest.requestedAt ? new Date(order.cancellationRequest.requestedAt).toISOString() : undefined,
+          responseDeadline: order.cancellationRequest.responseDeadline ? new Date(order.cancellationRequest.responseDeadline).toISOString() : undefined,
+          respondedAt: order.cancellationRequest.respondedAt ? new Date(order.cancellationRequest.respondedAt).toISOString() : undefined,
+          respondedBy: order.cancellationRequest.respondedBy ? order.cancellationRequest.respondedBy.toString() : undefined,
+        } : undefined,
+        acceptedByProfessional: order.acceptedByProfessional || false,
+        acceptedAt: order.acceptedAt ? new Date(order.acceptedAt).toISOString() : undefined,
+        rejectedAt: order.rejectedAt ? new Date(order.rejectedAt).toISOString() : undefined,
+        rejectionReason: order.rejectionReason || undefined,
+        revisionRequest: order.revisionRequest ? {
+          status: order.revisionRequest.status,
+          reason: order.revisionRequest.reason,
+          requestedAt: order.revisionRequest.requestedAt ? new Date(order.revisionRequest.requestedAt).toISOString() : undefined,
+          respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
+          additionalNotes: order.revisionRequest.additionalNotes || undefined,
+        } : undefined,
+        disputeInfo: order.metadata?.disputeStatus ? {
+          id: order.disputeId || undefined,
+          status: order.metadata.disputeStatus,
+          reason: order.metadata.disputeReason || undefined,
+          evidence: order.metadata.disputeEvidence || undefined,
+          claimantId: order.metadata.disputeClaimantId ? order.metadata.disputeClaimantId.toString() : undefined,
+          respondentId: order.metadata.disputeRespondentId ? order.metadata.disputeRespondentId.toString() : undefined,
+          responseDeadline: order.metadata.disputeResponseDeadline ? new Date(order.metadata.disputeResponseDeadline).toISOString() : undefined,
+          respondedAt: order.metadata.disputeRespondedAt ? new Date(order.metadata.disputeRespondedAt).toISOString() : undefined,
+          negotiationDeadline: order.metadata.disputeNegotiationDeadline ? new Date(order.metadata.disputeNegotiationDeadline).toISOString() : undefined,
+          arbitrationRequested: order.metadata.disputeArbitrationRequested || false,
+          arbitrationRequestedBy: order.metadata.disputeArbitrationRequestedBy ? order.metadata.disputeArbitrationRequestedBy.toString() : undefined,
+          arbitrationRequestedAt: order.metadata.disputeArbitrationRequestedAt ? new Date(order.metadata.disputeArbitrationRequestedAt).toISOString() : undefined,
+          arbitrationFeeAmount: order.metadata.disputeArbitrationFeeAmount || undefined,
+          createdAt: order.metadata.disputeCreatedAt ? new Date(order.metadata.disputeCreatedAt).toISOString() : undefined,
+          closedAt: order.metadata.disputeClosedAt ? new Date(order.metadata.disputeClosedAt).toISOString() : undefined,
+          winnerId: order.metadata.disputeWinnerId ? order.metadata.disputeWinnerId.toString() : undefined,
+          loserId: order.metadata.disputeLoserId ? order.metadata.disputeLoserId.toString() : undefined,
+          adminDecision: order.metadata.disputeAdminDecision || false,
+          decisionNotes: order.metadata.disputeDecisionNotes || undefined,
+          autoClosed: order.metadata.disputeAutoClosed || false,
+        } : undefined,
+        reviewInfo: review ? {
+          id: review._id.toString(),
+          rating: review.rating,
+          comment: review.comment,
+          reviewerName: review.reviewerName,
+          reviewer: review.reviewer ? {
+            id: review.reviewer._id.toString(),
+            name: review.reviewerName,
+            avatar: review.reviewer.avatar || '',
+          } : {
+            name: review.reviewerName,
+          },
+          response: review.response || undefined,
+          responseBy: review.responseBy ? {
+            id: review.responseBy._id.toString(),
+            name: `${review.responseBy.firstName || ''} ${review.responseBy.lastName || ''}`.trim() || review.responseBy.tradingName,
+            avatar: review.responseBy.avatar || '',
+          } : undefined,
+          responseAt: review.responseAt ? new Date(review.responseAt).toISOString() : undefined,
+          hasResponded: review.hasResponded || false,
+          createdAt: new Date(review.createdAt).toISOString(),
         } : undefined,
       };
     });
@@ -822,6 +954,1368 @@ router.put('/:orderId/extension-request', authenticateToken, requireRole(['clien
   } catch (error) {
     console.error('Extension request response error:', error);
     res.status(500).json({ error: error.message || 'Failed to respond to extension request' });
+  }
+});
+
+// Request cancellation (both client and professional can request)
+router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['client', 'professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    }).populate('client professional');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if user is authorized (must be client or professional for this order)
+    const isClient = order.client._id.toString() === req.user.id.toString();
+    const isProfessional = order.professional._id.toString() === req.user.id.toString();
+
+    if (!isClient && !isProfessional) {
+      return res.status(403).json({ error: 'Not authorized to request cancellation for this order' });
+    }
+
+    // Can't request cancellation if order has been delivered
+    if (order.status === 'Completed' || order.deliveryStatus === 'delivered' || order.deliveryStatus === 'completed') {
+      return res.status(400).json({ error: 'Cannot cancel order that has been delivered. Please initiate a dispute instead.' });
+    }
+
+    // Check if there's already a pending cancellation request
+    if (order.cancellationRequest && order.cancellationRequest.status === 'pending') {
+      return res.status(400).json({ error: 'There is already a pending cancellation request' });
+    }
+
+    // Get cancellation response time from payment settings
+    const PaymentSettings = (await import('../models/PaymentSettings.js')).default;
+    const paymentSettings = await PaymentSettings.findOne({});
+    const responseTimeHours = paymentSettings?.cancellationResponseTimeHours || 24;
+
+    // Calculate response deadline
+    const responseDeadline = new Date();
+    responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+
+    // Store current status before cancellation request for potential restoration
+    if (!order.metadata) order.metadata = {};
+    if (!order.metadata.statusBeforeCancellationRequest) {
+      order.metadata.statusBeforeCancellationRequest = order.status;
+    }
+
+    // Update cancellation request
+    order.cancellationRequest = {
+      status: 'pending',
+      requestedBy: req.user.id,
+      reason: reason || '',
+      requestedAt: new Date(),
+      responseDeadline: responseDeadline,
+      respondedAt: null,
+      respondedBy: null,
+    };
+
+    await order.save();
+
+    res.json({ 
+      message: 'Cancellation request submitted successfully',
+      cancellationRequest: order.cancellationRequest,
+      responseDeadline: responseDeadline
+    });
+  } catch (error) {
+    console.error('Cancellation request error:', error);
+    res.status(500).json({ error: error.message || 'Failed to request cancellation' });
+  }
+});
+
+// Respond to cancellation request (approve or reject)
+router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['client', 'professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be either "approve" or "reject"' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    }).populate('client professional');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.cancellationRequest || order.cancellationRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'No pending cancellation request found' });
+    }
+
+    // Check if user is authorized (must be the other party, not the one who requested)
+    const isClient = order.client._id.toString() === req.user.id.toString();
+    const isProfessional = order.professional._id.toString() === req.user.id.toString();
+    const requestedBy = order.cancellationRequest.requestedBy.toString();
+
+    // Cannot respond to own request
+    if (req.user.id.toString() === requestedBy) {
+      return res.status(400).json({ error: 'Cannot respond to your own cancellation request' });
+    }
+
+    if (!isClient && !isProfessional) {
+      return res.status(403).json({ error: 'Not authorized to respond to this cancellation request' });
+    }
+
+    if (action === 'approve') {
+      // Cancel the order
+      order.status = 'Cancelled';
+      order.cancellationRequest.status = 'approved';
+      
+      // Handle refund if payment was made
+      // TODO: Implement refund logic here based on payment method
+      
+    } else {
+      // Reject cancellation - order continues
+      order.cancellationRequest.status = 'rejected';
+    }
+
+    order.cancellationRequest.respondedAt = new Date();
+    order.cancellationRequest.respondedBy = req.user.id;
+
+    await order.save();
+
+    res.json({ 
+      message: `Cancellation request ${action}d successfully`,
+      cancellationRequest: order.cancellationRequest,
+      orderStatus: order.status
+    });
+  } catch (error) {
+    console.error('Cancellation request response error:', error);
+    res.status(500).json({ error: error.message || 'Failed to respond to cancellation request' });
+  }
+});
+
+// Withdraw cancellation request
+router.delete('/:orderId/cancellation-request', authenticateToken, requireRole(['client', 'professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.cancellationRequest || order.cancellationRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'No pending cancellation request to withdraw' });
+    }
+
+    // Check if user is the one who requested cancellation
+    if (order.cancellationRequest.requestedBy.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to withdraw this cancellation request' });
+    }
+
+    // Store the previous status before cancellation request (for restoration)
+    const previousStatus = order.metadata?.statusBeforeCancellationRequest || order.status;
+    
+    // Withdraw cancellation request - order returns to processing
+    order.cancellationRequest.status = 'withdrawn';
+    
+    // Restore order status to previous status (before cancellation request)
+    // If status was 'placed' or 'In Progress', restore it
+    if (previousStatus === 'placed' || previousStatus === 'In Progress') {
+      order.status = previousStatus;
+    } else if (order.status === 'Cancelled') {
+      // If order was already cancelled, restore to previous status
+      order.status = previousStatus;
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: 'Cancellation request withdrawn successfully',
+      orderStatus: order.status
+    });
+  } catch (error) {
+    console.error('Cancellation request withdrawal error:', error);
+    res.status(500).json({ error: error.message || 'Failed to withdraw cancellation request' });
+  }
+});
+
+// Professional: Accept order
+router.post('/:orderId/accept', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      professional: req.user.id 
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is in placed status
+    if (order.status !== 'placed') {
+      return res.status(400).json({ error: 'Order can only be accepted when it is in placed status' });
+    }
+
+    // Check if already accepted
+    if (order.acceptedByProfessional) {
+      return res.status(400).json({ error: 'Order has already been accepted' });
+    }
+
+    // Accept order - status remains 'placed' until booking time
+    order.acceptedByProfessional = true;
+    order.acceptedAt = new Date();
+    order.rejectedAt = null;
+    order.rejectionReason = null;
+
+    await order.save();
+
+    res.json({ 
+      message: 'Order accepted successfully',
+      order: {
+        status: order.status,
+        acceptedByProfessional: order.acceptedByProfessional,
+        acceptedAt: order.acceptedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Accept order error:', error);
+    res.status(500).json({ error: error.message || 'Failed to accept order' });
+  }
+});
+
+// Professional: Reject order
+router.post('/:orderId/reject', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      professional: req.user.id 
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is in placed status
+    if (order.status !== 'placed') {
+      return res.status(400).json({ error: 'Order can only be rejected when it is in placed status' });
+    }
+
+    // Check if already accepted
+    if (order.acceptedByProfessional) {
+      return res.status(400).json({ error: 'Cannot reject an order that has already been accepted' });
+    }
+
+    // Reject order - change status to Cancelled
+    order.status = 'Cancelled';
+    order.deliveryStatus = 'cancelled';
+    order.acceptedByProfessional = false;
+    order.rejectedAt = new Date();
+    order.rejectionReason = reason || '';
+
+    // TODO: Handle refund if payment was made
+    // TODO: Notify client about rejection
+
+    await order.save();
+
+    res.json({ 
+      message: 'Order rejected successfully',
+      order: {
+        status: order.status,
+        rejectedAt: order.rejectedAt,
+        rejectionReason: order.rejectionReason,
+      }
+    });
+  } catch (error) {
+    console.error('Reject order error:', error);
+    res.status(500).json({ error: error.message || 'Failed to reject order' });
+  }
+});
+
+// Professional: Mark order as delivered (completed) with files
+router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']), deliveryUpload.array('files', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryMessage } = req.body;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      professional: req.user.id 
+    });
+
+    if (!order) {
+      // Clean up uploaded files if order not found
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+          }
+        });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is in progress
+    if (order.status !== 'In Progress') {
+      // Clean up uploaded files if order is not in progress
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+          }
+        });
+      }
+      return res.status(400).json({ error: 'Order must be in progress before marking as delivered' });
+    }
+
+    // Process uploaded files
+    const deliveryFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        deliveryFiles.push({
+          url: `/api/orders/deliveries/${file.filename}`,
+          fileName: file.originalname,
+          fileType: fileType,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
+    // Mark order as delivered
+    order.status = 'In Progress'; // Keep status as In Progress
+    order.deliveryStatus = 'delivered';
+    order.deliveredDate = new Date();
+    
+    // Store delivery files and message
+    if (deliveryFiles.length > 0) {
+      order.deliveryFiles = deliveryFiles;
+    }
+    if (deliveryMessage && deliveryMessage.trim()) {
+      order.deliveryMessage = deliveryMessage.trim();
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: 'Order marked as delivered successfully',
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        deliveredDate: order.deliveredDate,
+        deliveryFiles: order.deliveryFiles,
+        deliveryMessage: order.deliveryMessage,
+      }
+    });
+  } catch (error) {
+    // Clean up uploaded files on error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.path) {
+          try {
+            unlinkSync(file.path);
+          } catch (err) {
+            console.error('Error deleting file:', err);
+          }
+        }
+      });
+    }
+    console.error('Deliver order error:', error);
+    res.status(500).json({ error: error.message || 'Failed to mark order as delivered' });
+  }
+});
+
+// Serve delivery files
+router.get('/deliveries/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(deliveryDir, filename);
+    
+    // Check if file exists
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Serve delivery file error:', error);
+    res.status(500).json({ error: 'Failed to serve file' });
+  }
+});
+
+// Client: Request revision (modification) for delivered order
+router.post('/:orderId/revision-request', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Revision reason is required' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      client: req.user.id 
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is delivered
+    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
+      return res.status(400).json({ error: 'Revision can only be requested for delivered orders' });
+    }
+
+    // Check if there's already a pending or in_progress revision request
+    if (order.revisionRequest && (order.revisionRequest.status === 'pending' || order.revisionRequest.status === 'in_progress')) {
+      return res.status(400).json({ error: 'There is already an active revision request' });
+    }
+
+    // Create revision request
+    order.revisionRequest = {
+      status: 'pending',
+      reason: reason.trim(),
+      requestedAt: new Date(),
+      respondedAt: null,
+      additionalNotes: null,
+    };
+
+    // Update order status - keep delivery status but mark that revision is requested
+    // Order remains in "delivered" status but revision is pending
+
+    await order.save();
+
+    res.json({ 
+      message: 'Revision request submitted successfully',
+      revisionRequest: order.revisionRequest
+    });
+  } catch (error) {
+    console.error('Revision request error:', error);
+    res.status(500).json({ error: error.message || 'Failed to request revision' });
+  }
+});
+
+// Professional: Respond to revision request (accept and start work, or reject)
+router.put('/:orderId/revision-request', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { action, additionalNotes } = req.body; // action: 'accept' or 'reject'
+
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be either "accept" or "reject"' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      professional: req.user.id 
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.revisionRequest || order.revisionRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'No pending revision request found' });
+    }
+
+    if (action === 'accept') {
+      // Accept revision request - mark as in_progress
+      order.revisionRequest.status = 'in_progress';
+      order.revisionRequest.additionalNotes = additionalNotes || null;
+      order.revisionRequest.respondedAt = new Date();
+      
+      // Order status remains "In Progress" but revision is in progress
+      // Delivery status remains "delivered" but we track revision separately
+    } else {
+      // Reject revision request
+      order.revisionRequest.status = 'rejected';
+      order.revisionRequest.respondedAt = new Date();
+      order.revisionRequest.additionalNotes = additionalNotes || null;
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: `Revision request ${action}ed successfully`,
+      revisionRequest: order.revisionRequest,
+      orderStatus: order.status
+    });
+  } catch (error) {
+    console.error('Revision request response error:', error);
+    res.status(500).json({ error: error.message || 'Failed to respond to revision request' });
+  }
+});
+
+// Professional: Complete revision and re-deliver
+router.post('/:orderId/revision-complete', authenticateToken, requireRole(['professional']), deliveryUpload.array('files', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryMessage } = req.body;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      professional: req.user.id 
+    });
+
+    if (!order) {
+      // Clean up uploaded files if order not found
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            try {
+              unlinkSync(file.path);
+            } catch (err) {
+              console.error('Error deleting file:', err);
+            }
+          }
+        });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if there's an active revision request
+    if (!order.revisionRequest || order.revisionRequest.status !== 'in_progress') {
+      // Clean up uploaded files if no active revision
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            try {
+              unlinkSync(file.path);
+            } catch (err) {
+              console.error('Error deleting file:', err);
+            }
+          }
+        });
+      }
+      return res.status(400).json({ error: 'No active revision request found' });
+    }
+
+    // Process uploaded files (if any)
+    const deliveryFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        deliveryFiles.push({
+          url: `/api/orders/deliveries/${file.filename}`,
+          fileName: file.originalname,
+          fileType: fileType,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
+    // Mark revision as completed
+    order.revisionRequest.status = 'completed';
+    order.revisionRequest.respondedAt = new Date();
+
+    // Re-deliver the order
+    order.deliveryStatus = 'delivered';
+    order.deliveredDate = new Date();
+    
+    // Update or append delivery files and message
+    if (deliveryFiles.length > 0) {
+      // Append new files to existing ones or replace if none exist
+      order.deliveryFiles = order.deliveryFiles ? [...order.deliveryFiles, ...deliveryFiles] : deliveryFiles;
+    }
+    if (deliveryMessage && deliveryMessage.trim()) {
+      // Update delivery message or append to existing one
+      order.deliveryMessage = order.deliveryMessage 
+        ? `${order.deliveryMessage}\n\n[Revision] ${deliveryMessage.trim()}` 
+        : deliveryMessage.trim();
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: 'Revision completed and order re-delivered successfully',
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        deliveredDate: order.deliveredDate,
+        deliveryFiles: order.deliveryFiles,
+        deliveryMessage: order.deliveryMessage,
+        revisionRequest: order.revisionRequest,
+      }
+    });
+  } catch (error) {
+    // Clean up uploaded files on error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.path) {
+          try {
+            unlinkSync(file.path);
+          } catch (err) {
+            console.error('Error deleting file:', err);
+          }
+        }
+      });
+    }
+    console.error('Revision complete error:', error);
+    res.status(500).json({ error: error.message || 'Failed to complete revision' });
+  }
+});
+
+// Client: Accept delivery and release funds to professional
+router.post('/:orderId/complete', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { rating, review } = req.body; // Optional rating and review
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      client: req.user.id 
+    }).populate('professional');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is in delivered status
+    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
+      return res.status(400).json({ error: 'Order must be delivered before completing' });
+    }
+
+    // Get professional user
+    const professional = await User.findById(order.professional);
+    if (!professional) {
+      return res.status(404).json({ error: 'Professional not found' });
+    }
+
+    // Get client user
+    const client = await User.findById(req.user.id);
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    // Get professional payout amount from order metadata
+    const professionalPayoutAmount = order.metadata?.professionalPayoutAmount || order.subtotal;
+
+    // Check if funds have already been released
+    if (order.status === 'Completed') {
+      return res.status(400).json({ error: 'Order has already been completed and funds released' });
+    }
+
+    // Release funds to professional's wallet
+    professional.walletBalance = (professional.walletBalance || 0) + professionalPayoutAmount;
+    await professional.save();
+
+    // Create wallet transaction for professional payout
+    const payoutTransaction = new Wallet({
+      userId: professional._id,
+      type: 'deposit', // Deposit to professional's wallet
+      amount: professionalPayoutAmount,
+      balance: professional.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet', // Internal transfer
+      orderId: order._id,
+      description: `Payment for Order ${order.orderNumber}`,
+      metadata: {
+        orderNumber: order.orderNumber,
+        orderSubtotal: order.subtotal,
+        discount: order.discount || 0,
+        promoCode: order.promoCode || null,
+        promoCodeType: order.metadata?.promoCodeType || null,
+      },
+    });
+
+    await payoutTransaction.save();
+
+    // Update order status to completed
+    order.status = 'Completed';
+    order.deliveryStatus = 'completed';
+    order.completedDate = new Date();
+    
+    // Store rating and review in order (for backward compatibility)
+    if (rating !== undefined) {
+      order.rating = rating;
+    }
+    if (review !== undefined) {
+      order.review = review;
+    }
+
+    await order.save();
+
+    // Create review if rating and/or review is provided
+    let reviewDoc = null;
+    if (rating !== undefined || (review && review.trim())) {
+      // Check if review already exists for this order
+      reviewDoc = await Review.findOne({ order: order._id });
+      
+      if (reviewDoc) {
+        // Update existing review
+        if (rating !== undefined) reviewDoc.rating = rating;
+        if (review !== undefined) reviewDoc.comment = review.trim() || '';
+        reviewDoc.reviewer = client._id;
+        reviewDoc.reviewerName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous';
+      } else {
+        // Create new review
+        reviewDoc = new Review({
+          professional: professional._id,
+          order: order._id,
+          reviewer: client._id,
+          reviewerName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous',
+          rating: rating || 0,
+          comment: review?.trim() || '',
+        });
+      }
+      await reviewDoc.save();
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: 'Order completed successfully. Funds have been released to the professional.',
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        completedDate: order.completedDate,
+      },
+      professionalPayoutAmount: professionalPayoutAmount,
+      professionalNewBalance: professional.walletBalance,
+    });
+  } catch (error) {
+    console.error('Complete order error:', error);
+    res.status(500).json({ error: error.message || 'Failed to complete order' });
+  }
+});
+
+// Professional: Respond to review (one-time only)
+router.post('/reviews/:reviewId/respond', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { response } = req.body;
+
+    if (!response || !response.trim()) {
+      return res.status(400).json({ error: 'Response text is required' });
+    }
+
+    const review = await Review.findById(reviewId).populate('professional');
+
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Check if review belongs to the professional
+    const professionalId = review.professional?._id || review.professional;
+    if (professionalId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'You can only respond to reviews for your own services' });
+    }
+
+    // Check if already responded
+    if (review.hasResponded) {
+      return res.status(400).json({ error: 'You have already responded to this review' });
+    }
+
+    // Update review with response
+    review.response = response.trim();
+    review.responseBy = req.user.id;
+    review.responseAt = new Date();
+    review.hasResponded = true;
+
+    await review.save();
+
+    res.json({ 
+      message: 'Response added successfully',
+      review: {
+        id: review._id,
+        rating: review.rating,
+        comment: review.comment,
+        response: review.response,
+        responseAt: review.responseAt,
+        hasResponded: review.hasResponded,
+      }
+    });
+  } catch (error) {
+    console.error('Review response error:', error);
+    res.status(500).json({ error: error.message || 'Failed to respond to review' });
+  }
+});
+
+// Get review for an order
+router.get('/:orderId/review', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }],
+      $or: [{ client: req.user.id }, { professional: req.user.id }]
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const review = await Review.findOne({ order: order._id })
+      .populate('reviewer', 'firstName lastName tradingName avatar')
+      .populate('responseBy', 'firstName lastName tradingName avatar');
+
+    if (!review) {
+      return res.json({ review: null });
+    }
+
+    res.json({ 
+      review: {
+        id: review._id,
+        professional: review.professional.toString(),
+        order: review.order.toString(),
+        reviewer: review.reviewer ? {
+          id: review.reviewer._id.toString(),
+          name: review.reviewerName,
+          avatar: review.reviewer.avatar,
+        } : {
+          name: review.reviewerName,
+        },
+        rating: review.rating,
+        comment: review.comment,
+        response: review.response,
+        responseBy: review.responseBy ? {
+          id: review.responseBy._id.toString(),
+          name: `${review.responseBy.firstName || ''} ${review.responseBy.lastName || ''}`.trim() || review.responseBy.tradingName,
+          avatar: review.responseBy.avatar,
+        } : null,
+        responseAt: review.responseAt ? new Date(review.responseAt).toISOString() : undefined,
+        hasResponded: review.hasResponded,
+        createdAt: new Date(review.createdAt).toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error('Get review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get review' });
+  }
+});
+
+// Create dispute for an order
+router.post('/:orderId/dispute', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason, evidence } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Dispute reason is required' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    }).populate('client', 'firstName lastName tradingName')
+      .populate('professional', 'firstName lastName tradingName');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order has been delivered
+    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
+      return res.status(400).json({ error: 'Disputes can only be opened for delivered orders' });
+    }
+
+    // Check if user is either the client or professional for this order
+    const isClient = order.client?.toString() === req.user.id || (order.client?._id && order.client._id.toString() === req.user.id);
+    const isProfessional = order.professional?.toString() === req.user.id || (order.professional?._id && order.professional._id.toString() === req.user.id);
+
+    if (!isClient && !isProfessional) {
+      return res.status(403).json({ error: 'You are not authorized to create a dispute for this order' });
+    }
+
+    // Check if dispute already exists
+    if (order.disputeId) {
+      return res.status(400).json({ error: 'A dispute already exists for this order' });
+    }
+
+    // Get dispute response time from payment settings
+    const settings = await PaymentSettings.getSettings();
+    const responseTimeHours = settings.disputeResponseTimeHours || 48;
+
+    // Calculate response deadline
+    const responseDeadline = new Date();
+    responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+
+    // Determine claimant and respondent
+    const claimantId = req.user.id;
+    const respondentId = isClient ? (order.professional?._id || order.professional) : (order.client?._id || order.client);
+
+    // Generate dispute ID
+    const disputeId = `DISP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Update order status to disputed
+    order.status = 'disputed';
+    order.deliveryStatus = 'dispute';
+    order.disputeId = disputeId;
+
+    // Store dispute info in metadata
+    if (!order.metadata) order.metadata = {};
+    order.metadata.disputeReason = reason;
+    order.metadata.disputeEvidence = evidence || '';
+    order.metadata.disputeCreatedBy = claimantId;
+    order.metadata.disputeCreatedAt = new Date();
+    order.metadata.disputeClaimantId = claimantId;
+    order.metadata.disputeRespondentId = respondentId;
+    order.metadata.disputeResponseDeadline = responseDeadline;
+    order.metadata.disputeRespondedAt = null;
+    order.metadata.disputeStatus = 'open'; // open, responded, closed
+
+    await order.save();
+
+    res.json({ 
+      message: 'Dispute created successfully',
+      disputeId: disputeId,
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        disputeId: order.disputeId,
+      },
+      dispute: {
+        id: disputeId,
+        responseDeadline: responseDeadline.toISOString(),
+        claimantId: claimantId,
+        respondentId: respondentId.toString(),
+      }
+    });
+  } catch (error) {
+    console.error('Create dispute error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create dispute' });
+  }
+});
+
+// Respond to dispute
+router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { message } = req.body; // Optional message/response
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if dispute exists
+    if (!order.disputeId || !order.metadata?.disputeStatus) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Check if dispute is still open
+    if (order.metadata.disputeStatus !== 'open') {
+      return res.status(400).json({ error: 'This dispute is no longer open' });
+    }
+
+    // Check if user is the respondent
+    const respondentId = order.metadata.disputeRespondentId;
+    const isRespondent = respondentId?.toString() === req.user.id;
+
+    if (!isRespondent) {
+      return res.status(403).json({ error: 'Only the respondent can respond to this dispute' });
+    }
+
+    // Check if already responded
+    if (order.metadata.disputeRespondedAt) {
+      return res.status(400).json({ error: 'You have already responded to this dispute' });
+    }
+
+    // Check if response deadline has passed
+    const responseDeadline = order.metadata.disputeResponseDeadline;
+    if (responseDeadline && new Date(responseDeadline) < new Date()) {
+      return res.status(400).json({ error: 'The response deadline has passed' });
+    }
+
+    // Get negotiation time from payment settings
+    const settings = await PaymentSettings.getSettings();
+    const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
+
+    // Calculate negotiation deadline
+    const negotiationDeadline = new Date();
+    negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
+
+    // Mark dispute as responded and enter negotiation phase
+    order.metadata.disputeStatus = 'negotiation';
+    order.metadata.disputeRespondedAt = new Date();
+    order.metadata.disputeNegotiationDeadline = negotiationDeadline;
+    order.metadata.disputeArbitrationRequested = false;
+    order.metadata.disputeArbitrationRequestedBy = null;
+    order.metadata.disputeArbitrationFeePaid = false;
+    if (message && message.trim()) {
+      order.metadata.disputeResponseMessage = message.trim();
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: 'Dispute response submitted successfully',
+      dispute: {
+        id: order.disputeId,
+        status: order.metadata.disputeStatus,
+        respondedAt: order.metadata.disputeRespondedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Respond to dispute error:', error);
+    res.status(500).json({ error: error.message || 'Failed to respond to dispute' });
+  }
+});
+
+// Request admin arbitration (requires fee payment)
+router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    }).populate('client', 'walletBalance')
+      .populate('professional', 'walletBalance');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if dispute exists and is in negotiation phase
+    if (!order.disputeId || order.metadata?.disputeStatus !== 'negotiation') {
+      return res.status(400).json({ error: 'Dispute must be in negotiation phase to request arbitration' });
+    }
+
+    // Check if user is either claimant or respondent
+    const claimantId = order.metadata.disputeClaimantId;
+    const respondentId = order.metadata.disputeRespondentId;
+    const isClaimant = claimantId?.toString() === req.user.id;
+    const isRespondent = respondentId?.toString() === req.user.id;
+
+    if (!isClaimant && !isRespondent) {
+      return res.status(403).json({ error: 'Only parties involved in the dispute can request arbitration' });
+    }
+
+    // Check if arbitration already requested
+    if (order.metadata.disputeArbitrationRequested) {
+      return res.status(400).json({ error: 'Arbitration has already been requested for this dispute' });
+    }
+
+    // Get arbitration fee from settings
+    const settings = await PaymentSettings.getSettings();
+    const arbitrationFee = settings.arbitrationFee || 50;
+
+    // Get the user requesting arbitration
+    const requestingUser = isClaimant 
+      ? await User.findById(order.client?._id || order.client)
+      : await User.findById(order.professional?._id || order.professional);
+
+    if (!requestingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user has sufficient balance
+    if ((requestingUser.walletBalance || 0) < arbitrationFee) {
+      return res.status(400).json({ 
+        error: `Insufficient balance. Arbitration fee is £${arbitrationFee.toFixed(2)}. Please add funds to your wallet.`,
+        requiredAmount: arbitrationFee,
+        currentBalance: requestingUser.walletBalance || 0,
+      });
+    }
+
+    // Deduct arbitration fee from user's wallet
+    requestingUser.walletBalance = (requestingUser.walletBalance || 0) - arbitrationFee;
+    await requestingUser.save();
+
+    // Create fee transaction
+    const feeTransaction = new Wallet({
+      userId: requestingUser._id,
+      type: 'payment',
+      amount: arbitrationFee,
+      balance: requestingUser.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      orderId: order._id,
+      description: `Arbitration Fee - Dispute ${order.disputeId}`,
+      metadata: {
+        orderNumber: order.orderNumber,
+        disputeId: order.disputeId,
+        reason: 'Admin arbitration fee payment',
+      },
+    });
+    await feeTransaction.save();
+
+    // Update dispute metadata
+    order.metadata.disputeStatus = 'admin_arbitration';
+    order.metadata.disputeArbitrationRequested = true;
+    order.metadata.disputeArbitrationRequestedBy = req.user.id;
+    order.metadata.disputeArbitrationRequestedAt = new Date();
+    order.metadata.disputeArbitrationFeePaid = true;
+    order.metadata.disputeArbitrationFeeAmount = arbitrationFee;
+    order.metadata.disputeArbitrationFeeTransactionId = feeTransaction._id;
+
+    await order.save();
+
+    res.json({ 
+      message: 'Arbitration requested successfully. Admin will review the case.',
+      dispute: {
+        id: order.disputeId,
+        status: order.metadata.disputeStatus,
+        arbitrationRequestedAt: order.metadata.disputeArbitrationRequestedAt,
+        feePaid: arbitrationFee,
+      },
+      newBalance: requestingUser.walletBalance,
+    });
+  } catch (error) {
+    console.error('Request arbitration error:', error);
+    res.status(500).json({ error: error.message || 'Failed to request arbitration' });
+  }
+});
+
+// Admin: Decide dispute (arbitration)
+router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { winnerId, decisionNotes } = req.body;
+
+    if (!winnerId) {
+      return res.status(400).json({ error: 'Winner ID is required' });
+    }
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    }).populate('client', 'walletBalance')
+      .populate('professional', 'walletBalance');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if dispute is in admin arbitration
+    if (order.metadata?.disputeStatus !== 'admin_arbitration') {
+      return res.status(400).json({ error: 'Dispute must be in admin arbitration phase' });
+    }
+
+    const claimantId = order.metadata.disputeClaimantId;
+    const respondentId = order.metadata.disputeRespondentId;
+    const loserId = winnerId === claimantId?.toString() ? respondentId?.toString() : claimantId?.toString();
+
+    if (winnerId !== claimantId?.toString() && winnerId !== respondentId?.toString()) {
+      return res.status(400).json({ error: 'Winner must be either the claimant or respondent' });
+    }
+
+    const professionalPayoutAmount = order.metadata?.professionalPayoutAmount || order.subtotal;
+    const orderTotal = order.total;
+    const arbitrationFee = order.metadata.disputeArbitrationFeeAmount || 0;
+
+    // Determine winner and loser
+    const isWinnerClient = order.client?._id?.toString() === winnerId || order.client?.toString() === winnerId;
+    const isLoserClient = order.client?._id?.toString() === loserId || order.client?.toString() === loserId;
+
+    // Winner gets order amount
+    // Loser loses both arbitration fee and order amount
+    if (isWinnerClient) {
+      // Client wins - refund order amount
+      const client = await User.findById(order.client?._id || order.client);
+      if (client) {
+        client.walletBalance = (client.walletBalance || 0) + orderTotal;
+        await client.save();
+
+        const refundTransaction = new Wallet({
+          userId: client._id,
+          type: 'deposit',
+          amount: orderTotal,
+          balance: client.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          orderId: order._id,
+          description: `Dispute Resolution - Order ${order.orderNumber}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            disputeId: order.disputeId,
+            reason: 'Admin arbitration decision - client won',
+          },
+        });
+        await refundTransaction.save();
+      }
+
+      // Professional (loser) loses arbitration fee (already deducted when paid, but we record it)
+      // Professional doesn't receive payout
+    } else {
+      // Professional wins - gets payout
+      const professional = await User.findById(order.professional?._id || order.professional);
+      if (professional) {
+        // Check if funds were already released
+        const fundsReleased = order.status === 'Completed';
+        
+        if (!fundsReleased) {
+          professional.walletBalance = (professional.walletBalance || 0) + professionalPayoutAmount;
+          await professional.save();
+
+          const payoutTransaction = new Wallet({
+            userId: professional._id,
+            type: 'deposit',
+            amount: professionalPayoutAmount,
+            balance: professional.walletBalance,
+            status: 'completed',
+            paymentMethod: 'wallet',
+            orderId: order._id,
+            description: `Dispute Resolution - Order ${order.orderNumber}`,
+            metadata: {
+              orderNumber: order.orderNumber,
+              disputeId: order.disputeId,
+              reason: 'Admin arbitration decision - professional won',
+            },
+          });
+          await payoutTransaction.save();
+        }
+      }
+
+      // Client (loser) loses arbitration fee (already deducted from their wallet, but we record it)
+      // Client doesn't get refund
+    }
+
+    // Update order metadata
+    order.metadata.disputeStatus = 'closed';
+    order.metadata.disputeClosedAt = new Date();
+    order.metadata.disputeWinnerId = winnerId;
+    order.metadata.disputeLoserId = loserId;
+    order.metadata.disputeAdminDecision = true;
+    order.metadata.disputeDecisionNotes = decisionNotes || '';
+    order.metadata.disputeDecidedBy = req.user.id;
+    order.metadata.disputeDecidedAt = new Date();
+    order.status = 'Cancelled';
+    order.deliveryStatus = 'cancelled';
+
+    await order.save();
+
+    res.json({ 
+      message: 'Dispute decided successfully',
+      dispute: {
+        id: order.disputeId,
+        status: order.metadata.disputeStatus,
+        winnerId: winnerId,
+        loserId: loserId,
+        decidedAt: order.metadata.disputeDecidedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Admin decide dispute error:', error);
+    res.status(500).json({ error: error.message || 'Failed to decide dispute' });
+  }
+});
+
+// Cancel/Withdraw dispute
+router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ 
+      $or: [{ orderNumber: orderId }, { _id: orderId }]
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if dispute exists
+    if (!order.disputeId || !order.metadata?.disputeStatus) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Check if dispute is in a cancellable state (open, negotiation, or admin_arbitration)
+    const cancellableStatuses = ['open', 'negotiation', 'admin_arbitration'];
+    if (!cancellableStatuses.includes(order.metadata.disputeStatus)) {
+      return res.status(400).json({ error: 'Dispute cannot be cancelled in its current state' });
+    }
+
+    // Check if user is either claimant or respondent
+    const claimantId = order.metadata.disputeClaimantId;
+    const respondentId = order.metadata.disputeRespondentId;
+    const isClaimant = claimantId?.toString() === req.user.id;
+    const isRespondent = respondentId?.toString() === req.user.id;
+
+    if (!isClaimant && !isRespondent) {
+      return res.status(403).json({ error: 'Only parties involved in the dispute can cancel it' });
+    }
+
+    // If arbitration was requested and fee was paid, we might want to refund it
+    // For now, we'll just clear the dispute and restore the order to delivered status
+    const arbitrationFeePaid = order.metadata.disputeArbitrationFeePaid;
+    const arbitrationFeeAmount = order.metadata.disputeArbitrationFeeAmount;
+
+    // Refund arbitration fee if it was paid (to the person who requested it)
+    if (arbitrationFeePaid && arbitrationFeeAmount) {
+      const arbitrationRequesterId = order.metadata.disputeArbitrationRequestedBy;
+      const requester = await User.findById(arbitrationRequesterId);
+      
+      if (requester) {
+        requester.walletBalance = (requester.walletBalance || 0) + arbitrationFeeAmount;
+        await requester.save();
+
+        // Create refund transaction
+        const refundTransaction = new Wallet({
+          userId: requester._id,
+          type: 'deposit',
+          amount: arbitrationFeeAmount,
+          balance: requester.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          orderId: order._id,
+          description: `Dispute Cancellation - Arbitration Fee Refund - Order ${order.orderNumber}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            disputeId: order.disputeId,
+            reason: 'Dispute cancelled - arbitration fee refunded',
+          },
+        });
+        await refundTransaction.save();
+      }
+    }
+
+    // Clear dispute information and restore order to delivered status
+    const previousDisputeId = order.disputeId;
+    order.disputeId = null;
+    order.status = 'In Progress'; // Restore to In Progress (which allows delivery)
+    order.deliveryStatus = 'delivered'; // Restore to delivered status
+    
+    // Clear dispute metadata
+    if (order.metadata) {
+      delete order.metadata.disputeReason;
+      delete order.metadata.disputeEvidence;
+      delete order.metadata.disputeCreatedBy;
+      delete order.metadata.disputeCreatedAt;
+      delete order.metadata.disputeClaimantId;
+      delete order.metadata.disputeRespondentId;
+      delete order.metadata.disputeResponseDeadline;
+      delete order.metadata.disputeRespondedAt;
+      delete order.metadata.disputeResponseMessage;
+      delete order.metadata.disputeNegotiationDeadline;
+      delete order.metadata.disputeArbitrationRequested;
+      delete order.metadata.disputeArbitrationRequestedBy;
+      delete order.metadata.disputeArbitrationRequestedAt;
+      delete order.metadata.disputeArbitrationFeePaid;
+      delete order.metadata.disputeArbitrationFeeAmount;
+      delete order.metadata.disputeArbitrationFeeTransactionId;
+      delete order.metadata.disputeStatus;
+      delete order.metadata.disputeClosedAt;
+      delete order.metadata.disputeWinnerId;
+      delete order.metadata.disputeLoserId;
+      delete order.metadata.disputeAdminDecision;
+      delete order.metadata.disputeDecisionNotes;
+      delete order.metadata.disputeDecidedBy;
+      delete order.metadata.disputeDecidedAt;
+      delete order.metadata.disputeAutoClosed;
+    }
+
+    await order.save();
+
+    res.json({ 
+      message: 'Dispute cancelled successfully. Order restored to delivered status.',
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        disputeId: null,
+      }
+    });
+  } catch (error) {
+    console.error('Cancel dispute error:', error);
+    res.status(500).json({ error: error.message || 'Failed to cancel dispute' });
   }
 });
 

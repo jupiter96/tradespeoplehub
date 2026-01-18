@@ -246,12 +246,64 @@ export default function CartPage() {
       cartTotal: cartTotal,
     });
   }, [cartItems, cartTotal]);
+
+  // Fetch available promo codes from professionals who created services in cart
+  useEffect(() => {
+    const fetchAvailablePromoCodes = async () => {
+      if (!isLoggedIn || !cartItems || cartItems.length === 0) {
+        setAvailablePromoCodes([]);
+        return;
+      }
+
+      try {
+        const subtotal = cartTotal;
+        const requestPayload = {
+          items: cartItems.map(item => ({
+            id: item.id,
+            serviceId: (item as any).serviceId || item.id,
+          })),
+          subtotal: subtotal,
+        };
+
+        const response = await fetch(resolveApiUrl("/api/promo-codes/available-by-services"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(requestPayload),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("[CartPage] Available promo codes:", data.promoCodes);
+          setAvailablePromoCodes(data.promoCodes || []);
+        } else {
+          console.error("[CartPage] Failed to fetch available promo codes");
+          setAvailablePromoCodes([]);
+        }
+      } catch (error) {
+        console.error("[CartPage] Error fetching available promo codes:", error);
+        setAvailablePromoCodes([]);
+      }
+    };
+
+    fetchAvailablePromoCodes();
+  }, [isLoggedIn, cartItems, cartTotal]);
   
   // Promo code state
   const [promoCode, setPromoCode] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: 'pro' | 'admin'; discount: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: 'pro' | 'admin'; discount: number; professionalId?: string } | null>(null);
   const [discount, setDiscount] = useState(0);
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [availablePromoCodes, setAvailablePromoCodes] = useState<Array<{ 
+    id: string; 
+    code: string; 
+    type: 'pro' | 'admin'; 
+    discount: number;
+    professional?: string;
+    description?: string;
+  }>>([]);
 
   // Address state
   const [selectedAddress, setSelectedAddress] = useState<string>("");
@@ -471,14 +523,38 @@ export default function CartPage() {
 
     // Validate promo code via API
     try {
+      // Fetch service details to get professional IDs for validation
+      const serviceIds = cartItems.map(item => (item as any).serviceId || item.id).filter(Boolean);
+      const servicePromises = serviceIds.map(serviceId => 
+        fetch(resolveApiUrl(`/api/services/${serviceId}`), {
+          credentials: "include",
+        }).then(res => res.ok ? res.json() : null).catch(() => null)
+      );
+      
+      const serviceResponses = await Promise.all(servicePromises);
+      const servicesWithOwners = serviceResponses
+        .filter(res => res && res.service)
+        .map(res => ({
+          serviceId: res.service._id?.toString() || res.service.id,
+          ownerId: res.service.professional?._id?.toString() || 
+                   res.service.professional?.toString() || 
+                   String(res.service.professional)
+        }));
+      
       const requestPayload = {
         code: promoCode,
         subtotal: subtotal,
-        items: cartItems.map(item => ({
-          id: item.id,
-          serviceId: item.serviceId,
-        })),
+        items: cartItems.map(item => {
+          const serviceId = (item as any).serviceId || item.id;
+          const serviceWithOwner = servicesWithOwners.find(s => s.serviceId === serviceId);
+          return {
+            id: item.id,
+            serviceId: serviceId,
+            ownerId: serviceWithOwner?.ownerId || undefined, // Include owner ID if available
+          };
+        }),
       };
+      console.log("[CartPage] Applying promo code:", requestPayload);
       const response = await fetch(resolveApiUrl("/api/promo-codes/validate"), {
         method: "POST",
         headers: {
@@ -489,22 +565,78 @@ export default function CartPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        setPromoCodeError(errorData.error || "Invalid promo code");
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        const errorMessage = errorData.error || `HTTP ${response.status}: Invalid promo code`;
+        console.error("[CartPage] Promo code validation failed:", {
+          status: response.status,
+          error: errorData,
+          requestPayload
+        });
+        setPromoCodeError(errorMessage);
         setAppliedPromo(null);
         setDiscount(0);
         toast.error("Invalid promo code", {
-          description: errorData.error || "Please check and try again"
+          description: errorMessage
         });
         return;
       }
 
       const data = await response.json();
       if (data.valid && data.promoCode) {
+        // For pro promo codes, verify that all services belong to the promo code owner
+        if (data.promoCode.type === 'pro' && data.promoCode.professionalId) {
+          try {
+            // Fetch service details to get professional IDs
+            const serviceIds = cartItems.map(item => (item as any).serviceId || item.id).filter(Boolean);
+            const servicePromises = serviceIds.map(serviceId => 
+              fetch(resolveApiUrl(`/api/services/${serviceId}`), {
+                credentials: "include",
+              }).then(res => res.ok ? res.json() : null).catch(() => null)
+            );
+            
+            const serviceResponses = await Promise.all(servicePromises);
+            const services = serviceResponses
+              .filter(res => res && res.service)
+              .map(res => res.service);
+            
+            // Check if all services belong to the promo code professional
+            const promoProfessionalId = data.promoCode.professionalId;
+            const allServicesBelongToPro = services.length > 0 && services.every(service => {
+              const serviceProId = service.professional?._id?.toString() || 
+                                  service.professional?.toString() || 
+                                  String(service.professional);
+              return serviceProId === promoProfessionalId;
+            });
+            
+            console.log("[CartPage] Pro promo code owner validation:", {
+              promoProfessionalId,
+              services: services.map(s => ({
+                serviceId: s._id?.toString(),
+                professionalId: s.professional?._id?.toString() || s.professional?.toString()
+              })),
+              allServicesBelongToPro
+            });
+            
+            if (!allServicesBelongToPro) {
+              setPromoCodeError("This promo code can only be used for services from the professional who created it");
+              setAppliedPromo(null);
+              setDiscount(0);
+              toast.error("Invalid promo code", {
+                description: "This promo code is not applicable to the selected services"
+              });
+              return;
+            }
+          } catch (error) {
+            console.error("[CartPage] Error validating service owners:", error);
+            // Continue with promo code application if validation fails (trust backend)
+          }
+        }
+        
         setAppliedPromo({
           code: data.promoCode.code,
           type: data.promoCode.type,
           discount: data.promoCode.discount,
+          professionalId: data.promoCode.professionalId, // Store for reference
         });
         setDiscount(data.promoCode.discount);
         setPromoCodeError(null);

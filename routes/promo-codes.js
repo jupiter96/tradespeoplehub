@@ -11,7 +11,10 @@ router.post('/validate', authenticateToken, async (req, res) => {
   try {
     const { code, subtotal, items } = req.body;
     
+    console.log('[Promo Code Validate] Request body:', { code, subtotal, items, userId: req.user?.id });
+    
     if (!code || !subtotal) {
+      console.log('[Promo Code Validate] Missing required fields:', { hasCode: !!code, hasSubtotal: !!subtotal });
       return res.status(400).json({ error: 'Code and subtotal are required' });
     }
     
@@ -21,12 +24,130 @@ router.post('/validate', authenticateToken, async (req, res) => {
       status: 'active'
     });
     
+    console.log('[Promo Code Validate] Found promo code:', promoCode ? { 
+      id: promoCode._id, 
+      code: promoCode.code, 
+      type: promoCode.type,
+      professional: promoCode.professional,
+      status: promoCode.status 
+    } : 'Not found');
+    
     if (!promoCode) {
       return res.status(404).json({ error: 'Invalid promo code' });
     }
     
-    // Check validity
-    const validation = promoCode.isValid(req.user.id);
+    // For pro promo codes, first check if items belong to the professional who created the code
+    // This allows us to skip validFrom check if the services belong to the promo code creator
+    let servicesBelongToPro = false;
+    if (promoCode.type === 'pro' && promoCode.professional && items && items.length > 0) {
+      const Service = (await import('../models/Service.js')).default;
+      const itemServiceIds = items.map(item => item.serviceId || item.id).filter(Boolean);
+      
+      const services = await Service.find({
+        _id: { $in: itemServiceIds }
+      }).select('professional title').lean();
+      
+      // Extract professional IDs properly
+      const servicesWithOwnerIds = services.map(s => {
+        let ownerId = null;
+        
+        if (s.professional) {
+          // If it's an ObjectId instance
+          if (s.professional.constructor && s.professional.constructor.name === 'ObjectId') {
+            ownerId = s.professional.toString();
+          }
+          // If it's an object with _id
+          else if (typeof s.professional === 'object' && s.professional._id) {
+            const proId = s.professional._id;
+            ownerId = proId.toString ? proId.toString() : String(proId);
+          }
+          // If it's already a string
+          else if (typeof s.professional === 'string') {
+            ownerId = s.professional;
+          }
+          // Fallback: try toString
+          else if (s.professional.toString && typeof s.professional.toString === 'function') {
+            ownerId = s.professional.toString();
+          }
+          // Last resort: convert to string
+          else {
+            ownerId = String(s.professional);
+          }
+        }
+        
+        return {
+          serviceId: s._id.toString(),
+          ownerId: ownerId,
+          title: s.title
+        };
+      });
+      
+      console.log('[Promo Code Validate] Services with owner IDs:', servicesWithOwnerIds);
+      
+      // Extract promo professional ID properly
+      let promoProId = null;
+      if (promoCode.professional) {
+        if (promoCode.professional.constructor && promoCode.professional.constructor.name === 'ObjectId') {
+          promoProId = promoCode.professional.toString();
+        } else if (typeof promoCode.professional === 'object' && promoCode.professional._id) {
+          promoProId = promoCode.professional._id.toString ? promoCode.professional._id.toString() : String(promoCode.professional._id);
+        } else if (typeof promoCode.professional === 'string') {
+          promoProId = promoCode.professional;
+        } else if (promoCode.professional.toString) {
+          promoProId = promoCode.professional.toString();
+        } else {
+          promoProId = String(promoCode.professional);
+        }
+      }
+      
+      const allServicesBelongToPro = services.length > 0 && servicesWithOwnerIds.every(serviceWithOwner => {
+        return serviceWithOwner.ownerId === promoProId;
+      });
+      
+      servicesBelongToPro = allServicesBelongToPro;
+      
+      console.log('[Promo Code Validate] Pro promo code - services belong to pro:', {
+        servicesBelongToPro,
+        promoProfessionalId: promoProId,
+        serviceProfessionalIds: servicesWithOwnerIds.map(s => s.ownerId)
+      });
+    }
+    
+    // Check validity - for pro promo codes on their own services, skip validFrom check
+    let validation = promoCode.isValid(req.user?.id);
+    
+    // If it's a pro promo code and services belong to the pro, allow even if validFrom is in future
+    if (!validation.valid && validation.reason === 'Promo code is not yet valid' && 
+        promoCode.type === 'pro' && servicesBelongToPro) {
+      // Create a custom validation that skips validFrom check
+      const now = new Date();
+      
+      // Check status
+      if (promoCode.status !== 'active') {
+        validation = { valid: false, reason: 'Promo code is not active' };
+      }
+      // Skip validFrom check for pro's own services
+      else if (promoCode.validUntil && now > promoCode.validUntil) {
+        validation = { valid: false, reason: 'Promo code has expired' };
+      }
+      // Check usage limit
+      else if (promoCode.usageLimit && promoCode.usedCount >= promoCode.usageLimit) {
+        validation = { valid: false, reason: 'Promo code usage limit reached' };
+      }
+      // Check per-user limit
+      else if (req.user?.id) {
+        const userUsage = promoCode.usedBy?.find(u => u.user.toString() === req.user.id.toString());
+        if (userUsage && userUsage.count >= promoCode.perUserLimit) {
+          validation = { valid: false, reason: 'You have reached the usage limit for this promo code' };
+        } else {
+          validation = { valid: true };
+        }
+      } else {
+        validation = { valid: true };
+      }
+    }
+    
+    console.log('[Promo Code Validate] Validation result:', validation);
     if (!validation.valid) {
       return res.status(400).json({ error: validation.reason });
     }
@@ -36,6 +157,127 @@ router.post('/validate', authenticateToken, async (req, res) => {
       return res.status(400).json({ 
         error: `Minimum order amount of £${promoCode.minOrderAmount.toFixed(2)} required` 
       });
+    }
+    
+    // For pro promo codes, check if items belong to the professional who created the code (if not already checked)
+    if (promoCode.type === 'pro' && promoCode.professional) {
+      if (!items || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required for professional promo codes' });
+      }
+      
+      // Only check again if we didn't already check above
+      let services;
+      if (!servicesBelongToPro) {
+        // Get services from items and check if they belong to the professional
+        const Service = (await import('../models/Service.js')).default;
+        const itemServiceIds = items.map(item => item.serviceId || item.id).filter(Boolean);
+        
+        services = await Service.find({
+          _id: { $in: itemServiceIds }
+        }).select('professional serviceCategory title');
+        
+        // Check if all services belong to the professional who created the promo code
+        const allServicesBelongToPro = services.every(service => {
+          const serviceProId = service.professional?.toString ? service.professional.toString() : String(service.professional);
+          const promoProId = promoCode.professional.toString ? promoCode.professional.toString() : String(promoCode.professional);
+          return serviceProId === promoProId;
+        });
+        
+        if (!allServicesBelongToPro) {
+          console.log('[Promo Code Validate] Pro promo code - service professional mismatch');
+          return res.status(400).json({ 
+            error: 'This promo code can only be used for services from the professional who created it' 
+          });
+        }
+      } else {
+        // We already checked above, but we need services for category check
+        const Service = (await import('../models/Service.js')).default;
+        const itemServiceIds = items.map(item => item.serviceId || item.id).filter(Boolean);
+        
+        services = await Service.find({
+          _id: { $in: itemServiceIds }
+        }).select('professional serviceCategory title').lean();
+      }
+      
+      console.log('[Promo Code Validate] Pro promo code - checking services:', {
+        promoProfessional: promoCode.professional.toString(),
+        serviceIds: items.map(item => item.serviceId || item.id).filter(Boolean),
+        serviceProfessionals: services.map(s => ({
+          serviceId: s._id.toString(),
+          professional: s.professional?.toString() || s.professional,
+          serviceCategory: s.serviceCategory?.toString() || s.serviceCategory
+        })),
+        promoCategories: promoCode.categories?.map(c => c.toString()) || []
+      });
+      
+      // If pro promo code has categories, also check if items match those categories
+      if (promoCode.categories && promoCode.categories.length > 0) {
+        // Extract category IDs from services
+        const serviceCategoryIds = services
+          .map(s => {
+            if (!s.serviceCategory) return null;
+            
+            // Check if it's a Mongoose ObjectId
+            if (s.serviceCategory.constructor && s.serviceCategory.constructor.name === 'ObjectId') {
+              return s.serviceCategory.toString();
+            }
+            
+            // If it's an object with _id property (populated or already an object)
+            if (typeof s.serviceCategory === 'object') {
+              // Check if it has _id property (populated object)
+              if (s.serviceCategory._id) {
+                const id = s.serviceCategory._id;
+                // Handle both ObjectId and string _id
+                return id.toString ? id.toString() : String(id);
+              }
+              // If it's a plain object representation, try to extract _id value
+              const idStr = s.serviceCategory._id?.toString() || s.serviceCategory._id;
+              if (idStr) return String(idStr);
+            }
+            
+            // Fallback: try toString if it exists
+            if (typeof s.serviceCategory.toString === 'function') {
+              const str = s.serviceCategory.toString();
+              // If toString returns object representation, try JSON parsing
+              if (str.startsWith('{')) {
+                try {
+                  const parsed = JSON.parse(str);
+                  if (parsed._id) return String(parsed._id);
+                } catch (e) {
+                  // Ignore parse errors
+                }
+              }
+              return str;
+            }
+            
+            // Last resort: convert to string
+            return String(s.serviceCategory);
+          })
+          .filter(Boolean)
+          .map(id => {
+            // Extract just the ID if it looks like a MongoDB ObjectId string
+            const match = String(id).match(/(?:ObjectId\(['"]|['"])?([0-9a-fA-F]{24})(?:['"]\))?/);
+            return match ? match[1] : id;
+          });
+        
+        // Check if any item's category matches promo code categories
+        const promoCategoryIds = promoCode.categories.map(c => c.toString());
+        const hasMatchingCategory = serviceCategoryIds.some(catId => 
+          promoCategoryIds.includes(catId)
+        );
+        
+        console.log('[Promo Code Validate] Pro promo code - category check:', {
+          serviceCategoryIds,
+          promoCategoryIds,
+          hasMatchingCategory
+        });
+        
+        if (!hasMatchingCategory) {
+          return res.status(400).json({ 
+            error: 'This promo code is not applicable to the selected services' 
+          });
+        }
+      }
     }
     
     // For admin promo codes, check if items match categories
@@ -120,7 +362,8 @@ router.post('/validate', authenticateToken, async (req, res) => {
     // Calculate discount
     const discountAmount = promoCode.calculateDiscount(subtotal);
     
-    res.json({
+    // Return professional ID for pro promo codes for frontend validation
+    const responseData = {
       valid: true,
       promoCode: {
         id: promoCode._id,
@@ -130,7 +373,14 @@ router.post('/validate', authenticateToken, async (req, res) => {
         discountType: promoCode.discountType,
         originalDiscount: promoCode.discount,
       },
-    });
+    };
+    
+    // Add professional ID for pro promo codes
+    if (promoCode.type === 'pro' && promoCode.professional) {
+      responseData.promoCode.professionalId = promoCode.professional.toString ? promoCode.professional.toString() : String(promoCode.professional);
+    }
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Error validating promo code:', error);
     res.status(500).json({ error: 'Failed to validate promo code' });
@@ -192,6 +442,188 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       return res.status(400).json({ error: 'Promo code already exists' });
     }
     res.status(500).json({ error: 'Failed to create promo code' });
+  }
+});
+
+// Get available promo codes for cart items (by service IDs)
+router.post('/available-by-services', authenticateToken, async (req, res) => {
+  try {
+    const { items, subtotal } = req.body;
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.json({ promoCodes: [] });
+    }
+    
+    // Get service IDs from items
+    const Service = (await import('../models/Service.js')).default;
+    const itemServiceIds = items.map(item => item.serviceId || item.id).filter(Boolean);
+    
+    // Get services and their professionals
+    const services = await Service.find({
+      _id: { $in: itemServiceIds }
+    }).select('professional serviceCategory').lean();
+    
+    // Get unique professional IDs and convert to ObjectId
+    const mongoose = (await import('mongoose')).default;
+    const professionalIds = [...new Set(services.map(s => {
+      if (!s.professional) return null;
+      
+      // If it's already an ObjectId, return it
+      if (s.professional.constructor && s.professional.constructor.name === 'ObjectId') {
+        return s.professional;
+      }
+      
+      // If it's an object with _id, use that
+      if (typeof s.professional === 'object' && s.professional._id) {
+        return s.professional._id;
+      }
+      
+      // If it's a string, convert to ObjectId
+      if (typeof s.professional === 'string') {
+        try {
+          return new mongoose.Types.ObjectId(s.professional);
+        } catch (e) {
+          console.error('[Promo Code] Invalid professional ID:', s.professional);
+          return null;
+        }
+      }
+      
+      // Fallback: try toString and convert
+      try {
+        const proIdStr = s.professional.toString ? s.professional.toString() : String(s.professional);
+        return new mongoose.Types.ObjectId(proIdStr);
+      } catch (e) {
+        console.error('[Promo Code] Failed to convert professional ID:', s.professional);
+        return null;
+      }
+    }).filter(Boolean))];
+    
+    if (professionalIds.length === 0) {
+      return res.json({ promoCodes: [] });
+    }
+    
+    // Get active promo codes from these professionals
+    const now = new Date();
+    const promoCodes = await PromoCode.find({
+      type: 'pro',
+      professional: { $in: professionalIds },
+      status: 'active',
+      $and: [
+        {
+          $or: [
+            { validFrom: { $exists: false } },
+            { validFrom: { $lte: now } }
+          ]
+        },
+        {
+          $or: [
+            { validUntil: { $exists: false } },
+            { validUntil: { $gte: now } }
+          ]
+        }
+      ]
+    }).populate('professional', 'firstName lastName tradingName').lean();
+    
+      // Filter promo codes that are valid and applicable to the cart
+      const validPromoCodes = [];
+      const currentDate = new Date();
+      
+      for (const promoCode of promoCodes) {
+      if (promoCode.status !== 'active') {
+        continue;
+      }
+      
+      if (promoCode.validFrom && now < promoCode.validFrom) {
+        continue;
+      }
+      
+      if (promoCode.validUntil && now > promoCode.validUntil) {
+        continue;
+      }
+      
+      if (promoCode.usageLimit && promoCode.usedCount >= promoCode.usageLimit) {
+        continue;
+      }
+      
+      if (promoCode.perUserLimit && req.user?.id) {
+        const userUsage = promoCode.usedBy?.find(u => 
+          u.user.toString() === req.user.id.toString()
+        );
+        if (userUsage && userUsage.count >= promoCode.perUserLimit) {
+          continue;
+        }
+      }
+      
+      // Check minimum order amount
+      if (promoCode.minOrderAmount && subtotal && subtotal < promoCode.minOrderAmount) {
+        continue;
+      }
+      
+      // Check if promo code applies to services in cart
+      const promoProId = promoCode.professional?.toString ? promoCode.professional.toString() : String(promoCode.professional);
+      const relevantServices = services.filter(s => {
+        const serviceProId = s.professional?.toString ? s.professional.toString() : String(s.professional);
+        return serviceProId === promoProId;
+      });
+      
+      if (relevantServices.length === 0) {
+        continue;
+      }
+      
+      // If promo code has categories, check if any service matches
+      if (promoCode.categories && promoCode.categories.length > 0) {
+        const serviceCategoryIds = relevantServices
+          .map(s => {
+            if (!s.serviceCategory) return null;
+            const catId = s.serviceCategory?.toString ? s.serviceCategory.toString() : String(s.serviceCategory);
+            return catId;
+          })
+          .filter(Boolean);
+        
+        const promoCategoryIds = promoCode.categories.map(c => 
+          c.toString ? c.toString() : String(c)
+        );
+        
+        const hasMatchingCategory = serviceCategoryIds.some(catId => 
+          promoCategoryIds.includes(catId)
+        );
+        
+        if (!hasMatchingCategory) {
+          continue;
+        }
+      }
+      
+      // Calculate discount
+      let discountAmount = 0;
+      if (promoCode.discountType === 'percentage') {
+        discountAmount = (subtotal || 0) * promoCode.discount / 100;
+        if (promoCode.maxDiscountAmount && discountAmount > promoCode.maxDiscountAmount) {
+          discountAmount = promoCode.maxDiscountAmount;
+        }
+      } else {
+        discountAmount = Math.min(promoCode.discount, subtotal || 0);
+      }
+      
+      discountAmount = Math.round(discountAmount * 100) / 100;
+      
+      validPromoCodes.push({
+        id: promoCode._id,
+        code: promoCode.code,
+        type: promoCode.type,
+        discount: discountAmount,
+        discountType: promoCode.discountType,
+        originalDiscount: promoCode.discount,
+        professional: promoCode.professional?.tradingName || 
+          `${promoCode.professional?.firstName || ''} ${promoCode.professional?.lastName || ''}`.trim() ||
+          'Professional',
+        description: promoCode.description
+      });
+    }
+    
+    res.json({ promoCodes: validPromoCodes });
+  } catch (error) {
+    console.error('Error fetching available promo codes:', error);
+    res.status(500).json({ error: 'Failed to fetch available promo codes' });
   }
 });
 

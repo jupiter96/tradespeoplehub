@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
+import { useAccount } from "./AccountContext";
 import DeliveryCountdown from "./DeliveryCountdown";
 import {
   ShoppingBag,
@@ -76,18 +77,20 @@ import { toast } from "sonner@2.0.3";
 export default function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, startWork, deliverWork, createOrderDispute, getOrderDisputeById, requestExtension } = useOrders();
+  const { orders, cancelOrder, acceptOrder, rejectOrder, startWork, deliverWork, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute } = useOrders();
+  const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("all");
   const [orderDetailTab, setOrderDetailTab] = useState("timeline");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
+  const [deliveryFiles, setDeliveryFiles] = useState<File[]>([]);
   const [cancelReason, setCancelReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
@@ -95,6 +98,13 @@ export default function ProfessionalOrdersSection() {
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
   const [extensionNewDate, setExtensionNewDate] = useState("");
   const [extensionReason, setExtensionReason] = useState("");
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
+  const [revisionResponseAction, setRevisionResponseAction] = useState<'accept' | 'reject'>('accept');
+  const [revisionAdditionalNotes, setRevisionAdditionalNotes] = useState("");
 
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
@@ -108,21 +118,30 @@ export default function ProfessionalOrdersSection() {
     }
   }, [location.search, orders]);
 
-  // Filter orders for professional view (orders where professional is "Current User")
-  const professionalOrders = orders.filter(
-    (order) => order.professional === "Current User"
-  );
+  // Filter orders for professional view
+  // API already filters orders by professional role when userRole === 'professional'
+  // So we can use all orders directly, but for safety we filter by professionalId if available
+  const professionalOrders = userInfo?.id && userInfo.role === 'professional'
+    ? orders.filter((order) => {
+        // If professionalId is available, use it for comparison
+        if (order.professionalId) {
+          return order.professionalId === userInfo.id;
+        }
+        // Otherwise, include all orders (API already filtered by professional role)
+        return true;
+      })
+    : orders;
 
-  // Get orders by delivery status
+  // Get orders by order status (not deliveryStatus)
   const getOrdersByStatus = (status: string) => {
     if (status === "all") return professionalOrders;
     return professionalOrders.filter(
-      (order) => order.deliveryStatus === status
+      (order) => order.status === status
     );
   };
 
-  // Filter and sort orders
-  const getFilteredOrders = (status: string) => {
+  // Filter and sort orders by order status
+  const getFilteredOrdersByStatus = (status: string) => {
     let filtered = getOrdersByStatus(status);
 
     // Apply search
@@ -146,32 +165,14 @@ export default function ProfessionalOrdersSection() {
 
     return filtered;
   };
-
-  // Active orders include both pending and active deliveryStatus
-  const activeOrders = (() => {
-    let filtered = professionalOrders.filter(
-      (order) => order.deliveryStatus === "active" || order.deliveryStatus === "pending"
-    );
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (order) =>
-          order.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.id.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    if (sortBy === "date") {
-      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    } else if (sortBy === "amount") {
-      filtered.sort((a, b) => b.amountValue - a.amountValue);
-    }
-    return filtered;
-  })();
   
-  const deliveredOrders = getFilteredOrders("delivered");
-  const completedOrders = getFilteredOrders("completed");
-  const cancelledOrders = getFilteredOrders("cancelled");
-  const disputeOrders = getFilteredOrders("dispute");
+  // Get filtered orders by status
+  const allOrders = getFilteredOrdersByStatus("all");
+  const placedOrders = getFilteredOrdersByStatus("placed");
+  const inProgressOrders = getFilteredOrdersByStatus("In Progress");
+  const completedOrders = getFilteredOrdersByStatus("Completed");
+  const cancelledOrders = getFilteredOrdersByStatus("Cancelled");
+  const disputedOrders = getFilteredOrdersByStatus("disputed");
 
   const currentOrder = selectedOrder
     ? orders.find((o) => o.id === selectedOrder)
@@ -179,13 +180,19 @@ export default function ProfessionalOrdersSection() {
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
+      case "placed":
+        return "bg-yellow-50 text-yellow-700 border-yellow-200";
       case "active":
         return "bg-blue-50 text-blue-700 border-blue-200";
       case "delivered":
         return "bg-purple-50 text-purple-700 border-purple-200";
       case "completed":
+      case "Completed":
         return "bg-green-50 text-green-700 border-green-200";
       case "cancelled":
+      case "Cancelled":
+        return "bg-red-50 text-red-700 border-red-200";
+      case "Rejected":
         return "bg-red-50 text-red-700 border-red-200";
       case "dispute":
         return "bg-orange-50 text-orange-700 border-orange-200";
@@ -196,13 +203,19 @@ export default function ProfessionalOrdersSection() {
 
   const getStatusIcon = (status?: string) => {
     switch (status) {
+      case "placed":
+        return <Clock className="w-4 h-4" />;
       case "active":
         return <Package className="w-4 h-4" />;
       case "delivered":
         return <CheckCircle2 className="w-4 h-4" />;
       case "completed":
+      case "Completed":
         return <CheckCircle2 className="w-4 h-4" />;
       case "cancelled":
+      case "Cancelled":
+        return <XCircle className="w-4 h-4" />;
+      case "Rejected":
         return <XCircle className="w-4 h-4" />;
       case "dispute":
         return <AlertTriangle className="w-4 h-4" />;
@@ -229,17 +242,77 @@ export default function ProfessionalOrdersSection() {
     setSelectedOrder(null);
   };
 
-  const handleMarkAsDelivered = () => {
-    if (!deliveryMessage.trim()) {
-      toast.error("Please add a delivery message");
+  const handleMarkAsDelivered = async () => {
+    if (!deliveryMessage.trim() && (!deliveryFiles || deliveryFiles.length === 0)) {
+      toast.error("Please add a delivery message or upload files");
       return;
     }
     if (selectedOrder) {
-      deliverWork(selectedOrder, deliveryMessage);
-      toast.success("Order marked as delivered! Client will be notified.");
-      setIsDeliveryDialogOpen(false);
-      setDeliveryMessage("");
+      const currentOrder = orders.find(o => o.id === selectedOrder);
+      // Check if this is a revision completion
+      if (currentOrder?.revisionRequest && currentOrder.revisionRequest.status === 'in_progress') {
+        try {
+          await completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined);
+          toast.success("Revision completed and delivered successfully!");
+          setIsDeliveryDialogOpen(false);
+          setDeliveryMessage("");
+          setDeliveryFiles([]);
+        } catch (error: any) {
+          toast.error(error.message || "Failed to complete revision");
+        }
+      } else {
+        try {
+          await deliverWork(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined);
+          toast.success("Order marked as delivered! Client will be notified.");
+          setIsDeliveryDialogOpen(false);
+          setDeliveryMessage("");
+          setDeliveryFiles([]);
+        } catch (error: any) {
+          toast.error(error.message || "Failed to mark order as delivered");
+        }
+      }
     }
+  };
+
+  const handleRespondToRevision = async () => {
+    if (!selectedOrder) return;
+    try {
+      await respondToRevision(selectedOrder, revisionResponseAction, revisionAdditionalNotes || undefined);
+      toast.success(`Revision request ${revisionResponseAction}ed successfully`);
+      setIsRevisionResponseDialogOpen(false);
+      setRevisionAdditionalNotes("");
+    } catch (error: any) {
+      toast.error(error.message || `Failed to ${revisionResponseAction} revision request`);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      // Filter only images and videos
+      const validFiles = newFiles.filter(file => {
+        const type = file.type;
+        return type.startsWith('image/') || type.startsWith('video/');
+      });
+      
+      if (validFiles.length !== newFiles.length) {
+        toast.error("Only images and videos are allowed");
+      }
+      
+      // Limit to 10 files
+      const filesToAdd = validFiles.slice(0, 10 - deliveryFiles.length);
+      if (filesToAdd.length < validFiles.length) {
+        toast.error("Maximum 10 files allowed");
+      }
+      
+      setDeliveryFiles(prev => [...prev, ...filesToAdd]);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setDeliveryFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCancelOrder = () => {
@@ -256,19 +329,90 @@ export default function ProfessionalOrdersSection() {
     }
   };
 
-  const handleCreateDispute = () => {
+  const handleRejectOrder = async () => {
+    if (!selectedOrder) {
+      toast.error("No order selected");
+      return;
+    }
+
+    try {
+      await rejectOrder(selectedOrder, rejectionReason);
+      toast.success("Order rejected successfully");
+      setIsRejectDialogOpen(false);
+      setRejectionReason("");
+      setSelectedOrder(null);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reject order");
+    }
+  };
+
+  const handleCreateDispute = async () => {
     if (!disputeReason.trim()) {
       toast.error("Please provide a reason for the dispute");
       return;
     }
     if (selectedOrder) {
-      const disputeId = createOrderDispute(selectedOrder, disputeReason, disputeEvidence);
-      toast.success("Dispute has been created");
-      setIsDisputeDialogOpen(false);
-      setDisputeReason("");
-      setDisputeEvidence("");
-      // Navigate to dispute discussion page
-      navigate(`/dispute/${disputeId}`);
+      const order = orders.find(o => o.id === selectedOrder);
+      // Check if order is delivered
+      if (order?.deliveryStatus !== 'delivered' && order?.status !== 'In Progress') {
+        toast.error("Disputes can only be opened for delivered orders");
+        return;
+      }
+      try {
+        const disputeId = await createOrderDispute(selectedOrder, disputeReason, disputeEvidence);
+        toast.success("Dispute has been created");
+        setIsDisputeDialogOpen(false);
+        setDisputeReason("");
+        setDisputeEvidence("");
+        // Navigate to dispute discussion page
+        navigate(`/dispute/${disputeId}`);
+      } catch (error: any) {
+        toast.error(error.message || "Failed to create dispute");
+      }
+    }
+  };
+
+  const handleRespondToDispute = async () => {
+    if (!selectedOrder) return;
+    try {
+      await respondToDispute(selectedOrder, disputeResponseMessage || undefined);
+      toast.success("Dispute response submitted successfully");
+      setIsDisputeResponseDialogOpen(false);
+      setDisputeResponseMessage("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to respond to dispute");
+    }
+  };
+
+  const handleRequestCancellation = async () => {
+    if (!selectedOrder) return;
+    try {
+      await requestCancellation(selectedOrder, cancellationReason);
+      toast.success("Cancellation request submitted. Waiting for response.");
+      setIsCancellationRequestDialogOpen(false);
+      setCancellationReason("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to request cancellation");
+    }
+  };
+
+  const handleRespondToCancellation = async (action: 'approve' | 'reject') => {
+    if (!selectedOrder) return;
+    try {
+      await respondToCancellation(selectedOrder, action);
+      toast.success(`Cancellation request ${action}d successfully`);
+    } catch (error: any) {
+      toast.error(error.message || `Failed to ${action} cancellation request`);
+    }
+  };
+
+  const handleWithdrawCancellation = async () => {
+    if (!selectedOrder) return;
+    try {
+      await withdrawCancellation(selectedOrder);
+      toast.success("Cancellation request withdrawn. Order status restored.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to withdraw cancellation request");
     }
   };
 
@@ -493,8 +637,78 @@ export default function ProfessionalOrdersSection() {
 
               {/* Timeline Tab */}
               <TabsContent value="timeline" className="mt-6 space-y-6">
-                {/* Status Alert Box */}
-                {currentOrder.deliveryStatus === "pending" && (
+                {/* Order Placed - Awaiting Professional Response */}
+                {currentOrder.status === "placed" && !currentOrder.acceptedByProfessional && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+                      New Order Received
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                      A new order has been placed by {currentOrder.client || "the client"}. Please review the order details and accept or reject it. {currentOrder.booking?.date && currentOrder.booking?.time && (
+                        <span className="text-[#2c353f]">Scheduled for: {formatDate(currentOrder.booking.date)} at {currentOrder.booking.time}</span>
+                      )}
+                    </p>
+                    <div className="flex gap-3 flex-wrap">
+                      <Button
+                        onClick={async () => {
+                          try {
+                            await acceptOrder(currentOrder.id);
+                            toast.success("Order accepted successfully!");
+                          } catch (error: any) {
+                            toast.error(error.message || "Failed to accept order");
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Accept Order
+                      </Button>
+                      <Button
+                        onClick={() => setIsRejectDialogOpen(true)}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Reject Order
+                      </Button>
+                      <Button
+                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Placed - Accepted by Professional (Waiting for booking time) */}
+                {currentOrder.status === "placed" && currentOrder.acceptedByProfessional && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+                      Order Accepted - Awaiting Booking Time
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                      You have accepted this order. The order status will automatically change to "In Progress" when the scheduled time arrives. {currentOrder.booking?.date && currentOrder.booking?.time && (
+                        <span className="text-[#2c353f]">Scheduled for: {formatDate(currentOrder.booking.date)} at {currentOrder.booking.time}</span>
+                      )}
+                    </p>
+                    <div className="flex gap-3 flex-wrap">
+                      <Button
+                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status Alert Box - Old pending status (for backward compatibility) */}
+                {currentOrder.deliveryStatus === "pending" && currentOrder.status !== "placed" && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service Delivery Pending
@@ -602,10 +816,10 @@ export default function ProfessionalOrdersSection() {
                       })()}
                       <Button
                         onClick={() => setIsDeliveryDialogOpen(true)}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
                       >
-                        <Package className="w-4 h-4 mr-2" />
-                        Deliver Work
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Completed
                       </Button>
                       <Button
                         onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
@@ -672,6 +886,266 @@ export default function ProfessionalOrdersSection() {
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
                       You have delivered your work. The client has until <span className="text-[#6b6b6b]">Sun 12th October, 2025 17:00</span>, to approve the delivery or request modifications. If no response is received, the order will be automatically completed.
                     </p>
+
+                    {/* Revision Request Section */}
+                    {currentOrder.revisionRequest && (
+                      <div className={`mb-6 p-4 rounded-lg border ${
+                        currentOrder.revisionRequest.status === 'pending' 
+                          ? 'bg-orange-50 border-orange-200' 
+                          : currentOrder.revisionRequest.status === 'in_progress'
+                          ? 'bg-blue-50 border-blue-200'
+                          : currentOrder.revisionRequest.status === 'completed'
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-start gap-3 mb-4">
+                          {currentOrder.revisionRequest.status === 'pending' && (
+                            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          {currentOrder.revisionRequest.status === 'in_progress' && (
+                            <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          {currentOrder.revisionRequest.status === 'completed' && (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          {currentOrder.revisionRequest.status === 'rejected' && (
+                            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium mb-2 ${
+                              currentOrder.revisionRequest.status === 'pending' 
+                                ? 'text-orange-700' 
+                                : currentOrder.revisionRequest.status === 'in_progress'
+                                ? 'text-blue-700'
+                                : currentOrder.revisionRequest.status === 'completed'
+                                ? 'text-green-700'
+                                : 'text-red-700'
+                            }`}>
+                              Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : currentOrder.revisionRequest.status === 'in_progress' ? 'In Progress' : currentOrder.revisionRequest.status === 'completed' ? 'Completed' : 'Rejected'}
+                            </h5>
+                            
+                            {currentOrder.revisionRequest.reason && (
+                              <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Client's request:
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  {currentOrder.revisionRequest.reason}
+                                </p>
+                              </div>
+                            )}
+
+                            {currentOrder.revisionRequest.status === 'pending' && (
+                              <div className="flex gap-3 mt-4">
+                                <Button
+                                  onClick={() => {
+                                    setRevisionResponseAction('accept');
+                                    setRevisionAdditionalNotes("");
+                                    setIsRevisionResponseDialogOpen(true);
+                                  }}
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                                >
+                                  Accept Revision
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setRevisionResponseAction('reject');
+                                    setRevisionAdditionalNotes("");
+                                    setIsRevisionResponseDialogOpen(true);
+                                  }}
+                                  variant="outline"
+                                  className="flex-1 font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                                >
+                                  Reject Revision
+                                </Button>
+                              </div>
+                            )}
+
+                            {currentOrder.revisionRequest.status === 'in_progress' && (
+                              <div className="mt-4">
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                                  You are working on the revision. Complete the modifications and deliver again.
+                                </p>
+                                <Button
+                                  onClick={() => {
+                                    setIsDeliveryDialogOpen(true);
+                                    setDeliveryMessage("");
+                                    setDeliveryFiles([]);
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif]"
+                                >
+                                  <Truck className="w-4 h-4 mr-2" />
+                                  Deliver Revision
+                                </Button>
+                              </div>
+                            )}
+
+                            {currentOrder.revisionRequest.additionalNotes && (
+                              <div className="mt-3 p-3 bg-white border border-gray-200 rounded">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Your notes:
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  {currentOrder.revisionRequest.additionalNotes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show dispute status if dispute exists */}
+                    {currentOrder.disputeInfo && (
+                      <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3 mb-2">
+                          <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-red-700 mb-1">
+                              Dispute {
+                                currentOrder.disputeInfo.status === 'open' ? 'Open - Action Required'
+                                : currentOrder.disputeInfo.status === 'negotiation' ? 'In Negotiation'
+                                : currentOrder.disputeInfo.status === 'admin_arbitration' ? 'Under Admin Review'
+                                : 'Closed'
+                              }
+                            </h5>
+                            {currentOrder.disputeInfo.status === 'open' && currentOrder.disputeInfo.responseDeadline && (
+                              <div className="mb-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                  <span className="font-medium text-red-700">Response deadline:</span> {new Date(currentOrder.disputeInfo.responseDeadline).toLocaleString('en-GB', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-3">
+                                  ⚠️ If you don't respond by the deadline, the dispute will automatically close in favor of the client.
+                                </p>
+                                <Button
+                                  onClick={() => {
+                                    setIsDisputeResponseDialogOpen(true);
+                                    setDisputeResponseMessage("");
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                                >
+                                  Respond to Dispute
+                                </Button>
+                              </div>
+                            )}
+                            {currentOrder.disputeInfo.status === 'negotiation' && currentOrder.disputeInfo.negotiationDeadline && (
+                              <div className="mb-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                  Negotiation deadline: {new Date(currentOrder.disputeInfo.negotiationDeadline).toLocaleString('en-GB', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                                <div className="mt-3 space-y-2">
+                                  {!currentOrder.disputeInfo.arbitrationRequested && (
+                                    <div>
+                                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                        If you can't reach an agreement, you can request admin arbitration by paying an administration fee of £{currentOrder.disputeInfo.arbitrationFeeAmount || 50}. The loser will lose both the arbitration fee and the order amount.
+                                      </p>
+                                      <Button
+                                        onClick={handleRequestArbitration}
+                                        className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif] mr-2"
+                                      >
+                                        <AlertTriangle className="w-4 h-4 mr-2" />
+                                        Request Admin Arbitration
+                                      </Button>
+                                    </div>
+                                  )}
+                                  <Button
+                                    onClick={handleCancelDispute}
+                                    variant="outline"
+                                    className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Cancel Dispute
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {currentOrder.disputeInfo.status === 'admin_arbitration' && (
+                              <div className="mb-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 mb-2">
+                                  ⚖️ Admin is reviewing this dispute. A decision will be made soon.
+                                </p>
+                                {currentOrder.disputeInfo.arbitrationRequestedBy && (
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mb-2">
+                                    Arbitration requested by: {currentOrder.disputeInfo.arbitrationRequestedBy === currentOrder.disputeInfo.claimantId ? 'Claimant' : 'Respondent'}
+                                  </p>
+                                )}
+                                <Button
+                                  onClick={handleCancelDispute}
+                                  variant="outline"
+                                  className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Cancel Dispute
+                                </Button>
+                              </div>
+                            )}
+                            {currentOrder.disputeInfo.status === 'closed' && currentOrder.disputeInfo.adminDecision && (
+                              <div className="mb-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] font-medium text-[#2c353f] mb-1">
+                                  Admin Decision: {currentOrder.disputeInfo.winnerId === currentOrder.disputeInfo.claimantId ? 'Claimant Won' : 'Respondent Won'}
+                                </p>
+                                {currentOrder.disputeInfo.decisionNotes && (
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mb-2">
+                                    {currentOrder.disputeInfo.decisionNotes}
+                                  </p>
+                                )}
+                                {currentOrder.disputeInfo.loserId && (
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-red-600">
+                                    The loser has forfeited the arbitration fee (£{currentOrder.disputeInfo.arbitrationFeeAmount || 50}) and the order amount.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {currentOrder.disputeInfo.status === 'closed' && currentOrder.disputeInfo.autoClosed && (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                Dispute automatically closed in favor of the client (no response received)
+                              </p>
+                            )}
+                            {currentOrder.disputeInfo.reason && (
+                              <div className="mt-3 p-3 bg-white border border-red-200 rounded">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Dispute reason:
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  {currentOrder.disputeInfo.reason}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show Open Dispute button only for delivered orders and if no dispute exists */}
+                    {!currentOrder.disputeInfo && (
+                      <div className="mb-6">
+                        <Button
+                          onClick={() => {
+                            setIsDisputeDialogOpen(true);
+                            setDisputeReason("");
+                            setDisputeEvidence("");
+                          }}
+                          variant="outline"
+                          className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          Open Dispute
+                        </Button>
+                      </div>
+                    )}
+
                     <div className="flex justify-end">
                       <Button
                         onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
@@ -774,26 +1248,51 @@ export default function ProfessionalOrdersSection() {
                       </div>
                     )}
 
-                    {/* Request Extension Button */}
-                    {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && (
+                    <div className="flex gap-3">
+                      {/* Request Extension Button */}
+                      {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && (
+                        <Button
+                          onClick={() => {
+                            // Set default date to 7 days from scheduled date or today
+                            const currentDate = currentOrder.scheduledDate 
+                              ? new Date(currentOrder.scheduledDate) 
+                              : new Date();
+                            currentDate.setDate(currentDate.getDate() + 7);
+                            setExtensionNewDate(currentDate.toISOString().split('T')[0]);
+                            setExtensionReason("");
+                            setIsExtensionDialogOpen(true);
+                          }}
+                          variant="outline"
+                          className="flex-1 font-['Poppins',sans-serif] border-blue-500 text-blue-600 hover:bg-blue-50 text-[14px] py-6"
+                        >
+                          <Clock className="w-5 h-5 mr-2" />
+                          Request Time Extension
+                        </Button>
+                      )}
+
+                      {/* Deliver Work Button */}
                       <Button
                         onClick={() => {
-                          // Set default date to 7 days from scheduled date or today
-                          const currentDate = currentOrder.scheduledDate 
-                            ? new Date(currentOrder.scheduledDate) 
-                            : new Date();
-                          currentDate.setDate(currentDate.getDate() + 7);
-                          setExtensionNewDate(currentDate.toISOString().split('T')[0]);
-                          setExtensionReason("");
-                          setIsExtensionDialogOpen(true);
+                          setIsDeliveryDialogOpen(true);
+                          setDeliveryMessage("");
+                          setDeliveryFiles([]);
                         }}
-                        variant="outline"
-                        className="w-full font-['Poppins',sans-serif] border-blue-500 text-blue-600 hover:bg-blue-50 text-[14px] py-6"
+                        className="flex-1 bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[14px] py-6"
                       >
-                        <Clock className="w-5 h-5 mr-2" />
-                        Request Time Extension
+                        <Truck className="w-5 h-5 mr-2" />
+                        Deliver Work
                       </Button>
-                    )}
+
+                      {/* Chat Button */}
+                      <Button
+                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif] text-[14px] py-6"
+                      >
+                        <MessageCircle className="w-5 h-5 mr-2" />
+                        Chat
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -984,24 +1483,47 @@ export default function ProfessionalOrdersSection() {
                         </p>
                         
                         {/* Delivery Message and Attachments */}
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                            hghghgh
-                          </p>
-                          
-                          <div>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
-                              Attachments
-                            </p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <img 
-                                src={serviceVector}
-                                alt="Attachment"
-                                className="w-full h-24 object-cover rounded-lg border border-gray-300"
-                              />
-                            </div>
+                        {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            {currentOrder.deliveryMessage && (
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
+                                {currentOrder.deliveryMessage}
+                              </p>
+                            )}
+                            
+                            {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 && (
+                              <div>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                                  Attachments ({currentOrder.deliveryFiles.length})
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  {currentOrder.deliveryFiles.map((file, index) => (
+                                    <div key={index} className="relative group">
+                                      {file.fileType === 'image' ? (
+                                        <img 
+                                          src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                                          alt={file.fileName}
+                                          className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                          onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                                        />
+                                      ) : (
+                                        <div
+                                          className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                          onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                                        >
+                                          <PlayCircle className="w-8 h-8 text-gray-600" />
+                                          <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                            {file.fileName}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
 
@@ -1836,6 +2358,60 @@ export default function ProfessionalOrdersSection() {
           </DialogContent>
         </Dialog>
 
+        {/* Reject Order Dialog */}
+        <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+          <DialogContent className="w-[90vw] max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Reject Order
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Rejecting this order will notify the client. Please provide a reason for rejecting the order.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  ⚠️ Are you sure you want to reject this order? The client will be notified and the order will be cancelled.
+                </p>
+              </div>
+
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Reason for Rejection (Optional)
+                </Label>
+                <Textarea
+                  placeholder="Please provide a reason for rejecting this order..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  rows={4}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsRejectDialogOpen(false);
+                    setRejectionReason("");
+                  }}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRejectOrder}
+                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                >
+                  Reject Order
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Cancel Order Dialog */}
         <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
           <DialogContent className="w-[70vw]">
@@ -1885,6 +2461,133 @@ export default function ProfessionalOrdersSection() {
                 >
                   <XCircle className="w-4 h-4 mr-2" />
                   Cancel Order
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delivery Dialog */}
+        <Dialog open={isDeliveryDialogOpen} onOpenChange={setIsDeliveryDialogOpen}>
+          <DialogContent className="w-[90vw] max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Deliver Work
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Upload images or videos of your completed work along with remarks to deliver this order.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* File Upload */}
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Upload Files (Images/Videos) <span className="text-red-500">*</span>
+                </Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#3D78CB] transition-colors">
+                  <input
+                    type="file"
+                    id="delivery-files"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="delivery-files"
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                      Images (PNG, JPG, GIF, WEBP) or Videos (MP4, MPEG, MOV, AVI, WEBM) - Max 100MB each
+                    </p>
+                  </label>
+                </div>
+                
+                {/* Selected Files Preview */}
+                {deliveryFiles.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Selected Files ({deliveryFiles.length}/10):
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {deliveryFiles.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                        >
+                          {file.type.startsWith('image/') ? (
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                              <PlayCircle className="w-6 h-6 text-gray-600" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                              {file.name}
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                              {(file.size / (1024 * 1024)).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFile(index)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Message */}
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Remarks <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  placeholder="Add remarks about the completed work..."
+                  value={deliveryMessage}
+                  onChange={(e) => setDeliveryMessage(e.target.value)}
+                  rows={4}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsDeliveryDialogOpen(false);
+                    setDeliveryMessage("");
+                    setDeliveryFiles([]);
+                  }}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleMarkAsDelivered}
+                  disabled={(!deliveryMessage.trim() && deliveryFiles.length === 0)}
+                  className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Truck className="w-4 h-4 mr-2" />
+                  Deliver Work
                 </Button>
               </div>
             </div>
@@ -2022,20 +2725,20 @@ export default function ProfessionalOrdersSection() {
         {/* Pending */}
         <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#92400E] mb-1 md:mb-2">
-            Pending
+            Placed
           </p>
           <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#92400E]">
-            {activeOrders.length}
+            {placedOrders.length}
           </p>
         </div>
 
         {/* Confirmed */}
         <div className="bg-[#DBEAFE] border border-[#BFDBFE] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#1E40AF] mb-1 md:mb-2">
-            Confirmed
+            In Progress
           </p>
           <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#1E40AF]">
-            {deliveredOrders.length}
+            {inProgressOrders.length}
           </p>
         </div>
 
@@ -2052,51 +2755,243 @@ export default function ProfessionalOrdersSection() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-          <TabsList className="inline-flex w-auto min-w-full sm:w-full justify-start sm:grid sm:grid-cols-5 gap-1">
+          <TabsList className="inline-flex w-auto min-w-full justify-start gap-1">
             <TabsTrigger
-              value="active"
+              value="all"
+              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
+            >
+              All ({allOrders.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="placed"
+              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Placed ({placedOrders.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="In Progress"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <Package className="w-4 h-4 mr-2" />
-              Active ({activeOrders.length})
+              In Progress ({inProgressOrders.length})
             </TabsTrigger>
             <TabsTrigger
-              value="delivered"
-              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              Delivered ({deliveredOrders.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
+              value="Completed"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <CheckCircle2 className="w-4 h-4 mr-2" />
               Completed ({completedOrders.length})
             </TabsTrigger>
             <TabsTrigger
-              value="cancelled"
+              value="Cancelled"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <XCircle className="w-4 h-4 mr-2" />
               Cancelled ({cancelledOrders.length})
             </TabsTrigger>
             <TabsTrigger
-              value="dispute"
+              value="disputed"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <AlertTriangle className="w-4 h-4 mr-2" />
-              Dispute ({disputeOrders.length})
+              Disputed ({disputedOrders.length})
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="active" className="space-y-4">
-          {activeOrders.length === 0 ? (
+        <TabsContent value="all" className="space-y-4">
+          {allOrders.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                No orders
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-['Poppins',sans-serif]">Service</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Client</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Order Date</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Amount</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
+                              {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-['Poppins',sans-serif] text-[13px]">{order.client}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-['Poppins',sans-serif] text-[13px]">
+                        {formatDate(order.date)}
+                      </TableCell>
+                      <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
+                        {order.amount}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
+                          <span className="flex items-center gap-1">
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
+                          </span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              if (order.client) {
+                                startConversation({
+                                  id: `client-${order.id}`,
+                                  name: order.client,
+                                  avatar: order.clientAvatar,
+                                  online: true,
+                                  jobId: order.id,
+                                  jobTitle: order.service
+                                });
+                              }
+                            }}>
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Message
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="placed" className="space-y-4">
+          {placedOrders.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                No placed orders
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-['Poppins',sans-serif]">Service</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Client</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Order Date</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Amount</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {placedOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
+                              {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-['Poppins',sans-serif] text-[13px]">{order.client}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-['Poppins',sans-serif] text-[13px]">
+                        {formatDate(order.date)}
+                      </TableCell>
+                      <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
+                        {order.amount}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
+                          <span className="flex items-center gap-1">
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
+                          </span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              if (order.client) {
+                                startConversation({
+                                  id: `client-${order.id}`,
+                                  name: order.client,
+                                  avatar: order.clientAvatar,
+                                  online: true,
+                                  jobId: order.id,
+                                  jobTitle: order.service
+                                });
+                              }
+                            }}>
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Message
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="In Progress" className="space-y-4">
+          {inProgressOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                No active orders
+                No in progress orders
               </p>
             </div>
           ) : (
@@ -2113,7 +3008,7 @@ export default function ProfessionalOrdersSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeOrders.map((order) => (
+                  {inProgressOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
@@ -2139,10 +3034,10 @@ export default function ProfessionalOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2184,100 +3079,7 @@ export default function ProfessionalOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="delivered" className="space-y-4">
-          {deliveredOrders.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <CheckCircle2 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                No delivered orders
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-['Poppins',sans-serif]">Service</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Client</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Order Date</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Amount</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {deliveredOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
-                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-['Poppins',sans-serif] text-[13px]">{order.client}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-['Poppins',sans-serif] text-[13px]">
-                        {formatDate(order.date)}
-                      </TableCell>
-                      <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {order.amount}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
-                          <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
-                          </span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              if (order.client) {
-                                startConversation({
-                                  id: `client-${order.id}`,
-                                  name: order.client,
-                                  avatar: order.clientAvatar,
-                                  online: true,
-                                  jobId: order.id,
-                                  jobTitle: order.service
-                                });
-                              }
-                            }}>
-                              <MessageCircle className="w-4 h-4 mr-2" />
-                              Message
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="completed" className="space-y-4">
+        <TabsContent value="Completed" className="space-y-4">
           {completedOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <CheckCircle2 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -2370,7 +3172,7 @@ export default function ProfessionalOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="cancelled" className="space-y-4">
+        <TabsContent value="Cancelled" className="space-y-4">
           {cancelledOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -2418,10 +3220,10 @@ export default function ProfessionalOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2448,8 +3250,8 @@ export default function ProfessionalOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="dispute" className="space-y-4">
-          {disputeOrders.length === 0 ? (
+        <TabsContent value="disputed" className="space-y-4">
+          {disputedOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
@@ -2470,7 +3272,7 @@ export default function ProfessionalOrdersSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {disputeOrders.map((order) => (
+                  {disputedOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
@@ -2496,10 +3298,10 @@ export default function ProfessionalOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2541,6 +3343,74 @@ export default function ProfessionalOrdersSection() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Revision Response Dialog */}
+      <Dialog open={isRevisionResponseDialogOpen} onOpenChange={setIsRevisionResponseDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+              {revisionResponseAction === 'accept' ? 'Accept Revision Request' : 'Reject Revision Request'}
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              {revisionResponseAction === 'accept' 
+                ? 'You are accepting the revision request. You can add notes about how you will proceed with the modifications.'
+                : 'You are rejecting the revision request. Please provide a reason (optional).'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedOrder && (() => {
+              const order = orders.find(o => o.id === selectedOrder);
+              return order?.revisionRequest?.reason && (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                    Client's Request:
+                  </p>
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    {order.revisionRequest.reason}
+                  </p>
+                </div>
+              );
+            })()}
+            <div>
+              <Label htmlFor="revision-notes" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                {revisionResponseAction === 'accept' ? 'Additional Notes (Optional)' : 'Reason for Rejection (Optional)'}
+              </Label>
+              <Textarea
+                id="revision-notes"
+                placeholder={revisionResponseAction === 'accept' 
+                  ? "Describe how you will proceed with the revision..."
+                  : "Explain why you are rejecting this revision request..."}
+                value={revisionAdditionalNotes}
+                onChange={(e) => setRevisionAdditionalNotes(e.target.value)}
+                className="font-['Poppins',sans-serif] min-h-[120px]"
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRevisionResponseDialogOpen(false);
+                setRevisionAdditionalNotes("");
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRespondToRevision}
+              className={`font-['Poppins',sans-serif] ${
+                revisionResponseAction === 'accept'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              {revisionResponseAction === 'accept' ? 'Accept Revision' : 'Reject Revision'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

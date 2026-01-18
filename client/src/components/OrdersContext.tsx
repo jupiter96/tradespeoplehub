@@ -62,13 +62,25 @@ export interface OrderDispute {
   amount: number;
   reason: string;
   evidence?: string;
-  status: "open" | "resolved" | "closed";
+  status: "open" | "responded" | "negotiation" | "admin_arbitration" | "resolved" | "closed";
   messages: OrderDisputeMessage[];
   claimantOffer?: OrderDisputeOffer;
   respondentOffer?: OrderDisputeOffer;
   createdAt: string;
   resolvedAt?: string;
   teamInterventionTime?: string;
+  responseDeadline?: string;
+  respondedAt?: string;
+  negotiationDeadline?: string;
+  arbitrationRequested?: boolean;
+  arbitrationRequestedBy?: string;
+  arbitrationRequestedAt?: string;
+  arbitrationFeeAmount?: number;
+  winnerId?: string;
+  loserId?: string;
+  adminDecision?: boolean;
+  decisionNotes?: string;
+  autoClosed?: boolean;
 }
 
 export interface Order {
@@ -76,10 +88,11 @@ export interface Order {
   items: OrderItem[];
   service: string; // main service title for display
   date: string; // order creation date
-  status: "Pending" | "In Progress" | "Completed" | "Cancelled";
+  status: "placed" | "In Progress" | "Completed" | "Cancelled" | "Rejected" | "disputed";
   amount: string; // formatted amount with £
   amountValue: number; // numeric value for sorting
   professional: string;
+  professionalId?: string;
   professionalAvatar: string;
   professionalPhone?: string;
   professionalEmail?: string;
@@ -113,6 +126,59 @@ export interface Order {
     requestedAt?: string;
     respondedAt?: string;
   };
+  acceptedByProfessional?: boolean;
+  acceptedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  deliveryFiles?: Array<{
+    url: string;
+    fileName: string;
+    fileType: 'image' | 'video';
+    uploadedAt?: string;
+  }>;
+  deliveryMessage?: string;
+  reviewInfo?: {
+    id: string;
+    rating: number;
+    comment?: string;
+    reviewerName: string;
+    reviewer?: {
+      id: string;
+      name: string;
+      avatar?: string;
+    };
+    response?: string;
+    responseBy?: {
+      id: string;
+      name: string;
+      avatar?: string;
+    };
+    responseAt?: string;
+    hasResponded: boolean;
+    createdAt: string;
+  };
+  disputeInfo?: {
+    id?: string;
+    status: 'open' | 'responded' | 'negotiation' | 'admin_arbitration' | 'closed';
+    reason?: string;
+    evidence?: string;
+    claimantId?: string;
+    respondentId?: string;
+    responseDeadline?: string;
+    respondedAt?: string;
+    negotiationDeadline?: string;
+    arbitrationRequested?: boolean;
+    arbitrationRequestedBy?: string;
+    arbitrationRequestedAt?: string;
+    arbitrationFeeAmount?: number;
+    createdAt?: string;
+    closedAt?: string;
+    winnerId?: string;
+    loserId?: string;
+    adminDecision?: boolean;
+    decisionNotes?: string;
+    autoClosed?: boolean;
+  };
 }
 
 interface OrdersContextType {
@@ -129,16 +195,29 @@ interface OrdersContextType {
   updateOrderStatus: (orderId: string, status: Order["status"]) => void;
   rateOrder: (orderId: string, rating: number, review?: string) => void;
   cancelOrder: (orderId: string) => void;
+  acceptOrder: (orderId: string) => Promise<void>;
+  rejectOrder: (orderId: string, reason?: string) => Promise<void>;
   startWork: (orderId: string) => void;
-  deliverWork: (orderId: string, deliveryMessage: string) => void;
-  acceptDelivery: (orderId: string) => void;
+  deliverWork: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
+  acceptDelivery: (orderId: string) => Promise<void>;
   extendDeliveryTime: (orderId: string, days: number) => void;
   requestExtension: (orderId: string, newDeliveryDate: string, reason?: string) => Promise<void>;
   respondToExtension: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
-  createOrderDispute: (orderId: string, reason: string, evidence?: string) => string;
+  createOrderDispute: (orderId: string, reason: string, evidence?: string) => Promise<string>;
   getOrderDisputeById: (disputeId: string) => OrderDispute | undefined;
   addOrderDisputeMessage: (disputeId: string, message: string) => void;
   makeOrderDisputeOffer: (disputeId: string, amount: number) => void;
+  requestCancellation: (orderId: string, reason?: string) => Promise<void>;
+  respondToCancellation: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
+  withdrawCancellation: (orderId: string) => Promise<void>;
+  requestRevision: (orderId: string, reason: string) => Promise<void>;
+  respondToRevision: (orderId: string, action: 'accept' | 'reject', additionalNotes?: string) => Promise<void>;
+  completeRevision: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
+  respondToReview: (reviewId: string, response: string) => Promise<void>;
+  fetchReviewForOrder: (orderId: string) => Promise<any>;
+  respondToDispute: (orderId: string, message?: string) => Promise<void>;
+  requestArbitration: (orderId: string) => Promise<void>;
+  cancelDispute: (orderId: string) => Promise<void>;
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
@@ -276,6 +355,84 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     ));
   };
 
+  const acceptOrder = async (orderId: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/accept`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to accept order');
+      }
+
+      const data = await response.json();
+      
+      // Update order with acceptance status
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            acceptedByProfessional: true,
+            acceptedAt: data.order.acceptedAt,
+            status: 'placed', // Status remains 'placed' until booking time
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Accept order error:', error);
+      throw error;
+    }
+  };
+
+  const rejectOrder = async (orderId: string, reason?: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/reject`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason: reason || '' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject order');
+      }
+
+      const data = await response.json();
+      
+      // Update order with rejection status
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: 'Cancelled',
+            acceptedByProfessional: false,
+            rejectedAt: data.order.rejectedAt,
+            rejectionReason: data.order.rejectionReason,
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Reject order error:', error);
+      throw error;
+    }
+  };
+
   const startWork = (orderId: string) => {
     setOrders(prev => prev.map(order =>
       order.id === orderId ? { 
@@ -287,25 +444,90 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     ));
   };
 
-  const deliverWork = (orderId: string, deliveryMessage: string) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { 
-        ...order, 
-        deliveryStatus: "delivered",
-        deliveredDate: new Date().toISOString().split('T')[0]
-      } : order
-    ));
+  const deliverWork = async (orderId: string, deliveryMessage?: string, files?: File[]) => {
+    try {
+      const formData = new FormData();
+      if (deliveryMessage && deliveryMessage.trim()) {
+        formData.append('deliveryMessage', deliveryMessage.trim());
+      }
+      
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/deliver`), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to mark order as delivered');
+      }
+
+      const data = await response.json();
+      
+      // Update order status
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            deliveryStatus: 'delivered',
+            deliveredDate: data.order.deliveredDate ? new Date(data.order.deliveredDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            deliveryFiles: data.order.deliveryFiles || [],
+            deliveryMessage: data.order.deliveryMessage || undefined,
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Deliver work error:', error);
+      throw error;
+    }
   };
 
-  const acceptDelivery = (orderId: string) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { 
-        ...order, 
-        status: "Completed",
-        deliveryStatus: "completed",
-        completedDate: new Date().toISOString().split('T')[0]
-      } : order
-    ));
+  const acceptDelivery = async (orderId: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/complete`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to complete order');
+      }
+
+      const data = await response.json();
+      
+      // Update order status
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: 'Completed',
+            deliveryStatus: 'completed',
+            completedDate: data.order.completedDate ? new Date(data.order.completedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Accept delivery error:', error);
+      throw error;
+    }
   };
 
   const extendDeliveryTime = (orderId: string, days: number) => {
@@ -443,57 +665,176 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   // Dispute Management
   const [disputes, setDisputes] = useState<OrderDispute[]>([]);
 
-  const createOrderDispute = (orderId: string, reason: string, evidence?: string): string => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return "";
+  const createOrderDispute = async (orderId: string, reason: string, evidence?: string): Promise<string> => {
+    try {
+      // Call API to create dispute and update order status
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason, evidence: evidence || '' }),
+      });
 
-    const disputeId = `DISP-${Date.now()}`;
-    const now = new Date();
-    const teamInterventionTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create dispute');
+      }
 
-    // Determine who is the claimant and respondent based on current user
-    // For demo purposes, we'll assume current user is the one creating the dispute
-    const isClient = !order.client; // If no client property, then current user is client
-    
-    const newDispute: OrderDispute = {
-      id: disputeId,
-      orderId: orderId,
-      claimantId: isClient ? "client-user" : "professional-user",
-      claimantName: isClient ? "John Client" : (order.professional || "Current User"),
-      claimantAvatar: isClient ? "" : order.professionalAvatar,
-      respondentId: isClient ? "professional-user" : "client-user",
-      respondentName: isClient ? order.professional : (order.client || "Client"),
-      respondentAvatar: isClient ? order.professionalAvatar : (order.clientAvatar || ""),
-      amount: order.amountValue,
-      reason: reason,
-      evidence: evidence,
-      status: "open",
-      messages: [
-        {
-          id: `MSG-${Date.now()}`,
-          userId: isClient ? "client-user" : "professional-user",
-          userName: isClient ? "John Client" : (order.professional || "Current User"),
-          userAvatar: isClient ? "" : order.professionalAvatar,
-          message: reason,
-          timestamp: now.toISOString(),
+      const data = await response.json();
+
+      // Update order status to disputed
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: 'disputed',
+            deliveryStatus: 'dispute',
+            disputeId: data.disputeId || data.dispute?.id,
+          };
         }
-      ],
-      createdAt: now.toISOString(),
-      teamInterventionTime: teamInterventionTime.toISOString(),
-    };
+        return order;
+      }));
 
-    setDisputes(prev => [newDispute, ...prev]);
-    setOrders(prev => prev.map(o => 
-      o.id === orderId 
-        ? { ...o, deliveryStatus: "dispute", disputeId: disputeId }
-        : o
-    ));
+      // Refresh orders to get latest data
+      await refreshOrders();
 
-    return disputeId;
+      return data.disputeId || data.dispute?.id || '';
+    } catch (error: any) {
+      console.error('Create dispute error:', error);
+      throw error;
+    }
   };
 
   const getOrderDisputeById = (disputeId: string): OrderDispute | undefined => {
     return disputes.find(d => d.id === disputeId);
+  };
+
+  // Cancellation Request Management
+  const requestCancellation = async (orderId: string, reason?: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/cancellation-request`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason: reason || '' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to request cancellation');
+      }
+
+      const data = await response.json();
+
+      // Update order with cancellation request
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            cancellationRequest: {
+              status: 'pending',
+              requestedBy: data.cancellationRequest.requestedBy,
+              reason: data.cancellationRequest.reason,
+              requestedAt: data.cancellationRequest.requestedAt,
+              responseDeadline: data.responseDeadline || data.cancellationRequest.responseDeadline,
+              respondedAt: undefined,
+              respondedBy: undefined,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Cancellation request error:', error);
+      throw error;
+    }
+  };
+
+  const respondToCancellation = async (orderId: string, action: 'approve' | 'reject'): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/cancellation-request`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to respond to cancellation request');
+      }
+
+      const data = await response.json();
+
+      // Update order with cancellation response
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: data.orderStatus || (action === 'approve' ? 'Cancelled' : order.status),
+            cancellationRequest: {
+              ...order.cancellationRequest!,
+              status: data.cancellationRequest.status,
+              respondedAt: data.cancellationRequest.respondedAt,
+              respondedBy: data.cancellationRequest.respondedBy,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Cancellation response error:', error);
+      throw error;
+    }
+  };
+
+  const withdrawCancellation = async (orderId: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/cancellation-request`), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to withdraw cancellation request');
+      }
+
+      const data = await response.json();
+
+      // Update order - remove cancellation request and restore status
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: data.orderStatus || order.status,
+            cancellationRequest: {
+              ...order.cancellationRequest!,
+              status: 'withdrawn',
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Withdraw cancellation error:', error);
+      throw error;
+    }
   };
 
   const addOrderDisputeMessage = (disputeId: string, message: string) => {
@@ -519,6 +860,331 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
       return dispute;
     }));
+  };
+
+  // Revision Request Management
+  const requestRevision = async (orderId: string, reason: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/revision-request`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to request revision');
+      }
+
+      const data = await response.json();
+
+      // Update order with revision request
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            revisionRequest: {
+              status: data.revisionRequest.status,
+              reason: data.revisionRequest.reason,
+              requestedAt: data.revisionRequest.requestedAt,
+              respondedAt: undefined,
+              additionalNotes: undefined,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Revision request error:', error);
+      throw error;
+    }
+  };
+
+  const respondToRevision = async (orderId: string, action: 'accept' | 'reject', additionalNotes?: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/revision-request`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ action, additionalNotes: additionalNotes || '' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to respond to revision request');
+      }
+
+      const data = await response.json();
+
+      // Update order with revision response
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            revisionRequest: {
+              ...order.revisionRequest!,
+              status: data.revisionRequest.status,
+              respondedAt: data.revisionRequest.respondedAt,
+              additionalNotes: data.revisionRequest.additionalNotes,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Revision response error:', error);
+      throw error;
+    }
+  };
+
+  const completeRevision = async (orderId: string, deliveryMessage?: string, files?: File[]): Promise<void> => {
+    try {
+      const formData = new FormData();
+      if (deliveryMessage && deliveryMessage.trim()) {
+        formData.append('deliveryMessage', deliveryMessage.trim());
+      }
+      
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/revision-complete`), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to complete revision');
+      }
+
+      const data = await response.json();
+
+      // Update order - revision completed and re-delivered
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            deliveryStatus: 'delivered',
+            deliveredDate: data.order.deliveredDate ? new Date(data.order.deliveredDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            deliveryFiles: data.order.deliveryFiles || order.deliveryFiles,
+            deliveryMessage: data.order.deliveryMessage || order.deliveryMessage,
+            revisionRequest: {
+              ...order.revisionRequest!,
+              status: 'completed',
+              respondedAt: data.order.revisionRequest.respondedAt,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Complete revision error:', error);
+      throw error;
+    }
+  };
+
+  // Review Management
+  const respondToReview = async (reviewId: string, response: string): Promise<void> => {
+    try {
+      const response_data = await fetch(resolveApiUrl(`/api/orders/reviews/${reviewId}/respond`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ response }),
+      });
+
+      if (!response_data.ok) {
+        const error = await response_data.json();
+        throw new Error(error.error || 'Failed to respond to review');
+      }
+
+      const data = await response_data.json();
+
+      // Update order's review info
+      setOrders(prev => prev.map(order => {
+        if (order.reviewInfo && order.reviewInfo.id === reviewId) {
+          return {
+            ...order,
+            reviewInfo: {
+              ...order.reviewInfo,
+              response: data.review.response,
+              responseAt: data.review.responseAt,
+              hasResponded: true,
+              responseBy: {
+                id: data.review.responseBy || '',
+                name: '',
+                avatar: '',
+              },
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Review response error:', error);
+      throw error;
+    }
+  };
+
+  const fetchReviewForOrder = async (orderId: string): Promise<any> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/review`), {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch review');
+      }
+
+      const data = await response.json();
+      return data.review;
+    } catch (error: any) {
+      console.error('Fetch review error:', error);
+      throw error;
+    }
+  };
+
+  // Dispute Response
+  const respondToDispute = async (orderId: string, message?: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute/respond`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ message: message || '' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to respond to dispute');
+      }
+
+      const data = await response.json();
+
+      // Update order's dispute info
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId && order.disputeInfo) {
+          return {
+            ...order,
+            disputeInfo: {
+              ...order.disputeInfo,
+              status: 'negotiation',
+              respondedAt: data.dispute.respondedAt,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Dispute response error:', error);
+      throw error;
+    }
+  };
+
+  // Request Admin Arbitration
+  const requestArbitration = async (orderId: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute/request-arbitration`), {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to request arbitration');
+      }
+
+      const data = await response.json();
+
+      // Update order's dispute info
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId && order.disputeInfo) {
+          return {
+            ...order,
+            disputeInfo: {
+              ...order.disputeInfo,
+              status: 'admin_arbitration',
+              arbitrationRequested: true,
+              arbitrationRequestedAt: data.dispute.arbitrationRequestedAt,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Request arbitration error:', error);
+      throw error;
+    }
+  };
+
+  // Cancel Dispute
+  const cancelDispute = async (orderId: string): Promise<void> => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute`), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to cancel dispute');
+      }
+
+      const data = await response.json();
+
+      // Update order - remove dispute info and restore to delivered status
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: 'In Progress',
+            deliveryStatus: 'delivered',
+            disputeInfo: undefined,
+            disputeId: undefined,
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Cancel dispute error:', error);
+      throw error;
+    }
   };
 
   const makeOrderDisputeOffer = (disputeId: string, amount: number) => {
@@ -557,6 +1223,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         updateOrderStatus,
         rateOrder,
         cancelOrder,
+        acceptOrder,
+        rejectOrder,
         startWork,
         deliverWork,
         acceptDelivery,
@@ -567,6 +1235,17 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         getOrderDisputeById,
         addOrderDisputeMessage,
         makeOrderDisputeOffer,
+        requestCancellation,
+        respondToCancellation,
+        withdrawCancellation,
+        requestRevision,
+        respondToRevision,
+        completeRevision,
+        respondToReview,
+        fetchReviewForOrder,
+        respondToDispute,
+        requestArbitration,
+        cancelDispute,
       }}
     >
       {children}

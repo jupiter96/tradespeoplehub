@@ -5,7 +5,6 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Eye,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -66,6 +65,8 @@ export default function ProPromoCodeSection() {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingPromoCode, setEditingPromoCode] = useState<PromoCode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("25");
   const [currentPage, setCurrentPage] = useState(1);
@@ -159,7 +160,89 @@ export default function ProPromoCodeSection() {
     }
   };
 
+  const handleEditPromoCode = (promo: PromoCode) => {
+    setEditingPromoCode(promo);
+    setFormData({
+      code: promo.code,
+      discountType: promo.discountType,
+      discount: promo.discount.toString(),
+      status: promo.status,
+      minOrderAmount: promo.minOrderAmount?.toString() || "",
+      maxDiscountAmount: promo.maxDiscountAmount?.toString() || "",
+      validFrom: promo.validFrom ? new Date(promo.validFrom).toISOString().slice(0, 16) : "",
+      validUntil: promo.validUntil ? new Date(promo.validUntil).toISOString().slice(0, 16) : "",
+      usageLimit: promo.usageLimit?.toString() || "",
+      perUserLimit: promo.perUserLimit?.toString() || "1",
+      description: promo.description || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdatePromoCode = async () => {
+    if (!editingPromoCode || !editingPromoCode._id) {
+      toast.error("No promo code selected for editing");
+      return;
+    }
+
+    if (!formData.code || !formData.discountType || !formData.discount || !formData.status) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const response = await fetch(resolveApiUrl(`/api/promo-codes/${editingPromoCode._id}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          discount: parseFloat(formData.discount),
+          discountType: formData.discountType,
+          minOrderAmount: formData.minOrderAmount ? parseFloat(formData.minOrderAmount) : 0,
+          maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null,
+          validFrom: formData.validFrom ? new Date(formData.validFrom).toISOString() : new Date().toISOString(),
+          validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
+          usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : null,
+          perUserLimit: parseInt(formData.perUserLimit) || 1,
+          description: formData.description || "",
+          status: formData.status,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update promo code");
+      }
+
+      const data = await response.json();
+      setPromoCodes(promoCodes.map(p => p._id === editingPromoCode._id ? data.promoCode : p));
+      setIsEditDialogOpen(false);
+      setEditingPromoCode(null);
+      setFormData({
+        code: "",
+        discountType: "",
+        discount: "",
+        status: "active",
+        minOrderAmount: "",
+        maxDiscountAmount: "",
+        validFrom: "",
+        validUntil: "",
+        usageLimit: "",
+        perUserLimit: "1",
+        description: "",
+      });
+      toast.success("Promo code updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update promo code");
+    }
+  };
+
   const handleDeletePromoCode = async (promoId: string) => {
+    if (!confirm("Are you sure you want to delete this promo code?")) {
+      return;
+    }
+
     try {
       const response = await fetch(resolveApiUrl(`/api/promo-codes/${promoId}`), {
         method: "DELETE",
@@ -324,16 +407,15 @@ export default function ProPromoCodeSection() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="font-['Poppins',sans-serif] text-[13px]">
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="font-['Poppins',sans-serif] text-[13px]">
+                        <DropdownMenuItem 
+                          className="font-['Poppins',sans-serif] text-[13px] cursor-pointer"
+                          onClick={() => handleEditPromoCode(promo)}
+                        >
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="font-['Poppins',sans-serif] text-[13px] text-red-600"
+                          className="font-['Poppins',sans-serif] text-[13px] text-red-600 cursor-pointer"
                           onClick={() => promo._id && handleDeletePromoCode(promo._id)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
@@ -611,6 +693,227 @@ export default function ProPromoCodeSection() {
               className="bg-[#5BC2E7] hover:bg-[#4ab3d6] text-white font-['Poppins',sans-serif] text-[13px]"
             >
               Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Promo Code Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Edit Promo Code
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Edit existing promo code
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Code - Read Only */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Code:
+              </Label>
+              <Input
+                value={formData.code}
+                disabled
+                className="font-['Poppins',sans-serif] text-[14px] bg-gray-100"
+              />
+              <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                Code cannot be changed after creation.
+              </p>
+            </div>
+
+            {/* Discount Type */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Discount Type <span className="text-red-500">*</span>:
+              </Label>
+              <Select
+                value={formData.discountType}
+                onValueChange={(value) => setFormData({ ...formData, discountType: value })}
+              >
+                <SelectTrigger className="font-['Poppins',sans-serif] text-[14px]">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage</SelectItem>
+                  <SelectItem value="fixed">Fixed Amount</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Discount */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Discount <span className="text-red-500">*</span>:
+              </Label>
+              <Input
+                value={formData.discount}
+                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                placeholder={formData.discountType === "percentage" ? "e.g., 10 for 10%" : "e.g., 5 for £5"}
+                type="number"
+                step="0.01"
+                min="0"
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* Max Discount Amount (for percentage) */}
+            {formData.discountType === "percentage" && (
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Max Discount Amount (Optional):
+                </Label>
+                <Input
+                  value={formData.maxDiscountAmount}
+                  onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
+                  placeholder="e.g., 50 for £50 max"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="font-['Poppins',sans-serif] text-[14px]"
+                />
+              </div>
+            )}
+
+            {/* Min Order Amount */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Minimum Order Amount (Optional):
+              </Label>
+              <Input
+                value={formData.minOrderAmount}
+                onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
+                placeholder="e.g., 20 for £20 minimum"
+                type="number"
+                step="0.01"
+                min="0"
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* Usage Limit */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Usage Limit (Optional - leave empty for unlimited):
+              </Label>
+              <Input
+                value={formData.usageLimit}
+                onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
+                placeholder="e.g., 100"
+                type="number"
+                min="1"
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* Per User Limit */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Per User Limit:
+              </Label>
+              <Input
+                value={formData.perUserLimit}
+                onChange={(e) => setFormData({ ...formData, perUserLimit: e.target.value })}
+                placeholder="1"
+                type="number"
+                min="1"
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Select Status:
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger className="font-['Poppins',sans-serif] text-[14px]">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Valid From */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Valid From (Optional):
+              </Label>
+              <Input
+                type="datetime-local"
+                value={formData.validFrom}
+                onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* Valid Until */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Valid Until (Optional):
+              </Label>
+              <Input
+                type="datetime-local"
+                value={formData.validUntil}
+                onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Description (Optional):
+              </Label>
+              <Input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter description"
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingPromoCode(null);
+                setFormData({
+                  code: "",
+                  discountType: "",
+                  discount: "",
+                  status: "active",
+                  minOrderAmount: "",
+                  maxDiscountAmount: "",
+                  validFrom: "",
+                  validUntil: "",
+                  usageLimit: "",
+                  perUserLimit: "1",
+                  description: "",
+                });
+              }}
+              className="font-['Poppins',sans-serif] text-[13px]"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={handleUpdatePromoCode}
+              className="bg-[#5BC2E7] hover:bg-[#4ab3d6] text-white font-['Poppins',sans-serif] text-[13px]"
+            >
+              Update
             </Button>
           </div>
         </DialogContent>

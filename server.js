@@ -26,6 +26,9 @@ import promoCodesRoutes from './routes/promo-codes.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
+import { startOrderStatusScheduler } from './services/orderStatusScheduler.js';
+import { startCancellationScheduler } from './services/cancellationScheduler.js';
+import { startDisputeScheduler } from './services/disputeScheduler.js';
 import { initNotifier } from './services/notifier.js';
 import { initializeSocket } from './services/socket.js';
 import { createServer } from 'http';
@@ -147,6 +150,9 @@ const initializeDatabase = async () => {
   await ensureAdminUser();
   // Start verification reminder scheduler
   startVerificationReminderScheduler();
+  startOrderStatusScheduler();
+  startCancellationScheduler();
+  startDisputeScheduler();
 };
 
 // Ensure DB is ready before accepting requests (avoids long buffering/hangs on first request)

@@ -33,6 +33,7 @@ import {
   MoreVertical,
   ChevronUp,
   Edit,
+  PlayCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -77,13 +78,13 @@ import { toast } from "sonner@2.0.3";
 export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension } = useOrders();
+  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute } = useOrders();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("all");
   const [orderDetailTab, setOrderDetailTab] = useState("timeline");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -93,6 +94,10 @@ export default function ClientOrdersSection() {
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
   const [showDisputeSection, setShowDisputeSection] = useState(false);
+  const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
+  const [revisionReason, setRevisionReason] = useState("");
 
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
@@ -111,16 +116,16 @@ export default function ClientOrdersSection() {
     (order) => order.professional !== "Current User"
   );
 
-  // Get orders by delivery status
+  // Get orders by order status (not deliveryStatus)
   const getOrdersByStatus = (status: string) => {
     if (status === "all") return clientOrders;
     return clientOrders.filter(
-      (order) => order.deliveryStatus === status
+      (order) => order.status === status
     );
   };
 
-  // Filter and sort orders
-  const getFilteredOrders = (status: string) => {
+  // Filter and sort orders by order status
+  const getFilteredOrdersByStatus = (status: string) => {
     let filtered = getOrdersByStatus(status);
 
     // Apply search
@@ -144,43 +149,34 @@ export default function ClientOrdersSection() {
 
     return filtered;
   };
-
-  // Active orders include both pending and active deliveryStatus
-  const activeOrders = (() => {
-    let filtered = clientOrders.filter(
-      (order) => order.deliveryStatus === "active" || order.deliveryStatus === "pending"
-    );
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (order) =>
-          order.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.professional?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.id.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    if (sortBy === "date") {
-      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    } else if (sortBy === "amount") {
-      filtered.sort((a, b) => b.amountValue - a.amountValue);
-    }
-    return filtered;
-  })();
   
-  const deliveredOrders = getFilteredOrders("delivered");
-  const completedOrders = getFilteredOrders("completed");
-  const cancelledOrders = getFilteredOrders("cancelled");
-  const disputeOrders = getFilteredOrders("dispute");
+  // Get filtered orders by status
+  const allOrders = getFilteredOrdersByStatus("all");
+  const placedOrders = getFilteredOrdersByStatus("placed");
+  const inProgressOrders = getFilteredOrdersByStatus("In Progress");
+  const completedOrders = getFilteredOrdersByStatus("Completed");
+  const cancelledOrders = getFilteredOrdersByStatus("Cancelled");
+  const disputedOrders = getFilteredOrdersByStatus("disputed");
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
+      case "placed":
+        return "bg-yellow-50 text-yellow-700 border-yellow-200";
       case "active":
+      case "In Progress":
         return "bg-blue-50 text-blue-700 border-blue-200";
       case "delivered":
         return "bg-purple-50 text-purple-700 border-purple-200";
       case "completed":
+      case "Completed":
         return "bg-green-50 text-green-700 border-green-200";
       case "cancelled":
+      case "Cancelled":
         return "bg-red-50 text-red-700 border-red-200";
+      case "Rejected":
+        return "bg-red-50 text-red-700 border-red-200";
+      case "disputed":
+        return "bg-orange-50 text-orange-700 border-orange-200";
       case "dispute":
         return "bg-orange-50 text-orange-700 border-orange-200";
       default:
@@ -237,29 +233,122 @@ export default function ClientOrdersSection() {
     }
   };
 
-  const handleAcceptDelivery = (orderId: string) => {
-    acceptDelivery(orderId);
-    toast.success("Delivery accepted! You can now rate the service.");
-    setIsRatingDialogOpen(true);
+  const handleRequestCancellation = async () => {
+    if (!selectedOrder) return;
+    try {
+      await requestCancellation(selectedOrder, cancellationReason);
+      toast.success("Cancellation request submitted. Waiting for response.");
+      setIsCancellationRequestDialogOpen(false);
+      setCancellationReason("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to request cancellation");
+    }
   };
 
-  const handleRequestRevision = (orderId: string) => {
-    toast.info("Revision request sent to professional");
+  const handleRespondToCancellation = async (action: 'approve' | 'reject') => {
+    if (!selectedOrder) return;
+    try {
+      await respondToCancellation(selectedOrder, action);
+      toast.success(`Cancellation request ${action}d successfully`);
+    } catch (error: any) {
+      toast.error(error.message || `Failed to ${action} cancellation request`);
+    }
   };
 
-  const handleCreateDispute = () => {
+  const handleWithdrawCancellation = async () => {
+    if (!selectedOrder) return;
+    try {
+      await withdrawCancellation(selectedOrder);
+      toast.success("Cancellation request withdrawn. Order status restored.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to withdraw cancellation request");
+    }
+  };
+
+  const handleRequestRevision = async () => {
+    if (!selectedOrder || !revisionReason.trim()) {
+      toast.error("Please provide a reason for the revision request");
+      return;
+    }
+    try {
+      await requestRevision(selectedOrder, revisionReason);
+      toast.success("Revision request submitted. The professional will review your request.");
+      setIsRevisionRequestDialogOpen(false);
+      setRevisionReason("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to request revision");
+    }
+  };
+
+  const handleRespondToDispute = async () => {
+    if (!selectedOrder) return;
+    try {
+      await respondToDispute(selectedOrder, disputeResponseMessage || undefined);
+      toast.success("Dispute response submitted successfully. Negotiation period has started.");
+      setIsDisputeResponseDialogOpen(false);
+      setDisputeResponseMessage("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to respond to dispute");
+    }
+  };
+
+  const handleRequestArbitration = async () => {
+    if (!selectedOrder) return;
+    try {
+      await requestArbitration(selectedOrder);
+      toast.success("Arbitration requested successfully. Admin will review the case.");
+    } catch (error: any) {
+      if (error.message.includes('Insufficient balance')) {
+        toast.error(error.message);
+      } else {
+        toast.error(error.message || "Failed to request arbitration");
+      }
+    }
+  };
+
+  const handleCancelDispute = async () => {
+    if (!selectedOrder) return;
+    try {
+      await cancelDispute(selectedOrder);
+      toast.success("Dispute cancelled successfully. Order restored to delivered status.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to cancel dispute");
+    }
+  };
+
+  const handleAcceptDelivery = async (orderId: string) => {
+    try {
+      await acceptDelivery(orderId);
+      toast.success("Order completed! Funds have been released to the professional. You can now rate the service.");
+      setIsRatingDialogOpen(true);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to complete order");
+    }
+  };
+
+  const handleCreateDispute = async () => {
     if (!disputeReason.trim()) {
       toast.error("Please provide a reason for the dispute");
       return;
     }
     if (selectedOrder) {
-      const disputeId = createOrderDispute(selectedOrder, disputeReason, disputeEvidence);
-      toast.success("Dispute has been created");
-      setIsDisputeDialogOpen(false);
-      setDisputeReason("");
-      setDisputeEvidence("");
-      // Navigate to dispute discussion page
-      navigate(`/dispute/${disputeId}`);
+      const order = orders.find(o => o.id === selectedOrder);
+      // Check if order is delivered
+      if (order?.deliveryStatus !== 'delivered' && order?.status !== 'In Progress') {
+        toast.error("Disputes can only be opened for delivered orders");
+        return;
+      }
+      try {
+        const disputeId = await createOrderDispute(selectedOrder, disputeReason, disputeEvidence);
+        toast.success("Dispute has been created");
+        setIsDisputeDialogOpen(false);
+        setDisputeReason("");
+        setDisputeEvidence("");
+        // Navigate to dispute discussion page
+        navigate(`/dispute/${disputeId}`);
+      } catch (error: any) {
+        toast.error(error.message || "Failed to create dispute");
+      }
     }
   };
 
@@ -304,12 +393,12 @@ export default function ClientOrdersSection() {
             </h3>
             <Badge
               className={`${getStatusBadge(
-                order.deliveryStatus
+                order.status
               )} font-['Poppins',sans-serif] text-[11px]`}
             >
               <span className="flex items-center gap-1">
-                {getStatusIcon(order.deliveryStatus)}
-                {order.deliveryStatus?.toUpperCase()}
+                {getStatusIcon(order.status)}
+                {order.status?.toUpperCase()}
               </span>
             </Badge>
           </div>
@@ -442,12 +531,12 @@ export default function ClientOrdersSection() {
             <div className="flex items-center gap-3">
               <Badge
                 className={`${getStatusBadge(
-                  currentOrder.deliveryStatus
+                  currentOrder.status
                 )} font-['Poppins',sans-serif] text-[11px]`}
               >
                 <span className="flex items-center gap-1">
-                  {getStatusIcon(currentOrder.deliveryStatus)}
-                  {currentOrder.deliveryStatus?.toUpperCase()}
+                  {getStatusIcon(currentOrder.status)}
+                  {currentOrder.status?.toUpperCase()}
                 </span>
               </Badge>
               
@@ -671,22 +760,288 @@ export default function ClientOrdersSection() {
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
                   Your work has been delivered on <span className="text-[#2c353f]">{currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : "today"}</span>. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller.
                 </p>
+                
+                {/* Delivery Message */}
+                {currentOrder.deliveryMessage && (
+                  <div className="bg-white border border-purple-200 rounded-lg p-4 mb-4">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                      Remarks:
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      {currentOrder.deliveryMessage}
+                    </p>
+                  </div>
+                )}
+
+                {/* Delivery Files */}
+                {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 && (
+                  <div className="mb-4">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                      Attachments ({currentOrder.deliveryFiles.length}):
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {currentOrder.deliveryFiles.map((file, index) => (
+                        <div key={index} className="relative group">
+                          {file.fileType === 'image' ? (
+                            <img
+                              src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                              alt={file.fileName}
+                              className="w-full h-32 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                            />
+                          ) : (
+                            <div
+                              className="w-full h-32 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                              onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                            >
+                              <PlayCircle className="w-12 h-12 text-gray-600" />
+                              <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded truncate">
+                                {file.fileName}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3 flex-wrap">
                   <Button
                     onClick={() => handleAcceptDelivery(currentOrder.id)}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                    className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Accept Delivery
+                    Completed
                   </Button>
-                  <Button
-                    onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif]"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Request Revision
-                  </Button>
+                  {/* Show Request Revision button only if no active revision request */}
+                  {(!currentOrder.revisionRequest || currentOrder.revisionRequest.status === 'completed' || currentOrder.revisionRequest.status === 'rejected') && (
+                    <Button
+                      onClick={() => {
+                        setIsRevisionRequestDialogOpen(true);
+                        setRevisionReason("");
+                      }}
+                      variant="outline"
+                      className="font-['Poppins',sans-serif] border-orange-500 text-orange-600 hover:bg-orange-50"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Request Revision
+                    </Button>
+                  )}
+                  
+                  {/* Show revision request status if pending or in progress */}
+                  {currentOrder.revisionRequest && (currentOrder.revisionRequest.status === 'pending' || currentOrder.revisionRequest.status === 'in_progress') && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-3 mb-2">
+                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-orange-700 mb-1">
+                            Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : 'In Progress'}
+                          </h5>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            {currentOrder.revisionRequest.status === 'pending' 
+                              ? 'Your revision request has been submitted. The professional will review it shortly.'
+                              : 'The professional is working on your revision request.'}
+                          </p>
+                          {currentOrder.revisionRequest.reason && (
+                            <div className="mt-2 p-2 bg-white border border-orange-200 rounded">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Your request:
+                              </p>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                {currentOrder.revisionRequest.reason}
+                              </p>
+                            </div>
+                          )}
+                          {currentOrder.revisionRequest.status === 'in_progress' && currentOrder.revisionRequest.additionalNotes && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Professional's notes:
+                              </p>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                {currentOrder.revisionRequest.additionalNotes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show completed revision status */}
+                  {currentOrder.revisionRequest && currentOrder.revisionRequest.status === 'completed' && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
+                          Revision Completed
+                        </h5>
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        The professional has completed your revision request. Please review the updated work above.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Show Open Dispute button only for delivered orders and if no dispute exists */}
+                  {!currentOrder.disputeInfo && (
+                    <Button
+                      onClick={() => {
+                        setIsDisputeDialogOpen(true);
+                        setDisputeReason("");
+                        setDisputeEvidence("");
+                      }}
+                      variant="outline"
+                      className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Open Dispute
+                    </Button>
+                  )}
+
+                  {/* Show dispute status if dispute exists */}
+                  {currentOrder.disputeInfo && (
+                    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-3 mb-2">
+                        <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-red-700 mb-1">
+                            Dispute {currentOrder.disputeInfo.status === 'open' ? 'Open' : currentOrder.disputeInfo.status === 'responded' ? 'Responded' : 'Closed'}
+                          </h5>
+                          {currentOrder.disputeInfo.status === 'open' && currentOrder.disputeInfo.responseDeadline && (
+                            <div className="mb-2">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                Response deadline: {new Date(currentOrder.disputeInfo.responseDeadline).toLocaleString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              {currentOrder.disputeInfo.respondentId && (() => {
+                                const { userInfo } = useAccount();
+                                const isRespondent = userInfo?.id === currentOrder.disputeInfo.respondentId;
+                                return isRespondent && (
+                                  <div className="mt-3">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                      ⚠️ You need to respond by the deadline, or the dispute will automatically close in favor of the other party.
+                                    </p>
+                                    <div className="flex gap-2 flex-wrap">
+                                      <Button
+                                        onClick={() => {
+                                          setIsDisputeResponseDialogOpen(true);
+                                          setDisputeResponseMessage("");
+                                        }}
+                                        className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                                      >
+                                        Respond to Dispute
+                                      </Button>
+                                      <Button
+                                        onClick={handleCancelDispute}
+                                        variant="outline"
+                                        className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                      >
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Cancel Dispute
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              {!currentOrder.disputeInfo.respondentId || (() => {
+                                const { userInfo } = useAccount();
+                                const isRespondent = userInfo?.id === currentOrder.disputeInfo.respondentId;
+                                return !isRespondent && (
+                                  <div className="mt-2">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                      ⚠️ The other party needs to respond by the deadline, or the dispute will automatically close in your favor.
+                                    </p>
+                                    <Button
+                                      onClick={handleCancelDispute}
+                                      variant="outline"
+                                      className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                    >
+                                      <XCircle className="w-4 h-4 mr-2" />
+                                      Cancel Dispute
+                                    </Button>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+                          {currentOrder.disputeInfo.status === 'negotiation' && currentOrder.disputeInfo.negotiationDeadline && (
+                            <div className="mb-2">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                Negotiation deadline: {new Date(currentOrder.disputeInfo.negotiationDeadline).toLocaleString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              <div className="mt-2 space-y-2">
+                                {!currentOrder.disputeInfo.arbitrationRequested && (
+                                  <div>
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                      If you can't reach an agreement, you can request admin arbitration by paying an administration fee of £{currentOrder.disputeInfo.arbitrationFeeAmount || 50}. The loser will lose both the arbitration fee and the order amount.
+                                    </p>
+                                    <Button
+                                      onClick={handleRequestArbitration}
+                                      className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif] mr-2"
+                                    >
+                                      <AlertTriangle className="w-4 h-4 mr-2" />
+                                      Request Admin Arbitration
+                                    </Button>
+                                  </div>
+                                )}
+                                <Button
+                                  onClick={handleCancelDispute}
+                                  variant="outline"
+                                  className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Cancel Dispute
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {currentOrder.disputeInfo.status === 'admin_arbitration' && (
+                            <div className="mb-2">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 mb-2">
+                                ⚖️ Admin is reviewing this dispute. A decision will be made soon.
+                              </p>
+                              {currentOrder.disputeInfo.arbitrationRequestedBy && (
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mb-2">
+                                  Arbitration requested by: {currentOrder.disputeInfo.arbitrationRequestedBy === currentOrder.disputeInfo.claimantId ? 'Claimant' : 'Respondent'}
+                                </p>
+                              )}
+                              <Button
+                                onClick={handleCancelDispute}
+                                variant="outline"
+                                className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Cancel Dispute
+                              </Button>
+                            </div>
+                          )}
+                          {currentOrder.disputeInfo.status === 'closed' && currentOrder.disputeInfo.autoClosed && (
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-green-600 mb-2">
+                              Dispute automatically closed in your favor (no response received)
+                            </p>
+                          )}
+                          {currentOrder.disputeInfo.reason && (
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mt-2">
+                              <span className="font-medium">Reason:</span> {currentOrder.disputeInfo.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <Button
                     onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}
                     variant="outline"
@@ -1924,7 +2279,8 @@ export default function ClientOrdersSection() {
                       What happens next?
                     </p>
                     <ul className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] space-y-1 list-disc list-inside">
-                      <li>Both parties will have 24 hours to discuss and resolve the issue</li>
+                      <li>The other party will have a set time (configured by admin) to respond</li>
+                      <li>If they don't respond within the deadline, the dispute will automatically close in your favor</li>
                       <li>You can make settlement offers during this time</li>
                       <li>If no resolution is reached, our team will step in to review the case</li>
                       <li>The order funds will be held until the dispute is resolved</li>
@@ -2009,20 +2365,20 @@ export default function ClientOrdersSection() {
         {/* Pending */}
         <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#92400E] mb-1 md:mb-2">
-            Pending
+            Placed
           </p>
           <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#92400E]">
-            {activeOrders.length}
+            {placedOrders.length}
           </p>
         </div>
 
         {/* Confirmed */}
         <div className="bg-[#DBEAFE] border border-[#BFDBFE] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#1E40AF] mb-1 md:mb-2">
-            Confirmed
+            In Progress
           </p>
           <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#1E40AF]">
-            {deliveredOrders.length}
+            {inProgressOrders.length}
           </p>
         </div>
 
@@ -2039,47 +2395,53 @@ export default function ClientOrdersSection() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-          <TabsList className="inline-flex w-auto min-w-full sm:w-full justify-start sm:grid sm:grid-cols-5 gap-1">
+          <TabsList className="inline-flex w-auto min-w-full justify-start gap-1">
             <TabsTrigger
-              value="active"
+              value="all"
+              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
+            >
+              All ({allOrders.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="placed"
+              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Placed ({placedOrders.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="In Progress"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <Package className="w-4 h-4 mr-2" />
-              Active ({activeOrders.length})
+              In Progress ({inProgressOrders.length})
             </TabsTrigger>
             <TabsTrigger
-              value="delivered"
-              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              Delivered ({deliveredOrders.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
+              value="Completed"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <CheckCircle2 className="w-4 h-4 mr-2" />
               Completed ({completedOrders.length})
             </TabsTrigger>
             <TabsTrigger
-              value="cancelled"
+              value="Cancelled"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <XCircle className="w-4 h-4 mr-2" />
               Cancelled ({cancelledOrders.length})
             </TabsTrigger>
             <TabsTrigger
-              value="dispute"
+              value="disputed"
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               <AlertTriangle className="w-4 h-4 mr-2" />
-              Dispute ({disputeOrders.length})
+              Disputed ({disputedOrders.length})
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="active" className="space-y-4">
-          {activeOrders.length === 0 ? (
+        <TabsContent value="all" className="space-y-4">
+          {allOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
@@ -2100,7 +2462,7 @@ export default function ClientOrdersSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeOrders.map((order) => (
+                  {allOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
@@ -2126,10 +2488,10 @@ export default function ClientOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2171,12 +2533,12 @@ export default function ClientOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="delivered" className="space-y-4">
-          {deliveredOrders.length === 0 ? (
+        <TabsContent value="placed" className="space-y-4">
+          {placedOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <CheckCircle2 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                No delivered orders
+                No placed orders
               </p>
             </div>
           ) : (
@@ -2193,7 +2555,7 @@ export default function ClientOrdersSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {deliveredOrders.map((order) => (
+                  {placedOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
@@ -2219,10 +2581,10 @@ export default function ClientOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2264,7 +2626,100 @@ export default function ClientOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="completed" className="space-y-4">
+        <TabsContent value="In Progress" className="space-y-4">
+          {inProgressOrders.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                No in progress orders
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-['Poppins',sans-serif]">Service</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Professional</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Order Date</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Amount</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
+                    <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inProgressOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={order.professionalAvatar} />
+                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
+                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-['Poppins',sans-serif] text-[13px]">
+                        {formatDate(order.date)}
+                      </TableCell>
+                      <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
+                        {order.amount}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
+                          <span className="flex items-center gap-1">
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
+                          </span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              if (order.professional) {
+                                startConversation({
+                                  id: `prof-${order.id}`,
+                                  name: order.professional,
+                                  avatar: order.professionalAvatar,
+                                  online: true,
+                                  jobId: order.id,
+                                  jobTitle: order.service
+                                });
+                              }
+                            }}>
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Message
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="Completed" className="space-y-4">
           {completedOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <CheckCircle2 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -2357,7 +2812,7 @@ export default function ClientOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="cancelled" className="space-y-4">
+        <TabsContent value="Cancelled" className="space-y-4">
           {cancelledOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -2405,10 +2860,10 @@ export default function ClientOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2435,8 +2890,8 @@ export default function ClientOrdersSection() {
           )}
         </TabsContent>
 
-        <TabsContent value="dispute" className="space-y-4">
-          {disputeOrders.length === 0 ? (
+        <TabsContent value="disputed" className="space-y-4">
+          {disputedOrders.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
@@ -2457,7 +2912,7 @@ export default function ClientOrdersSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {disputeOrders.map((order) => (
+                  {disputedOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
@@ -2483,10 +2938,10 @@ export default function ClientOrdersSection() {
                         {order.amount}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusBadge(order.deliveryStatus)} font-['Poppins',sans-serif] text-[11px]`}>
+                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(order.deliveryStatus)}
-                            {order.deliveryStatus?.toUpperCase()}
+                            {getStatusIcon(order.status)}
+                            {order.status?.toUpperCase()}
                           </span>
                         </Badge>
                       </TableCell>
@@ -2528,6 +2983,57 @@ export default function ClientOrdersSection() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Revision Request Dialog */}
+      <Dialog open={isRevisionRequestDialogOpen} onOpenChange={setIsRevisionRequestDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+              Request Revision
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Please provide a detailed reason for the revision request. This will be sent to the professional.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="revision-reason" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                Revision Reason <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="revision-reason"
+                placeholder="Describe what needs to be modified or improved..."
+                value={revisionReason}
+                onChange={(e) => setRevisionReason(e.target.value)}
+                className="font-['Poppins',sans-serif] min-h-[120px]"
+                rows={5}
+              />
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                Be as specific as possible to help the professional understand what changes you need.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRevisionRequestDialogOpen(false);
+                setRevisionReason("");
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRequestRevision}
+              disabled={!revisionReason.trim()}
+              className="font-['Poppins',sans-serif] bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Submit Revision Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Rating Dialog */}
       <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
@@ -2590,6 +3096,74 @@ export default function ClientOrdersSection() {
               Submit Rating
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dispute Response Dialog */}
+      <Dialog open={isDisputeResponseDialogOpen} onOpenChange={setIsDisputeResponseDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+              Respond to Dispute
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              {currentOrder?.disputeInfo?.responseDeadline && (
+                <p className="text-red-600 mb-2">
+                  ⚠️ Response deadline: {new Date(currentOrder.disputeInfo.responseDeadline).toLocaleString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              )}
+              Provide your response to the dispute. This is your only chance to respond.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {currentOrder?.disputeInfo?.reason && (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                  Dispute Reason:
+                </p>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                  {currentOrder.disputeInfo.reason}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="dispute-response" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                Your Response (Optional)
+              </Label>
+              <Textarea
+                id="dispute-response"
+                placeholder="Provide your side of the story, evidence, or any relevant information..."
+                value={disputeResponseMessage}
+                onChange={(e) => setDisputeResponseMessage(e.target.value)}
+                className="font-['Poppins',sans-serif] min-h-[120px]"
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDisputeResponseDialogOpen(false);
+                setDisputeResponseMessage("");
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRespondToDispute}
+              className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700 text-white"
+            >
+              Submit Response
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

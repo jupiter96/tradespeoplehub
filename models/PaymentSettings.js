@@ -227,6 +227,30 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 1,
       min: 0,
     },
+    // Cancellation response time in hours (default 24 hours)
+    cancellationResponseTimeHours: {
+      type: Number,
+      default: 24,
+      min: 0,
+    },
+    // Dispute response time in hours (default 48 hours)
+    disputeResponseTimeHours: {
+      type: Number,
+      default: 48,
+      min: 0,
+    },
+    // Negotiation time after dispute response in hours (default 72 hours)
+    disputeNegotiationTimeHours: {
+      type: Number,
+      default: 72,
+      min: 0,
+    },
+    // Arbitration fee for admin intervention (default £50)
+    arbitrationFee: {
+      type: Number,
+      default: 50,
+      min: 0,
+    },
     searchApiKey: {
       type: String,
       trim: true,
