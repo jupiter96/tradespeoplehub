@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
@@ -48,6 +48,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
@@ -72,7 +73,7 @@ import {
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export default function ProfessionalOrdersSection() {
   const navigate = useNavigate();
@@ -97,6 +98,7 @@ export default function ProfessionalOrdersSection() {
   const [showDisputeSection, setShowDisputeSection] = useState(false);
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
   const [extensionNewDate, setExtensionNewDate] = useState("");
+  const [shownAcceptedToasts, setShownAcceptedToasts] = useState<Set<string>>(new Set());
   const [extensionReason, setExtensionReason] = useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -105,6 +107,16 @@ export default function ProfessionalOrdersSection() {
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
   const [revisionResponseAction, setRevisionResponseAction] = useState<'accept' | 'reject'>('accept');
   const [revisionAdditionalNotes, setRevisionAdditionalNotes] = useState("");
+
+  // Helper function to format dates
+  const formatDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }, []);
 
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
@@ -178,6 +190,22 @@ export default function ProfessionalOrdersSection() {
     ? orders.find((o) => o.id === selectedOrder)
     : null;
 
+  // Show toast notification when order is accepted
+  useEffect(() => {
+    if (currentOrder && currentOrder.status === "placed" && currentOrder.acceptedByProfessional) {
+      const orderId = currentOrder.id;
+      if (!shownAcceptedToasts.has(orderId)) {
+        const bookingInfo = currentOrder.booking?.date && currentOrder.booking?.time
+          ? ` Scheduled for: ${formatDate(currentOrder.booking.date)} at ${currentOrder.booking.time}`
+          : "";
+        toast.success(`Order Accepted - Awaiting Booking Time${bookingInfo}`, {
+          description: "The order status will automatically change to 'In Progress' when the scheduled time arrives.",
+        });
+        setShownAcceptedToasts(prev => new Set(prev).add(orderId));
+      }
+    }
+  }, [currentOrder, shownAcceptedToasts, formatDate]);
+
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case "placed":
@@ -224,12 +252,293 @@ export default function ProfessionalOrdersSection() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
+  const formatDateTime = (isoString?: string) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  type TimelineEvent = {
+    id: string;
+    at?: string;
+    label: string;
+    description?: string;
+    colorClass: string;
+    icon: JSX.Element;
+  };
+
+  const buildProfessionalTimeline = (order: any): TimelineEvent[] => {
+    const events: TimelineEvent[] = [];
+
+    const push = (event: Omit<TimelineEvent, "id">, id: string) => {
+      events.push({ ...event, id });
+    };
+
+    // Order placed
+    if (order.date) {
+      push(
+        {
+          at: order.createdAt || order.date,
+          label: "Order Placed",
+          description: `${order.client || "Client"} placed this order.`,
+          colorClass: "bg-gray-800",
+          icon: <ShoppingBag className="w-5 h-5 text-white" />,
+        },
+        "placed"
+      );
+    }
+
+    // Order accepted by professional
+    if (order.acceptedByProfessional && order.acceptedAt) {
+      push(
+        {
+          at: order.acceptedAt,
+          label: "Order Accepted",
+          description: "You accepted this order.",
+          colorClass: "bg-green-600",
+          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        },
+        "accepted"
+      );
+    }
+
+    // Service delivery pending
+    if (order.deliveryStatus === "pending" && order.status !== "placed") {
+      push(
+        {
+          at: order.scheduledDate || order.expectedDelivery,
+          label: "Service Delivery Pending",
+          description:
+            "Client has completed payment and is awaiting your service delivery.",
+          colorClass: "bg-orange-500",
+          icon: <Clock className="w-5 h-5 text-white" />,
+        },
+        "pending-delivery"
+      );
+    }
+
+    // Service in progress
+    if (order.deliveryStatus === "active") {
+      push(
+        {
+          at: order.expectedDelivery || order.scheduledDate,
+          label: "Service In Progress",
+          description:
+            "You are currently working on this service. Make sure to deliver on time.",
+          colorClass: "bg-blue-500",
+          icon: <PlayCircle className="w-5 h-5 text-white" />,
+        },
+        "in-progress"
+      );
+    }
+
+    // Extension request events
+    const ext = order.extensionRequest;
+    if (ext?.requestedAt) {
+      push(
+        {
+          at: ext.requestedAt,
+          label: "Extension Requested",
+          description: ext.reason
+            ? `You requested an extension. Reason: ${ext.reason}`
+            : "You requested an extension to the delivery time.",
+          colorClass: "bg-indigo-500",
+          icon: <Clock className="w-5 h-5 text-white" />,
+        },
+        "extension-requested"
+      );
+    }
+    if (ext?.respondedAt && (ext.status === "approved" || ext.status === "rejected")) {
+      push(
+        {
+          at: ext.respondedAt,
+          label:
+            ext.status === "approved"
+              ? "Extension Approved"
+              : "Extension Rejected",
+          description:
+            ext.status === "approved"
+              ? ext.newDeliveryDate
+                ? `New delivery date: ${formatDate(ext.newDeliveryDate)}`
+                : "Extension approved."
+              : "Client rejected the extension request.",
+          colorClass: ext.status === "approved" ? "bg-green-600" : "bg-red-600",
+          icon:
+            ext.status === "approved" ? (
+              <ThumbsUp className="w-5 h-5 text-white" />
+            ) : (
+              <ThumbsDown className="w-5 h-5 text-white" />
+            ),
+        },
+        "extension-responded"
+      );
+    }
+
+    // Cancellation request events
+    const canc = order.cancellationRequest;
+    if (canc?.requestedAt && canc.status) {
+      push(
+        {
+          at: canc.requestedAt,
+          label: "Cancellation Requested",
+          description: canc.reason
+            ? `Cancellation reason: ${canc.reason}`
+            : "A cancellation was requested for this order.",
+          colorClass: "bg-red-500",
+          icon: <AlertTriangle className="w-5 h-5 text-white" />,
+        },
+        "cancellation-requested"
+      );
+    }
+    if (canc?.respondedAt && canc.status && canc.status !== "pending") {
+      push(
+        {
+          at: canc.respondedAt,
+          label:
+            canc.status === "approved"
+              ? "Cancellation Approved"
+              : canc.status === "rejected"
+              ? "Cancellation Rejected"
+              : "Cancellation Withdrawn",
+          description:
+            canc.status === "approved"
+              ? "Order was cancelled."
+              : canc.status === "rejected"
+              ? "Cancellation request was rejected."
+              : "Cancellation request was withdrawn.",
+          colorClass:
+            canc.status === "approved"
+              ? "bg-red-600"
+              : canc.status === "rejected"
+              ? "bg-green-600"
+              : "bg-gray-500",
+          icon:
+            canc.status === "approved" ? (
+              <XCircle className="w-5 h-5 text-white" />
+            ) : (
+              <Check className="w-5 h-5 text-white" />
+            ),
+        },
+        "cancellation-responded"
+      );
+    }
+
+    // Revision events
+    const rev = order.revisionRequest;
+    if (rev?.requestedAt) {
+      push(
+        {
+          at: rev.requestedAt,
+          label: "Revision Requested",
+          description: rev.reason
+            ? `Client requested a revision. Reason: ${rev.reason}`
+            : "Client requested a revision.",
+          colorClass: "bg-purple-500",
+          icon: <Edit className="w-5 h-5 text-white" />,
+        },
+        "revision-requested"
+      );
+    }
+    if (rev?.respondedAt && rev.status) {
+      push(
+        {
+          at: rev.respondedAt,
+          label:
+            rev.status === "in_progress"
+              ? "Revision Accepted"
+              : rev.status === "completed"
+              ? "Revision Completed"
+              : rev.status === "rejected"
+              ? "Revision Rejected"
+              : "Revision Updated",
+          description: rev.additionalNotes || undefined,
+          colorClass:
+            rev.status === "completed"
+              ? "bg-green-600"
+              : rev.status === "rejected"
+              ? "bg-red-600"
+              : "bg-purple-500",
+          icon:
+            rev.status === "completed" ? (
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            ) : (
+              <FileText className="w-5 h-5 text-white" />
+            ),
+        },
+        "revision-responded"
+      );
+    }
+
+    // Delivery event
+    if (order.deliveredDate) {
+      push(
+        {
+          at: order.deliveredDate,
+          label: "Work Delivered",
+          description: order.deliveryMessage || "You delivered the work to the client.",
+          colorClass: "bg-blue-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered"
+      );
+    }
+
+    // Completion event
+    if (order.completedDate || order.status === "Completed") {
+      push(
+        {
+          at: order.completedDate,
+          label: "Order Completed",
+          description:
+            "Order has been completed and funds have been released to your wallet.",
+          colorClass: "bg-green-700",
+          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        },
+        "completed"
+      );
+    }
+
+    // Dispute events
+    const disp = order.disputeInfo;
+    if (disp?.createdAt || order.deliveryStatus === "dispute") {
+      push(
+        {
+          at: disp?.createdAt,
+          label: "Dispute Opened",
+          description:
+            disp?.reason ||
+            "A dispute was opened for this order. Please review and respond.",
+          colorClass: "bg-red-700",
+          icon: <AlertTriangle className="w-5 h-5 text-white" />,
+        },
+        "dispute-opened"
+      );
+    }
+    if (disp?.closedAt) {
+      push(
+        {
+          at: disp.closedAt,
+          label: "Dispute Closed",
+          description: disp.decisionNotes || "Dispute has been resolved.",
+          colorClass: "bg-gray-700",
+          icon: <FileText className="w-5 h-5 text-white" />,
+        },
+        "dispute-closed"
+      );
+    }
+
+    // Sort by time
+    return events.sort((a, b) => {
+      const ta = a.at ? new Date(a.at).getTime() : 0;
+      const tb = b.at ? new Date(b.at).getTime() : 0;
+      return ta - tb;
     });
   };
 
@@ -271,6 +580,25 @@ export default function ProfessionalOrdersSection() {
           toast.error(error.message || "Failed to mark order as delivered");
         }
       }
+    }
+  };
+
+  const handleRequestExtension = async () => {
+    if (!selectedOrder) return;
+
+    if (!extensionNewDate) {
+      toast.error("Please select a new delivery date");
+      return;
+    }
+
+    try {
+      await requestExtension(selectedOrder, extensionNewDate, extensionReason || undefined);
+      toast.success("Extension request submitted. The client will be notified.");
+      setIsExtensionDialogOpen(false);
+      setExtensionNewDate("");
+      setExtensionReason("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to request extension");
     }
   };
 
@@ -740,41 +1068,10 @@ export default function ProfessionalOrdersSection() {
                         <XCircle className="w-4 h-4 mr-2" />
                         Reject Order
                       </Button>
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif]"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat
-                      </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Order Placed - Accepted by Professional (Waiting for booking time) */}
-                {currentOrder.status === "placed" && currentOrder.acceptedByProfessional && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                      Order Accepted - Awaiting Booking Time
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                      You have accepted this order. The order status will automatically change to "In Progress" when the scheduled time arrives. {currentOrder.booking?.date && currentOrder.booking?.time && (
-                        <span className="text-[#2c353f]">Scheduled for: {formatDate(currentOrder.booking.date)} at {currentOrder.booking.time}</span>
-                      )}
-                    </p>
-                    <div className="flex gap-3 flex-wrap">
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif]"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 {/* Status Alert Box - Old pending status (for backward compatibility) */}
                 {currentOrder.deliveryStatus === "pending" && currentOrder.status !== "placed" && (
@@ -796,27 +1093,12 @@ export default function ProfessionalOrdersSection() {
                         <PlayCircle className="w-4 h-4 mr-2" />
                         Start Work
                       </Button>
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif]"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat
-                      </Button>
                     </div>
                   </div>
                 )}
 
-                {currentOrder.deliveryStatus === "active" && (
+                {currentOrder.deliveryStatus === "active" && currentOrder.acceptedByProfessional && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    {(() => {
-                      console.log('[Service In Progress] Rendering active order section');
-                      console.log('[Service In Progress] Current order:', currentOrder);
-                      console.log('[Service In Progress] Delivery status:', currentOrder.deliveryStatus);
-                      console.log('[Service In Progress] Extension request:', currentOrder.extensionRequest);
-                      return null;
-                    })()}
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service In Progress
                     </h4>
@@ -825,7 +1107,9 @@ export default function ProfessionalOrdersSection() {
                     </p>
                     
                     {/* Extension Request Status */}
-                    {currentOrder.extensionRequest && (
+                    {currentOrder.extensionRequest && 
+                     currentOrder.extensionRequest.status && 
+                     ['pending', 'approved', 'rejected'].includes(currentOrder.extensionRequest.status) && (
                       <div className={`mb-4 p-4 rounded-lg border ${
                         currentOrder.extensionRequest.status === 'pending' 
                           ? 'bg-yellow-50 border-yellow-200' 
@@ -890,59 +1174,6 @@ export default function ProfessionalOrdersSection() {
                         <CheckCircle2 className="w-4 h-4 mr-2" />
                         Completed
                       </Button>
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif]"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat
-                      </Button>
-                      {/* Delivery Time Extension Button - Show if no extension request or request is not pending */}
-                      {(() => {
-                        const hasExtensionRequest = !!currentOrder.extensionRequest;
-                        const extensionStatus = currentOrder.extensionRequest?.status;
-                        const hasPendingRequest = hasExtensionRequest && extensionStatus === 'pending';
-                        const shouldShowButton = !hasPendingRequest;
-                        
-                        console.log('[Extension Button Render] Evaluating render condition');
-                        console.log('[Extension Button Render] Has extension request:', hasExtensionRequest);
-                        console.log('[Extension Button Render] Extension status:', extensionStatus);
-                        console.log('[Extension Button Render] Has pending request:', hasPendingRequest);
-                        console.log('[Extension Button Render] Should show button:', shouldShowButton);
-                        console.log('[Extension Button Render] Will render button?', shouldShowButton);
-                        
-                        if (shouldShowButton) {
-                          console.log('[Extension Button Render] ✅ Rendering button');
-                        } else {
-                          console.log('[Extension Button Render] ❌ NOT rendering button - has pending request');
-                        }
-                        
-                        return shouldShowButton;
-                      })() && (
-                        <Button
-                          onClick={() => {
-                            console.log('[Extension Button] Clicked!');
-                            console.log('[Extension Button] Current scheduled date:', currentOrder.scheduledDate);
-                            // Set default date to 7 days from scheduled date or today
-                            const currentDate = currentOrder.scheduledDate 
-                              ? new Date(currentOrder.scheduledDate) 
-                              : new Date();
-                            currentDate.setDate(currentDate.getDate() + 7);
-                            const newDateString = currentDate.toISOString().split('T')[0];
-                            console.log('[Extension Button] Setting new date:', newDateString);
-                            setExtensionNewDate(newDateString);
-                            setExtensionReason("");
-                            setIsExtensionDialogOpen(true);
-                            console.log('[Extension Button] Dialog should open');
-                          }}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] border-blue-500 text-blue-600 hover:bg-blue-50"
-                        >
-                          <Clock className="w-4 h-4 mr-2" />
-                          Delivery Time Extension
-                        </Button>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1212,18 +1443,8 @@ export default function ProfessionalOrdersSection() {
                           <AlertTriangle className="w-4 h-4 mr-2" />
                           Open Dispute
                         </Button>
-                      </div>
-                    )}
-
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F] hover:text-white"
-                      >
-                        Chat
-                      </Button>
                     </div>
+                  )}
                   </div>
                 )}
 
@@ -1241,13 +1462,6 @@ export default function ProfessionalOrdersSection() {
                         className="bg-white hover:bg-gray-50 text-[#2c353f] border-2 border-[#FE8A0F] font-['Poppins',sans-serif]"
                       >
                         {showDisputeSection ? "Hide Dispute" : "View Dispute"}
-                      </Button>
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif]"
-                      >
-                        Chat
                       </Button>
                     </div>
                   </div>
@@ -1273,7 +1487,9 @@ export default function ProfessionalOrdersSection() {
                     </div>
 
                     {/* Extension Request Status */}
-                    {currentOrder.extensionRequest && (
+                    {currentOrder.extensionRequest && 
+                     currentOrder.extensionRequest.status && 
+                     ['pending', 'approved', 'rejected'].includes(currentOrder.extensionRequest.status) && (
                       <div className={`mb-4 p-4 rounded-lg border ${
                         currentOrder.extensionRequest.status === 'pending' 
                           ? 'bg-yellow-50 border-yellow-200' 
@@ -1350,16 +1566,6 @@ export default function ProfessionalOrdersSection() {
                       >
                         <Truck className="w-5 h-5 mr-2" />
                         Deliver Work
-                      </Button>
-
-                      {/* Chat Button */}
-                      <Button
-                        onClick={() => handleStartConversation(currentOrder.client || "", currentOrder.clientAvatar || "")}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] text-[14px] py-6"
-                      >
-                        <MessageCircle className="w-5 h-5 mr-2" />
-                        Chat
                       </Button>
                     </div>
                   </div>

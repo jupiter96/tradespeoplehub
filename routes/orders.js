@@ -19,6 +19,22 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+// Helper function to build order query that handles both orderNumber and _id
+async function buildOrderQuery(orderId, additionalFilters = {}) {
+  const mongoose = (await import('mongoose')).default;
+  const isObjectId = mongoose.Types.ObjectId.isValid(orderId) && orderId.length === 24;
+  
+  const query = { ...additionalFilters };
+  
+  if (isObjectId) {
+    query.$or = [{ orderNumber: orderId }, { _id: orderId }];
+  } else {
+    query.orderNumber = orderId;
+  }
+  
+  return query;
+}
+
 // Configure multer for delivery file uploads (images/videos)
 const deliveryDir = path.join(__dirname, '..', 'uploads', 'deliveries');
 // Create delivery directory if it doesn't exist
@@ -864,10 +880,7 @@ router.post('/:orderId/extension-request', authenticateToken, requireRole(['prof
       return res.status(400).json({ error: 'New delivery date is required' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      professional: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -915,10 +928,7 @@ router.put('/:orderId/extension-request', authenticateToken, requireRole(['clien
       return res.status(400).json({ error: 'Action must be either "approve" or "reject"' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      client: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1098,9 +1108,7 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1147,10 +1155,7 @@ router.post('/:orderId/accept', authenticateToken, requireRole(['professional'])
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      professional: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1194,10 +1199,7 @@ router.post('/:orderId/reject', authenticateToken, requireRole(['professional'])
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      professional: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1245,10 +1247,7 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
     const { orderId } = req.params;
     const { deliveryMessage } = req.body;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      professional: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
 
     if (!order) {
       // Clean up uploaded files if order not found
@@ -1360,10 +1359,7 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       return res.status(400).json({ error: 'Revision reason is required' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      client: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1413,10 +1409,7 @@ router.put('/:orderId/revision-request', authenticateToken, requireRole(['profes
       return res.status(400).json({ error: 'Action must be either "accept" or "reject"' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      professional: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1460,10 +1453,7 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
     const { orderId } = req.params;
     const { deliveryMessage } = req.body;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      professional: req.user.id 
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
 
     if (!order) {
       // Clean up uploaded files if order not found
@@ -1744,10 +1734,9 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
+    const order = await Order.findOne(await buildOrderQuery(orderId, {
       $or: [{ client: req.user.id }, { professional: req.user.id }]
-    });
+    }));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1890,9 +1879,7 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     const { orderId } = req.params;
     const { message } = req.body; // Optional message/response
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -2205,9 +2192,7 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    });
+    const order = await Order.findOne(await buildOrderQuery(orderId));
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });

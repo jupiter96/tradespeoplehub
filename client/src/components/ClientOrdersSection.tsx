@@ -695,16 +695,6 @@ export default function ClientOrdersSection() {
                     <span className="text-[#2c353f]">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
                   )}
                 </p>
-                <div className="flex gap-3 flex-wrap">
-                  <Button
-                    onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif]"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Chat
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -816,17 +806,6 @@ export default function ClientOrdersSection() {
                     )}
                   </div>
                 )}
-
-                <div className="flex gap-3 flex-wrap">
-                  <Button
-                    onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif]"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Chat
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1197,13 +1176,6 @@ export default function ClientOrdersSection() {
                     className="bg-white hover:bg-gray-50 text-[#2c353f] border-2 border-[#FE8A0F] font-['Poppins',sans-serif]"
                   >
                     {showDisputeSection ? "Hide Dispute" : "View Dispute"}
-                  </Button>
-                  <Button
-                    onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif]"
-                  >
-                    Chat
                   </Button>
                 </div>
               </div>
