@@ -637,6 +637,75 @@ export default function ProfessionalOrdersSection() {
 
               {/* Timeline Tab */}
               <TabsContent value="timeline" className="mt-6 space-y-6">
+                {/* Cancellation Request - Pending (Professional can respond) */}
+                {currentOrder.cancellationRequest && 
+                 currentOrder.cancellationRequest.status === 'pending' && 
+                 currentOrder.cancellationRequest.requestedBy !== userInfo?.id && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                    <div className="flex items-start gap-3 mb-4">
+                      <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+                          Cancellation Request Received
+                        </h4>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                          {currentOrder.client || "The client"} has requested to cancel this order.
+                        </p>
+                        {currentOrder.cancellationRequest.reason && (
+                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Reason:
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.cancellationRequest.reason}
+                            </p>
+                          </div>
+                        )}
+                        {currentOrder.cancellationRequest.responseDeadline && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-orange-700 mb-4">
+                            ⚠️ Response deadline: {new Date(currentOrder.cancellationRequest.responseDeadline).toLocaleString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        )}
+                        <div className="flex gap-3 flex-wrap">
+                          <Button
+                            onClick={async () => {
+                              try {
+                                await handleRespondToCancellation('approve');
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to approve cancellation");
+                              }
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Approve Cancellation
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              try {
+                                await handleRespondToCancellation('reject');
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to reject cancellation");
+                              }
+                            }}
+                            variant="outline"
+                            className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Reject Cancellation
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Order Placed - Awaiting Professional Response */}
                 {currentOrder.status === "placed" && !currentOrder.acceptedByProfessional && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">

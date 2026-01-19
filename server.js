@@ -22,6 +22,7 @@ import paymentRoutes from './routes/payment.js';
 import notificationRoutes from './routes/notifications.js';
 import ordersRoutes from './routes/orders.js';
 import cartRoutes from './routes/cart.js';
+import customOffersRoutes from './routes/custom-offers.js';
 import promoCodesRoutes from './routes/promo-codes.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
@@ -29,6 +30,7 @@ import { startVerificationReminderScheduler } from './services/verificationRemin
 import { startOrderStatusScheduler } from './services/orderStatusScheduler.js';
 import { startCancellationScheduler } from './services/cancellationScheduler.js';
 import { startDisputeScheduler } from './services/disputeScheduler.js';
+import { startCustomOfferScheduler } from './services/customOfferScheduler.js';
 import { initNotifier } from './services/notifier.js';
 import { initializeSocket } from './services/socket.js';
 import { createServer } from 'http';
@@ -153,6 +155,7 @@ const initializeDatabase = async () => {
   startOrderStatusScheduler();
   startCancellationScheduler();
   startDisputeScheduler();
+  startCustomOfferScheduler();
 };
 
 // Ensure DB is ready before accepting requests (avoids long buffering/hangs on first request)
@@ -181,6 +184,7 @@ app.use('/api', paymentRoutes);
 app.use('/api', notificationRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/custom-offers', customOffersRoutes);
 app.use('/api/promo-codes', promoCodesRoutes);
 
 // Log chat routes after mounting (non-blocking)

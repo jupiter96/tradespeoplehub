@@ -108,10 +108,22 @@ router.get('/conversations', requireAuth, async (req, res) => {
 router.post('/conversations', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { participantId } = req.body;
+    let { participantId } = req.body;
 
     if (!participantId) {
       return res.status(400).json({ error: 'Participant ID is required' });
+    }
+
+    // Extract ID if object is passed
+    if (typeof participantId === 'object' && participantId !== null) {
+      participantId = participantId.id || participantId._id || participantId.toString();
+    }
+
+    // Ensure participantId is a string
+    participantId = String(participantId);
+
+    if (!participantId || participantId === 'undefined' || participantId === 'null') {
+      return res.status(400).json({ error: 'Invalid participant ID' });
     }
 
     // Only clients can initiate conversations with professionals

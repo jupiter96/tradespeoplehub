@@ -91,6 +91,7 @@ import ProfessionalOrdersSection from "./ProfessionalOrdersSection";
 import ClientOrdersSection from "./ClientOrdersSection";
 import AccountVerificationSection from "./AccountVerificationSection";
 import CustomOfferModal from "./CustomOfferModal";
+import CustomOfferPaymentModal from "./CustomOfferPaymentModal";
 import AddServiceSection from "./AddServiceSection";
 import CreatePackageModal from "./CreatePackageModal";
 import PromoCodeSection from "./PromoCodeSection";
@@ -106,6 +107,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
+import { useCountdown } from "../hooks/useCountdown";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 import {
   Dialog,
@@ -6255,26 +6257,90 @@ function MessengerSection() {
                                 )}
                               </div>
                               {message.type === "custom_offer" && message.orderDetails.status === "pending" ? (
-                                <div className="flex gap-2 mt-3">
-                                  <Button
-                                    onClick={() => {
-                                      toast.success("Offer accepted! Order created.");
-                                    }}
-                                    size="sm"
-                                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
-                                  >
-                                    Accept
-                                  </Button>
-                                  <Button
-                                    onClick={() => {
-                                      toast.info("Offer declined");
-                                    }}
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
-                                  >
-                                    Decline
-                                  </Button>
+                                <div className="space-y-2 mt-3">
+                                  {message.orderDetails.responseDeadline && (() => {
+                                    const countdown = useCountdown(message.orderDetails.responseDeadline);
+                                    return (
+                                      <div className="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mb-1">
+                                          {countdown.expired ? "Offer Expired" : "Time Remaining:"}
+                                        </p>
+                                        {countdown.expired ? (
+                                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 font-medium">
+                                            This offer has expired
+                                          </p>
+                                        ) : (
+                                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F] font-semibold">
+                                            {countdown.days > 0 && `${countdown.days}d `}
+                                            {countdown.hours.toString().padStart(2, '0')}:
+                                            {countdown.minutes.toString().padStart(2, '0')}:
+                                            {countdown.seconds.toString().padStart(2, '0')}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={() => {
+                                        const offerId = message.orderId || message.orderDetails?.offerId;
+                                        if (!offerId) {
+                                          toast.error("Offer ID not found");
+                                          return;
+                                        }
+                                        
+                                        // Get price from message
+                                        const price = message.orderDetails?.price || parseFloat(message.orderDetails?.amount?.replace('£', '') || '0');
+                                        const serviceFee = 0; // Will be calculated on backend
+                                        const total = price + serviceFee;
+                                        
+                                        setSelectedOffer({
+                                          id: offerId,
+                                          price,
+                                          serviceFee,
+                                          total,
+                                        });
+                                        setShowOfferPaymentModal(true);
+                                      }}
+                                      size="sm"
+                                      className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                                    >
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      onClick={async () => {
+                                        try {
+                                          const offerId = message.orderId || message.orderDetails?.offerId;
+                                          if (!offerId) {
+                                            toast.error("Offer ID not found");
+                                            return;
+                                          }
+
+                                          const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
+                                            method: 'POST',
+                                            headers: {
+                                              'Content-Type': 'application/json',
+                                            },
+                                            credentials: 'include',
+                                          });
+
+                                          if (!response.ok) {
+                                            const error = await response.json();
+                                            throw new Error(error.error || 'Failed to reject offer');
+                                          }
+
+                                          toast.success("Offer declined");
+                                        } catch (error: any) {
+                                          toast.error(error.message || "Failed to reject offer");
+                                        }
+                                      }}
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
+                                    >
+                                      Decline
+                                    </Button>
+                                  </div>
                                 </div>
                               ) : message.orderId && (
                                 <Button
@@ -6575,6 +6641,26 @@ function MessengerSection() {
           onClose={() => setShowOrderModal(false)}
           clientId={selectedContact.id}
           clientName={selectedContact.name}
+        />
+      )}
+
+      {/* Custom Offer Payment Modal */}
+      {selectedOffer && (
+        <CustomOfferPaymentModal
+          isOpen={showOfferPaymentModal}
+          onClose={() => {
+            setShowOfferPaymentModal(false);
+            setSelectedOffer(null);
+          }}
+          offerId={selectedOffer.id}
+          offerPrice={selectedOffer.price}
+          serviceFee={selectedOffer.serviceFee}
+          total={selectedOffer.total}
+          onSuccess={(orderNumber) => {
+            navigate(`/account?tab=orders&orderId=${orderNumber}`);
+            setShowOfferPaymentModal(false);
+            setSelectedOffer(null);
+          }}
         />
       )}
 

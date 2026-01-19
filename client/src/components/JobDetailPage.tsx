@@ -254,9 +254,10 @@ export default function JobDetailPage() {
 
   const handleMessageProfessional = (pro: typeof recommendedProfessionals[0]) => {
     // Start a conversation with the professional
-    const conversation = startConversation(pro.id, pro.name);
-    navigate(`/messages?conversation=${conversation.id}`);
-    toast.success(`Opening chat with ${pro.name}`);
+    startConversation(pro.id).then(() => {
+      navigate(`/account?tab=messenger`);
+      toast.success(`Opening chat with ${pro.name}`);
+    });
   };
 
   const handleOpenAwardModal = (quote: JobQuote) => {

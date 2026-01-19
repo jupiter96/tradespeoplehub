@@ -51,7 +51,7 @@ interface MessengerContextType {
   setIsMinimized: (minimized: boolean) => void;
   selectedContactId: string | null;
   setSelectedContactId: (id: string | null) => void;
-  startConversation: (participantId: string) => Promise<void>;
+  startConversation: (participantId: string | { id: string; [key: string]: any }) => Promise<void>;
   userRole: "client" | "professional" | null;
   setUserRole: (role: "client" | "professional" | null) => void;
   searchProfessionals: (query: string) => Promise<Array<{ id: string; name: string; avatar?: string }>>;
@@ -558,7 +558,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     setIsOpen(false);
   };
 
-  const startConversation = async (participantId: string) => {
+  const startConversation = async (participantId: string | { id: string; [key: string]: any }) => {
     if (!userInfo?.id) {
       toast.error("Please log in to start a conversation");
       return;
@@ -569,6 +569,14 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Extract ID if object is passed
+    const actualParticipantId = typeof participantId === 'string' ? participantId : participantId.id;
+
+    if (!actualParticipantId) {
+      toast.error("Invalid participant ID");
+      return;
+    }
+
     try {
       const response = await fetch(resolveApiUrl('/api/chat/conversations'), {
         method: 'POST',
@@ -576,7 +584,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ participantId }),
+        body: JSON.stringify({ participantId: actualParticipantId }),
       });
 
       if (response.ok) {

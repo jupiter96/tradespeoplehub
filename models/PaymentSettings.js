@@ -251,6 +251,12 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 50,
       min: 0,
     },
+    // Custom offer response time in hours (default 48 hours)
+    customOfferResponseTimeHours: {
+      type: Number,
+      default: 48,
+      min: 1,
+    },
     searchApiKey: {
       type: String,
       trim: true,

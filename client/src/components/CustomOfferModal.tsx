@@ -97,7 +97,7 @@ export default function CustomOfferModal({
   clientId,
   clientName,
 }: CustomOfferModalProps) {
-  const { addMessage } = useMessenger();
+  const { addMessage, getContactById } = useMessenger();
   const { userInfo } = useAccount();
   
   const [step, setStep] = useState<"select" | "payment" | "customize">("select");
@@ -191,32 +191,51 @@ export default function CustomOfferModal({
     ));
   };
 
-  const handleSendOffer = () => {
+  const handleSendOffer = async () => {
     if (!selectedService || !userInfo?.id) return;
 
-    // Generate offer ID
-    const offerId = `OFFER-${Date.now().toString().slice(-6)}`;
+    try {
+      // Get conversation ID from the contact
+      const contact = getContactById(clientId);
+      if (!contact?.conversationId) {
+        toast.error("Conversation not found. Please start a conversation first.");
+        return;
+      }
 
-    // Add custom offer message to conversation
-    addMessage(clientId, {
-      senderId: userInfo.id,
-      text: `Custom offer sent: ${selectedService.name}`,
-      read: false,
-      type: "custom_offer",
-      orderId: offerId,
-      orderDetails: {
-        service: selectedService.name,
-        amount: `£${customPrice}`,
-        deliveryDays: parseInt(deliveryDays),
-        description: offerDescription,
-        status: "pending",
-        paymentType: paymentType,
-        milestones: paymentType === "milestone" ? milestones : undefined,
-      },
-    });
+      // Call API to create custom offer
+      const response = await fetch(resolveApiUrl(`/api/custom-offers`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          conversationId: contact.conversationId,
+          serviceName: selectedService.name,
+          price: parseFloat(customPrice),
+          deliveryDays: parseInt(deliveryDays),
+          description: offerDescription,
+          paymentType: paymentType,
+          milestones: paymentType === "milestone" ? milestones : undefined,
+        }),
+      });
 
-    toast.success(`Custom offer sent to ${clientName}!`);
-    handleClose();
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create custom offer');
+      }
+
+      const data = await response.json();
+
+      // The message will be created by the backend, so we just need to refresh
+      toast.success(`Custom offer sent to ${clientName}!`);
+      handleClose();
+      
+      // Refresh messages to show the new offer
+      // The socket will handle this automatically
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send custom offer");
+    }
   };
 
   const totalMilestones = milestones.reduce((sum, m) => sum + m.amount, 0);
