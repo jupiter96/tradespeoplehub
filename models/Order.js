@@ -265,6 +265,36 @@ const orderSchema = new mongoose.Schema(
         default: null,
       },
     },
+    // Additional information submitted by client
+    additionalInformation: {
+      message: {
+        type: String,
+        trim: true,
+      },
+      files: [{
+        url: {
+          type: String,
+          required: true,
+        },
+        fileName: {
+          type: String,
+          required: true,
+        },
+        fileType: {
+          type: String,
+          enum: ['image', 'video', 'document'],
+          required: true,
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }],
+      submittedAt: {
+        type: Date,
+        default: null,
+      },
+    },
     // Revision request (modification request)
     revisionRequest: {
       status: {

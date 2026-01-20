@@ -35,6 +35,10 @@ import {
   ChevronUp,
   Edit,
   PlayCircle,
+  Upload,
+  Image,
+  Film,
+  X,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -80,7 +84,7 @@ import { toast } from "sonner@2.0.3";
 export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute } = useOrders();
+  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo } = useOrders();
   const { startConversation } = useMessenger();
   const { userInfo } = useAccount();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -103,6 +107,10 @@ export default function ClientOrdersSection() {
   const [revisionReason, setRevisionReason] = useState("");
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
+  const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
+  const [addInfoMessage, setAddInfoMessage] = useState("");
+  const [addInfoFiles, setAddInfoFiles] = useState<File[]>([]);
+  const [isSubmittingAddInfo, setIsSubmittingAddInfo] = useState(false);
 
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
@@ -215,6 +223,19 @@ export default function ClientOrdersSection() {
     });
   };
 
+  const formatDateTime = (isoString?: string) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const handleViewOrder = (orderId: string) => {
     setSelectedOrder(orderId);
     setOrderDetailTab("timeline");
@@ -224,17 +245,31 @@ export default function ClientOrdersSection() {
     setSelectedOrder(null);
   };
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = async () => {
     if (!cancelReason.trim()) {
       toast.error("Please provide a reason for cancellation");
       return;
     }
     if (selectedOrder) {
-      cancelOrder(selectedOrder);
-      toast.success("Order has been cancelled");
-      setIsCancelDialogOpen(false);
-      setCancelReason("");
-      setSelectedOrder(null);
+      const order = orders.find(o => o.id === selectedOrder);
+      // If order is "In Progress", use cancellation request (requires professional approval)
+      if (order && order.status === "In Progress") {
+        try {
+          await requestCancellation(selectedOrder, cancelReason);
+          toast.success("Cancellation request submitted. Waiting for professional approval.");
+          setIsCancelDialogOpen(false);
+          setCancelReason("");
+        } catch (error: any) {
+          toast.error(error.message || "Failed to request cancellation");
+        }
+      } else {
+        // For other statuses, cancel immediately
+        cancelOrder(selectedOrder);
+        toast.success("Order has been cancelled");
+        setIsCancelDialogOpen(false);
+        setCancelReason("");
+        setSelectedOrder(null);
+      }
     }
   };
 
@@ -329,6 +364,60 @@ export default function ClientOrdersSection() {
     } catch (error: any) {
       toast.error(error.message || "Failed to complete order");
     }
+  };
+
+  // Additional Info File Handlers
+  const handleAddInfoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      const validFiles = newFiles.filter(file => {
+        const type = file.type;
+        return type.startsWith('image/') || 
+               type.startsWith('video/') || 
+               type === 'application/pdf' ||
+               type === 'application/msword' ||
+               type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+               type === 'text/plain';
+      });
+
+      if (validFiles.length !== newFiles.length) {
+        toast.error("Some files were not added. Only images, videos, and documents are allowed.");
+      }
+
+      setAddInfoFiles(prev => [...prev, ...validFiles].slice(0, 10));
+    }
+  };
+
+  const handleRemoveAddInfoFile = (index: number) => {
+    setAddInfoFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitAdditionalInfo = async () => {
+    if (!addInfoMessage.trim() && addInfoFiles.length === 0) {
+      toast.error("Please add a message or upload files");
+      return;
+    }
+
+    if (!selectedOrder) return;
+
+    setIsSubmittingAddInfo(true);
+    try {
+      await addAdditionalInfo(selectedOrder, addInfoMessage, addInfoFiles.length > 0 ? addInfoFiles : undefined);
+      toast.success("Additional information submitted successfully!");
+      setIsAddInfoDialogOpen(false);
+      setAddInfoMessage("");
+      setAddInfoFiles([]);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit additional information");
+    } finally {
+      setIsSubmittingAddInfo(false);
+    }
+  };
+
+  const getAddInfoFileIcon = (file: File) => {
+    if (file.type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" />;
+    if (file.type.startsWith('video/')) return <Film className="w-5 h-5 text-purple-500" />;
+    return <FileText className="w-5 h-5 text-gray-500" />;
   };
 
   const handleCreateDispute = async () => {
@@ -726,7 +815,22 @@ export default function ClientOrdersSection() {
                             <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
                           </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                            <span className="font-medium">Requested new date:</span> {currentOrder.extensionRequest.newDeliveryDate ? formatDate(currentOrder.extensionRequest.newDeliveryDate) : 'N/A'}
+                            <span className="font-medium">Requested new date & time:</span>{" "}
+                            {currentOrder.extensionRequest.newDeliveryDate 
+                              ? (() => {
+                                  const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                  const dateStr = d.toLocaleDateString("en-GB", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  });
+                                  const timeStr = d.toLocaleTimeString("en-GB", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  });
+                                  return `${dateStr} at ${timeStr}`;
+                                })()
+                              : 'N/A'}
                           </p>
                           {currentOrder.extensionRequest.reason && (
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
@@ -801,9 +905,87 @@ export default function ClientOrdersSection() {
                     </div>
                     {currentOrder.extensionRequest.status === 'approved' && currentOrder.extensionRequest.newDeliveryDate && (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        New delivery date: {formatDate(currentOrder.extensionRequest.newDeliveryDate)}
+                        New delivery date & time:{" "}
+                        {(() => {
+                          const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                          const dateStr = d.toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          });
+                          const timeStr = d.toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                          return `${dateStr} at ${timeStr}`;
+                        })()}
                       </p>
                     )}
+                  </div>
+                )}
+
+                {/* Professional Completion Request - Show in "In Progress" status */}
+                {currentOrder.metadata?.professionalCompleteRequest && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-3 mb-3">
+                      <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700 mb-2">
+                          Completion Request Submitted
+                        </h5>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                          The professional has submitted a completion request with verification data. Please review and complete the order to release funds to their wallet.
+                        </p>
+                        {currentOrder.metadata.professionalCompleteRequest.completionMessage && (
+                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Professional's message:
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.metadata.professionalCompleteRequest.completionMessage}
+                            </p>
+                          </div>
+                        )}
+                        {currentOrder.metadata.professionalCompleteRequest.completionFiles && currentOrder.metadata.professionalCompleteRequest.completionFiles.length > 0 && (
+                          <div className="mb-3">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                              Verification Files:
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => (
+                                <div key={index} className="border border-gray-200 rounded p-2">
+                                  {file.fileType === 'image' ? (
+                                    <img src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`} alt={file.fileName} className="w-full h-24 object-cover rounded" />
+                                  ) : (
+                                    <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
+                                      <PlayCircle className="w-8 h-8 text-gray-600" />
+                                    </div>
+                                  )}
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 truncate">
+                                    {file.fileName}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-4">
+                          <Button
+                            onClick={async () => {
+                              try {
+                                await handleAcceptDelivery(currentOrder.id);
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to complete order");
+                              }
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Complete Order & Release Funds
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -820,8 +1002,55 @@ export default function ClientOrdersSection() {
                   Service Delivered - Review Required
                 </h4>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                  Your work has been delivered on <span className="text-[#2c353f]">{currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : "today"}</span>. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller.
+                  Your work has been delivered on <span className="text-[#2c353f]">{currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : "today"}</span>. {currentOrder.metadata?.professionalCompleteRequest ? "The professional has submitted a completion request with verification data. Please review and complete the order to release funds." : "Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
                 </p>
+
+                {/* Professional Completion Request */}
+                {currentOrder.metadata?.professionalCompleteRequest && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-3 mb-3">
+                      <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700 mb-2">
+                          Completion Request Submitted
+                        </h5>
+                        {currentOrder.metadata.professionalCompleteRequest.completionMessage && (
+                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Professional's message:
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.metadata.professionalCompleteRequest.completionMessage}
+                            </p>
+                          </div>
+                        )}
+                        {currentOrder.metadata.professionalCompleteRequest.completionFiles && currentOrder.metadata.professionalCompleteRequest.completionFiles.length > 0 && (
+                          <div className="mb-3">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                              Verification Files:
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => (
+                                <div key={index} className="border border-gray-200 rounded p-2">
+                                  {file.fileType === 'image' ? (
+                                    <img src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`} alt={file.fileName} className="w-full h-24 object-cover rounded" />
+                                  ) : (
+                                    <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
+                                      <PlayCircle className="w-8 h-8 text-gray-600" />
+                                    </div>
+                                  )}
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 truncate">
+                                    {file.fileName}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Delivery Message */}
                 {currentOrder.deliveryMessage && (
@@ -1183,6 +1412,72 @@ export default function ClientOrdersSection() {
 
             {/* Timeline Events */}
             <div className="space-y-0">
+              {/* Additional Information Submitted Timeline */}
+              {currentOrder.additionalInformation?.submittedAt && (
+                <div className="flex gap-4 mb-6">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                      Additional Information Submitted
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                      You submitted additional information on{" "}
+                      <span className="text-[#2c353f]">
+                        {formatDateTime(currentOrder.additionalInformation.submittedAt)}
+                      </span>
+                    </p>
+                    {currentOrder.additionalInformation.message && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          {currentOrder.additionalInformation.message}
+                        </p>
+                      </div>
+                    )}
+                    {currentOrder.additionalInformation.files && currentOrder.additionalInformation.files.length > 0 && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 mt-2">
+                        📎 {currentOrder.additionalInformation.files.length} file(s) attached
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cancellation Timeline */}
+              {currentOrder.cancellationRequest && currentOrder.cancellationRequest.status === 'approved' && currentOrder.status === 'Cancelled' && (
+                <div className="flex gap-4 mb-6">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
+                      <XCircle className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                      Order Cancelled
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                      {currentOrder.cancellationRequest.respondedAt 
+                        ? `Order was cancelled on ${formatDateTime(currentOrder.cancellationRequest.respondedAt)}`
+                        : "Order has been cancelled."}
+                    </p>
+                    {currentOrder.cancellationRequest.reason && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                          Cancellation reason:
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          {currentOrder.cancellationRequest.reason}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Dispute Timeline */}
               {currentOrder.deliveryStatus === "dispute" && (
                 <>
@@ -1719,22 +2014,86 @@ export default function ClientOrdersSection() {
           <TabsContent value="additional-info" className="mt-6 space-y-6">
             {/* Additional Information Section */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
-                    Additional Information
-                  </h3>
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    {currentOrder.description || "No additional information"}
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  Additional Information
+                </h3>
+                {!currentOrder.additionalInformation?.submittedAt && (
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                    onClick={() => setIsAddInfoDialogOpen(true)}
+                  >
+                    + Add now
+                  </Button>
+                )}
+              </div>
+
+              {currentOrder.additionalInformation?.submittedAt ? (
+                <div className="space-y-4">
+                  {/* Submitted Message */}
+                  {currentOrder.additionalInformation.message && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                        Your message:
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        {currentOrder.additionalInformation.message}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Submitted Files */}
+                  {currentOrder.additionalInformation.files && currentOrder.additionalInformation.files.length > 0 && (
+                    <div>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                        Attachments ({currentOrder.additionalInformation.files.length}):
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {currentOrder.additionalInformation.files.map((file, index) => (
+                          <div 
+                            key={index} 
+                            className="relative border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
+                            onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                          >
+                            {file.fileType === 'image' ? (
+                              <img 
+                                src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                                alt={file.fileName}
+                                className="w-full h-24 object-cover"
+                              />
+                            ) : file.fileType === 'video' ? (
+                              <div className="w-full h-24 bg-gray-200 flex items-center justify-center">
+                                <PlayCircle className="w-8 h-8 text-gray-600" />
+                              </div>
+                            ) : (
+                              <div className="w-full h-24 bg-gray-100 flex items-center justify-center">
+                                <FileText className="w-8 h-8 text-gray-600" />
+                              </div>
+                            )}
+                            <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] p-2 truncate">
+                              {file.fileName}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-green-600">
+                    ✓ Submitted on {new Date(currentOrder.additionalInformation.submittedAt).toLocaleString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </p>
                 </div>
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px] ml-4"
-                  onClick={() => toast.info("Add additional information feature coming soon")}
-                >
-                  + Add now
-                </Button>
-              </div>
+              ) : (
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  No additional information has been submitted yet. Click "Add now" to provide special requirements or attachments for the professional.
+                </p>
+              )}
             </div>
 
             {/* Task Address Section */}
@@ -3087,6 +3446,120 @@ export default function ClientOrdersSection() {
               Submit Revision Request
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Additional Info Dialog */}
+      <Dialog open={isAddInfoDialogOpen} onOpenChange={setIsAddInfoDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Add additional information
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+              If you have any additional information or special requirements that you need the PRO to submit it now or click skip it below if you do not have one.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Message Input */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                What do you need to add?
+              </Label>
+              <Textarea
+                placeholder="Enter any special requirements or additional information..."
+                value={addInfoMessage}
+                onChange={(e) => setAddInfoMessage(e.target.value)}
+                rows={4}
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
+            {/* File Upload Area */}
+            <div>
+              <div 
+                className="border-2 border-dashed border-[#3D78CB] rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer"
+                onClick={() => document.getElementById('add-info-files')?.click()}
+              >
+                <input
+                  id="add-info-files"
+                  type="file"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                  multiple
+                  onChange={handleAddInfoFileSelect}
+                  className="hidden"
+                />
+                <div className="flex flex-col items-center">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] font-medium mb-1">
+                    Attachments
+                  </p>
+                  <Image className="w-6 h-6 text-[#3D78CB] mb-2" />
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB]">
+                    Drag & drop Photo or Browser
+                  </p>
+                </div>
+              </div>
+
+              {/* Selected Files Preview */}
+              {addInfoFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    Selected Files ({addInfoFiles.length}/10):
+                  </p>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {addInfoFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                      >
+                        {getAddInfoFileIcon(file)}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] truncate">
+                            {file.name}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveAddInfoFile(index);
+                          }}
+                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddInfoDialogOpen(false);
+                  setAddInfoMessage("");
+                  setAddInfoFiles([]);
+                }}
+                className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:text-[#2c5ba0] underline transition-colors"
+              >
+                Skip Additional Information
+              </button>
+              <Button
+                onClick={handleSubmitAdditionalInfo}
+                disabled={isSubmittingAddInfo || (!addInfoMessage.trim() && addInfoFiles.length === 0)}
+                className="bg-[#22C55E] hover:bg-[#16A34A] text-white font-['Poppins',sans-serif] text-[14px] px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmittingAddInfo ? "Submitting..." : "Add Additional Information"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

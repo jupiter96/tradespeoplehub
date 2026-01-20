@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import DeliveryCountdown from "./DeliveryCountdown";
+import { useCountdown } from "../hooks/useCountdown";
 import {
   ShoppingBag,
   Package,
@@ -78,7 +79,7 @@ import { toast } from "sonner";
 export default function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptOrder, rejectOrder, startWork, deliverWork, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute } = useOrders();
+  const { orders, cancelOrder, acceptOrder, rejectOrder, startWork, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export default function ProfessionalOrdersSection() {
   const [showDisputeSection, setShowDisputeSection] = useState(false);
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
   const [extensionNewDate, setExtensionNewDate] = useState("");
+  const [extensionNewTime, setExtensionNewTime] = useState("09:00");
   const [shownAcceptedToasts, setShownAcceptedToasts] = useState<Set<string>>(new Set());
   const [extensionReason, setExtensionReason] = useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
@@ -107,6 +109,9 @@ export default function ProfessionalOrdersSection() {
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
   const [revisionResponseAction, setRevisionResponseAction] = useState<'accept' | 'reject'>('accept');
   const [revisionAdditionalNotes, setRevisionAdditionalNotes] = useState("");
+  const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState("");
+  const [completionFiles, setCompletionFiles] = useState<File[]>([]);
 
   // Helper function to format dates
   const formatDate = useCallback((dateString: string) => {
@@ -189,6 +194,39 @@ export default function ProfessionalOrdersSection() {
   const currentOrder = selectedOrder
     ? orders.find((o) => o.id === selectedOrder)
     : null;
+
+  // Calculate appointment deadline for countdown
+  const appointmentDeadline = useMemo(() => {
+    if (!currentOrder) return null;
+    
+    // Use booking date/time or scheduled date + time
+    const bookingDate = currentOrder.booking?.date;
+    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    
+    if (bookingDate) {
+      // Combine date and time
+      const [hours, minutes] = bookingTime.split(':').map(Number);
+      const deadline = new Date(bookingDate);
+      if (!isNaN(hours)) deadline.setHours(hours);
+      if (!isNaN(minutes)) deadline.setMinutes(minutes);
+      return deadline;
+    }
+    
+    // Fallback to scheduled date
+    if (currentOrder.scheduledDate) {
+      return new Date(currentOrder.scheduledDate);
+    }
+    
+    // Fallback to expected delivery
+    if (currentOrder.expectedDelivery) {
+      return new Date(currentOrder.expectedDelivery);
+    }
+    
+    return null;
+  }, [currentOrder]);
+
+  // Countdown hook for appointment time
+  const appointmentCountdown = useCountdown(appointmentDeadline);
 
   // Show toast notification when order is accepted
   useEffect(() => {
@@ -342,13 +380,32 @@ export default function ProfessionalOrdersSection() {
     // Extension request events
     const ext = order.extensionRequest;
     if (ext?.requestedAt) {
+      // Format new delivery date/time
+      const newDeliveryFormatted = ext.newDeliveryDate
+        ? (() => {
+            const d = new Date(ext.newDeliveryDate);
+            const dateStr = d.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+            const timeStr = d.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            return `${dateStr} at ${timeStr}`;
+          })()
+        : null;
+
       push(
         {
           at: ext.requestedAt,
           label: "Extension Requested",
           description: ext.reason
-            ? `You requested an extension. Reason: ${ext.reason}`
-            : "You requested an extension to the delivery time.",
+            ? `You requested an extension to ${newDeliveryFormatted || "a new date"}. Reason: ${ext.reason}`
+            : newDeliveryFormatted
+              ? `You requested an extension to ${newDeliveryFormatted}.`
+              : "You requested an extension to the delivery time.",
           colorClass: "bg-indigo-500",
           icon: <Clock className="w-5 h-5 text-white" />,
         },
@@ -356,6 +413,23 @@ export default function ProfessionalOrdersSection() {
       );
     }
     if (ext?.respondedAt && (ext.status === "approved" || ext.status === "rejected")) {
+      // Format new delivery date/time for response
+      const newDeliveryFormatted = ext.newDeliveryDate
+        ? (() => {
+            const d = new Date(ext.newDeliveryDate);
+            const dateStr = d.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+            const timeStr = d.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            return `${dateStr} at ${timeStr}`;
+          })()
+        : null;
+
       push(
         {
           at: ext.respondedAt,
@@ -365,8 +439,8 @@ export default function ProfessionalOrdersSection() {
               : "Extension Rejected",
           description:
             ext.status === "approved"
-              ? ext.newDeliveryDate
-                ? `New delivery date: ${formatDate(ext.newDeliveryDate)}`
+              ? newDeliveryFormatted
+                ? `New delivery date & time: ${newDeliveryFormatted}`
                 : "Extension approved."
               : "Client rejected the extension request.",
           colorClass: ext.status === "approved" ? "bg-green-600" : "bg-red-600",
@@ -476,6 +550,23 @@ export default function ProfessionalOrdersSection() {
       );
     }
 
+    // Additional Information event
+    const addInfo = order.additionalInformation;
+    if (addInfo?.submittedAt) {
+      push(
+        {
+          at: addInfo.submittedAt,
+          label: "Additional Information Received",
+          description: addInfo.message 
+            ? `Client submitted additional information: ${addInfo.message.substring(0, 100)}${addInfo.message.length > 100 ? '...' : ''}`
+            : `Client submitted ${addInfo.files?.length || 0} file(s) as additional information.`,
+          colorClass: "bg-blue-500",
+          icon: <FileText className="w-5 h-5 text-white" />,
+        },
+        "additional-info"
+      );
+    }
+
     // Delivery event
     if (order.deliveredDate) {
       push(
@@ -502,6 +593,22 @@ export default function ProfessionalOrdersSection() {
           icon: <CheckCircle2 className="w-5 h-5 text-white" />,
         },
         "completed"
+      );
+    }
+
+    // Order cancelled event
+    if (order.status === "Cancelled" && canc?.respondedAt && canc.status === "approved") {
+      push(
+        {
+          at: canc.respondedAt,
+          label: "Order Cancelled",
+          description: canc.reason
+            ? `Order was cancelled. Reason: ${canc.reason}`
+            : "Order has been cancelled.",
+          colorClass: "bg-red-700",
+          icon: <XCircle className="w-5 h-5 text-white" />,
+        },
+        "order-cancelled"
       );
     }
 
@@ -592,14 +699,45 @@ export default function ProfessionalOrdersSection() {
     }
 
     try {
-      await requestExtension(selectedOrder, extensionNewDate, extensionReason || undefined);
+      // Combine date and time for the new delivery datetime
+      const newDeliveryDateTime = `${extensionNewDate}T${extensionNewTime}`;
+      await requestExtension(selectedOrder, newDeliveryDateTime, extensionReason || undefined);
       toast.success("Extension request submitted. The client will be notified.");
       setIsExtensionDialogOpen(false);
       setExtensionNewDate("");
+      setExtensionNewTime("09:00");
       setExtensionReason("");
     } catch (error: any) {
       toast.error(error.message || "Failed to request extension");
     }
+  };
+
+  const handleProfessionalComplete = async () => {
+    if (!selectedOrder) return;
+    if (!completionMessage.trim() && completionFiles.length === 0) {
+      toast.error("Please add a completion message or upload verification files");
+      return;
+    }
+    try {
+      await professionalComplete(selectedOrder, completionMessage || undefined, completionFiles.length > 0 ? completionFiles : undefined);
+      toast.success("Completion request submitted. Waiting for client approval.");
+      setIsCompletionDialogOpen(false);
+      setCompletionMessage("");
+      setCompletionFiles([]);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit completion request");
+    }
+  };
+
+  const handleCompletionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setCompletionFiles(prev => [...prev, ...newFiles].slice(0, 10));
+    }
+  };
+
+  const handleRemoveCompletionFile = (index: number) => {
+    setCompletionFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleRespondToRevision = async () => {
@@ -898,30 +1036,6 @@ export default function ProfessionalOrdersSection() {
                   {currentOrder.deliveryStatus?.toUpperCase()}
                 </span>
               </Badge>
-              
-              {/* Three Dots Menu - Show on all screens */}
-              {(currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                    >
-                      <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => setIsCancelDialogOpen(true)}
-                      className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Cancel Order
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
           </div>
 
@@ -965,11 +1079,187 @@ export default function ProfessionalOrdersSection() {
 
               {/* Timeline Tab */}
               <TabsContent value="timeline" className="mt-6 space-y-6">
+                {/* Countdown Timer - Service Start Time */}
+                {(currentOrder.deliveryStatus === "pending" || (currentOrder.status === "placed" && currentOrder.acceptedByProfessional)) && 
+                 appointmentDeadline && 
+                 !appointmentCountdown.expired && (
+                  <div className="bg-gradient-to-r from-[#1E3A5F] to-[#2D5A8B] rounded-2xl p-6 shadow-lg border border-[#3D78CB]/30">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-white/70 uppercase tracking-wider">
+                          Expected Delivery Time
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-white font-medium">
+                          {currentOrder.booking?.date 
+                            ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                            : currentOrder.scheduledDate 
+                              ? formatDate(currentOrder.scheduledDate) 
+                              : "TBD"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Countdown Display */}
+                    <div className="grid grid-cols-4 gap-3">
+                      {/* Days */}
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
+                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-white leading-none">
+                          {String(appointmentCountdown.days).padStart(2, '0')}
+                        </div>
+                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-white/60 uppercase tracking-wider mt-1">
+                          Days
+                        </div>
+                      </div>
+                      
+                      {/* Hours */}
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
+                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-white leading-none">
+                          {String(appointmentCountdown.hours).padStart(2, '0')}
+                        </div>
+                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-white/60 uppercase tracking-wider mt-1">
+                          Hours
+                        </div>
+                      </div>
+                      
+                      {/* Minutes */}
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
+                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-white leading-none">
+                          {String(appointmentCountdown.minutes).padStart(2, '0')}
+                        </div>
+                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-white/60 uppercase tracking-wider mt-1">
+                          Minutes
+                        </div>
+                      </div>
+                      
+                      {/* Seconds */}
+                      <div className="bg-[#FE8A0F]/20 backdrop-blur-sm rounded-xl p-4 text-center border border-[#FE8A0F]/40">
+                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-[#FFB347] leading-none">
+                          {String(appointmentCountdown.seconds).padStart(2, '0')}
+                        </div>
+                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#FFB347]/80 uppercase tracking-wider mt-1">
+                          Seconds
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Indicator */}
+                    <div className="mt-4 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                          style={{ 
+                            width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%` 
+                          }}
+                        />
+                      </div>
+                      <span className="font-['Poppins',sans-serif] text-[11px] text-white/50">
+                        {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Service Time Reached - Ready to Start */}
+                {(currentOrder.deliveryStatus === "pending" || (currentOrder.status === "placed" && currentOrder.acceptedByProfessional)) && 
+                 appointmentDeadline && 
+                 appointmentCountdown.expired && (
+                  <div className="bg-gradient-to-r from-green-600 to-emerald-500 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
+                        <CheckCircle2 className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-['Poppins',sans-serif] text-[18px] text-white font-semibold">
+                          Service Time Has Arrived!
+                        </h4>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-white/80">
+                          The scheduled appointment time has arrived. You can now start working on the service.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Cancellation Request - Pending (Professional can respond) */}
                 {currentOrder.cancellationRequest && 
                  currentOrder.cancellationRequest.status === 'pending' && 
-                 currentOrder.cancellationRequest.requestedBy !== userInfo?.id && (
+                 currentOrder.cancellationRequest.requestedBy && 
+                 currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                    <div className="flex items-start gap-3 mb-4">
+                      <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+                          Cancellation Request Received
+                        </h4>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                          {currentOrder.client || "The client"} has requested to cancel this order.
+                        </p>
+                        {currentOrder.cancellationRequest.reason && (
+                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Reason:
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.cancellationRequest.reason}
+                            </p>
+                          </div>
+                        )}
+                        {currentOrder.cancellationRequest.responseDeadline && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-orange-700 mb-4">
+                            ⚠️ Response deadline: {new Date(currentOrder.cancellationRequest.responseDeadline).toLocaleString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        )}
+                        <div className="flex gap-3 flex-wrap">
+                          <Button
+                            onClick={async () => {
+                              try {
+                                await handleRespondToCancellation('approve');
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to approve cancellation");
+                              }
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Approve Cancellation
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              try {
+                                await handleRespondToCancellation('reject');
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to reject cancellation");
+                              }
+                            }}
+                            variant="outline"
+                            className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Reject Cancellation
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cancellation Request - Pending (Professional can respond) - Show at top of page */}
+                {currentOrder.cancellationRequest && 
+                 currentOrder.cancellationRequest.status === 'pending' && 
+                 currentOrder.cancellationRequest.requestedBy && 
+                 currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
                     <div className="flex items-start gap-3 mb-4">
                       <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
@@ -1073,25 +1363,55 @@ export default function ProfessionalOrdersSection() {
                 )}
 
 
-                {/* Status Alert Box - Old pending status (for backward compatibility) */}
+                {/* Status Alert Box - Service Delivery Pending (before work starts) */}
                 {currentOrder.deliveryStatus === "pending" && currentOrder.status !== "placed" && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service Delivery Pending
                     </h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                      Your client has completed payment and is awaiting your service delivery.
+                    </p>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                      Your client has completed payment and is awaiting your service delivery. Expected delivery: <span className="text-[#2c353f]">{currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}</span>. Feel free to reach out if you have any questions using the chat button.
+                      Expected delivery: <span className="text-orange-600 font-medium">
+                        {currentOrder.booking?.date 
+                          ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                          : currentOrder.scheduledDate 
+                            ? formatDate(currentOrder.scheduledDate) 
+                            : "TBD"}
+                      </span> Feel free to reach out if you have any questions using the chat button.
                     </p>
                     <div className="flex gap-3 flex-wrap">
                       <Button
-                        onClick={() => {
-                          startWork(currentOrder.id);
-                          toast.success("Work started! Client has been notified.");
-                        }}
+                        onClick={() => setIsDeliveryDialogOpen(true)}
                         className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
                       >
-                        <PlayCircle className="w-4 h-4 mr-2" />
-                        Start Work
+                        <Truck className="w-4 h-4 mr-2" />
+                        Deliver Work
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (currentOrder.client) {
+                            startConversation({
+                              id: `client-${currentOrder.id}`,
+                              name: currentOrder.client,
+                              avatar: currentOrder.clientAvatar || "",
+                            });
+                          }
+                        }}
+                        variant="outline"
+                        className="border-gray-300 text-[#2c353f] hover:bg-gray-50 font-['Poppins',sans-serif]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat
+                      </Button>
+                      <Button
+                        onClick={() => setIsExtensionDialogOpen(true)}
+                        variant="outline"
+                        className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-orange-50 font-['Poppins',sans-serif]"
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Extend Delivery Time
                       </Button>
                     </div>
                   </div>
@@ -1138,7 +1458,22 @@ export default function ProfessionalOrdersSection() {
                           </h5>
                         </div>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
-                          New delivery date: {currentOrder.extensionRequest.newDeliveryDate ? formatDate(currentOrder.extensionRequest.newDeliveryDate) : 'N/A'}
+                          New delivery date & time:{" "}
+                          {currentOrder.extensionRequest.newDeliveryDate 
+                            ? (() => {
+                                const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                const dateStr = d.toLocaleDateString("en-GB", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                });
+                                const timeStr = d.toLocaleTimeString("en-GB", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                });
+                                return `${dateStr} at ${timeStr}`;
+                              })()
+                            : 'N/A'}
                         </p>
                         {currentOrder.extensionRequest.reason && (
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
@@ -1184,8 +1519,40 @@ export default function ProfessionalOrdersSection() {
                       Your work has been delivered!
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-                      You have delivered your work. The client has until <span className="text-[#6b6b6b]">Sun 12th October, 2025 17:00</span>, to approve the delivery or request modifications. If no response is received, the order will be automatically completed.
+                      You have delivered your work. Submit completion request with verification data to allow the client to complete the order and release funds to your wallet.
                     </p>
+
+                    {/* Professional Complete Request Status */}
+                    {currentOrder.metadata?.professionalCompleteRequest && (
+                      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700">
+                            Completion Request Submitted
+                          </h5>
+                        </div>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          Waiting for client approval. Once approved, funds will be released to your wallet.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Complete Button - Show if not already submitted */}
+                    {!currentOrder.metadata?.professionalCompleteRequest && (
+                      <div className="mb-6">
+                        <Button
+                          onClick={() => {
+                            setIsCompletionDialogOpen(true);
+                            setCompletionMessage("");
+                            setCompletionFiles([]);
+                          }}
+                          className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif]"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Submit Completion Request
+                        </Button>
+                      </div>
+                    )}
 
                     {/* Revision Request Section */}
                     {currentOrder.revisionRequest && (
@@ -1522,7 +1889,22 @@ export default function ProfessionalOrdersSection() {
                             <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
                           </p>
                           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            <span className="font-medium">Requested new date:</span> {currentOrder.extensionRequest.newDeliveryDate ? formatDate(currentOrder.extensionRequest.newDeliveryDate) : 'N/A'}
+                            <span className="font-medium">Requested new date & time:</span>{" "}
+                            {currentOrder.extensionRequest.newDeliveryDate 
+                              ? (() => {
+                                  const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                  const dateStr = d.toLocaleDateString("en-GB", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  });
+                                  const timeStr = d.toLocaleTimeString("en-GB", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  });
+                                  return `${dateStr} at ${timeStr}`;
+                                })()
+                              : 'N/A'}
                           </p>
                           {currentOrder.extensionRequest.reason && (
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
@@ -1544,6 +1926,7 @@ export default function ProfessionalOrdersSection() {
                               : new Date();
                             currentDate.setDate(currentDate.getDate() + 7);
                             setExtensionNewDate(currentDate.toISOString().split('T')[0]);
+                            setExtensionNewTime("09:00");
                             setExtensionReason("");
                             setIsExtensionDialogOpen(true);
                           }}
@@ -2090,6 +2473,80 @@ export default function ProfessionalOrdersSection() {
 
               {/* Additional Info Tab */}
               <TabsContent value="additional-info" className="mt-6 space-y-6">
+                {/* Client's Additional Information */}
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
+                    Additional Information from Client
+                  </h3>
+
+                  {currentOrder.additionalInformation?.submittedAt ? (
+                    <div className="space-y-4">
+                      {/* Submitted Message */}
+                      {currentOrder.additionalInformation.message && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                            Client's message:
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            {currentOrder.additionalInformation.message}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Submitted Files */}
+                      {currentOrder.additionalInformation.files && currentOrder.additionalInformation.files.length > 0 && (
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                            Attachments ({currentOrder.additionalInformation.files.length}):
+                          </p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {currentOrder.additionalInformation.files.map((file: any, index: number) => (
+                              <div 
+                                key={index} 
+                                className="relative border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
+                                onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                              >
+                                {file.fileType === 'image' ? (
+                                  <img 
+                                    src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                                    alt={file.fileName}
+                                    className="w-full h-24 object-cover"
+                                  />
+                                ) : file.fileType === 'video' ? (
+                                  <div className="w-full h-24 bg-gray-200 flex items-center justify-center">
+                                    <PlayCircle className="w-8 h-8 text-gray-600" />
+                                  </div>
+                                ) : (
+                                  <div className="w-full h-24 bg-gray-100 flex items-center justify-center">
+                                    <FileText className="w-8 h-8 text-gray-600" />
+                                  </div>
+                                )}
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] p-2 truncate">
+                                  {file.fileName}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600">
+                        ✓ Submitted on {new Date(currentOrder.additionalInformation.submittedAt).toLocaleString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      No additional information has been submitted by the client yet.
+                    </p>
+                  )}
+                </div>
+
                 {currentOrder.address && (
                   <div className="bg-white border border-gray-200 rounded-xl p-6">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
@@ -2340,21 +2797,6 @@ export default function ProfessionalOrdersSection() {
                   </>
                 )}
 
-                {currentOrder.deliveryStatus === "pending" && (
-                  <>
-                    <Separator className="mb-6" />
-                    <div className="space-y-2">
-                      <Button
-                        onClick={() => setIsCancelDialogOpen(true)}
-                        variant="outline"
-                        className="w-full font-['Poppins',sans-serif] text-[13px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Cancel Order
-                      </Button>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -2576,26 +3018,52 @@ export default function ProfessionalOrdersSection() {
             </DialogHeader>
 
             <div className="space-y-4">
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  New Delivery Date <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    value={extensionNewDate}
-                    onChange={(e) => setExtensionNewDate(e.target.value)}
-                    min={currentOrder?.scheduledDate ? new Date(new Date(currentOrder.scheduledDate).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-                    className="font-['Poppins',sans-serif] text-[14px] pr-10"
-                  />
-                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              {/* New Delivery Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    New Delivery Date <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="date"
+                      value={extensionNewDate}
+                      onChange={(e) => setExtensionNewDate(e.target.value)}
+                      min={currentOrder?.scheduledDate ? new Date(new Date(currentOrder.scheduledDate).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                      className="font-['Poppins',sans-serif] text-[14px] pr-10"
+                    />
+                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
-                {currentOrder?.scheduledDate && (
-                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
-                    Current delivery date: {formatDate(currentOrder.scheduledDate)}
-                  </p>
-                )}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    New Delivery Time <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="time"
+                      value={extensionNewTime}
+                      onChange={(e) => setExtensionNewTime(e.target.value)}
+                      className="font-['Poppins',sans-serif] text-[14px] pr-10"
+                    />
+                    <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
               </div>
+              
+              {/* Current schedule info */}
+              {(currentOrder?.scheduledDate || currentOrder?.booking?.date) && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    <span className="font-medium">Current scheduled:</span>{" "}
+                    {currentOrder?.booking?.date 
+                      ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                      : currentOrder?.scheduledDate 
+                        ? formatDate(currentOrder.scheduledDate) 
+                        : "TBD"}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
@@ -2616,6 +3084,7 @@ export default function ProfessionalOrdersSection() {
                   onClick={() => {
                     setIsExtensionDialogOpen(false);
                     setExtensionNewDate("");
+                    setExtensionNewTime("09:00");
                     setExtensionReason("");
                   }}
                   className="font-['Poppins',sans-serif] text-[13px]"
@@ -2624,7 +3093,8 @@ export default function ProfessionalOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleRequestExtension}
-                  className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px]"
+                  disabled={!extensionNewDate}
+                  className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50"
                 >
                   Submit Request
                 </Button>
@@ -2687,55 +3157,127 @@ export default function ProfessionalOrdersSection() {
           </DialogContent>
         </Dialog>
 
-        {/* Cancel Order Dialog */}
-        <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-          <DialogContent className="w-[70vw]">
+        {/* Completion Request Dialog */}
+        <Dialog open={isCompletionDialogOpen} onOpenChange={setIsCompletionDialogOpen}>
+          <DialogContent className="w-[90vw] max-w-[600px]">
             <DialogHeader>
-              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
-                Cancel Order
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Submit Completion Request
               </DialogTitle>
-              <DialogDescription className="sr-only">
-                Cancel this order and provide a reason
+              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Upload verification data (images/videos) and add a message to request order completion. The client will review and approve to release funds to your wallet.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                  ⚠️ Are you sure you want to cancel this order? The client will be notified.
-                </p>
-              </div>
-
+              {/* File Upload */}
               <div>
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Reason for Cancellation
+                  Upload Verification Files (Images/Videos) <span className="text-red-500">*</span>
+                </Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#3D78CB] transition-colors">
+                  <input
+                    type="file"
+                    id="completion-files"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleCompletionFileChange}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="completion-files"
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                      Images (PNG, JPG, GIF, WEBP) or Videos (MP4, MPEG, MOV, AVI, WEBM) - Max 100MB each
+                    </p>
+                  </label>
+                </div>
+                
+                {/* Selected Files Preview */}
+                {completionFiles.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Selected Files ({completionFiles.length}/10):
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {completionFiles.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                        >
+                          {file.type.startsWith('image/') ? (
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                              <PlayCircle className="w-6 h-6 text-gray-600" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                              {file.name}
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                              {(file.size / (1024 * 1024)).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveCompletionFile(index)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Completion Message */}
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Completion Message <span className="text-red-500">*</span>
                 </Label>
                 <Textarea
-                  placeholder="Please provide a reason for cancelling this order..."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Add a message about the completed work and verification data..."
+                  value={completionMessage}
+                  onChange={(e) => setCompletionMessage(e.target.value)}
                   rows={4}
                   className="font-['Poppins',sans-serif] text-[13px]"
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
-                  onClick={() => {
-                    setIsCancelDialogOpen(false);
-                    setCancelReason("");
-                  }}
                   variant="outline"
-                  className="flex-1 font-['Poppins',sans-serif]"
+                  onClick={() => {
+                    setIsCompletionDialogOpen(false);
+                    setCompletionMessage("");
+                    setCompletionFiles([]);
+                  }}
+                  className="font-['Poppins',sans-serif] text-[13px]"
                 >
-                  Keep Order
+                  Cancel
                 </Button>
                 <Button
-                  onClick={handleCancelOrder}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                  onClick={handleProfessionalComplete}
+                  disabled={(!completionMessage.trim() && completionFiles.length === 0)}
+                  className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Cancel Order
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Submit Completion Request
                 </Button>
               </div>
             </div>

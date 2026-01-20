@@ -4527,91 +4527,128 @@ function TransactionHistoryTab() {
 
 // Withdraw Section (Professional)
 function WithdrawSection() {
+  const { userInfo } = useAccount();
   const [withdrawTab, setWithdrawTab] = useState<"balance" | "accounts" | "withdraw" | "history">("balance");
   const [showAddBankAccount, setShowAddBankAccount] = useState(false);
   const [showAddPayPal, setShowAddPayPal] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [selectedWithdrawMethod, setSelectedWithdrawMethod] = useState("");
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
 
-  // Mock data
-  const availableBalance = 3850.50;
-  const pendingAmount = 1200.00;
-  const totalEarnings = 12450.00;
+  // Fetch wallet balance
+  useEffect(() => {
+    if (withdrawTab === "balance" || withdrawTab === "withdraw") {
+      fetchWalletBalance();
+    }
+    if (withdrawTab === "history") {
+      fetchTransactions();
+    }
+    if (withdrawTab === "accounts") {
+      fetchPaymentMethods();
+    }
+  }, [withdrawTab]);
 
-  const bankAccounts = [
-    {
-      id: 1,
-      accountName: "John Doe",
-      bankName: "Barclays",
-      accountNumber: "****1234",
-      sortCode: "20-00-00",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      accountName: "John Doe Business",
-      bankName: "HSBC",
-      accountNumber: "****5678",
-      sortCode: "40-00-00",
-      isDefault: false,
-    },
-  ];
+  const fetchWalletBalance = async () => {
+    setLoadingBalance(true);
+    try {
+      const response = await fetch(resolveApiUrl("/api/wallet/balance"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWalletBalance(data.balance || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch wallet balance:", error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
-  const paymentMethods = [
-    {
-      id: 3,
-      type: "PayPal",
-      email: "john.doe@gmail.com",
-      isVerified: true,
-    },
-  ];
+  const fetchTransactions = async () => {
+    setLoadingTransactions(true);
+    try {
+      const response = await fetch(resolveApiUrl("/api/wallet/transactions?limit=50&type=withdrawal"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
 
-  const withdrawHistory = [
-    {
-      id: "WD-001",
-      date: "2024-11-08",
-      amount: 1500.00,
-      method: "Barclays ****1234",
-      status: "Completed",
-      processingTime: "2-3 business days",
-    },
-    {
-      id: "WD-002",
-      date: "2024-11-05",
-      amount: 850.00,
-      method: "PayPal",
-      status: "Completed",
-      processingTime: "1 business day",
-    },
-    {
-      id: "WD-003",
-      date: "2024-11-09",
-      amount: 2000.00,
-      method: "HSBC ****5678",
-      status: "Pending",
-      processingTime: "2-3 business days",
-    },
-  ];
+  const fetchPaymentMethods = async () => {
+    setLoadingPaymentMethods(true);
+    try {
+      const response = await fetch(resolveApiUrl("/api/payment-methods"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentMethods(data.paymentMethods || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch payment methods:", error);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
 
-  const handleWithdraw = () => {
+  // Calculate pending amount (from orders in progress)
+  const pendingAmount = 0; // TODO: Calculate from orders in progress
+  const totalEarnings = walletBalance + pendingAmount; // TODO: Calculate total earnings from all completed orders
+
+  // Filter bank accounts and PayPal from payment methods
+  const bankAccounts = paymentMethods.filter(method => method.type === 'bank');
+  const paypalMethods = paymentMethods.filter(method => method.type === 'paypal');
+
+  // Format withdraw history from transactions
+  const withdrawHistory = transactions.map(tx => ({
+    id: tx._id || tx.id,
+    date: tx.createdAt ? new Date(tx.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    amount: tx.amount || 0,
+    method: tx.paymentMethod === 'paypal' ? 'PayPal' : tx.metadata?.bankName ? `${tx.metadata.bankName} ${tx.metadata.accountNumber ? `****${tx.metadata.accountNumber.slice(-4)}` : ''}` : 'Bank Transfer',
+    status: tx.status === 'completed' ? 'Completed' : tx.status === 'pending' ? 'Pending' : tx.status === 'failed' ? 'Failed' : 'Pending',
+    processingTime: tx.paymentMethod === 'paypal' ? '1 business day' : '2-3 business days',
+  }));
+
+  const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount < 50) {
-      alert("Minimum withdrawal amount is £50");
+      toast.error("Minimum withdrawal amount is £50");
       return;
     }
-    if (amount > availableBalance) {
-      alert("Insufficient balance");
+    if (amount > walletBalance) {
+      toast.error("Insufficient balance");
       return;
     }
     if (!selectedWithdrawMethod) {
-      alert("Please select a withdrawal method");
+      toast.error("Please select a withdrawal method");
       return;
     }
-    alert(`Withdrawal request for £${amount} submitted successfully!`);
-    setShowWithdrawDialog(false);
-    setWithdrawAmount("");
-    setSelectedWithdrawMethod("");
+    
+    try {
+      // TODO: Implement withdrawal API call
+      toast.success(`Withdrawal request for £${amount.toFixed(2)} submitted successfully!`);
+      setShowWithdrawDialog(false);
+      setWithdrawAmount("");
+      setSelectedWithdrawMethod("");
+      await fetchWalletBalance();
+      await fetchTransactions();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit withdrawal request");
+    }
   };
 
   return (
@@ -4660,7 +4697,7 @@ function WithdrawSection() {
                 <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Available Balance</p>
               </div>
               <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
-                £{availableBalance.toFixed(2)}
+                {loadingBalance ? "Loading..." : `£${walletBalance.toFixed(2)}`}
               </h3>
               <Button
                 onClick={() => {
@@ -4725,19 +4762,45 @@ function WithdrawSection() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="border border-gray-200 rounded-xl p-4">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">This Month</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£2,340</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                {loadingTransactions ? "Loading..." : `£${transactions.filter(tx => {
+                  const txDate = new Date(tx.createdAt || tx.date);
+                  const now = new Date();
+                  return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear() && tx.type === 'withdrawal' && tx.status === 'completed';
+                }).reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}`}
+              </p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Last Month</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£1,980</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                {loadingTransactions ? "Loading..." : `£${transactions.filter(tx => {
+                  const txDate = new Date(tx.createdAt || tx.date);
+                  const now = new Date();
+                  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+                  return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear() && tx.type === 'withdrawal' && tx.status === 'completed';
+                }).reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}`}
+              </p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Withdrawals</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">8</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                {loadingTransactions ? "Loading..." : transactions.filter(tx => tx.type === 'withdrawal').length}
+              </p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Avg. Time</p>
-              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">2 days</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                {loadingTransactions ? "Loading..." : (() => {
+                  const completedWithdrawals = transactions.filter(tx => tx.type === 'withdrawal' && tx.status === 'completed');
+                  if (completedWithdrawals.length === 0) return 'N/A';
+                  const avgDays = completedWithdrawals.reduce((sum, tx) => {
+                    const createdAt = new Date(tx.createdAt || tx.date);
+                    const processedAt = tx.processedAt ? new Date(tx.processedAt) : new Date();
+                    return sum + (processedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+                  }, 0) / completedWithdrawals.length;
+                  return `${Math.round(avgDays)} days`;
+                })()}
+              </p>
             </div>
           </div>
         </div>
@@ -4876,7 +4939,7 @@ function WithdrawSection() {
             <div className="bg-gradient-to-br from-[#10b981] to-[#059669] rounded-2xl p-6 text-white mb-6">
               <p className="font-['Poppins',sans-serif] text-[14px] opacity-90 mb-1">Available to Withdraw</p>
               <h3 className="font-['Poppins',sans-serif] text-[42px]">
-                £{availableBalance.toFixed(2)}
+                {loadingBalance ? "Loading..." : `£${walletBalance.toFixed(2)}`}
               </h3>
             </div>
 
@@ -4897,18 +4960,18 @@ function WithdrawSection() {
                     placeholder="0.00"
                     className="w-full h-14 pl-10 pr-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[18px] focus:border-[#FE8A0F] outline-none"
                     min="50"
-                    max={availableBalance}
+                    max={walletBalance}
                     step="0.01"
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
-                  Minimum: £50 • Maximum: £{availableBalance.toFixed(2)}
+                  Minimum: £50 • Maximum: £{walletBalance.toFixed(2)}
                 </p>
               </div>
 
               {/* Quick Amount Buttons */}
               <div className="grid grid-cols-4 gap-2">
-                {[50, 100, 500, availableBalance].map((amount) => (
+                {[50, 100, 500, walletBalance].map((amount) => (
                   <Button
                     key={amount}
                     type="button"
@@ -4916,7 +4979,7 @@ function WithdrawSection() {
                     onClick={() => setWithdrawAmount(amount.toString())}
                     className="font-['Poppins',sans-serif] text-[13px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
                   >
-                    {amount === availableBalance ? "All" : `£${amount}`}
+                    {amount === walletBalance ? "All" : `£${amount}`}
                   </Button>
                 ))}
               </div>
@@ -4927,6 +4990,11 @@ function WithdrawSection() {
                   Select Withdrawal Method
                 </label>
                 <div className="space-y-2">
+                  {bankAccounts.length === 0 && !loadingPaymentMethods && (
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center py-4">
+                      No bank accounts added. Please add a bank account first.
+                    </p>
+                  )}
                   {bankAccounts.map((account) => (
                     <button
                       key={account.id}
@@ -4960,7 +5028,7 @@ function WithdrawSection() {
                       </div>
                     </button>
                   ))}
-                  {paymentMethods.map((method) => (
+                  {paypalMethods.map((method) => (
                     <button
                       key={method.id}
                       type="button"

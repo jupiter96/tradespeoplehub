@@ -816,6 +816,17 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
           additionalNotes: order.revisionRequest.additionalNotes || undefined,
         } : undefined,
+        additionalInformation: order.additionalInformation ? {
+          message: order.additionalInformation.message || '',
+          files: order.additionalInformation.files ? order.additionalInformation.files.map(file => ({
+            url: file.url,
+            fileName: file.fileName,
+            fileType: file.fileType,
+            uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
+          })) : [],
+          submittedAt: order.additionalInformation.submittedAt ? new Date(order.additionalInformation.submittedAt).toISOString() : undefined,
+        } : undefined,
+        metadata: order.metadata || {},
         disputeInfo: order.metadata?.disputeStatus ? {
           id: order.disputeId || undefined,
           status: order.metadata.disputeStatus,
@@ -973,9 +984,7 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    }).populate('client professional');
+    const order = await Order.findOne(await buildOrderQuery(orderId)).populate('client professional');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -992,6 +1001,12 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
     // Can't request cancellation if order has been delivered
     if (order.status === 'Completed' || order.deliveryStatus === 'delivered' || order.deliveryStatus === 'completed') {
       return res.status(400).json({ error: 'Cannot cancel order that has been delivered. Please initiate a dispute instead.' });
+    }
+
+    // If order is "In Progress" and client is requesting cancellation, require professional approval
+    if (order.status === 'In Progress' && isClient) {
+      // This will create a cancellation request that requires professional approval
+      // The logic below will handle this
     }
 
     // Check if there's already a pending cancellation request
@@ -1048,9 +1063,7 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
       return res.status(400).json({ error: 'Action must be either "approve" or "reject"' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    }).populate('client professional');
+    const order = await Order.findOne(await buildOrderQuery(orderId)).populate('client professional');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -1077,6 +1090,7 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
     if (action === 'approve') {
       // Cancel the order
       order.status = 'Cancelled';
+      order.deliveryStatus = 'cancelled';
       order.cancellationRequest.status = 'approved';
       
       // Handle refund if payment was made
@@ -1553,6 +1567,90 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
   }
 });
 
+// Professional: Mark order as complete with verification data
+router.post('/:orderId/professional-complete', authenticateToken, requireRole(['professional']), deliveryUpload.array('files', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { completionMessage } = req.body;
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
+
+    if (!order) {
+      // Clean up uploaded files if order not found
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+          }
+        });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is delivered
+    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
+      // Clean up uploaded files if order is not delivered
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+          }
+        });
+      }
+      return res.status(400).json({ error: 'Order must be delivered before marking as complete' });
+    }
+
+    // Check if already marked as complete by professional
+    if (order.metadata?.professionalCompleteRequest) {
+      return res.status(400).json({ error: 'Completion request already submitted. Waiting for client approval.' });
+    }
+
+    // Process uploaded files (verification data)
+    const completionFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        completionFiles.push({
+          url: `/api/orders/deliveries/${file.filename}`,
+          fileName: file.originalname,
+          fileType: fileType,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
+    // Store completion request in metadata
+    if (!order.metadata) order.metadata = {};
+    order.metadata.professionalCompleteRequest = {
+      requestedAt: new Date(),
+      completionMessage: completionMessage || '',
+      completionFiles: completionFiles,
+    };
+
+    await order.save();
+
+    res.json({ 
+      message: 'Completion request submitted successfully. Waiting for client approval.',
+      completionRequest: order.metadata.professionalCompleteRequest
+    });
+  } catch (error) {
+    // Clean up uploaded files on error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.path) {
+          try {
+            unlinkSync(file.path);
+          } catch (err) {
+            console.error('Error deleting file:', err);
+          }
+        }
+      });
+    }
+    console.error('Professional complete error:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit completion request' });
+  }
+});
+
 // Client: Accept delivery and release funds to professional
 router.post('/:orderId/complete', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
@@ -1571,6 +1669,11 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
     // Check if order is in delivered status
     if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
       return res.status(400).json({ error: 'Order must be delivered before completing' });
+    }
+
+    // Check if professional has submitted completion request
+    if (!order.metadata?.professionalCompleteRequest) {
+      return res.status(400).json({ error: 'Professional must submit completion request first' });
     }
 
     // Get professional user
@@ -2301,6 +2404,135 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Cancel dispute error:', error);
     res.status(500).json({ error: error.message || 'Failed to cancel dispute' });
+  }
+});
+
+// Configure multer for additional info file uploads
+const additionalInfoDir = path.join(__dirname, '..', 'uploads', 'attachments');
+// Create attachments directory if it doesn't exist
+fs.mkdir(additionalInfoDir, { recursive: true }).catch(() => {});
+
+const additionalInfoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, additionalInfoDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const additionalInfoUpload = multer({
+  storage: additionalInfoStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+      'application/pdf', 'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images, videos, and documents are allowed.'));
+    }
+  }
+});
+
+// Serve additional info attachment files
+router.get('/attachments/:filename', (req, res) => {
+  const filePath = path.join(additionalInfoDir, req.params.filename);
+  if (existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
+// Client: Submit additional information for order
+router.post('/:orderId/additional-info', authenticateToken, requireRole(['client']), additionalInfoUpload.array('files', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { message } = req.body;
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id }));
+
+    if (!order) {
+      // Clean up uploaded files if order not found
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+          }
+        });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if additional info already submitted
+    if (order.additionalInformation && order.additionalInformation.submittedAt) {
+      // Clean up uploaded files
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+          }
+        });
+      }
+      return res.status(400).json({ error: 'Additional information has already been submitted for this order' });
+    }
+
+    const additionalFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        let fileType = 'document';
+        if (file.mimetype.startsWith('image/')) {
+          fileType = 'image';
+        } else if (file.mimetype.startsWith('video/')) {
+          fileType = 'video';
+        }
+        additionalFiles.push({
+          url: `/api/orders/attachments/${file.filename}`,
+          fileName: file.originalname,
+          fileType: fileType,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
+    // Update order with additional information
+    order.additionalInformation = {
+      message: message || '',
+      files: additionalFiles,
+      submittedAt: new Date(),
+    };
+
+    await order.save();
+
+    res.json({
+      message: 'Additional information submitted successfully',
+      additionalInformation: order.additionalInformation
+    });
+  } catch (error) {
+    // Clean up uploaded files on error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.path) {
+          try {
+            unlinkSync(file.path);
+          } catch (err) {
+            console.error('Error deleting file:', err);
+          }
+        }
+      });
+    }
+    console.error('Additional info submission error:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit additional information' });
   }
 });
 

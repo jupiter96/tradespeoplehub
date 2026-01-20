@@ -179,6 +179,16 @@ export interface Order {
     decisionNotes?: string;
     autoClosed?: boolean;
   };
+  additionalInformation?: {
+    message?: string;
+    files?: Array<{
+      url: string;
+      fileName: string;
+      fileType: 'image' | 'video' | 'document';
+      uploadedAt?: string;
+    }>;
+    submittedAt?: string;
+  };
 }
 
 interface OrdersContextType {
@@ -199,6 +209,7 @@ interface OrdersContextType {
   rejectOrder: (orderId: string, reason?: string) => Promise<void>;
   startWork: (orderId: string) => void;
   deliverWork: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
+  professionalComplete: (orderId: string, completionMessage?: string, files?: File[]) => Promise<void>;
   acceptDelivery: (orderId: string) => Promise<void>;
   extendDeliveryTime: (orderId: string, days: number) => void;
   requestExtension: (orderId: string, newDeliveryDate: string, reason?: string) => Promise<void>;
@@ -218,6 +229,7 @@ interface OrdersContextType {
   respondToDispute: (orderId: string, message?: string) => Promise<void>;
   requestArbitration: (orderId: string) => Promise<void>;
   cancelDispute: (orderId: string) => Promise<void>;
+  addAdditionalInfo: (orderId: string, message?: string, files?: File[]) => Promise<void>;
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
@@ -488,6 +500,54 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       await refreshOrders();
     } catch (error: any) {
       console.error('Deliver work error:', error);
+      throw error;
+    }
+  };
+
+  const professionalComplete = async (orderId: string, completionMessage?: string, files?: File[]) => {
+    try {
+      const formData = new FormData();
+      if (completionMessage && completionMessage.trim()) {
+        formData.append('completionMessage', completionMessage.trim());
+      }
+      
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/professional-complete`), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit completion request');
+      }
+
+      const data = await response.json();
+      
+      // Update order with completion request
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            metadata: {
+              ...order.metadata,
+              professionalCompleteRequest: data.completionRequest,
+            },
+          };
+        }
+        return order;
+      }));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Professional complete error:', error);
       throw error;
     }
   };
@@ -1211,6 +1271,39 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // Add additional information to an order
+  const addAdditionalInfo = async (orderId: string, message?: string, files?: File[]): Promise<void> => {
+    try {
+      const formData = new FormData();
+      if (message && message.trim()) {
+        formData.append('message', message.trim());
+      }
+
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/additional-info`), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit additional information');
+      }
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Add additional info error:', error);
+      throw error;
+    }
+  };
+
   return (
     <OrdersContext.Provider
       value={{
@@ -1227,6 +1320,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         rejectOrder,
         startWork,
         deliverWork,
+        professionalComplete,
         acceptDelivery,
         extendDeliveryTime,
         requestExtension,
@@ -1246,6 +1340,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         respondToDispute,
         requestArbitration,
         cancelDispute,
+        addAdditionalInfo,
       }}
     >
       {children}
