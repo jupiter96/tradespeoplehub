@@ -1995,7 +1995,19 @@ export default function CartPage() {
                                       disabled={(date) => {
                                         const today = new Date();
                                         today.setHours(0, 0, 0, 0);
+                                        
+                                        // If date is before today, disable it
                                         if (date < today) return true;
+                                        
+                                        // If date is today, check if current time is past 6 AM
+                                        const now = new Date();
+                                        const isToday = date.getTime() === today.getTime();
+                                        if (isToday) {
+                                          const currentHour = now.getHours();
+                                          // If current time is 6 AM or later, disable today
+                                          if (currentHour >= 6) return true;
+                                        }
+                                        
                                         // Check if date is available based on service availability
                                         return !isDateAvailable(item.id, date);
                                       }}
@@ -2004,7 +2016,19 @@ export default function CartPage() {
                                         available: (date) => {
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
+                                          
+                                          // If date is before today, it's not available
                                           if (date < today) return false;
+                                          
+                                          // If date is today, check if current time is before 6 AM
+                                          const now = new Date();
+                                          const isToday = date.getTime() === today.getTime();
+                                          if (isToday) {
+                                            const currentHour = now.getHours();
+                                            // If current time is 6 AM or later, today is not available
+                                            if (currentHour >= 6) return false;
+                                          }
+                                          
                                           return isDateAvailable(item.id, date);
                                         }
                                       }}

@@ -563,12 +563,12 @@ function ProfessionalOrdersSection() {
       push(
         {
           at: order.revisionRequest.requestedAt,
-          label: "Modification Requested",
-          description: "Client has requested modifications to the delivered work.",
+          label: "Revision Requested",
+          description: "Client requested a modification.",
           message: order.revisionRequest.clientMessage || order.revisionRequest.reason,
           files: order.revisionRequest.clientFiles,
           colorClass: "bg-orange-500",
-          icon: <Edit className="w-5 h-5 text-white" />,
+          icon: <AlertTriangle className="w-5 h-5 text-white" />,
         },
         "revision-requested"
       );
@@ -1742,7 +1742,7 @@ function ProfessionalOrdersSection() {
                       </div>
                     )}
 
-                    {/* Modification Request Section */}
+                    {/* Revision Request Section */}
                     {currentOrder.revisionRequest && (
                       <div className={`mb-6 p-4 rounded-lg border ${
                         currentOrder.revisionRequest.status === 'pending' 
@@ -1755,7 +1755,7 @@ function ProfessionalOrdersSection() {
                       }`}>
                         <div className="flex items-start gap-3 mb-4">
                           {currentOrder.revisionRequest.status === 'pending' && (
-                            <Edit className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                           )}
                           {currentOrder.revisionRequest.status === 'in_progress' && (
                             <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -1776,13 +1776,13 @@ function ProfessionalOrdersSection() {
                                 ? 'text-green-700'
                                 : 'text-red-700'
                             }`}>
-                              Modification Request - {currentOrder.revisionRequest.status === 'pending' ? 'Pending Review' : currentOrder.revisionRequest.status === 'in_progress' ? 'In Progress' : currentOrder.revisionRequest.status === 'completed' ? 'Completed' : 'Rejected'}
+                              Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : currentOrder.revisionRequest.status === 'in_progress' ? 'In Progress' : currentOrder.revisionRequest.status === 'completed' ? 'Completed' : 'Rejected'}
                             </h5>
                             
                             {currentOrder.revisionRequest.reason && (
                               <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  📝 What needs to be modified:
+                                  Client's request:
                                 </p>
                                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                   {currentOrder.revisionRequest.reason}
@@ -1792,7 +1792,7 @@ function ProfessionalOrdersSection() {
                             {currentOrder.revisionRequest.clientMessage && (
                               <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  💬 Additional notes from client:
+                                  Additional details:
                                 </p>
                                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                   {currentOrder.revisionRequest.clientMessage}
@@ -1802,7 +1802,7 @@ function ProfessionalOrdersSection() {
                             {currentOrder.revisionRequest.clientFiles && currentOrder.revisionRequest.clientFiles.length > 0 && (
                               <div className="mb-3">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                                  📎 Reference files ({currentOrder.revisionRequest.clientFiles.length})
+                                  Attachments ({currentOrder.revisionRequest.clientFiles.length})
                                 </p>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                   {currentOrder.revisionRequest.clientFiles.map((file: any, index: number) => (
@@ -1814,22 +1814,12 @@ function ProfessionalOrdersSection() {
                                           className="w-full h-20 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
                                           onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                                         />
-                                      ) : file.fileType === 'video' ? (
-                                        <div
-                                          className="w-full h-20 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                        >
-                                          <PlayCircle className="w-6 h-6 text-gray-600" />
-                                          <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded truncate">
-                                            {file.fileName}
-                                          </div>
-                                        </div>
                                       ) : (
                                         <div
                                           className="w-full h-20 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
                                           onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                                         >
-                                          <FileText className="w-6 h-6 text-gray-600" />
+                                          <PlayCircle className="w-6 h-6 text-gray-600" />
                                           <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded truncate">
                                             {file.fileName}
                                           </div>
@@ -1851,8 +1841,7 @@ function ProfessionalOrdersSection() {
                                   }}
                                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
                                 >
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Accept & Start Work
+                                  Accept Revision
                                 </Button>
                                 <Button
                                   onClick={() => {
@@ -1863,8 +1852,7 @@ function ProfessionalOrdersSection() {
                                   variant="outline"
                                   className="flex-1 font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
                                 >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Reject Request
+                                  Reject Revision
                                 </Button>
                               </div>
                             )}
@@ -2089,18 +2077,41 @@ function ProfessionalOrdersSection() {
                       No timeline events yet.
                     </div>
                   )}
-                  {timelineEvents.map((event, index) => (
-                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
-                      <div className="flex flex-col items-center pt-1">
-                        <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
-                          {event.icon}
-                        </div>
-                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
-                      </div>
-                      <div className="flex-1 pb-6">
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
-                          {event.label}
-                        </p>
+                  {(() => {
+                    // Get all "Work Delivered" events sorted chronologically (oldest first)
+                    const deliveryEvents = timelineEvents
+                      .filter(e => e.label === "Work Delivered")
+                      .sort((a, b) => {
+                        const aTime = a.at ? new Date(a.at).getTime() : 0;
+                        const bTime = b.at ? new Date(b.at).getTime() : 0;
+                        return aTime - bTime;
+                      });
+                    
+                    // Create a map of delivery event timestamps to their number
+                    const deliveryNumberMap = new Map();
+                    deliveryEvents.forEach((event, idx) => {
+                      const key = event.at || 'no-date';
+                      deliveryNumberMap.set(key, idx + 1);
+                    });
+
+                    return timelineEvents.map((event, index) => {
+                      // Get delivery number if this is a "Work Delivered" event
+                      const deliveryNumber = event.label === "Work Delivered" 
+                        ? deliveryNumberMap.get(event.at || 'no-date')
+                        : null;
+
+                      return (
+                        <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
+                          <div className="flex flex-col items-center pt-1">
+                            <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
+                              {event.icon}
+                            </div>
+                            <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                          </div>
+                          <div className="flex-1 pb-6">
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                              {deliveryNumber ? `#${deliveryNumber} ${event.label}` : event.label}
+                            </p>
                         {event.at && (
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                             {formatDateTime(event.at)}
@@ -2160,7 +2171,9 @@ function ProfessionalOrdersSection() {
                         )}
                       </div>
                     </div>
-                  ))}
+                      );
+                    });
+                  })()}
                 </div>
                 <div className="hidden">
                   {/* Additional Information Submitted Timeline */}
@@ -3032,32 +3045,141 @@ function ProfessionalOrdersSection() {
               {/* Delivery Tab */}
               <TabsContent value="delivery" className="mt-6">
                 <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  {currentOrder.deliveryStatus === "active" && (
-                    <div className="text-center py-8">
-                      <Clock className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                        In Progress
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        Complete your work and deliver to the client
-                      </p>
-                    </div>
-                  )}
+                  {(() => {
+                    // Get all "Work Delivered" timeline events
+                    const timeline = buildProfessionalTimeline(currentOrder);
+                    const deliveryEvents = timeline.filter(event => event.label === "Work Delivered");
+                    
+                    // Sort chronologically (oldest first for proper #1, #2, #3 numbering)
+                    const sortedDeliveries = [...deliveryEvents].sort((a, b) => {
+                      const aTime = a.at ? new Date(a.at).getTime() : 0;
+                      const bTime = b.at ? new Date(b.at).getTime() : 0;
+                      return aTime - bTime;
+                    });
 
-                  {currentOrder.deliveryStatus === "delivered" && (
-                    <div className="text-center py-8">
-                      <Truck className="w-12 h-12 text-purple-500 mx-auto mb-3" />
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                        Delivered
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        Waiting for client approval
-                      </p>
-                    </div>
-                  )}
+                    if (sortedDeliveries.length > 0) {
+                      return (
+                        <div className="space-y-6">
+                          {sortedDeliveries.map((delivery, index) => (
+                            <div key={index} className="flex gap-4">
+                              <div className="flex flex-col items-center pt-1">
+                                <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
+                                  <Truck className="w-5 h-5 text-white" />
+                                </div>
+                                {index < sortedDeliveries.length - 1 && (
+                                  <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "40px" }} />
+                                )}
+                              </div>
+                              <div className="flex-1 pb-6">
+                                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                                  #{index + 1} Work Delivered
+                                </h4>
+                                <p className="font-['Poppins',sans-serif] text-[13px] mb-3">
+                                  <span className="text-purple-600">You</span>{" "}
+                                  <span className="text-[#6b6b6b]">delivered the work</span>{" "}
+                                  <span className="text-[#6b6b6b] italic">
+                                    {delivery.at ? formatDateTime(delivery.at) : formatDateTime(new Date().toISOString())}
+                                  </span>
+                                </p>
+
+                                {/* Delivery Content Box - Show delivery message and files */}
+                                {(delivery.message || (delivery.files && delivery.files.length > 0)) && (
+                                  <div className="border border-purple-200 rounded-lg p-4 mb-4 bg-purple-50/30">
+                                    {delivery.message && (
+                                      <div className="mb-3">
+                                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                          Delivery message:
+                                        </p>
+                                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                          {delivery.message}
+                                        </p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Delivery Attachments */}
+                                    {delivery.files && delivery.files.length > 0 && (
+                                      <div>
+                                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                          📎 Attachments ({delivery.files.length})
+                                        </p>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                          {delivery.files.map((file: any, fileIndex: number) => (
+                                            <div key={fileIndex} className="relative group">
+                                              {file.fileType === 'image' ? (
+                                                <img
+                                                  src={resolveFileUrl(file.url)}
+                                                  alt={file.fileName}
+                                                  className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                                  onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                                />
+                                              ) : (
+                                                <div
+                                                  className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                                  onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                                >
+                                                  <PlayCircle className="w-8 h-8 text-gray-600" />
+                                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                                    {file.fileName}
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Status message for latest delivery */}
+                                {index === sortedDeliveries.length - 1 && currentOrder.deliveryStatus === "delivered" && (
+                                  <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
+                                    <div className="flex gap-2">
+                                      <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                      <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
+                                        Waiting for client approval
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    // No deliveries yet - show status message
+                    if (currentOrder.deliveryStatus === "active" || currentOrder.status === "In Progress") {
+                      return (
+                        <div className="text-center py-8">
+                          <Clock className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+                          <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                            In Progress
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            Complete your work and deliver to the client
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    // Order is pending or waiting to start
+                    return (
+                      <div className="text-center py-8">
+                        <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Pending Start
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          You can start working on this order
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   {currentOrder.deliveryStatus === "completed" && (
-                    <div className="text-center py-8">
+                    <div className="text-center py-8 mt-6 pt-6 border-t border-gray-200">
                       <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
                         <Check className="w-8 h-8 text-green-600" />
                       </div>
@@ -3120,9 +3242,15 @@ function ProfessionalOrdersSection() {
                   </p>
                   <div className="flex gap-3 items-start">
                     <img 
-                      src={serviceVector}
+                      src={currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image 
+                        ? resolveFileUrl(currentOrder.items[0].image) 
+                        : (currentOrder.serviceImage ? resolveFileUrl(currentOrder.serviceImage) : serviceVector)}
                       alt="Service thumbnail"
                       className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = serviceVector;
+                      }}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">

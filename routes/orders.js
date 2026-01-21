@@ -2029,10 +2029,7 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
     const { orderId } = req.params;
     const { rating, review } = req.body; // Optional rating and review
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }],
-      client: req.user.id 
-    }).populate('professional');
+    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id })).populate('professional');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });

@@ -321,12 +321,12 @@ export default function ClientOrdersSection() {
       push(
         {
           at: order.revisionRequest.requestedAt,
-          title: "Modification Requested",
-          description: "You requested modifications to the delivered work.",
+          title: "Revision Requested",
+          description: "You requested a modification to the delivered work.",
           message: order.revisionRequest.clientMessage || order.revisionRequest.reason,
           files: order.revisionRequest.clientFiles,
           colorClass: "bg-orange-500",
-          icon: <Edit className="w-5 h-5 text-white" />,
+          icon: <AlertTriangle className="w-5 h-5 text-white" />,
         },
         "revision-requested"
       );
@@ -516,39 +516,27 @@ export default function ClientOrdersSection() {
   };
 
   const handleRequestRevision = async () => {
-    console.log('[Request Modification] handleRequestRevision called');
-    console.log('[Request Modification] selectedOrder:', selectedOrder);
-    console.log('[Request Modification] currentOrder?.id:', currentOrder?.id);
-    console.log('[Request Modification] revisionReason:', revisionReason);
-    console.log('[Request Modification] revisionMessage:', revisionMessage);
-    console.log('[Request Modification] revisionFiles:', revisionFiles);
-    
-    const orderId = selectedOrder || currentOrder?.id;
-    console.log('[Request Modification] Resolved orderId:', orderId);
-    
-    if (!orderId || !revisionReason.trim()) {
-      console.log('[Request Modification] Validation failed - orderId:', orderId, 'revisionReason:', revisionReason);
-      toast.error("Please describe what modifications you need");
+    if (!selectedOrder || !revisionReason.trim()) {
+      toast.error("Please provide a reason for the revision request");
       return;
     }
     try {
-      console.log('[Request Modification] Calling requestRevision API...');
       await requestRevision(
-        orderId,
+        selectedOrder,
         revisionReason,
         revisionMessage.trim() ? revisionMessage : undefined,
         revisionFiles.length > 0 ? revisionFiles : undefined
       );
-      console.log('[Request Modification] API call successful');
-      toast.success("Modification request submitted! The professional will review your request and make the necessary changes.");
+      toast.success("Revision request submitted. The professional will review your request.");
       setIsRevisionRequestDialogOpen(false);
+      setSelectedOrder(null);
       setRevisionReason("");
       setRevisionMessage("");
       setRevisionFiles([]);
-      setSelectedOrder(null);
+      // Refresh orders to update timeline
+      await refreshOrders();
     } catch (error: any) {
-      console.error('[Request Modification] API call failed:', error);
-      toast.error(error.message || "Failed to submit modification request");
+      toast.error(error.message || "Failed to request revision");
     }
   };
 
@@ -614,7 +602,10 @@ export default function ClientOrdersSection() {
     try {
       await acceptDelivery(orderId);
       toast.success("Order completed! Funds have been released to the professional. You can now rate the service.");
+      setSelectedOrder(orderId);
       setIsRatingDialogOpen(true);
+      // Refresh orders to update status
+      await refreshOrders();
     } catch (error: any) {
       toast.error(error.message || "Failed to complete order");
     }
@@ -721,6 +712,8 @@ export default function ClientOrdersSection() {
       setCommunicationRating(5);
       setServiceAsDescribedRating(5);
       setBuyAgainRating(5);
+      // Refresh orders to update review status
+      await refreshOrders();
     } catch (error: any) {
       toast.error(error.message || "Failed to submit review");
     } finally {
@@ -935,35 +928,6 @@ export default function ClientOrdersSection() {
   }, [currentOrder]);
 
   const workElapsedTime = useElapsedTime(workStartTime);
-
-  // Debug: Track isRevisionRequestDialogOpen state changes and ensure modal visibility
-  useEffect(() => {
-    console.log('[Request Modification] isRevisionRequestDialogOpen state changed:', isRevisionRequestDialogOpen);
-    console.log('[Request Modification] selectedOrder:', selectedOrder);
-    console.log('[Request Modification] currentOrder?.id:', currentOrder?.id);
-    
-    if (isRevisionRequestDialogOpen) {
-      // Ensure modal is visible by setting z-index on DOM elements
-      setTimeout(() => {
-        const overlay = document.querySelector('[data-slot="dialog-overlay"]');
-        const content = document.querySelector('[data-slot="dialog-content"]');
-        
-        console.log('[Request Modification] Overlay found:', !!overlay);
-        console.log('[Request Modification] Content found:', !!content);
-        
-        if (overlay) {
-          (overlay as HTMLElement).style.zIndex = '9998';
-          console.log('[Request Modification] Overlay z-index set to 9998');
-        }
-        
-        if (content) {
-          (content as HTMLElement).style.zIndex = '9999';
-          (content as HTMLElement).style.position = 'fixed';
-          console.log('[Request Modification] Content z-index set to 9999');
-        }
-      }, 100);
-    }
-  }, [isRevisionRequestDialogOpen, selectedOrder, currentOrder?.id]);
 
   // Poll for latest order updates while viewing details
   useEffect(() => {
@@ -1649,125 +1613,65 @@ export default function ClientOrdersSection() {
                   </div>
                 )}
 
-                <div className="flex gap-3 flex-wrap">
-                  <Button
-                    onClick={() => handleAcceptDelivery(currentOrder.id)}
-                    className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Approve
-                  </Button>
-                  {/* Show Request Modification button only if no active revision request */}
-                  {(() => {
-                    const shouldShow = !currentOrder.revisionRequest || currentOrder.revisionRequest.status === 'completed' || currentOrder.revisionRequest.status === 'rejected';
-                    console.log('[Request Modification] Button render check:', {
-                      hasRevisionRequest: !!currentOrder.revisionRequest,
-                      revisionStatus: currentOrder.revisionRequest?.status,
-                      shouldShow
-                    });
-                    return shouldShow;
-                  })() && (
+                {/* Show buttons only if order is not completed and no active revision request */}
+                {currentOrder.status !== "Completed" && 
+                 currentOrder.deliveryStatus !== "completed" &&
+                 (!currentOrder.revisionRequest || 
+                  (currentOrder.revisionRequest.status !== 'pending' && 
+                   currentOrder.revisionRequest.status !== 'in_progress')) && (
+                  <div className="flex gap-3 flex-wrap">
                     <Button
-                      onClick={() => {
-                        console.log('[Request Modification] Button clicked');
-                        console.log('[Request Modification] currentOrder.id:', currentOrder.id);
-                        console.log('[Request Modification] currentOrder:', currentOrder);
-                        console.log('[Request Modification] isRevisionRequestDialogOpen (before):', isRevisionRequestDialogOpen);
+                      onClick={() => handleAcceptDelivery(currentOrder.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Completed
+                    </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         setSelectedOrder(currentOrder.id);
                         setIsRevisionRequestDialogOpen(true);
                         setRevisionReason("");
-                        setRevisionMessage("");
-                        setRevisionFiles([]);
-                        console.log('[Request Modification] State updated, isRevisionRequestDialogOpen should be true');
                       }}
                       variant="outline"
                       className="font-['Poppins',sans-serif] border-orange-500 text-orange-600 hover:bg-orange-50"
                     >
                       <Edit className="w-4 h-4 mr-2" />
-                      Request Modification
+                      Request Revision
                     </Button>
-                  )}
+                  </div>
+                )}
                   
-                  {/* Show modification request status if pending or in progress */}
+                  {/* Show revision request status if pending or in progress */}
                   {currentOrder.revisionRequest && (currentOrder.revisionRequest.status === 'pending' || currentOrder.revisionRequest.status === 'in_progress') && (
-                    <div className={`rounded-lg p-4 mb-4 ${
-                      currentOrder.revisionRequest.status === 'pending' 
-                        ? 'bg-orange-50 border border-orange-200' 
-                        : 'bg-blue-50 border border-blue-200'
-                    }`}>
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
                       <div className="flex items-start gap-3 mb-2">
-                        {currentOrder.revisionRequest.status === 'pending' ? (
-                          <Edit className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        )}
+                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium mb-1 ${
-                            currentOrder.revisionRequest.status === 'pending' ? 'text-orange-700' : 'text-blue-700'
-                          }`}>
-                            Modification Request - {currentOrder.revisionRequest.status === 'pending' ? 'Pending Review' : 'In Progress'}
+                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-orange-700 mb-1">
+                            Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : 'In Progress'}
                           </h5>
                           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                             {currentOrder.revisionRequest.status === 'pending' 
-                              ? 'Your modification request has been submitted. The professional will review it shortly.'
-                              : 'The professional is working on your modification request.'}
+                              ? 'Your revision request has been submitted. The professional will review it shortly.'
+                              : 'The professional is working on your revision request.'}
                           </p>
                           {currentOrder.revisionRequest.reason && (
-                            <div className="mt-2 p-2 bg-white border border-gray-200 rounded">
+                            <div className="mt-2 p-2 bg-white border border-orange-200 rounded">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                📝 Your request:
+                                Your request:
                               </p>
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                 {currentOrder.revisionRequest.reason}
                               </p>
                             </div>
                           )}
-                          {currentOrder.revisionRequest.clientMessage && (
-                            <div className="mt-2 p-2 bg-white border border-gray-200 rounded">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                💬 Additional notes:
-                              </p>
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                {currentOrder.revisionRequest.clientMessage}
-                              </p>
-                            </div>
-                          )}
-                          {currentOrder.revisionRequest.clientFiles && currentOrder.revisionRequest.clientFiles.length > 0 && (
-                            <div className="mt-2">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                                📎 Your attached files ({currentOrder.revisionRequest.clientFiles.length})
-                              </p>
-                              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-                                {currentOrder.revisionRequest.clientFiles.map((file: any, index: number) => (
-                                  <div key={index} className="relative group">
-                                    {file.fileType === 'image' ? (
-                                      <img
-                                        src={resolveFileUrl(file.url)}
-                                        alt={file.fileName}
-                                        className="w-full h-16 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                                        onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                      />
-                                    ) : (
-                                      <div
-                                        className="w-full h-16 bg-gray-100 rounded border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                                        onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                      >
-                                        {file.fileType === 'video' ? (
-                                          <PlayCircle className="w-5 h-5 text-gray-600" />
-                                        ) : (
-                                          <FileText className="w-5 h-5 text-gray-600" />
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                           {currentOrder.revisionRequest.status === 'in_progress' && currentOrder.revisionRequest.additionalNotes && (
-                            <div className="mt-2 p-2 bg-blue-100 border border-blue-200 rounded">
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                💼 Professional's notes:
+                                Professional's notes:
                               </p>
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                 {currentOrder.revisionRequest.additionalNotes}
@@ -1779,17 +1683,17 @@ export default function ClientOrdersSection() {
                     </div>
                   )}
 
-                  {/* Show completed modification status */}
+                  {/* Show completed revision status */}
                   {currentOrder.revisionRequest && currentOrder.revisionRequest.status === 'completed' && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                         <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
-                          Modification Completed
+                          Revision Completed
                         </h5>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        The professional has completed your modification request. Please review the updated work above.
+                        The professional has completed your revision request. Please review the updated work above.
                       </p>
                     </div>
                   )}
@@ -1830,44 +1734,21 @@ export default function ClientOrdersSection() {
                                   minute: '2-digit',
                                 })}
                               </p>
-                              {currentOrder.disputeInfo.respondentId && (() => {
-                                const { userInfo } = useAccount();
-                                const isRespondent = userInfo?.id === currentOrder.disputeInfo.respondentId;
-                                return isRespondent && (
-                                  <div className="mt-3">
-                                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
-                                      ⚠️ You need to respond by the deadline, or the dispute will automatically close in favor of the other party.
-                                    </p>
-                                    <div className="flex gap-2 flex-wrap">
-                                      <Button
-                                        onClick={() => {
-                                          setIsDisputeResponseDialogOpen(true);
-                                          setDisputeResponseMessage("");
-                                        }}
-                                        className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
-                                      >
-                                        Respond to Dispute
-                                      </Button>
-                                      <Button
-                                        onClick={handleCancelDispute}
-                                        variant="outline"
-                                        className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
-                                      >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Cancel Dispute
-                                      </Button>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                              {!currentOrder.disputeInfo.respondentId || (() => {
-                                const { userInfo } = useAccount();
-                                const isRespondent = userInfo?.id === currentOrder.disputeInfo.respondentId;
-                                return !isRespondent && (
-                                  <div className="mt-2">
-                                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
-                                      ⚠️ The other party needs to respond by the deadline, or the dispute will automatically close in your favor.
-                                    </p>
+                              {currentOrder.disputeInfo.respondentId && userInfo?.id === currentOrder.disputeInfo.respondentId && (
+                                <div className="mt-3">
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                    ⚠️ You need to respond by the deadline, or the dispute will automatically close in favor of the other party.
+                                  </p>
+                                  <div className="flex gap-2 flex-wrap">
+                                    <Button
+                                      onClick={() => {
+                                        setIsDisputeResponseDialogOpen(true);
+                                        setDisputeResponseMessage("");
+                                      }}
+                                      className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                                    >
+                                      Respond to Dispute
+                                    </Button>
                                     <Button
                                       onClick={handleCancelDispute}
                                       variant="outline"
@@ -1877,8 +1758,23 @@ export default function ClientOrdersSection() {
                                       Cancel Dispute
                                     </Button>
                                   </div>
-                                );
-                              })()}
+                                </div>
+                              )}
+                              {(!currentOrder.disputeInfo.respondentId || userInfo?.id !== currentOrder.disputeInfo.respondentId) && (
+                                <div className="mt-2">
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                    ⚠️ The other party needs to respond by the deadline, or the dispute will automatically close in your favor.
+                                  </p>
+                                  <Button
+                                    onClick={handleCancelDispute}
+                                    variant="outline"
+                                    className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Cancel Dispute
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
                           {currentOrder.disputeInfo.status === 'negotiation' && currentOrder.disputeInfo.negotiationDeadline && (
@@ -1962,7 +1858,6 @@ export default function ClientOrdersSection() {
                     Chat
                   </Button>
                 </div>
-              </div>
             )}
 
             {timelineTimer}
@@ -2039,18 +1934,41 @@ export default function ClientOrdersSection() {
                   No timeline events yet.
                 </div>
               )}
-              {timelineEvents.map((event, index) => (
-                <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
-                  <div className="flex flex-col items-center pt-1">
-                    <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
-                      {event.icon}
-                    </div>
-                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
-                  </div>
-                  <div className="flex-1 pb-6">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
-                      {event.title}
-                    </p>
+              {(() => {
+                // Get all "Work Delivered" events sorted chronologically (oldest first)
+                const deliveryEvents = timelineEvents
+                  .filter(e => e.title === "Work Delivered")
+                  .sort((a, b) => {
+                    const aTime = a.at ? new Date(a.at).getTime() : 0;
+                    const bTime = b.at ? new Date(b.at).getTime() : 0;
+                    return aTime - bTime;
+                  });
+                
+                // Create a map of delivery event timestamps to their number
+                const deliveryNumberMap = new Map();
+                deliveryEvents.forEach((event, idx) => {
+                  const key = event.at || 'no-date';
+                  deliveryNumberMap.set(key, idx + 1);
+                });
+
+                return timelineEvents.map((event, index) => {
+                  // Get delivery number if this is a "Work Delivered" event
+                  const deliveryNumber = event.title === "Work Delivered" 
+                    ? deliveryNumberMap.get(event.at || 'no-date')
+                    : null;
+
+                  return (
+                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
+                          {event.icon}
+                        </div>
+                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                          {deliveryNumber ? `#${deliveryNumber} ${event.title}` : event.title}
+                        </p>
                     {event.at && (
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                         {formatDateTime(event.at)}
@@ -2108,7 +2026,12 @@ export default function ClientOrdersSection() {
                         </div>
                       </div>
                     )}
-                    {event.id === "delivered" && (
+                    {event.id === "delivered" && 
+                     currentOrder.status !== "Completed" && 
+                     currentOrder.deliveryStatus !== "completed" &&
+                     (!currentOrder.revisionRequest || 
+                      (currentOrder.revisionRequest.status !== 'pending' && 
+                       currentOrder.revisionRequest.status !== 'in_progress')) && (
                       <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
                         <div className="flex gap-2 mb-4">
                           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -2129,13 +2052,11 @@ export default function ClientOrdersSection() {
                             Approve
                           </Button>
                           <Button
-                            onClick={() => {
-                              console.log('[Request Modification] Timeline button clicked');
-                              console.log('[Request Modification] currentOrder.id:', currentOrder.id);
-                              console.log('[Request Modification] isRevisionRequestDialogOpen (before):', isRevisionRequestDialogOpen);
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               setSelectedOrder(currentOrder.id);
                               setIsRevisionRequestDialogOpen(true);
-                              console.log('[Request Modification] State updated from timeline');
                             }}
                             variant="outline"
                             className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
@@ -2147,7 +2068,9 @@ export default function ClientOrdersSection() {
                     )}
                   </div>
                 </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
             <div className="hidden">
               {/* Additional Information Submitted Timeline */}
@@ -2507,38 +2430,46 @@ export default function ClientOrdersSection() {
                       </div>
                     )}
 
-                    {/* Approval Message */}
-                    <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
-                      <div className="flex gap-2 mb-4">
-                        <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
-                          Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
-                            const deliveryDate = new Date(currentOrder.deliveredDate);
-                            const deadlineDate = new Date(deliveryDate);
-                            deadlineDate.setDate(deadlineDate.getDate() + 1);
-                            return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
-                          })()} If no action is taken by then, the order will be automatically completed.
-                        </p>
+                    {/* Approval Message - Show only if order is not completed and no active revision request */}
+                    {currentOrder.status !== "Completed" && 
+                     currentOrder.deliveryStatus !== "completed" &&
+                     (!currentOrder.revisionRequest || 
+                      (currentOrder.revisionRequest.status !== 'pending' && 
+                       currentOrder.revisionRequest.status !== 'in_progress')) && (
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
+                        <div className="flex gap-2 mb-4">
+                          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
+                            Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
+                              const deliveryDate = new Date(currentOrder.deliveredDate);
+                              const deadlineDate = new Date(deliveryDate);
+                              deadlineDate.setDate(deadlineDate.getDate() + 1);
+                              return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                            })()} If no action is taken by then, the order will be automatically completed.
+                          </p>
+                        </div>
+                        <div className="flex gap-3 justify-center">
+                          <Button
+                            onClick={() => handleAcceptDelivery(currentOrder.id)}
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedOrder(currentOrder.id);
+                              setIsRevisionRequestDialogOpen(true);
+                            }}
+                            variant="outline"
+                            className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
+                          >
+                            Request Modification
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-3 justify-center">
-                        <Button
-                          onClick={() => handleAcceptDelivery(currentOrder.id)}
-                          className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setSelectedOrder(currentOrder.id);
-                            setIsRevisionRequestDialogOpen(true);
-                          }}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
-                        >
-                          Request Modification
-                        </Button>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2916,94 +2847,168 @@ export default function ClientOrdersSection() {
           {/* Delivery Tab */}
           <TabsContent value="delivery" className="mt-6">
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-              {currentOrder.deliveryStatus === "delivered" && (
-                <div className="space-y-4">
-                  {/* Delivery Header with Icon */}
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
-                        Delivery #1
-                      </h3>
-                      <p className="font-['Poppins',sans-serif] text-[13px]">
-                        <span className="text-blue-600 hover:underline cursor-pointer">{currentOrder.professional}</span>
-                        <span className="text-[#6b6b6b]"> delivered your order </span>
-                        <span className="text-[#6b6b6b] italic">
-                          {currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : formatDate(new Date().toISOString())}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+              {(() => {
+                // Get all "Work Delivered" timeline events
+                const timeline = buildClientTimeline(currentOrder);
+                const deliveryEvents = timeline.filter(event => event.title === "Work Delivered");
+                
+                // Sort chronologically (oldest first for proper #1, #2, #3 numbering)
+                const sortedDeliveries = [...deliveryEvents].sort((a, b) => {
+                  const aTime = a.at ? new Date(a.at).getTime() : 0;
+                  const bTime = b.at ? new Date(b.at).getTime() : 0;
+                  return aTime - bTime;
+                });
 
-                  {/* Delivery Message */}
-                  {(currentOrder.description || (currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image)) && (
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      {currentOrder.description && (
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                          {currentOrder.description}
-                        </p>
-                      )}
-                      
-                      {/* Attachments */}
-                      {currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image && (
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
-                            Attachments
-                          </p>
-                          <div className="bg-white border border-gray-200 rounded-lg p-2">
-                            <img 
-                              src={currentOrder.items[0].image || serviceVector}
-                              alt="Delivery attachment"
-                              className="w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                            />
+                if (sortedDeliveries.length > 0) {
+                  return (
+                    <div className="space-y-6">
+                      {sortedDeliveries.map((delivery, index) => (
+                        <div key={index} className="flex gap-4">
+                          <div className="flex flex-col items-center pt-1">
+                            <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
+                              <Truck className="w-5 h-5 text-white" />
+                            </div>
+                            {index < sortedDeliveries.length - 1 && (
+                              <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "40px" }} />
+                            )}
+                          </div>
+                          <div className="flex-1 pb-6">
+                            <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                              #{index + 1} Work Delivered
+                            </h4>
+                            <p className="font-['Poppins',sans-serif] text-[13px] mb-3">
+                              <span className="text-purple-600 hover:underline cursor-pointer">{currentOrder.professional}</span>{" "}
+                              <span className="text-[#6b6b6b]">delivered the work</span>{" "}
+                              <span className="text-[#6b6b6b] italic">
+                                {delivery.at ? formatDate(delivery.at) : formatDate(new Date().toISOString())}
+                              </span>
+                            </p>
+
+                            {/* Delivery Content Box - Show delivery message and files */}
+                            {(delivery.message || (delivery.files && delivery.files.length > 0)) && (
+                              <div className="border border-purple-200 rounded-lg p-4 mb-4 bg-purple-50/30">
+                                {delivery.message && (
+                                  <div className="mb-3">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                      Delivery message:
+                                    </p>
+                                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                      {delivery.message}
+                                    </p>
+                                  </div>
+                                )}
+                                
+                                {/* Delivery Attachments */}
+                                {delivery.files && delivery.files.length > 0 && (
+                                  <div>
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                      📎 Attachments ({delivery.files.length})
+                                    </p>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      {delivery.files.map((file: any, fileIndex: number) => (
+                                        <div key={fileIndex} className="relative group">
+                                          {file.fileType === 'image' ? (
+                                            <img
+                                              src={resolveFileUrl(file.url)}
+                                              alt={file.fileName}
+                                              className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                            />
+                                          ) : (
+                                            <div
+                                              className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                            >
+                                              <PlayCircle className="w-8 h-8 text-gray-600" />
+                                              <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                                {file.fileName}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Approval Message - Show only for the latest delivery if order is not completed and no active revision request */}
+                            {index === sortedDeliveries.length - 1 &&
+                             currentOrder.status !== "Completed" && 
+                             currentOrder.deliveryStatus !== "completed" &&
+                             (!currentOrder.revisionRequest || 
+                              (currentOrder.revisionRequest.status !== 'pending' && 
+                               currentOrder.revisionRequest.status !== 'in_progress')) && (
+                              <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
+                                <div className="flex gap-2 mb-4">
+                                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                  <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
+                                    Your work has been delivered. Please approve the delivery or request a revision. {delivery.at && (() => {
+                                      const deliveryDate = new Date(delivery.at);
+                                      const deadlineDate = new Date(deliveryDate);
+                                      deadlineDate.setDate(deadlineDate.getDate() + 1);
+                                      return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                                    })()} If no action is taken by then, the order will be automatically completed.
+                                  </p>
+                                </div>
+                                <div className="flex gap-3 justify-center">
+                                  <Button
+                                    onClick={() => handleAcceptDelivery(currentOrder.id)}
+                                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setSelectedOrder(currentOrder.id);
+                                      setIsRevisionRequestDialogOpen(true);
+                                    }}
+                                    variant="outline"
+                                    className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
+                                  >
+                                    Request Modification
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  )}
+                  );
+                }
 
-                  {/* Approval Message */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex gap-2 mb-3">
-                      <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                        Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
-                          const deliveryDate = new Date(currentOrder.deliveredDate);
-                          const deadlineDate = new Date(deliveryDate);
-                          deadlineDate.setDate(deadlineDate.getDate() + 1);
-                          return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
-                        })()} If no action is taken by then, the order will be automatically completed.
+                // No deliveries yet - show status message
+                if (currentOrder.deliveryStatus === "active" || currentOrder.status === "In Progress") {
+                  return (
+                    <div className="text-center py-8">
+                      <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                        Work In Progress
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        The professional is currently working on your order.
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => handleAcceptDelivery(currentOrder.id)}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] text-[13px]"
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => handleRequestRevision(currentOrder.id)}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] text-[13px]"
-                      >
-                        Request Modification
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  );
+                }
 
-              {currentOrder.deliveryStatus === "active" && (
-                <div className="text-center py-8">
-                  <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    Your order is currently being processed by the professional.
-                  </p>
-                </div>
-              )}
+                // Order is pending or waiting to start
+                return (
+                  <div className="text-center py-8">
+                    <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                      Awaiting Professional
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      Your order is waiting for the professional to start work.
+                    </p>
+                  </div>
+                );
+              })()}
 
               {currentOrder.deliveryStatus === "completed" && (
                 <div className="space-y-4">
@@ -3058,9 +3063,15 @@ export default function ClientOrdersSection() {
                   </p>
                   <div className="flex gap-3 items-start">
                     <img 
-                      src={currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image ? currentOrder.items[0].image : serviceVector}
+                      src={currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image 
+                        ? resolveFileUrl(currentOrder.items[0].image) 
+                        : serviceVector}
                       alt="Service thumbnail"
                       className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = serviceVector;
+                      }}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
@@ -3686,6 +3697,133 @@ export default function ClientOrdersSection() {
             </div>
           </DialogContent>
         </Dialog>
+        
+        {/* Revision Request Dialog */}
+        <Dialog 
+          open={isRevisionRequestDialogOpen} 
+          onOpenChange={(open) => {
+            setIsRevisionRequestDialogOpen(open);
+            if (!open) {
+              setSelectedOrder(null);
+              setRevisionReason("");
+              setRevisionMessage("");
+              setRevisionFiles([]);
+            }
+          }}
+        >
+          <DialogContent className="w-[90vw] max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+                Request Revision
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Please provide a detailed reason for the revision request. This will be sent to the professional.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="revision-reason" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                  Revision Reason <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="revision-reason"
+                  placeholder="Describe what needs to be modified or improved..."
+                  value={revisionReason}
+                  onChange={(e) => setRevisionReason(e.target.value)}
+                  className="font-['Poppins',sans-serif] min-h-[120px]"
+                  rows={5}
+                />
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                  Be as specific as possible to help the professional understand what changes you need.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="revision-message" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                  Additional Details (Optional)
+                </Label>
+                <Textarea
+                  id="revision-message"
+                  placeholder="Add any extra notes or context..."
+                  value={revisionMessage}
+                  onChange={(e) => setRevisionMessage(e.target.value)}
+                  className="font-['Poppins',sans-serif] min-h-[100px]"
+                  rows={4}
+                />
+              </div>
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                  Attachments (Optional)
+                </Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#3D78CB] transition-colors">
+                  <input
+                    type="file"
+                    id="revision-files"
+                    accept="image/*,video/*,.pdf,.txt"
+                    multiple
+                    onChange={handleRevisionFileChange}
+                    className="hidden"
+                  />
+                  <label htmlFor="revision-files" className="cursor-pointer flex flex-col items-center">
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1">
+                      Click to upload files
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                      Images, videos, PDFs or text files (max 10)
+                    </p>
+                  </label>
+                </div>
+                {revisionFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {revisionFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                            {file.name}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveRevisionFile(index)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRevisionRequestDialogOpen(false);
+                  setSelectedOrder(null);
+                  setRevisionReason("");
+                  setRevisionMessage("");
+                  setRevisionFiles([]);
+                }}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRequestRevision}
+                disabled={!revisionReason.trim() || !selectedOrder}
+                className="font-['Poppins',sans-serif] bg-[#3D78CB] hover:bg-[#2D5FA3] text-white"
+              >
+                Submit Revision Request
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -4249,44 +4387,63 @@ export default function ClientOrdersSection() {
         </TabsContent>
       </Tabs>
 
-      {/* Request Modification Dialog */}
-      {console.log('[Request Modification] Rendering Dialog, isRevisionRequestDialogOpen:', isRevisionRequestDialogOpen)}
-      {isRevisionRequestDialogOpen && console.log('[Request Modification] Dialog should be visible now')}
+      {/* Revision Request Dialog */}
       <Dialog 
         open={isRevisionRequestDialogOpen} 
         onOpenChange={(open) => {
-          console.log('[Request Modification] onOpenChange called with:', open);
           setIsRevisionRequestDialogOpen(open);
           if (!open) {
-            console.log('[Request Modification] Closing dialog, resetting state');
+            setSelectedOrder(null);
             setRevisionReason("");
             setRevisionMessage("");
             setRevisionFiles([]);
-            setSelectedOrder(null);
           }
         }}
       >
-        <DialogContent 
-          className="w-[90vw] max-w-[600px] !z-[9999]"
-          style={{ zIndex: 9999 }}
-        >
-          {console.log('[Request Modification] DialogContent rendering, isRevisionRequestDialogOpen:', isRevisionRequestDialogOpen)}
+        <DialogContent className="w-[90vw] max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Request Modification
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+              Request Revision
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-              Upload reference images and describe what changes you need. The professional will see this in their timeline.
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Please provide a detailed reason for the revision request. This will be sent to the professional.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4">
-            {/* File Upload */}
+          <div className="space-y-4 py-4">
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Upload Reference Images/Files (Optional)
+              <Label htmlFor="revision-reason" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                Revision Reason <span className="text-red-500">*</span>
               </Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition-colors">
+              <Textarea
+                id="revision-reason"
+                placeholder="Describe what needs to be modified or improved..."
+                value={revisionReason}
+                onChange={(e) => setRevisionReason(e.target.value)}
+                className="font-['Poppins',sans-serif] min-h-[120px]"
+                rows={5}
+              />
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                Be as specific as possible to help the professional understand what changes you need.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="revision-message" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                Additional Details (Optional)
+              </Label>
+              <Textarea
+                id="revision-message"
+                placeholder="Add any extra notes or context..."
+                value={revisionMessage}
+                onChange={(e) => setRevisionMessage(e.target.value)}
+                className="font-['Poppins',sans-serif] min-h-[100px]"
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                Attachments (Optional)
+              </Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#3D78CB] transition-colors">
                 <input
                   type="file"
                   id="revision-files"
@@ -4295,123 +4452,65 @@ export default function ClientOrdersSection() {
                   onChange={handleRevisionFileChange}
                   className="hidden"
                 />
-                <label
-                  htmlFor="revision-files"
-                  className="cursor-pointer flex flex-col items-center"
-                >
-                  <Upload className="w-8 h-8 text-orange-400 mb-2" />
+                <label htmlFor="revision-files" className="cursor-pointer flex flex-col items-center">
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1">
-                    Click to upload or drag and drop
+                    Click to upload files
                   </p>
                   <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                    Images, videos, PDFs or text files - Max 10 files
+                    Images, videos, PDFs or text files (max 10)
                   </p>
                 </label>
               </div>
-              
-              {/* Selected Files Preview */}
               {revisionFiles.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    Selected Files ({revisionFiles.length}/10):
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {revisionFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
-                      >
-                        {file.type.startsWith('image/') ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={file.name}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                        ) : file.type.startsWith('video/') ? (
-                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                            <PlayCircle className="w-6 h-6 text-gray-600" />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                            <FileText className="w-6 h-6 text-gray-600" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
-                            {file.name}
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            {(file.size / (1024 * 1024)).toFixed(2)} MB
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveRevisionFile(index)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </Button>
+                <div className="mt-3 space-y-2">
+                  {revisionFiles.map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                          {file.name}
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                          {(file.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveRevisionFile(index)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-
-            {/* Modification Description */}
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                What needs to be modified? <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                placeholder="Describe the changes you need (e.g., 'Please change the color to blue', 'The logo needs to be bigger'...)"
-                value={revisionReason}
-                onChange={(e) => setRevisionReason(e.target.value)}
-                rows={4}
-                className="font-['Poppins',sans-serif] text-[13px]"
-              />
-            </div>
-
-            {/* Additional Notes */}
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Additional Notes (Optional)
-              </Label>
-              <Textarea
-                placeholder="Any extra details, reference links, or context..."
-                value={revisionMessage}
-                onChange={(e) => setRevisionMessage(e.target.value)}
-                rows={3}
-                className="font-['Poppins',sans-serif] text-[13px]"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsRevisionRequestDialogOpen(false);
-                  setRevisionReason("");
-                  setRevisionMessage("");
-                  setRevisionFiles([]);
-                  setSelectedOrder(null);
-                }}
-                className="font-['Poppins',sans-serif] text-[13px]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRequestRevision}
-                disabled={!revisionReason.trim()}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Submit Modification Request
-              </Button>
-            </div>
           </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRevisionRequestDialogOpen(false);
+                setSelectedOrder(null);
+                setRevisionReason("");
+                setRevisionMessage("");
+                setRevisionFiles([]);
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRequestRevision}
+              disabled={!revisionReason.trim() || !selectedOrder}
+              className="font-['Poppins',sans-serif] bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Submit Revision Request
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
