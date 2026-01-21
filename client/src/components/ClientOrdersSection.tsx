@@ -40,6 +40,8 @@ import {
   Image,
   Film,
   X,
+  PoundSterling,
+  Paperclip,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -107,6 +109,10 @@ export default function ClientOrdersSection() {
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
   const [showDisputeSection, setShowDisputeSection] = useState(false);
+  const [disputeRequirements, setDisputeRequirements] = useState("");
+  const [disputeUnmetRequirements, setDisputeUnmetRequirements] = useState("");
+  const [disputeEvidenceFiles, setDisputeEvidenceFiles] = useState<File[]>([]);
+  const [disputeOfferAmount, setDisputeOfferAmount] = useState("");
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
@@ -303,7 +309,7 @@ export default function ClientOrdersSection() {
       );
     }
 
-    if (order.deliveryStatus === "active") {
+    if (order.deliveryStatus === "active" && order.status !== "disputed") {
       push(
         {
           at: order.expectedDelivery || order.scheduledDate,
@@ -667,10 +673,32 @@ export default function ClientOrdersSection() {
   };
 
   const handleCreateDispute = async () => {
-    if (!disputeReason.trim()) {
-      toast.error("Please provide a reason for the dispute");
+    // Validate required fields
+    if (!disputeRequirements.trim()) {
+      toast.error("Please describe what the requirements were for the order");
       return;
     }
+    if (!disputeUnmetRequirements.trim()) {
+      toast.error("Please describe which requirements were not completed");
+      return;
+    }
+    
+    const offerAmount = parseFloat(disputeOfferAmount);
+    const orderAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
+    
+    if (disputeOfferAmount === '' || isNaN(offerAmount)) {
+      toast.error("Please enter a valid offer amount");
+      return;
+    }
+    if (offerAmount < 0) {
+      toast.error("Offer amount cannot be negative");
+      return;
+    }
+    if (offerAmount > orderAmount) {
+      toast.error(`Offer amount cannot exceed the order amount (£${orderAmount.toFixed(2)})`);
+      return;
+    }
+    
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
       // Check if order is delivered
@@ -678,14 +706,45 @@ export default function ClientOrdersSection() {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
+      
       try {
-        const disputeId = await createOrderDispute(selectedOrder, disputeReason, disputeEvidence);
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('requirements', disputeRequirements);
+        formData.append('unmetRequirements', disputeUnmetRequirements);
+        formData.append('offerAmount', disputeOfferAmount);
+        
+        // Add evidence files
+        disputeEvidenceFiles.forEach((file) => {
+          formData.append('evidenceFiles', file);
+        });
+        
+        // Call API to create dispute
+        const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/dispute`), {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create dispute');
+        }
+
+        const data = await response.json();
+        
         toast.success("Dispute has been created");
         setIsDisputeDialogOpen(false);
-        setDisputeReason("");
-        setDisputeEvidence("");
+        setDisputeRequirements("");
+        setDisputeUnmetRequirements("");
+        setDisputeEvidenceFiles([]);
+        setDisputeOfferAmount("");
+        
+        // Refresh orders to get updated status
+        await refreshOrders();
+        
         // Navigate to dispute discussion page
-        navigate(`/dispute/${disputeId}`);
+        navigate(`/dispute/${data.disputeId}`);
       } catch (error: any) {
         toast.error(error.message || "Failed to create dispute");
       }
@@ -740,7 +799,7 @@ export default function ClientOrdersSection() {
   const renderOrderCard = (order: any) => (
     <div
       key={order.id}
-      className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+      className="bg-white rounded-xl p-6 hover:shadow-md transition-shadow"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
@@ -957,7 +1016,7 @@ export default function ClientOrdersSection() {
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
          currentOrder.deliveryStatus !== "delivered" && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+          <div className="bg-white rounded-2xl p-6 shadow-lg">
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
@@ -980,7 +1039,7 @@ export default function ClientOrdersSection() {
             {/* Countdown Display */}
             <div className="grid grid-cols-4 gap-3">
               {/* Days */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.days).padStart(2, '0')}
                 </div>
@@ -990,7 +1049,7 @@ export default function ClientOrdersSection() {
               </div>
 
               {/* Hours */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.hours).padStart(2, '0')}
                 </div>
@@ -1000,7 +1059,7 @@ export default function ClientOrdersSection() {
               </div>
 
               {/* Minutes */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.minutes).padStart(2, '0')}
                 </div>
@@ -1010,7 +1069,7 @@ export default function ClientOrdersSection() {
               </div>
 
               {/* Seconds */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.seconds).padStart(2, '0')}
                 </div>
@@ -1169,13 +1228,23 @@ export default function ClientOrdersSection() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => setIsCancelDialogOpen(true)}
-                      className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Cancel Order
-                    </DropdownMenuItem>
+                    {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 ? (
+                      <DropdownMenuItem
+                        onClick={() => setIsDisputeDialogOpen(true)}
+                        className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
+                      >
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        Open Dispute
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => setIsCancelDialogOpen(true)}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancel Order
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -1186,32 +1255,32 @@ export default function ClientOrdersSection() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Side - Main Content (Tabs) */}
             <div className="lg:col-span-2">
-        <div className="bg-white rounded-xl shadow-sm">
+        <div className="bg-white rounded-xl">
           <div className="flex-1">
             <Tabs value={orderDetailTab} onValueChange={setOrderDetailTab}>
-              <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide border-b border-gray-200">
-                <TabsList className="bg-transparent p-0 h-auto w-full md:w-auto inline-flex min-w-full md:min-w-0 justify-start">
+              <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x snap-mandatory touch-pan-x">
+                <TabsList className="bg-transparent p-0 h-auto w-full md:w-auto inline-flex min-w-full md:min-w-0 justify-start gap-1">
                   <TabsTrigger
                     value="timeline"
-                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                   >
                     Timeline
                   </TabsTrigger>
                   <TabsTrigger
                     value="details"
-                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                   >
                     Details
                   </TabsTrigger>
                   <TabsTrigger
                     value="additional-info"
-                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                   >
                     Additional Info
                   </TabsTrigger>
                   <TabsTrigger
                     value="delivery"
-                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                   >
                     Delivery
                   </TabsTrigger>
@@ -1219,19 +1288,19 @@ export default function ClientOrdersSection() {
               </div>
 
           {/* Timeline Tab */}
-          <TabsContent value="timeline" className="mt-6 space-y-6">
+          <TabsContent value="timeline" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
             {/* Completion Message for Completed Orders */}
             {currentOrder.status === "Completed" && (
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+              <div className="bg-white rounded-lg p-4 sm:p-6">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                   Your order has been completed!
                 </h3>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
                   Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.
                 </p>
                 <Button
                   onClick={() => setIsRatingDialogOpen(true)}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
                 >
                   View review
                 </Button>
@@ -1242,28 +1311,28 @@ export default function ClientOrdersSection() {
             {currentOrder.cancellationRequest && 
              currentOrder.cancellationRequest.status === 'pending' && 
              currentOrder.cancellationRequest.requestedBy !== userInfo?.id && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-                <div className="flex items-start gap-3 mb-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 sm:p-6">
+                <div className="flex items-start gap-2 sm:gap-3 mb-4">
                   <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                       Cancellation Request Received
                     </h4>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-3 break-words">
                       {currentOrder.professional || "The professional"} has requested to cancel this order.
                     </p>
                     {currentOrder.cancellationRequest.reason && (
-                      <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                      <div className="mb-3 p-2 sm:p-3 bg-white rounded">
+                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-1">
                           Reason:
                         </p>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
                           {currentOrder.cancellationRequest.reason}
                         </p>
                       </div>
                     )}
                     {currentOrder.cancellationRequest.responseDeadline && (
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-orange-700 mb-4">
+                      <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-orange-700 mb-4 break-words">
                         ⚠️ Response deadline: {new Date(currentOrder.cancellationRequest.responseDeadline).toLocaleString('en-GB', {
                           day: 'numeric',
                           month: 'short',
@@ -1273,7 +1342,7 @@ export default function ClientOrdersSection() {
                         })}
                       </p>
                     )}
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <Button
                         onClick={async () => {
                           try {
@@ -1285,7 +1354,7 @@ export default function ClientOrdersSection() {
                             toast.error(error.message || "Failed to approve cancellation");
                           }
                         }}
-                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
                       >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
                         Approve Cancellation
@@ -1302,7 +1371,7 @@ export default function ClientOrdersSection() {
                           }
                         }}
                         variant="outline"
-                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Reject Cancellation
@@ -1315,46 +1384,46 @@ export default function ClientOrdersSection() {
 
             {/* Status Alert Box */}
             {currentOrder.deliveryStatus === "pending" && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6">
+                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Waiting for Professional to Start
                 </h4>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
                   Your payment has been processed successfully. The professional will start working on your service soon. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
-                    <span className="text-[#2c353f]">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
+                    <span className="text-[#2c353f] block mt-1">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
                   )}
                 </p>
               </div>
             )}
 
-            {currentOrder.deliveryStatus === "active" && currentOrder.status !== "Completed" && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+            {currentOrder.deliveryStatus === "active" && currentOrder.status !== "Completed" && currentOrder.status !== "disputed" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service In Progress
                 </h4>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
                   {currentOrder.professional} is currently working on your service. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
-                    <span className="text-[#2c353f]">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
+                    <span className="text-[#2c353f] block mt-1">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
                   )}. Feel free to reach out if you have any questions.
                 </p>
 
                 {/* Extension Request Alert */}
                 {currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending' && (
-                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-start gap-3 mb-3">
+                  <div className="mb-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-2 sm:gap-3 mb-3">
                       <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-yellow-700 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] font-medium text-yellow-700 mb-1 break-words">
                           Extension Request Pending
                         </h5>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-2 break-words">
                           {currentOrder.professional} has requested an extension for the delivery deadline.
                         </p>
                         <div className="space-y-1 mb-3">
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] break-words">
                             <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] break-words">
                             <span className="font-medium">Requested new date & time:</span>{" "}
                             {currentOrder.extensionRequest.newDeliveryDate 
                               ? (() => {
@@ -1373,12 +1442,12 @@ export default function ClientOrdersSection() {
                               : 'N/A'}
                           </p>
                           {currentOrder.extensionRequest.reason && (
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                            <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mt-2 break-words">
                               <span className="font-medium">Reason:</span> {currentOrder.extensionRequest.reason}
                             </p>
                           )}
                         </div>
-                        <div className="flex gap-3 mt-3">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3">
                           <Button
                             onClick={async () => {
                               try {
@@ -1390,7 +1459,7 @@ export default function ClientOrdersSection() {
                                 toast.error(error.message || "Failed to approve extension");
                               }
                             }}
-                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[13px] w-full sm:w-auto"
                           >
                             <ThumbsUp className="w-4 h-4 mr-2" />
                             Approve
@@ -1407,7 +1476,7 @@ export default function ClientOrdersSection() {
                               }
                             }}
                             variant="outline"
-                            className="border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
+                            className="border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[12px] sm:text-[13px] w-full sm:w-auto"
                           >
                             <ThumbsDown className="w-4 h-4 mr-2" />
                             Reject
@@ -1466,42 +1535,42 @@ export default function ClientOrdersSection() {
 
                 {/* Professional Completion Request - Show in "In Progress" status */}
                 {currentOrder.metadata?.professionalCompleteRequest && (
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-3 mb-3">
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2 sm:gap-3 mb-3">
                       <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] font-medium text-blue-700 mb-2 break-words">
                           Completion Request Submitted
                         </h5>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-3 break-words">
                           The professional has submitted a completion request with verification data. Please review and complete the order to release funds to their wallet.
                         </p>
                         {currentOrder.metadata.professionalCompleteRequest.completionMessage && (
-                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                          <div className="mb-3 p-2 sm:p-3 bg-white rounded">
+                            <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-1">
                               Professional's message:
                             </p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
                               {currentOrder.metadata.professionalCompleteRequest.completionMessage}
                             </p>
                           </div>
                         )}
                         {currentOrder.metadata.professionalCompleteRequest.completionFiles && currentOrder.metadata.professionalCompleteRequest.completionFiles.length > 0 && (
                           <div className="mb-3">
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                            <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">
                               Verification Files:
                             </p>
                             <div className="grid grid-cols-2 gap-2">
                               {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => (
                                 <div key={index} className="border border-gray-200 rounded p-2">
                                   {file.fileType === 'image' ? (
-                                    <img src={resolveFileUrl(file.url)} alt={file.fileName} className="w-full h-24 object-cover rounded" />
+                                    <img src={resolveFileUrl(file.url)} alt={file.fileName} className="w-full h-20 sm:h-24 object-cover rounded" />
                                   ) : (
-                                    <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
-                                      <PlayCircle className="w-8 h-8 text-gray-600" />
+                                    <div className="w-full h-20 sm:h-24 bg-gray-200 rounded flex items-center justify-center">
+                                      <PlayCircle className="w-6 sm:w-8 h-6 sm:h-8 text-gray-600" />
                                     </div>
                                   )}
-                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 truncate">
+                                  <p className="font-['Poppins',sans-serif] text-[10px] sm:text-[11px] text-[#6b6b6b] mt-1 truncate">
                                     {file.fileName}
                                   </p>
                                 </div>
@@ -1518,7 +1587,7 @@ export default function ClientOrdersSection() {
                                 toast.error(error.message || "Failed to complete order");
                               }
                             }}
-                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] w-full sm:w-auto"
                           >
                             <CheckCircle2 className="w-4 h-4 mr-2" />
                             Complete Order & Release Funds
@@ -1537,11 +1606,11 @@ export default function ClientOrdersSection() {
             )}
 
             {currentOrder.deliveryStatus === "delivered" && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 sm:p-6">
+                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service Delivered - Review Required
                 </h4>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
                   Your work has been delivered on <span className="text-[#2c353f]">{currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : "today"}</span>. {currentOrder.metadata?.professionalCompleteRequest ? "The professional has submitted a completion request with verification data. Please review and complete the order to release funds." : "Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
                 </p>
 
@@ -1555,7 +1624,7 @@ export default function ClientOrdersSection() {
                           Completion Request Submitted
                         </h5>
                         {currentOrder.metadata.professionalCompleteRequest.completionMessage && (
-                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                          <div className="mb-3 p-3 bg-white rounded">
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Professional's message:
                             </p>
@@ -1609,26 +1678,26 @@ export default function ClientOrdersSection() {
                 {/* Delivery Files */}
                 {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 && (
                   <div className="mb-4">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-3">
                       Attachments ({currentOrder.deliveryFiles.length}):
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                       {currentOrder.deliveryFiles.map((file, index) => (
                         <div key={index} className="relative group">
                           {file.fileType === 'image' ? (
                             <img
                               src={resolveFileUrl(file.url)}
                               alt={file.fileName}
-                              className="w-full h-32 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                             />
                           ) : (
                             <div
-                              className="w-full h-32 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                              className="w-full h-24 sm:h-32 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
                               onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                             >
-                              <PlayCircle className="w-12 h-12 text-gray-600" />
-                              <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded truncate">
+                              <PlayCircle className="w-8 sm:w-12 h-8 sm:h-12 text-gray-600" />
+                              <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-[9px] sm:text-[10px] px-1 sm:px-2 py-1 rounded truncate">
                                 {file.fileName}
                               </div>
                             </div>
@@ -1645,10 +1714,10 @@ export default function ClientOrdersSection() {
                  (!currentOrder.revisionRequest || 
                   (currentOrder.revisionRequest.status !== 'pending' && 
                    currentOrder.revisionRequest.status !== 'in_progress')) && (
-                  <div className="flex gap-3 flex-wrap">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <Button
                       onClick={() => handleAcceptDelivery(currentOrder.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
+                      className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2" />
                       Completed
@@ -1662,7 +1731,7 @@ export default function ClientOrdersSection() {
                         setRevisionReason("");
                       }}
                       variant="outline"
-                      className="font-['Poppins',sans-serif] border-orange-500 text-orange-600 hover:bg-orange-50"
+                      className="font-['Poppins',sans-serif] border-orange-500 text-orange-600 hover:bg-orange-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       Request Revision
@@ -1733,7 +1802,7 @@ export default function ClientOrdersSection() {
                         setDisputeEvidence("");
                       }}
                       variant="outline"
-                      className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
+                      className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
                     >
                       <AlertTriangle className="w-4 h-4 mr-2" />
                       Open Dispute
@@ -1742,16 +1811,16 @@ export default function ClientOrdersSection() {
 
                   {/* Show dispute status if dispute exists */}
                   {currentOrder.disputeInfo && (
-                    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                      <div className="flex items-start gap-3 mb-2">
+                    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4">
+                      <div className="flex items-start gap-2 sm:gap-3 mb-2">
                         <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-red-700 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] font-medium text-red-700 mb-1 break-words">
                             Dispute {currentOrder.disputeInfo.status === 'open' ? 'Open' : currentOrder.disputeInfo.status === 'responded' ? 'Responded' : 'Closed'}
                           </h5>
                           {currentOrder.disputeInfo.status === 'open' && currentOrder.disputeInfo.responseDeadline && (
                             <div className="mb-2">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
                                 Response deadline: {new Date(currentOrder.disputeInfo.responseDeadline).toLocaleString('en-GB', {
                                   day: 'numeric',
                                   month: 'short',
@@ -1762,23 +1831,23 @@ export default function ClientOrdersSection() {
                               </p>
                               {currentOrder.disputeInfo.respondentId && userInfo?.id === currentOrder.disputeInfo.respondentId && (
                                 <div className="mt-3">
-                                  <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-red-600 mb-2 break-words">
                                     ⚠️ You need to respond by the deadline, or the dispute will automatically close in favor of the other party.
                                   </p>
-                                  <div className="flex gap-2 flex-wrap">
+                                  <div className="flex flex-col sm:flex-row gap-2">
                                     <Button
                                       onClick={() => {
                                         setIsDisputeResponseDialogOpen(true);
                                         setDisputeResponseMessage("");
                                       }}
-                                      className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                                      className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] w-full sm:w-auto"
                                     >
                                       Respond to Dispute
                                     </Button>
                                     <Button
                                       onClick={handleCancelDispute}
                                       variant="outline"
-                                      className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                      className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
                                     >
                                       <XCircle className="w-4 h-4 mr-2" />
                                       Cancel Dispute
@@ -1788,13 +1857,13 @@ export default function ClientOrdersSection() {
                               )}
                               {(!currentOrder.disputeInfo.respondentId || userInfo?.id !== currentOrder.disputeInfo.respondentId) && (
                                 <div className="mt-2">
-                                  <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mb-2">
+                                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-red-600 mb-2 break-words">
                                     ⚠️ The other party needs to respond by the deadline, or the dispute will automatically close in your favor.
                                   </p>
                                   <Button
                                     onClick={handleCancelDispute}
                                     variant="outline"
-                                    className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                    className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
                                   >
                                     <XCircle className="w-4 h-4 mr-2" />
                                     Cancel Dispute
@@ -1805,7 +1874,7 @@ export default function ClientOrdersSection() {
                           )}
                           {currentOrder.disputeInfo.status === 'negotiation' && currentOrder.disputeInfo.negotiationDeadline && (
                             <div className="mb-2">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
                                 Negotiation deadline: {new Date(currentOrder.disputeInfo.negotiationDeadline).toLocaleString('en-GB', {
                                   day: 'numeric',
                                   month: 'short',
@@ -1817,12 +1886,12 @@ export default function ClientOrdersSection() {
                               <div className="mt-2 space-y-2">
                                 {!currentOrder.disputeInfo.arbitrationRequested && (
                                   <div>
-                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                    <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
                                       If you can't reach an agreement, you can request admin arbitration by paying an administration fee of £{currentOrder.disputeInfo.arbitrationFeeAmount || 50}. The loser will lose both the arbitration fee and the order amount.
                                     </p>
                                     <Button
                                       onClick={handleRequestArbitration}
-                                      className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif] mr-2"
+                                      className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] mb-2 w-full sm:w-auto"
                                     >
                                       <AlertTriangle className="w-4 h-4 mr-2" />
                                       Request Admin Arbitration
@@ -1832,7 +1901,7 @@ export default function ClientOrdersSection() {
                                 <Button
                                   onClick={handleCancelDispute}
                                   variant="outline"
-                                  className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                  className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
                                 >
                                   <XCircle className="w-4 h-4 mr-2" />
                                   Cancel Dispute
@@ -1842,18 +1911,18 @@ export default function ClientOrdersSection() {
                           )}
                           {currentOrder.disputeInfo.status === 'admin_arbitration' && (
                             <div className="mb-2">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 mb-2">
+                              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-blue-600 mb-2 break-words">
                                 ⚖️ Admin is reviewing this dispute. A decision will be made soon.
                               </p>
                               {currentOrder.disputeInfo.arbitrationRequestedBy && (
-                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mb-2">
+                                <p className="font-['Poppins',sans-serif] text-[10px] sm:text-[11px] text-[#6b6b6b] mb-2 break-words">
                                   Arbitration requested by: {currentOrder.disputeInfo.arbitrationRequestedBy === currentOrder.disputeInfo.claimantId ? 'Claimant' : 'Respondent'}
                                 </p>
                               )}
                               <Button
                                 onClick={handleCancelDispute}
                                 variant="outline"
-                                className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50"
+                                className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Cancel Dispute
@@ -1888,38 +1957,9 @@ export default function ClientOrdersSection() {
 
             {timelineTimer}
 
-            {currentOrder.status === "Completed" && !currentOrder.rating && (
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
-                  Your order has been completed!
-                </h4>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-                  Your order has been completed. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.
-                </p>
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    onClick={() => setIsRatingDialogOpen(true)}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] px-6"
-                  >
-                    View Review
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      if (currentOrder.professionalId) {
-                        startConversation(currentOrder.professionalId, currentOrder.professional);
-                      }
-                    }}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif] px-6"
-                  >
-                    Chat
-                  </Button>
-                </div>
-              </div>
-            )}
 
-            {currentOrder.status === "completed" && currentOrder.rating && (
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
+            {/* {currentOrder.status === "completed" && currentOrder.rating && (
+              <div className="bg-white rounded-lg p-6">
                 <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
                   Your order has been completed!
                 </h4>
@@ -1935,7 +1975,7 @@ export default function ClientOrdersSection() {
                   ))}
                 </div>
                 {currentOrder.review && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] italic">
                       "{currentOrder.review}"
                     </p>
@@ -1955,23 +1995,38 @@ export default function ClientOrdersSection() {
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
-            {currentOrder.deliveryStatus === "dispute" && (
-              <div className="bg-white border border-gray-300 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
-                  Your order is being disputed!
-                </h4>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                  {currentOrder.professional} is disputing the work you have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, make, reject, or accept an offer.
-                </p>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowDisputeSection(!showDisputeSection)}
-                    className="bg-white hover:bg-gray-50 text-[#2c353f] border-2 border-[#FE8A0F] font-['Poppins',sans-serif]"
-                  >
-                    {showDisputeSection ? "Hide Dispute" : "View Dispute"}
-                  </Button>
+            {(() => {
+              console.log('=== Client Order Check ===');
+              console.log('Order ID:', currentOrder.id);
+              console.log('Order Status:', currentOrder.status);
+              console.log('Order Delivery Status:', currentOrder.deliveryStatus);
+              console.log('Order disputeId:', currentOrder.disputeId);
+              console.log('Full currentOrder:', currentOrder);
+              console.log('==========================');
+              return null;
+            })()}
+            
+            {currentOrder.status === "disputed" && (
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-red-700 font-semibold mb-2 break-words">
+                      Your order is being disputed!
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
+                      {currentOrder.professional || "The professional"} is disputing your order. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, or make, reject, or accept an offer.
+                    </p>
+                    <Button
+                      onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      View Dispute
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -2007,40 +2062,44 @@ export default function ClientOrdersSection() {
                     : null;
 
                   return (
-                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
-                      <div className="flex flex-col items-center pt-1">
-                        <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
+                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-3 sm:gap-5 mb-6 sm:mb-8 relative">
+                      <div className="flex flex-col items-center pt-1 relative">
+                        {/* Icon with enhanced modern styling */}
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#3D78CB] flex items-center justify-center flex-shrink-0 shadow-lg ring-2 sm:ring-4 ring-white transition-all duration-300 hover:scale-110 hover:shadow-xl relative z-10">
                           {event.icon}
                         </div>
-                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                        {/* Bold blue dashed connecting line */}
+                        <div className="relative mt-2 sm:mt-3 flex-1" style={{ minHeight: "30px" }}>
+                          <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0 border-l-[2px] sm:border-l-[3px] border-dashed border-[#3D78CB]" />
+                        </div>
                       </div>
-                      <div className="flex-1 pb-6">
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                      <div className="flex-1 pb-2 min-w-0">
+                        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] mb-1 break-words">
                           {deliveryNumber ? `#${deliveryNumber} ${event.title}` : event.title}
                         </p>
                     {event.at && (
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                      <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
                         {formatDateTime(event.at)}
                       </p>
                     )}
                     {event.description && (
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                      <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-2 break-words">
                         {event.description}
                       </p>
                     )}
                     {event.message && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3 mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
                           {event.message}
                         </p>
                       </div>
                     )}
                     {event.files && event.files.length > 0 && (
                       <div className="mt-3">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">
                           📎 Attachments ({event.files.length})
                         </p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                           {event.files.map((file: any, index: number) => {
                             const fileUrl = file.url || "";
                             const fileName = file.fileName || "attachment";
@@ -2055,16 +2114,16 @@ export default function ClientOrdersSection() {
                                 <img
                                   src={resolvedUrl}
                                   alt={fileName}
-                                  className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                  className="w-full h-20 sm:h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
                                   onClick={() => window.open(resolvedUrl, "_blank")}
                                 />
                               ) : (
                                 <div
-                                  className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                  className="w-full h-20 sm:h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
                                   onClick={() => window.open(resolvedUrl, "_blank")}
                                 >
-                                  <PlayCircle className="w-8 h-8 text-gray-600" />
-                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                  <PlayCircle className="w-6 sm:w-8 h-6 sm:h-8 text-gray-600" />
+                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[9px] sm:text-[10px] px-1 py-0.5 rounded truncate">
                                     {fileName}
                                   </div>
                                 </div>
@@ -2081,10 +2140,10 @@ export default function ClientOrdersSection() {
                      (!currentOrder.revisionRequest || 
                       (currentOrder.revisionRequest.status !== 'pending' && 
                        currentOrder.revisionRequest.status !== 'in_progress')) && (
-                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
-                        <div className="flex gap-2 mb-4">
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
+                        <div className="flex gap-2 mb-3 sm:mb-4">
                           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
+                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-blue-900 break-words">
                             Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
                               const deliveryDate = new Date(currentOrder.deliveredDate);
                               const deadlineDate = new Date(deliveryDate);
@@ -2093,10 +2152,10 @@ export default function ClientOrdersSection() {
                             })()} If no action is taken by then, the order will be automatically completed.
                           </p>
                         </div>
-                        <div className="flex gap-3 justify-center">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-center">
                           <Button
                             onClick={() => handleAcceptDelivery(currentOrder.id)}
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
                           >
                             Approve
                           </Button>
@@ -2108,7 +2167,7 @@ export default function ClientOrdersSection() {
                               setIsRevisionRequestDialogOpen(true);
                             }}
                             variant="outline"
-                            className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
+                            className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-4 sm:px-6 w-full sm:w-auto"
                           >
                             Request Modification
                           </Button>
@@ -2229,7 +2288,7 @@ export default function ClientOrdersSection() {
                       </span>
                     </p>
                     {currentOrder.extensionRequest.reason && (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                      <div className="bg-gray-50 rounded-lg p-3 mt-2">
                         <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                           Reason:
                         </p>
@@ -2325,7 +2384,7 @@ export default function ClientOrdersSection() {
                     </h3>
                     
                     {/* Dispute Info */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                    <div className="bg-white rounded-lg p-6 mb-6">
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div>
                           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -2558,7 +2617,7 @@ export default function ClientOrdersSection() {
                       <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-3">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                         {currentOrder.address && (
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
@@ -2604,7 +2663,7 @@ export default function ClientOrdersSection() {
                       <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-3">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                         <div>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                             Order Date
@@ -2671,15 +2730,15 @@ export default function ClientOrdersSection() {
           </TabsContent>
 
           {/* Details Tab */}
-          <TabsContent value="details" className="mt-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-8">
+          <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
+            <div className="bg-white rounded-xl p-8">
               {/* Service Title */}
               <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
                 {currentOrder.service || primaryItem?.title || "Service"}
               </h2>
 
               {/* Service Category */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-6">
+              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-6">
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   {currentOrder.category || "Professional Service"}
                 </p>
@@ -2792,9 +2851,9 @@ export default function ClientOrdersSection() {
           </TabsContent>
 
           {/* Additional Info Tab */}
-          <TabsContent value="additional-info" className="mt-6 space-y-6">
+          <TabsContent value="additional-info" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
             {/* Additional Information Section */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="bg-white rounded-xl p-6">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                   Additional Information
@@ -2813,7 +2872,7 @@ export default function ClientOrdersSection() {
                 <div className="space-y-4">
                   {/* Submitted Message */}
                   {currentOrder.additionalInformation.message && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                         Your message:
                       </p>
@@ -2833,7 +2892,7 @@ export default function ClientOrdersSection() {
                         {currentOrder.additionalInformation.files.map((file, index) => (
                           <div 
                             key={index} 
-                            className="relative border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
+                            className="relative rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
                             onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                           >
                             {file.fileType === 'image' ? (
@@ -2879,7 +2938,7 @@ export default function ClientOrdersSection() {
 
             {/* Task Address Section */}
             {currentOrder.address && (
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <div className="bg-white rounded-xl p-6">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
                   Task Address
                 </h3>
@@ -2894,8 +2953,8 @@ export default function ClientOrdersSection() {
           </TabsContent>
 
           {/* Delivery Tab */}
-          <TabsContent value="delivery" className="mt-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <TabsContent value="delivery" className="mt-4 md:mt-6 px-4 md:px-6">
+            <div className="bg-white rounded-xl p-6">
               {(() => {
                 // Get all "Work Delivered" timeline events
                 const timeline = buildClientTimeline(currentOrder);
@@ -3100,7 +3159,7 @@ export default function ClientOrdersSection() {
 
             {/* Right Side - Order Summary Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 sticky top-6">
+              <div className="bg-white rounded-xl p-6 sticky top-6">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-6">
                   Order Details
                 </h3>
@@ -3256,7 +3315,7 @@ export default function ClientOrdersSection() {
                   </h2>
 
                   {/* Dispute Info Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6">
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div>
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -3341,7 +3400,7 @@ export default function ClientOrdersSection() {
                 {/* Right Column - Sidebar (1/3) */}
                 <div className="space-y-4">
                   {/* Amount Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                  <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                       Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {dispute.amount}</span>
                     </p>
@@ -3391,12 +3450,164 @@ export default function ClientOrdersSection() {
 
         {/* Rating Dialog - Full Page Style */}
         <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
-          <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90vh] overflow-y-auto p-0">
+          <DialogContent className="w-[95vw] !max-w-[1400px] sm:!max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
             <DialogHeader className="sr-only">
               <DialogTitle>Rate Your Service</DialogTitle>
               <DialogDescription>Provide your rating and review for the service</DialogDescription>
             </DialogHeader>
 
+            {!currentOrder ? (
+              <div className="p-8 text-center">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  Loading order details...
+                </p>
+              </div>
+            ) : currentOrder.rating ? (
+              <>
+            {/* Already Reviewed - Show Submitted Review */}
+            <div className="bg-blue-50 border-b border-blue-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-blue-800 font-semibold">
+                    Your Review
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-blue-600">
+                    Thank you for sharing your experience!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row">
+              {/* Left Side - Submitted Review Display */}
+              <div className="flex-1 p-6 lg:p-8">
+                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-4">
+                  Your Public Review
+                </h2>
+                
+                {/* Overall Rating */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                    Overall Rating
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-6 h-6 ${
+                            star <= (currentOrder.rating || 0)
+                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold ml-2">
+                      {currentOrder.rating}/5
+                    </span>
+                  </div>
+                </div>
+
+                {/* Review Text */}
+                {currentOrder.review && (
+                  <div className="mb-6">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">
+                      Your Review
+                    </h4>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
+                        {currentOrder.review}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Professional's Review of Client */}
+                {currentOrder.professionalReview && (
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">
+                      Professional's Review
+                    </h4>
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={currentOrder.professionalAvatar} />
+                        <AvatarFallback className="bg-blue-100 text-blue-600">
+                          {currentOrder.professional?.charAt(0) || "P"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
+                          {currentOrder.professional || "Professional"}
+                        </p>
+                        <div className="flex gap-1 mb-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= (currentOrder.professionalReview?.rating || 0)
+                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        {currentOrder.professionalReview?.comment && (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            "{currentOrder.professionalReview.comment}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">
+                  Reviews can only be submitted once and cannot be edited.
+                </p>
+              </div>
+
+              {/* Right Side - Order Summary */}
+              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
+                {/* Service Image */}
+                {currentOrder?.serviceImage && (
+                  <div className="mb-4 rounded-lg overflow-hidden">
+                    <img
+                      src={resolveFileUrl(currentOrder.serviceImage)}
+                      alt={currentOrder.service}
+                      className="w-full h-40 object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Service Title */}
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
+                  {currentOrder?.service || "Service"}
+                </h3>
+
+                {/* Order Details */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
+                      Completed
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </>
+            ) : (
+              <>
             {/* Success Banner */}
             <div className="bg-green-50 border-b border-green-200 p-4">
               <div className="flex items-center gap-3">
@@ -3627,6 +3838,8 @@ export default function ClientOrdersSection() {
                 )}
               </div>
             </div>
+            </>
+            )}
           </DialogContent>
         </Dialog>
 
@@ -3687,65 +3900,152 @@ export default function ClientOrdersSection() {
 
         {/* Dispute Dialog */}
         <Dialog open={isDisputeDialogOpen} onOpenChange={setIsDisputeDialogOpen}>
-          <DialogContent className="w-[70vw]">
+          <DialogContent className="w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[70vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                 Open a Dispute
               </DialogTitle>
-              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                If you're not satisfied with the delivery, you can open a dispute. Our team will review the case and help resolve the issue.
-              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Information Message Box */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <ul className="font-['Poppins',sans-serif] text-[13px] text-yellow-800 space-y-2 list-disc list-inside">
+                  <li>Most disputes are the result of a simple misunderstanding.</li>
+                  <li>Our dispute resolution system is designed to allow both parties to resolve the issue amongst themselves.</li>
+                  <li>Most disputes are resolved without arbitration.</li>
+                  <li>If an agreement cannot be reached, either party may elect to pay an arbitration fee for our dispute team to resolve the matter.</li>
+                </ul>
+              </div>
+              
+              {/* Order Requirements Field */}
               <div>
-                <Label htmlFor="dispute-reason" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Reason for Dispute *
+                <Label htmlFor="dispute-requirements" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Please describe in detail what the requirements were for the order(s) you wish to dispute. *
                 </Label>
                 <Textarea
-                  id="dispute-reason"
-                  value={disputeReason}
-                  onChange={(e) => setDisputeReason(e.target.value)}
-                  placeholder="Please describe the issue with the order..."
+                  id="dispute-requirements"
+                  value={disputeRequirements}
+                  onChange={(e) => setDisputeRequirements(e.target.value)}
+                  placeholder="Describe the original requirements and expectations for this order..."
                   rows={4}
                   className="font-['Poppins',sans-serif] text-[14px]"
                 />
               </div>
+
+              {/* Unmet Requirements Field */}
               <div>
-                <Label htmlFor="dispute-evidence" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Additional Evidence (Optional)
+                <Label htmlFor="dispute-unmet" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Please describe in detail which of these requirements were not completed. *
                 </Label>
                 <Textarea
-                  id="dispute-evidence"
-                  value={disputeEvidence}
-                  onChange={(e) => setDisputeEvidence(e.target.value)}
-                  placeholder="Provide any additional details, timestamps, or descriptions that support your case..."
-                  rows={3}
+                  id="dispute-unmet"
+                  value={disputeUnmetRequirements}
+                  onChange={(e) => setDisputeUnmetRequirements(e.target.value)}
+                  placeholder="Explain specifically which requirements were not met or completed..."
+                  rows={4}
                   className="font-['Poppins',sans-serif] text-[14px]"
                 />
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex gap-2">
-                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
-                      What happens next?
+
+              {/* Evidence File Upload */}
+              <div>
+                <Label htmlFor="dispute-evidence-files" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case.
+                </Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#3D5A80] transition-colors">
+                  <input
+                    id="dispute-evidence-files"
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setDisputeEvidenceFiles(Array.from(e.target.files));
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="dispute-evidence-files"
+                    className="flex flex-col items-center justify-center cursor-pointer"
+                  >
+                    <Paperclip className="w-8 h-8 text-gray-400 mb-2" />
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                      Click to upload evidence files
                     </p>
-                    <ul className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] space-y-1 list-disc list-inside">
-                      <li>The other party will have a set time (configured by admin) to respond</li>
-                      <li>If they don't respond within the deadline, the dispute will automatically close in your favor</li>
-                      <li>You can make settlement offers during this time</li>
-                      <li>If no resolution is reached, our team will step in to review the case</li>
-                      <li>The order funds will be held until the dispute is resolved</li>
-                    </ul>
-                  </div>
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#999]">
+                      Screenshots, documents, or any supporting materials
+                    </p>
+                  </label>
                 </div>
+                {disputeEvidenceFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {disputeEvidenceFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="w-4 h-4 text-gray-500" />
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            {file.name}
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#999]">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setDisputeEvidenceFiles(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Offer Amount Field */}
+              <div>
+                <Label htmlFor="dispute-offer" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Offer the amount you are prepared to pay *
+                </Label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                    <PoundSterling className="w-4 h-4 text-gray-500" />
+                  </div>
+                  <Input
+                    id="dispute-offer"
+                    type="number"
+                    min="0"
+                    max={currentOrder?.amountValue || undefined}
+                    step="0.01"
+                    value={disputeOfferAmount}
+                    onChange={(e) => setDisputeOfferAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="font-['Poppins',sans-serif] text-[14px] pl-10"
+                  />
+                </div>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                  Must be between £0.00 and £{currentOrder?.amountValue?.toFixed(2) || '0.00'} (order amount)
+                </p>
+              </div>
+
+              {/* Caution Message */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <span className="text-red-600 font-semibold">Caution!</span> You are entering the amount of the order that you are happy for the other party to receive. You may increase your offer in the future but you may not lower it.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
               <div className="flex gap-3 justify-end pt-4">
                 <Button
                   onClick={() => {
                     setIsDisputeDialogOpen(false);
-                    setDisputeReason("");
-                    setDisputeEvidence("");
+                    setDisputeRequirements("");
+                    setDisputeUnmetRequirements("");
+                    setDisputeEvidenceFiles([]);
+                    setDisputeOfferAmount("");
                   }}
                   variant="outline"
                   className="font-['Poppins',sans-serif]"
@@ -3754,7 +4054,8 @@ export default function ClientOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleCreateDispute}
-                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                  disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount}
+                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   Open Dispute
@@ -3843,7 +4144,7 @@ export default function ClientOrdersSection() {
                 {revisionFiles.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {revisionFiles.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                         <div className="flex-1 min-w-0">
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
                             {file.name}
@@ -3933,7 +4234,7 @@ export default function ClientOrdersSection() {
       {/* Statistics Cards */}
       <div className="flex lg:grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         {/* Total Orders */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
+        <div className="bg-white rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">
             Total Orders
           </p>
@@ -4012,7 +4313,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4029,7 +4330,11 @@ export default function ClientOrdersSection() {
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={order.service}>
+                            {order.service && order.service.length > 30 
+                              ? `${order.service.substring(0, 30)}...` 
+                              : order.service}
+                          </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
                         </div>
                       </TableCell>
@@ -4105,7 +4410,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4198,7 +4503,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4291,7 +4596,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4369,7 +4674,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4533,7 +4838,7 @@ export default function ClientOrdersSection() {
               {revisionFiles.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {revisionFiles.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                       <div className="flex-1 min-w-0">
                         <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
                           {file.name}
@@ -4644,7 +4949,7 @@ export default function ClientOrdersSection() {
                     {addInfoFiles.map((file, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                       >
                         {getAddInfoFileIcon(file)}
                         <div className="flex-1 min-w-0">
@@ -4720,7 +5025,7 @@ export default function ClientOrdersSection() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {currentOrder?.disputeInfo?.reason && (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                   Dispute Reason:
                 </p>

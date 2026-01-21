@@ -301,6 +301,7 @@ export default function ServiceDetailPage() {
   const [portfolioGalleryOpen, setPortfolioGalleryOpen] = useState(false);
   const [portfolioGalleryIndex, setPortfolioGalleryIndex] = useState(0);
   const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>(undefined);
+  const [realReviews, setRealReviews] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchService = async () => {
@@ -1915,44 +1916,44 @@ export default function ServiceDetailPage() {
 
             {/* Tabs Section */}
             <Tabs defaultValue="overview" className="w-full">
-              <div className="w-full overflow-x-auto scrollbar-hide border-b border-gray-200">
-                <TabsList className="w-full min-w-max justify-start bg-transparent rounded-none h-auto p-0 inline-flex">
+              <div className="w-full overflow-x-auto scrollbar-hide border-b border-gray-200 snap-x snap-mandatory touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0">
+                <TabsList className="w-full min-w-max justify-start bg-transparent rounded-none h-auto p-0 inline-flex gap-1">
                   <TabsTrigger 
                     value="overview"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
                   >
                     Overview
                   </TabsTrigger>
                   <TabsTrigger
                     value="availability"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
                   >
                     Availability
                   </TabsTrigger>
                   {service.reviewCount > 0 && (
                     <TabsTrigger 
                       value="reviews"
-                      className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                      className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
                     >
                       Reviews ({service.reviewCount})
                     </TabsTrigger>
                   )}
                   <TabsTrigger 
                     value="portfolio"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
                   >
                     Portfolio
                   </TabsTrigger>
                   <TabsTrigger 
                     value="faq"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
                   >
                     FAQ
                   </TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value="overview" className="mt-6 space-y-6">
+              <TabsContent value="overview" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
 
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
@@ -2305,7 +2306,7 @@ export default function ServiceDetailPage() {
               </TabsContent>
 
               {service.reviewCount > 0 && (
-                <TabsContent value="reviews" className="mt-6 space-y-6">
+                <TabsContent value="reviews" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
                 {/* Rating Overview */}
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
@@ -2670,7 +2671,7 @@ export default function ServiceDetailPage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="faq" className="mt-6">
+              <TabsContent value="faq" className="mt-4 sm:mt-6">
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
                     <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
@@ -3171,20 +3172,25 @@ export default function ServiceDetailPage() {
                     </div>
                   </div>
                   
-                  <Button 
-                    onClick={handleAddToCart}
-                    className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[15px] py-6 mb-3"
-                  >
-                    <ShoppingCart className="w-5 h-5 mr-2" />
-                    Add to Cart
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleBuyNow}
-                    className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
-                  >
-                    Buy Now
-                  </Button>
+                  {/* Hide Add to Cart and Buy Now buttons for professionals */}
+                  {userRole !== "professional" && (
+                    <>
+                      <Button 
+                        onClick={handleAddToCart}
+                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[15px] py-6 mb-3"
+                      >
+                        <ShoppingCart className="w-5 h-5 mr-2" />
+                        Add to Cart
+                      </Button>
+                      
+                      <Button 
+                        onClick={handleBuyNow}
+                        className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
+                      >
+                        Buy Now
+                      </Button>
+                    </>
+                  )}
                   
                   <Separator className="my-6" />
                   
@@ -3595,20 +3601,25 @@ export default function ServiceDetailPage() {
                       );
                     })()}
                     
-                    <Button 
-                      onClick={handleAddToCart}
-                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[15px] py-6 mb-3"
-                    >
-                      <ShoppingCart className="w-5 h-5 mr-2" />
-                      Add to Cart
-                    </Button>
-                    
-                    <Button 
-                      onClick={handleBuyNow}
-                      className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
-                    >
-                      Buy Now
-                    </Button>
+                    {/* Hide Add to Cart and Buy Now buttons for professionals */}
+                    {userRole !== "professional" && (
+                      <>
+                        <Button 
+                          onClick={handleAddToCart}
+                          className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[15px] py-6 mb-3"
+                        >
+                          <ShoppingCart className="w-5 h-5 mr-2" />
+                          Add to Cart
+                        </Button>
+                        
+                        <Button 
+                          onClick={handleBuyNow}
+                          className="w-full bg-[#3D78CB] hover:bg-[#2E5FA3] text-white font-['Poppins',sans-serif] text-[15px] py-6"
+                        >
+                          Buy Now
+                        </Button>
+                      </>
+                    )}
                     
                     <Separator className="my-6" />
                     

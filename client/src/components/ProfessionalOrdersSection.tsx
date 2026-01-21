@@ -36,6 +36,9 @@ import {
   ThumbsDown,
   Edit,
   MoreVertical,
+  PoundSterling,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -101,6 +104,10 @@ function ProfessionalOrdersSection() {
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [showDisputeSection, setShowDisputeSection] = useState(false);
+  const [disputeRequirements, setDisputeRequirements] = useState("");
+  const [disputeUnmetRequirements, setDisputeUnmetRequirements] = useState("");
+  const [disputeEvidenceFiles, setDisputeEvidenceFiles] = useState<File[]>([]);
+  const [disputeOfferAmount, setDisputeOfferAmount] = useState("");
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
   const [extensionNewDate, setExtensionNewDate] = useState("");
   const [extensionNewTime, setExtensionNewTime] = useState("09:00");
@@ -438,7 +445,7 @@ function ProfessionalOrdersSection() {
     }
 
     // Service in progress
-    if (order.deliveryStatus === "active") {
+    if (order.deliveryStatus === "active" && order.status !== "disputed") {
       push(
         {
           at: order.expectedDelivery || order.scheduledDate,
@@ -908,10 +915,32 @@ function ProfessionalOrdersSection() {
   };
 
   const handleCreateDispute = async () => {
-    if (!disputeReason.trim()) {
-      toast.error("Please provide a reason for the dispute");
+    // Validate required fields
+    if (!disputeRequirements.trim()) {
+      toast.error("Please describe what the requirements were for the order");
       return;
     }
+    if (!disputeUnmetRequirements.trim()) {
+      toast.error("Please describe which requirements were not completed");
+      return;
+    }
+    
+    const offerAmount = parseFloat(disputeOfferAmount);
+    const orderAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
+    
+    if (disputeOfferAmount === '' || isNaN(offerAmount)) {
+      toast.error("Please enter a valid offer amount");
+      return;
+    }
+    if (offerAmount < 0) {
+      toast.error("Offer amount cannot be negative");
+      return;
+    }
+    if (offerAmount > orderAmount) {
+      toast.error(`Offer amount cannot exceed the order amount (£${orderAmount.toFixed(2)})`);
+      return;
+    }
+    
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
       // Check if order is delivered
@@ -919,14 +948,45 @@ function ProfessionalOrdersSection() {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
+      
       try {
-        const disputeId = await createOrderDispute(selectedOrder, disputeReason, disputeEvidence);
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('requirements', disputeRequirements);
+        formData.append('unmetRequirements', disputeUnmetRequirements);
+        formData.append('offerAmount', disputeOfferAmount);
+        
+        // Add evidence files
+        disputeEvidenceFiles.forEach((file) => {
+          formData.append('evidenceFiles', file);
+        });
+        
+        // Call API to create dispute
+        const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/dispute`), {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create dispute');
+        }
+
+        const data = await response.json();
+        
         toast.success("Dispute has been created");
         setIsDisputeDialogOpen(false);
-        setDisputeReason("");
-        setDisputeEvidence("");
+        setDisputeRequirements("");
+        setDisputeUnmetRequirements("");
+        setDisputeEvidenceFiles([]);
+        setDisputeOfferAmount("");
+        
+        // Refresh orders to get updated status
+        await refreshOrders();
+        
         // Navigate to dispute discussion page
-        navigate(`/dispute/${disputeId}`);
+        navigate(`/dispute/${data.disputeId}`);
       } catch (error: any) {
         toast.error(error.message || "Failed to create dispute");
       }
@@ -980,7 +1040,7 @@ function ProfessionalOrdersSection() {
   const renderOrderCard = (order: any) => (
     <div
       key={order.id}
-      className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+      className="bg-white rounded-xl p-6 hover:shadow-md transition-shadow"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
@@ -1108,7 +1168,7 @@ function ProfessionalOrdersSection() {
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
          currentOrder.deliveryStatus !== "delivered" && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+          <div className="bg-white rounded-2xl p-6 shadow-lg">
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
@@ -1131,7 +1191,7 @@ function ProfessionalOrdersSection() {
             {/* Countdown Display */}
             <div className="grid grid-cols-4 gap-3">
               {/* Days */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.days).padStart(2, '0')}
                 </div>
@@ -1141,7 +1201,7 @@ function ProfessionalOrdersSection() {
               </div>
 
               {/* Hours */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.hours).padStart(2, '0')}
                 </div>
@@ -1151,7 +1211,7 @@ function ProfessionalOrdersSection() {
               </div>
 
               {/* Minutes */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.minutes).padStart(2, '0')}
                 </div>
@@ -1161,7 +1221,7 @@ function ProfessionalOrdersSection() {
               </div>
 
               {/* Seconds */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+              <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
                   {String(appointmentCountdown.seconds).padStart(2, '0')}
                 </div>
@@ -1298,14 +1358,47 @@ function ProfessionalOrdersSection() {
             <div className="flex items-center gap-3">
               <Badge
                 className={`${getStatusBadge(
-                  currentOrder.deliveryStatus
+                  currentOrder.status
                 )} font-['Poppins',sans-serif] text-[11px]`}
               >
                 <span className="flex items-center gap-1">
-                  {getStatusIcon(currentOrder.deliveryStatus)}
-                  {currentOrder.deliveryStatus?.toUpperCase()}
+                  {getStatusIcon(currentOrder.status)}
+                  {currentOrder.status?.toUpperCase()}
                 </span>
               </Badge>
+              
+              {(currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                    >
+                      <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 ? (
+                      <DropdownMenuItem
+                        onClick={() => setIsDisputeDialogOpen(true)}
+                        className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
+                      >
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        Open Dispute
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => setIsCancellationRequestDialogOpen(true)}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Request Cancellation
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
 
@@ -1316,31 +1409,31 @@ function ProfessionalOrdersSection() {
         <div className="hidden"></div>
 
         {/* Tabs Section */}
-        <div className="bg-white border border-gray-200 rounded-xl">
+        <div className="bg-white rounded-xl">
           <Tabs value={orderDetailTab} onValueChange={setOrderDetailTab}>
-            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide border-b border-gray-200">
-              <TabsList className="bg-transparent p-0 h-auto w-full md:w-auto inline-flex min-w-full md:min-w-0 justify-start">
+            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x snap-mandatory touch-pan-x">
+              <TabsList className="bg-transparent p-0 h-auto w-full md:w-auto inline-flex min-w-full md:min-w-0 justify-start gap-1">
                 <TabsTrigger
                   value="timeline"
-                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                 >
                   Timeline
                 </TabsTrigger>
                 <TabsTrigger
                   value="details"
-                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                 >
                   Details
                 </TabsTrigger>
                 <TabsTrigger
                   value="additional-info"
-                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                 >
                   Additional Info
                 </TabsTrigger>
                 <TabsTrigger
                   value="delivery"
-                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0"
+                  className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
                 >
                   Delivery
                 </TabsTrigger>
@@ -1348,11 +1441,11 @@ function ProfessionalOrdersSection() {
             </div>
 
               {/* Timeline Tab */}
-              <TabsContent value="timeline" className="mt-6 space-y-6">
-                <div className="space-y-6 px-2 md:px-4">
+              <TabsContent value="timeline" className="mt-4 md:mt-6 space-y-4 md:space-y-6">
+                <div className="space-y-4 md:space-y-6 px-4 md:px-6">
                 {/* Completion Message for Completed Orders */}
                 {currentOrder.status === "Completed" && (
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6">
                     <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
                       Your order has been completed!
                     </h3>
@@ -1415,7 +1508,7 @@ function ProfessionalOrdersSection() {
                           {currentOrder.client || "The client"} has requested to cancel this order.
                         </p>
                         {currentOrder.cancellationRequest.reason && (
-                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                          <div className="mb-3 p-3 bg-white rounded">
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Reason:
                             </p>
@@ -1485,7 +1578,7 @@ function ProfessionalOrdersSection() {
                           {currentOrder.client || "The client"} has requested to cancel this order.
                         </p>
                         {currentOrder.cancellationRequest.reason && (
-                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                          <div className="mb-3 p-3 bg-white rounded">
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Reason:
                             </p>
@@ -1607,6 +1700,7 @@ function ProfessionalOrdersSection() {
                 {(currentOrder.deliveryStatus === "active" || workElapsedTime.started) &&
                   currentOrder.status !== "Cancelled" &&
                   currentOrder.status !== "Completed" &&
+                  currentOrder.status !== "disputed" &&
                   currentOrder.deliveryStatus !== "delivered" &&
                   currentOrder.deliveryStatus !== "pending" && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -1717,7 +1811,7 @@ function ProfessionalOrdersSection() {
                 {timelineTimer}
 
                 {false && currentOrder.deliveryStatus === "delivered" && (
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6">
                     <h4 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-3">
                       Your work has been delivered!
                     </h4>
@@ -1795,7 +1889,7 @@ function ProfessionalOrdersSection() {
                             </h5>
                             
                             {currentOrder.revisionRequest.reason && (
-                              <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                              <div className="mb-3 p-3 bg-white rounded">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Client's request:
                                 </p>
@@ -1805,7 +1899,7 @@ function ProfessionalOrdersSection() {
                               </div>
                             )}
                             {currentOrder.revisionRequest.clientMessage && (
-                              <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                              <div className="mb-3 p-3 bg-white rounded">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Additional details:
                                 </p>
@@ -1892,7 +1986,7 @@ function ProfessionalOrdersSection() {
                             )}
 
                             {currentOrder.revisionRequest.additionalNotes && (
-                              <div className="mt-3 p-3 bg-white border border-gray-200 rounded">
+                              <div className="mt-3 p-3 bg-white rounded">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Your notes:
                                 </p>
@@ -2059,21 +2153,36 @@ function ProfessionalOrdersSection() {
                   </div>
                 )}
 
-                {currentOrder.deliveryStatus === "dispute" && (
-                  <div className="bg-white border border-gray-300 rounded-lg p-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
-                      Your order is being disputed!
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                      {currentOrder.client || "The client"} is disputing the work you have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, make, reject, or accept an offer.
-                    </p>
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={() => setShowDisputeSection(!showDisputeSection)}
-                        className="bg-white hover:bg-gray-50 text-[#2c353f] border-2 border-[#FE8A0F] font-['Poppins',sans-serif]"
-                      >
-                        {showDisputeSection ? "Hide Dispute" : "View Dispute"}
-                      </Button>
+                {(() => {
+                  console.log('=== Professional Order Check ===');
+                  console.log('Order ID:', currentOrder.id);
+                  console.log('Order Status:', currentOrder.status);
+                  console.log('Order Delivery Status:', currentOrder.deliveryStatus);
+                  console.log('Order disputeId:', currentOrder.disputeId);
+                  console.log('Full currentOrder:', currentOrder);
+                  console.log('================================');
+                  return null;
+                })()}
+                
+                {currentOrder.status === "disputed" && (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6">
+                    <div className="flex items-start gap-3 mb-3">
+                      <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-red-700 font-semibold mb-2 break-words">
+                          Your order is being disputed!
+                        </h4>
+                        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
+                          {currentOrder.client || "The client"} is disputing your order. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, or make, reject, or accept an offer.
+                        </p>
+                        <Button
+                          onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
+                          className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          View Dispute
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2116,14 +2225,18 @@ function ProfessionalOrdersSection() {
                         : null;
 
                       return (
-                        <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
-                          <div className="flex flex-col items-center pt-1">
-                            <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
+                        <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-5 mb-8 relative">
+                          <div className="flex flex-col items-center pt-1 relative">
+                            {/* Icon with enhanced modern styling */}
+                            <div className="w-12 h-12 rounded-xl bg-[#3D78CB] flex items-center justify-center flex-shrink-0 shadow-lg ring-4 ring-white transition-all duration-300 hover:scale-110 hover:shadow-xl relative z-10">
                               {event.icon}
                             </div>
-                            <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                            {/* Bold blue dashed connecting line */}
+                            <div className="relative mt-3 flex-1" style={{ minHeight: "40px" }}>
+                              <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0 border-l-[3px] border-dashed border-[#3D78CB]" />
+                            </div>
                           </div>
-                          <div className="flex-1 pb-6">
+                          <div className="flex-1 pb-2">
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
                               {deliveryNumber ? `#${deliveryNumber} ${event.label}` : event.label}
                             </p>
@@ -2261,7 +2374,7 @@ function ProfessionalOrdersSection() {
                         
                         {/* Delivery Message and Attachments */}
                         {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <div className="bg-gray-50 rounded-lg p-4">
                             {currentOrder.deliveryMessage && (
                               <div className="mb-3">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
@@ -2402,7 +2515,7 @@ function ProfessionalOrdersSection() {
                           </span>
                         </p>
                         {currentOrder.extensionRequest.reason && (
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                          <div className="bg-gray-50 rounded-lg p-3 mt-2">
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Reason:
                             </p>
@@ -2499,7 +2612,7 @@ function ProfessionalOrdersSection() {
                       </h3>
                       
                       {/* Dispute Info */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                      <div className="bg-white rounded-lg p-6 mb-6">
                         <div className="grid grid-cols-3 gap-4 mb-6">
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -2607,7 +2720,7 @@ function ProfessionalOrdersSection() {
                         
                         {/* Delivery Message and Attachments */}
                         {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <div className="bg-gray-50 rounded-lg p-4">
                             {currentOrder.deliveryMessage && (
                               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
                                 {currentOrder.deliveryMessage}
@@ -2696,7 +2809,7 @@ function ProfessionalOrdersSection() {
                             <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
                           </CollapsibleTrigger>
                           <CollapsibleContent className="mt-3">
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                               <div>
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Client
@@ -2731,45 +2844,6 @@ function ProfessionalOrdersSection() {
                   </div>
                 )}
 
-                {currentOrder.status === "Completed" && (
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
-                      Your order has been completed!
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-                      Your order has been completed. Please assist other users on our platform by sharing your experience of working with the buyer in the form of feedback.
-                    </p>
-                    <div className="flex gap-3 justify-end">
-                      <Button
-                        onClick={() => {
-                          setIsProfessionalReviewDialogOpen(true);
-                          setBuyerRating(0);
-                          setBuyerReview("");
-                        }}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] px-6"
-                      >
-                        View Review
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          if (currentOrder.client && currentOrder.clientId) {
-                            startConversation({
-                              id: currentOrder.clientId,
-                              name: currentOrder.client,
-                              avatar: currentOrder.clientAvatar || "",
-                            });
-                          } else {
-                            toast.error("Unable to start chat - client information not available");
-                          }
-                        }}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] px-6"
-                      >
-                        Chat
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 {/* Timeline similar to Client view */}
                 <div className="space-y-0">
@@ -2790,7 +2864,7 @@ function ProfessionalOrdersSection() {
                           <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
                         </CollapsibleTrigger>
                         <CollapsibleContent className="mt-3">
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                             <div>
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Order Date
@@ -2844,14 +2918,14 @@ function ProfessionalOrdersSection() {
               </TabsContent>
 
               {/* Details Tab */}
-              <TabsContent value="details" className="mt-6">
-                <div className="bg-white border border-gray-200 rounded-xl p-8">
+              <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
+                <div className="bg-white rounded-xl p-8">
                   <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
                     {currentOrder.service}
                   </h2>
 
                   {/* Service Category */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-6">
+                  <div className="bg-gray-50 rounded-lg px-4 py-3 mb-6">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       {currentOrder.category || "Professional Service"}
                     </p>
@@ -2956,9 +3030,9 @@ function ProfessionalOrdersSection() {
               </TabsContent>
 
               {/* Additional Info Tab */}
-              <TabsContent value="additional-info" className="mt-6 space-y-6">
+              <TabsContent value="additional-info" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
                 {/* Client's Additional Information */}
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <div className="bg-white rounded-xl p-6">
                   <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
                     Additional Information from Client
                   </h3>
@@ -2987,7 +3061,7 @@ function ProfessionalOrdersSection() {
                             {currentOrder.additionalInformation.files.map((file: any, index: number) => (
                               <div 
                                 key={index} 
-                                className="relative border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
+                                className="relative rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
                                 onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                               >
                                 {file.fileType === 'image' ? (
@@ -3032,7 +3106,7 @@ function ProfessionalOrdersSection() {
                 </div>
 
                 {currentOrder.address && (
-                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <div className="bg-white rounded-xl p-6">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
                       Service Address
                     </h3>
@@ -3046,7 +3120,7 @@ function ProfessionalOrdersSection() {
                 )}
 
                 {currentOrder.description && (
-                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <div className="bg-white rounded-xl p-6">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
                       Client Requirements
                     </h3>
@@ -3058,8 +3132,8 @@ function ProfessionalOrdersSection() {
               </TabsContent>
 
               {/* Delivery Tab */}
-              <TabsContent value="delivery" className="mt-6">
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <TabsContent value="delivery" className="mt-4 md:mt-6 px-4 md:px-6">
+                <div className="bg-white rounded-xl p-6">
                   {(() => {
                     // Get all "Work Delivered" timeline events
                     const timeline = buildProfessionalTimeline(currentOrder);
@@ -3245,7 +3319,7 @@ function ProfessionalOrdersSection() {
 
             {/* Right Side - Order Summary Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 sticky top-6">
+              <div className="bg-white rounded-xl p-6 sticky top-6">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-6">
                   Order Details
                 </h3>
@@ -3445,7 +3519,7 @@ function ProfessionalOrdersSection() {
                   </h2>
 
                   {/* Dispute Info Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6">
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div>
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -3530,7 +3604,7 @@ function ProfessionalOrdersSection() {
                 {/* Right Column - Sidebar (1/3) */}
                 <div className="space-y-4">
                   {/* Amount Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                  <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
                       Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {dispute.amount}</span>
                     </p>
@@ -3669,7 +3743,7 @@ function ProfessionalOrdersSection() {
               
               {/* Current schedule info */}
               {(currentOrder?.scheduledDate || currentOrder?.booking?.date) && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div className="bg-gray-50 rounded-lg p-3">
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                     <span className="font-medium">Current scheduled:</span>{" "}
                     {currentOrder?.booking?.date 
@@ -3770,7 +3844,7 @@ function ProfessionalOrdersSection() {
                       {completionFiles.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                          className="flex items-center gap-2 p-2 bg-gray-50 rounded"
                         >
                           {file.type.startsWith('image/') ? (
                             <img
@@ -3848,12 +3922,164 @@ function ProfessionalOrdersSection() {
 
         {/* Professional Review Dialog - Review Buyer */}
         <Dialog open={isProfessionalReviewDialogOpen} onOpenChange={setIsProfessionalReviewDialogOpen}>
-          <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90vh] overflow-y-auto p-0">
+          <DialogContent className="w-[95vw] !max-w-[1400px] sm:!max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
             <DialogHeader className="sr-only">
               <DialogTitle>Leave Public Review</DialogTitle>
               <DialogDescription>Review your experience with this buyer</DialogDescription>
             </DialogHeader>
 
+            {!currentOrder ? (
+              <div className="p-8 text-center">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  Loading order details...
+                </p>
+              </div>
+            ) : currentOrder.professionalReview || hasSubmittedBuyerReview ? (
+              <>
+            {/* Already Reviewed - Show Submitted Review */}
+            <div className="bg-blue-50 border-b border-blue-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-blue-800 font-semibold">
+                    Your Review
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-blue-600">
+                    Thank you for sharing your feedback!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row">
+              {/* Left Side - Submitted Review Display */}
+              <div className="flex-1 p-6 lg:p-8">
+                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-4">
+                  Your Review of the Buyer
+                </h2>
+                
+                {/* Overall Rating */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                    Rating
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-6 h-6 ${
+                            star <= (currentOrder.professionalReview?.rating || buyerRating || 0)
+                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold ml-2">
+                      {currentOrder.professionalReview?.rating || buyerRating || 0}/5
+                    </span>
+                  </div>
+                </div>
+
+                {/* Review Text */}
+                {(currentOrder.professionalReview?.comment || buyerReview) && (
+                  <div className="mb-6">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">
+                      Your Review
+                    </h4>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
+                        {currentOrder.professionalReview?.comment || buyerReview}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Client's Review if available */}
+                {(clientReviewData || currentOrder.rating) && (
+                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">
+                      Client's Review
+                    </h4>
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar} />
+                        <AvatarFallback className="bg-blue-100 text-blue-600">
+                          {(clientReviewData?.reviewer?.name || currentOrder.client)?.charAt(0) || "C"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
+                          {clientReviewData?.reviewer?.name || currentOrder.client || "Client"}
+                        </p>
+                        <div className="flex gap-1 mb-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= (clientReviewData?.rating || currentOrder.rating || 0)
+                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        {(clientReviewData?.comment || currentOrder.review) && (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            "{clientReviewData?.comment || currentOrder.review}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic mt-4">
+                  Reviews can only be submitted once and cannot be edited.
+                </p>
+              </div>
+
+              {/* Right Side - Order Summary */}
+              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
+                {/* Service Image */}
+                {currentOrder?.serviceImage && (
+                  <div className="mb-4 rounded-lg overflow-hidden">
+                    <img
+                      src={resolveFileUrl(currentOrder.serviceImage)}
+                      alt={currentOrder.service}
+                      className="w-full h-40 object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Service Title */}
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
+                  {currentOrder?.service || "Service"}
+                </h3>
+
+                {/* Order Details */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
+                      Completed
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </>
+            ) : (
+              <>
             <div className="flex flex-col lg:flex-row">
               {/* Left Side - Review Form */}
               <div className="flex-1 p-6 lg:p-8">
@@ -3863,7 +4089,7 @@ function ProfessionalOrdersSection() {
 
                 {/* Client Review Info */}
                 {currentOrder?.rating ? (
-                  <div className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
                     <Avatar className="w-10 h-10">
                       <AvatarImage src={currentOrder.clientAvatar} />
                       <AvatarFallback className="bg-blue-100 text-blue-600">
@@ -4111,12 +4337,31 @@ function ProfessionalOrdersSection() {
                       Task Address
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      {currentOrder.address}
+                      {typeof currentOrder.address === 'string' 
+                        ? currentOrder.address 
+                        : (
+                          <>
+                            {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
+                            {currentOrder.address.addressLine1}
+                            {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
+                            <br />
+                            {currentOrder.address.city && <>{currentOrder.address.city}, </>}
+                            {currentOrder.address.postcode}
+                            {currentOrder.address.phone && (
+                              <>
+                                <br />
+                                Tel: {currentOrder.address.phone}
+                              </>
+                            )}
+                          </>
+                        )}
                     </p>
                   </div>
                 )}
               </div>
             </div>
+            </>
+            )}
           </DialogContent>
         </Dialog>
 
@@ -4171,7 +4416,7 @@ function ProfessionalOrdersSection() {
                       {deliveryFiles.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                          className="flex items-center gap-2 p-2 bg-gray-50 rounded"
                         >
                           {file.type.startsWith('image/') ? (
                             <img
@@ -4249,64 +4494,152 @@ function ProfessionalOrdersSection() {
 
         {/* Dispute Dialog */}
         <Dialog open={isDisputeDialogOpen} onOpenChange={setIsDisputeDialogOpen}>
-          <DialogContent className="w-[70vw]">
+          <DialogContent className="w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[70vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                 Open a Dispute
               </DialogTitle>
-              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                If you're not satisfied with the delivery, you can open a dispute. Our team will review the case and help resolve the issue.
-              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Information Message Box */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <ul className="font-['Poppins',sans-serif] text-[13px] text-yellow-800 space-y-2 list-disc list-inside">
+                  <li>Most disputes are the result of a simple misunderstanding.</li>
+                  <li>Our dispute resolution system is designed to allow both parties to resolve the issue amongst themselves.</li>
+                  <li>Most disputes are resolved without arbitration.</li>
+                  <li>If an agreement cannot be reached, either party may elect to pay an arbitration fee for our dispute team to resolve the matter.</li>
+                </ul>
+              </div>
+              
+              {/* Order Requirements Field */}
               <div>
-                <Label htmlFor="dispute-reason" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Reason for Dispute *
+                <Label htmlFor="dispute-requirements" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Please describe in detail what the requirements were for the order(s) you wish to dispute. *
                 </Label>
                 <Textarea
-                  id="dispute-reason"
-                  value={disputeReason}
-                  onChange={(e) => setDisputeReason(e.target.value)}
-                  placeholder="Please describe the issue with the order..."
+                  id="dispute-requirements"
+                  value={disputeRequirements}
+                  onChange={(e) => setDisputeRequirements(e.target.value)}
+                  placeholder="Describe the original requirements and expectations for this order..."
                   rows={4}
                   className="font-['Poppins',sans-serif] text-[14px]"
                 />
               </div>
+
+              {/* Unmet Requirements Field */}
               <div>
-                <Label htmlFor="dispute-evidence" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Additional Evidence (Optional)
+                <Label htmlFor="dispute-unmet" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Please describe in detail which of these requirements were not completed. *
                 </Label>
                 <Textarea
-                  id="dispute-evidence"
-                  value={disputeEvidence}
-                  onChange={(e) => setDisputeEvidence(e.target.value)}
-                  placeholder="Provide any additional details, timestamps, or descriptions that support your case..."
-                  rows={3}
+                  id="dispute-unmet"
+                  value={disputeUnmetRequirements}
+                  onChange={(e) => setDisputeUnmetRequirements(e.target.value)}
+                  placeholder="Explain specifically which requirements were not met or completed..."
+                  rows={4}
                   className="font-['Poppins',sans-serif] text-[14px]"
                 />
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex gap-2">
-                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
-                      What happens next?
+
+              {/* Evidence File Upload */}
+              <div>
+                <Label htmlFor="dispute-evidence-files" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case.
+                </Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#3D5A80] transition-colors">
+                  <input
+                    id="dispute-evidence-files"
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setDisputeEvidenceFiles(Array.from(e.target.files));
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="dispute-evidence-files"
+                    className="flex flex-col items-center justify-center cursor-pointer"
+                  >
+                    <Paperclip className="w-8 h-8 text-gray-400 mb-2" />
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                      Click to upload evidence files
                     </p>
-                    <ul className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] space-y-1 list-disc list-inside">
-                      <li>Both parties will have 24 hours to discuss and resolve the issue</li>
-                      <li>You can make settlement offers during this time</li>
-                      <li>If no resolution is reached, our team will step in to review the case</li>
-                      <li>The order funds will be held until the dispute is resolved</li>
-                    </ul>
-                  </div>
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#999]">
+                      Screenshots, documents, or any supporting materials
+                    </p>
+                  </label>
                 </div>
+                {disputeEvidenceFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {disputeEvidenceFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="w-4 h-4 text-gray-500" />
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            {file.name}
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#999]">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setDisputeEvidenceFiles(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Offer Amount Field */}
+              <div>
+                <Label htmlFor="dispute-offer" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Offer the amount you want to receive *
+                </Label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                    <PoundSterling className="w-4 h-4 text-gray-500" />
+                  </div>
+                  <Input
+                    id="dispute-offer"
+                    type="number"
+                    min="0"
+                    max={currentOrder?.amountValue || undefined}
+                    step="0.01"
+                    value={disputeOfferAmount}
+                    onChange={(e) => setDisputeOfferAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="font-['Poppins',sans-serif] text-[14px] pl-10"
+                  />
+                </div>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                  Must be between £0.00 and £{currentOrder?.amountValue?.toFixed(2) || '0.00'} (order amount)
+                </p>
+              </div>
+
+              {/* Caution Message */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                  <span className="text-red-600 font-semibold">Caution!</span> You are entering the amount of the order that you want to receive from the client. You may increase your offer in the future but you may not lower it.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
               <div className="flex gap-3 justify-end pt-4">
                 <Button
                   onClick={() => {
                     setIsDisputeDialogOpen(false);
-                    setDisputeReason("");
-                    setDisputeEvidence("");
+                    setDisputeRequirements("");
+                    setDisputeUnmetRequirements("");
+                    setDisputeEvidenceFiles([]);
+                    setDisputeOfferAmount("");
                   }}
                   variant="outline"
                   className="font-['Poppins',sans-serif]"
@@ -4315,10 +4648,67 @@ function ProfessionalOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleCreateDispute}
-                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                  disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount}
+                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   Open Dispute
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancellation Request Dialog */}
+        <Dialog open={isCancellationRequestDialogOpen} onOpenChange={setIsCancellationRequestDialogOpen}>
+          <DialogContent className="w-[90vw] max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Request Order Cancellation
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Submit a cancellation request. The client will need to approve it.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="cancellation-reason" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Reason for Cancellation *
+                </Label>
+                <Textarea
+                  id="cancellation-reason"
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Please explain why you need to cancel this order..."
+                  rows={4}
+                  className="font-['Poppins',sans-serif] text-[14px]"
+                />
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    The client will be notified and must approve your cancellation request. The order will remain active until approved.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <Button
+                  onClick={() => {
+                    setIsCancellationRequestDialogOpen(false);
+                    setCancellationReason("");
+                  }}
+                  variant="outline"
+                  className="font-['Poppins',sans-serif]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRequestCancellation}
+                  disabled={!cancellationReason.trim()}
+                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+                >
+                  Request Cancellation
                 </Button>
               </div>
             </div>
@@ -4366,7 +4756,7 @@ function ProfessionalOrdersSection() {
       {/* Statistics Cards */}
       <div className="flex lg:grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         {/* Total Orders */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
+        <div className="bg-white rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">
             Total Orders
           </p>
@@ -4445,7 +4835,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4462,7 +4852,11 @@ function ProfessionalOrdersSection() {
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={order.service}>
+                            {order.service && order.service.length > 30 
+                              ? `${order.service.substring(0, 30)}...` 
+                              : order.service}
+                          </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
                         </div>
                       </TableCell>
@@ -4540,7 +4934,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4635,7 +5029,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4730,7 +5124,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4808,7 +5202,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4959,7 +5353,7 @@ function ProfessionalOrdersSection() {
             {selectedOrder && (() => {
               const order = orders.find(o => o.id === selectedOrder);
               return order?.revisionRequest?.reason && (
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                     Client's Request:
                   </p>

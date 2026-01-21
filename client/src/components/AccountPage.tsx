@@ -8404,7 +8404,11 @@ function ServicesSection() {
                             </TableCell>
                             <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                               <div className="max-w-xs">
-                                <p className="font-medium truncate">{service.title || "Untitled"}</p>
+                                <p className="font-medium truncate" title={service.title || "Untitled"}>
+                                  {service.title && service.title.length > 30 
+                                    ? `${service.title.substring(0, 30)}...` 
+                                    : (service.title || "Untitled")}
+                                </p>
                                 <p className="text-[12px] text-[#6b6b6b] line-clamp-2 mt-1">
                                   {service.description || "No description"}
                                 </p>

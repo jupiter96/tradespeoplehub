@@ -176,6 +176,12 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    // Dispute ID for tracking disputes
+    disputeId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     // Delivery files (images/videos) and message
     deliveryFiles: [{
       url: {

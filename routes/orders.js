@@ -11,6 +11,7 @@ import Wallet from '../models/Wallet.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import PromoCode from '../models/PromoCode.js';
 import Review from '../models/Review.js';
+import Dispute from '../models/Dispute.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
 
@@ -94,6 +95,41 @@ const revisionUpload = multer({
       'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
       'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm',
       'application/pdf', 'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images, videos, or documents are allowed.'));
+    }
+  }
+});
+
+// Configure multer for dispute evidence files
+const disputeDir = path.join(__dirname, '..', 'uploads', 'disputes');
+fs.mkdir(disputeDir, { recursive: true }).catch(() => {});
+
+const disputeStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, disputeDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage: disputeStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+      'application/pdf', 'text/plain', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -1007,11 +1043,38 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       reviewMap[review.order.toString()] = review;
     });
 
+    // Fetch disputes for all orders
+    const disputes = await Dispute.find({ order: { $in: orderIds } })
+      .populate('claimantId', 'firstName lastName tradingName avatar')
+      .populate('respondentId', 'firstName lastName tradingName avatar')
+      .lean();
+    
+    // Create a map of orderId to dispute
+    const disputeMap = {};
+    disputes.forEach(dispute => {
+      disputeMap[dispute.order.toString()] = dispute;
+    });
+
     // Transform orders to match frontend format
     const transformedOrders = orders.map(order => {
       const review = reviewMap[order._id.toString()];
+      const dispute = disputeMap[order._id.toString()];
       const client = order.client;
       const professional = order.professional;
+      
+      // Debug log for disputed orders
+      if (order.status === 'disputed' || dispute) {
+        console.log('=== Backend: Disputed Order Found ===');
+        console.log('Order Number:', order.orderNumber);
+        console.log('Order ID (_id):', order._id.toString());
+        console.log('Order Status:', order.status);
+        console.log('Order disputeId (from order):', order.disputeId);
+        console.log('Dispute found:', !!dispute);
+        console.log('Dispute ID:', dispute?.disputeId);
+        console.log('Dispute Status:', dispute?.status);
+        console.log('Will return disputeId:', order.disputeId || dispute?.disputeId || undefined);
+        console.log('=====================================');
+      }
       
       // Determine service name from first item
       const serviceName = order.items?.[0]?.title || 'Service Order';
@@ -1094,7 +1157,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         review: order.review || undefined,
         deliveryStatus,
         booking,
-        disputeId: order.disputeId || undefined,
+        disputeId: order.disputeId || dispute?.disputeId || undefined,
         expectedDelivery: order.expectedDelivery || undefined,
         subtotal: order.subtotal || 0,
         discount: order.discount || 0,
@@ -1152,27 +1215,74 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           submittedAt: order.additionalInformation.submittedAt ? new Date(order.additionalInformation.submittedAt).toISOString() : undefined,
         } : undefined,
         metadata: order.metadata || {},
-        disputeInfo: order.metadata?.disputeStatus ? {
-          id: order.disputeId || undefined,
-          status: order.metadata.disputeStatus,
-          reason: order.metadata.disputeReason || undefined,
-          evidence: order.metadata.disputeEvidence || undefined,
-          claimantId: order.metadata.disputeClaimantId ? order.metadata.disputeClaimantId.toString() : undefined,
-          respondentId: order.metadata.disputeRespondentId ? order.metadata.disputeRespondentId.toString() : undefined,
-          responseDeadline: order.metadata.disputeResponseDeadline ? new Date(order.metadata.disputeResponseDeadline).toISOString() : undefined,
-          respondedAt: order.metadata.disputeRespondedAt ? new Date(order.metadata.disputeRespondedAt).toISOString() : undefined,
-          negotiationDeadline: order.metadata.disputeNegotiationDeadline ? new Date(order.metadata.disputeNegotiationDeadline).toISOString() : undefined,
-          arbitrationRequested: order.metadata.disputeArbitrationRequested || false,
-          arbitrationRequestedBy: order.metadata.disputeArbitrationRequestedBy ? order.metadata.disputeArbitrationRequestedBy.toString() : undefined,
-          arbitrationRequestedAt: order.metadata.disputeArbitrationRequestedAt ? new Date(order.metadata.disputeArbitrationRequestedAt).toISOString() : undefined,
-          arbitrationFeeAmount: order.metadata.disputeArbitrationFeeAmount || undefined,
-          createdAt: order.metadata.disputeCreatedAt ? new Date(order.metadata.disputeCreatedAt).toISOString() : undefined,
-          closedAt: order.metadata.disputeClosedAt ? new Date(order.metadata.disputeClosedAt).toISOString() : undefined,
-          winnerId: order.metadata.disputeWinnerId ? order.metadata.disputeWinnerId.toString() : undefined,
-          loserId: order.metadata.disputeLoserId ? order.metadata.disputeLoserId.toString() : undefined,
-          adminDecision: order.metadata.disputeAdminDecision || false,
-          decisionNotes: order.metadata.disputeDecisionNotes || undefined,
-          autoClosed: order.metadata.disputeAutoClosed || false,
+        disputeInfo: dispute ? {
+          id: dispute.disputeId || undefined,
+          status: dispute.status,
+          requirements: dispute.requirements || undefined,
+          unmetRequirements: dispute.unmetRequirements || undefined,
+          evidenceFiles: dispute.evidenceFiles || [],
+          claimantId: dispute.claimantId ? dispute.claimantId.toString() : undefined,
+          respondentId: dispute.respondentId ? dispute.respondentId.toString() : undefined,
+          claimantName: dispute.claimantId ? (
+            dispute.claimantId._id ? (
+              dispute.claimantId._id.toString() === client?._id?.toString() ? 
+                `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
+                dispute.claimantId.tradingName || `${dispute.claimantId.firstName || ''} ${dispute.claimantId.lastName || ''}`.trim() || 'Professional'
+            ) : (
+              dispute.claimantId.toString() === client?._id?.toString() ? 
+                `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
+                professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional'
+            )
+          ) : undefined,
+          respondentName: dispute.respondentId ? (
+            dispute.respondentId._id ? (
+              dispute.respondentId._id.toString() === client?._id?.toString() ? 
+                `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
+                dispute.respondentId.tradingName || `${dispute.respondentId.firstName || ''} ${dispute.respondentId.lastName || ''}`.trim() || 'Professional'
+            ) : (
+              dispute.respondentId.toString() === client?._id?.toString() ? 
+                `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
+                professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional'
+            )
+          ) : undefined,
+          claimantAvatar: dispute.claimantId ? (
+            dispute.claimantId._id ? dispute.claimantId.avatar || '' : 
+            (dispute.claimantId.toString() === client?._id?.toString() ? client.avatar || '' : professional?.avatar || '')
+          ) : undefined,
+          respondentAvatar: dispute.respondentId ? (
+            dispute.respondentId._id ? dispute.respondentId.avatar || '' : 
+            (dispute.respondentId.toString() === client?._id?.toString() ? client.avatar || '' : professional?.avatar || '')
+          ) : undefined,
+          messages: dispute.messages ? dispute.messages.map(msg => ({
+            id: msg.id,
+            userId: msg.userId.toString(),
+            userName: msg.userName,
+            userAvatar: msg.userAvatar,
+            message: msg.message,
+            timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
+            isTeamResponse: msg.isTeamResponse || false,
+            attachments: msg.attachments ? msg.attachments.map((att) => ({
+              url: att.url,
+              fileName: att.fileName,
+              fileType: att.fileType,
+            })) : [],
+          })) : [],
+          clientOffer: dispute.offers?.clientOffer !== null && dispute.offers?.clientOffer !== undefined ? dispute.offers.clientOffer : undefined,
+          professionalOffer: dispute.offers?.professionalOffer !== null && dispute.offers?.professionalOffer !== undefined ? dispute.offers.professionalOffer : undefined,
+          responseDeadline: dispute.responseDeadline ? new Date(dispute.responseDeadline).toISOString() : undefined,
+          respondedAt: dispute.respondedAt ? new Date(dispute.respondedAt).toISOString() : undefined,
+          negotiationDeadline: dispute.negotiationDeadline ? new Date(dispute.negotiationDeadline).toISOString() : undefined,
+          arbitrationRequested: dispute.arbitrationRequested || false,
+          arbitrationRequestedBy: dispute.arbitrationRequestedBy ? dispute.arbitrationRequestedBy.toString() : undefined,
+          arbitrationRequestedAt: dispute.arbitrationRequestedAt ? new Date(dispute.arbitrationRequestedAt).toISOString() : undefined,
+          arbitrationFeeAmount: dispute.arbitrationFeeAmount || undefined,
+          createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : undefined,
+          closedAt: dispute.closedAt ? new Date(dispute.closedAt).toISOString() : undefined,
+          winnerId: dispute.winnerId ? dispute.winnerId.toString() : undefined,
+          loserId: dispute.loserId ? dispute.loserId.toString() : undefined,
+          adminDecision: dispute.adminDecision || false,
+          decisionNotes: dispute.decisionNotes || undefined,
+          autoClosed: dispute.autoClosed || false,
         } : undefined,
         reviewInfo: review ? {
           id: review._id.toString(),
@@ -2381,22 +2491,40 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
 });
 
 // Create dispute for an order
-router.post('/:orderId/dispute', authenticateToken, async (req, res) => {
+router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles', 10), async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason, evidence } = req.body;
+    const { requirements, unmetRequirements, offerAmount } = req.body;
 
-    if (!reason || !reason.trim()) {
-      return res.status(400).json({ error: 'Dispute reason is required' });
+    // Validate required fields
+    if (!requirements || !requirements.trim()) {
+      return res.status(400).json({ error: 'Please describe what the requirements were for the order' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    }).populate('client', 'firstName lastName tradingName')
+    if (!unmetRequirements || !unmetRequirements.trim()) {
+      return res.status(400).json({ error: 'Please describe which requirements were not completed' });
+    }
+
+    if (offerAmount === undefined || offerAmount === null || offerAmount === '') {
+      return res.status(400).json({ error: 'Offer amount is required' });
+    }
+
+    const parsedOfferAmount = parseFloat(offerAmount);
+    if (isNaN(parsedOfferAmount) || parsedOfferAmount < 0) {
+      return res.status(400).json({ error: 'Offer amount cannot be negative' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'firstName lastName tradingName')
       .populate('professional', 'firstName lastName tradingName');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Validate offer amount does not exceed order amount
+    if (parsedOfferAmount > order.totalAmount) {
+      return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${order.totalAmount.toFixed(2)})` });
     }
 
     // Check if order has been delivered
@@ -2413,7 +2541,8 @@ router.post('/:orderId/dispute', authenticateToken, async (req, res) => {
     }
 
     // Check if dispute already exists
-    if (order.disputeId) {
+    const existingDispute = await Dispute.findOne({ order: order._id });
+    if (existingDispute || order.disputeId) {
       return res.status(400).json({ error: 'A dispute already exists for this order' });
     }
 
@@ -2432,23 +2561,63 @@ router.post('/:orderId/dispute', authenticateToken, async (req, res) => {
     // Generate dispute ID
     const disputeId = `DISP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Process evidence files
+    const evidenceFiles = req.files ? req.files.map(file => file.path) : [];
+
+    // Initialize dispute messages with initial claim
+    const claimantUser = isClient ? order.client : order.professional;
+    const initialMessage = {
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: claimantId,
+      userName: isClient ? 
+        `${claimantUser?.firstName || ''} ${claimantUser?.lastName || ''}`.trim() : 
+        (claimantUser?.tradingName || `${claimantUser?.firstName || ''} ${claimantUser?.lastName || ''}`.trim()),
+      userAvatar: claimantUser?.avatar || '',
+      message: `**Requirements:** ${requirements}\n\n**Unmet Requirements:** ${unmetRequirements}`,
+      timestamp: new Date(),
+      isTeamResponse: false,
+    };
+
+    // Create dispute document
+    const dispute = new Dispute({
+      disputeId: disputeId,
+      order: order._id,
+      orderNumber: order.orderNumber,
+      status: 'open',
+      createdBy: claimantId,
+      createdAt: new Date(),
+      claimantId: claimantId,
+      respondentId: respondentId,
+      requirements: requirements,
+      unmetRequirements: unmetRequirements,
+      evidenceFiles: evidenceFiles,
+      responseDeadline: responseDeadline,
+      respondedAt: null,
+      negotiationDeadline: null,
+      messages: [initialMessage],
+      offers: {
+        clientOffer: isClient ? parsedOfferAmount : null,
+        professionalOffer: isClient ? null : parsedOfferAmount,
+      },
+      arbitrationRequested: false,
+      arbitrationRequestedBy: null,
+      arbitrationRequestedAt: null,
+      arbitrationFeeAmount: null,
+      closedAt: null,
+      winnerId: null,
+      loserId: null,
+      adminDecision: false,
+      decisionNotes: null,
+      autoClosed: false,
+      finalAmount: null,
+    });
+
+    await dispute.save();
+
     // Update order status to disputed
     order.status = 'disputed';
     order.deliveryStatus = 'dispute';
     order.disputeId = disputeId;
-
-    // Store dispute info in metadata
-    if (!order.metadata) order.metadata = {};
-    order.metadata.disputeReason = reason;
-    order.metadata.disputeEvidence = evidence || '';
-    order.metadata.disputeCreatedBy = claimantId;
-    order.metadata.disputeCreatedAt = new Date();
-    order.metadata.disputeClaimantId = claimantId;
-    order.metadata.disputeRespondentId = respondentId;
-    order.metadata.disputeResponseDeadline = responseDeadline;
-    order.metadata.disputeRespondedAt = null;
-    order.metadata.disputeStatus = 'open'; // open, responded, closed
-
     await order.save();
 
     res.json({ 
@@ -2484,32 +2653,31 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if dispute exists
-    if (!order.disputeId || !order.metadata?.disputeStatus) {
+    // Find dispute
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
       return res.status(400).json({ error: 'No dispute found for this order' });
     }
 
     // Check if dispute is still open
-    if (order.metadata.disputeStatus !== 'open') {
+    if (dispute.status !== 'open') {
       return res.status(400).json({ error: 'This dispute is no longer open' });
     }
 
     // Check if user is the respondent
-    const respondentId = order.metadata.disputeRespondentId;
-    const isRespondent = respondentId?.toString() === req.user.id;
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
 
     if (!isRespondent) {
       return res.status(403).json({ error: 'Only the respondent can respond to this dispute' });
     }
 
     // Check if already responded
-    if (order.metadata.disputeRespondedAt) {
+    if (dispute.respondedAt) {
       return res.status(400).json({ error: 'You have already responded to this dispute' });
     }
 
     // Check if response deadline has passed
-    const responseDeadline = order.metadata.disputeResponseDeadline;
-    if (responseDeadline && new Date(responseDeadline) < new Date()) {
+    if (dispute.responseDeadline && new Date(dispute.responseDeadline) < new Date()) {
       return res.status(400).json({ error: 'The response deadline has passed' });
     }
 
@@ -2521,25 +2689,39 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     const negotiationDeadline = new Date();
     negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
 
-    // Mark dispute as responded and enter negotiation phase
-    order.metadata.disputeStatus = 'negotiation';
-    order.metadata.disputeRespondedAt = new Date();
-    order.metadata.disputeNegotiationDeadline = negotiationDeadline;
-    order.metadata.disputeArbitrationRequested = false;
-    order.metadata.disputeArbitrationRequestedBy = null;
-    order.metadata.disputeArbitrationFeePaid = false;
+    // Get respondent user info
+    const respondentUser = await User.findById(req.user.id);
+    const isClient = order.client?.toString() === req.user.id || order.client?._id?.toString() === req.user.id;
+    
+    // Add response message if provided
     if (message && message.trim()) {
-      order.metadata.disputeResponseMessage = message.trim();
+      const responseMessage = {
+        id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: req.user.id,
+        userName: isClient ? 
+          `${respondentUser.firstName || ''} ${respondentUser.lastName || ''}`.trim() : 
+          (respondentUser.tradingName || `${respondentUser.firstName || ''} ${respondentUser.lastName || ''}`.trim()),
+        userAvatar: respondentUser.avatar || '',
+        message: message.trim(),
+        timestamp: new Date(),
+        isTeamResponse: false,
+      };
+      dispute.messages.push(responseMessage);
     }
+    
+    // Mark dispute as responded and enter negotiation phase
+    dispute.status = 'negotiation';
+    dispute.respondedAt = new Date();
+    dispute.negotiationDeadline = negotiationDeadline;
 
-    await order.save();
+    await dispute.save();
 
     res.json({ 
       message: 'Dispute response submitted successfully',
       dispute: {
-        id: order.disputeId,
-        status: order.metadata.disputeStatus,
-        respondedAt: order.metadata.disputeRespondedAt,
+        id: dispute.disputeId,
+        status: dispute.status,
+        respondedAt: dispute.respondedAt,
       }
     });
   } catch (error) {
@@ -2548,14 +2730,359 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
   }
 });
 
+// Add message to dispute
+router.post('/:orderId/dispute/message', authenticateToken, upload.array('attachments', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { message } = req.body;
+
+    if ((!message || !message.trim()) && (!req.files || req.files.length === 0)) {
+      return res.status(400).json({ error: 'Message or attachment is required' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'firstName lastName tradingName avatar')
+      .populate('professional', 'firstName lastName tradingName avatar');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Find dispute
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Check if dispute is open or in negotiation
+    if (dispute.status !== 'open' && dispute.status !== 'negotiation') {
+      return res.status(400).json({ error: 'This dispute is closed' });
+    }
+
+    // Check if user is involved in the dispute
+    const isClaimant = dispute.claimantId?.toString() === req.user.id;
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
+
+    if (!isClaimant && !isRespondent) {
+      return res.status(403).json({ error: 'You are not authorized to message in this dispute' });
+    }
+
+    // Get user info
+    const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
+    const user = isClient ? order.client : order.professional;
+
+    // Process attachments
+    const attachments = req.files ? req.files.map((file) => ({
+      url: file.path,
+      fileName: file.originalname,
+      fileType: file.mimetype.startsWith('image/') ? 'image' : 
+                file.mimetype.startsWith('video/') ? 'video' : 'other',
+    })) : [];
+
+    // Add message to dispute
+    const newMessage = {
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: req.user.id,
+      userName: isClient ? 
+        `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
+        (user.tradingName || `${user.firstName || ''} ${user.lastName || ''}`.trim()),
+      userAvatar: user.avatar || '',
+      message: message ? message.trim() : '',
+      timestamp: new Date(),
+      isTeamResponse: false,
+      attachments: attachments,
+    };
+    dispute.messages.push(newMessage);
+
+    await dispute.save();
+
+    res.json({ 
+      message: 'Message added successfully',
+      disputeMessage: {
+        ...newMessage,
+        attachments: attachments.map(att => ({
+          url: att.url,
+          fileName: att.fileName,
+          fileType: att.fileType,
+        })),
+      }
+    });
+  } catch (error) {
+    console.error('Add dispute message error:', error);
+    res.status(500).json({ error: error.message || 'Failed to add message' });
+  }
+});
+
+// Submit dispute offer
+router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { amount } = req.body;
+
+    if (amount === undefined || amount === null || amount === '') {
+      return res.status(400).json({ error: 'Offer amount is required' });
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount < 0) {
+      return res.status(400).json({ error: 'Invalid offer amount' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId));
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Find dispute
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Check if dispute is open or in negotiation
+    if (dispute.status !== 'open' && dispute.status !== 'negotiation') {
+      return res.status(400).json({ error: 'Cannot submit offer for a closed dispute' });
+    }
+
+    // Validate offer amount does not exceed order amount
+    if (parsedAmount > order.total) {
+      return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${order.total.toFixed(2)})` });
+    }
+
+    // Check if user is involved in the dispute
+    const isClaimant = dispute.claimantId?.toString() === req.user.id;
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
+
+    if (!isClaimant && !isRespondent) {
+      return res.status(403).json({ error: 'You are not authorized to submit an offer for this dispute' });
+    }
+
+    // Determine if user is client or professional
+    const isClient = order.client?.toString() === req.user.id || order.client?._id?.toString() === req.user.id;
+
+    // Validate offer doesn't decrease from previous offer
+    if (isClient) {
+      const previousOffer = dispute.offers.clientOffer;
+      if (previousOffer !== null && previousOffer !== undefined && parsedAmount < previousOffer) {
+        return res.status(400).json({ error: `You cannot decrease your offer. Your current offer is £${previousOffer.toFixed(2)}` });
+      }
+      dispute.offers.clientOffer = parsedAmount;
+    } else {
+      const previousOffer = dispute.offers.professionalOffer;
+      if (previousOffer !== null && previousOffer !== undefined && parsedAmount > previousOffer) {
+        return res.status(400).json({ error: `You cannot increase your offer. Your current offer is £${previousOffer.toFixed(2)}` });
+      }
+      dispute.offers.professionalOffer = parsedAmount;
+    }
+
+    // Check if offers match - if so, resolve the dispute automatically
+    const clientOffer = dispute.offers.clientOffer;
+    const professionalOffer = dispute.offers.professionalOffer;
+    
+    if (clientOffer !== null && clientOffer !== undefined && 
+        professionalOffer !== null && professionalOffer !== undefined && 
+        clientOffer === professionalOffer) {
+      // Offers match - resolve dispute
+      dispute.status = 'closed';
+      dispute.closedAt = new Date();
+      dispute.finalAmount = clientOffer;
+      order.status = 'Completed';
+      order.deliveryStatus = 'completed';
+      
+      // Process refund if needed
+      if (clientOffer < order.total) {
+        const refundAmount = order.total - clientOffer;
+        // Add refund logic here if needed
+      }
+    }
+
+    await dispute.save();
+    await order.save();
+
+    res.json({ 
+      message: 'Offer submitted successfully',
+      offer: {
+        clientOffer: dispute.offers.clientOffer,
+        professionalOffer: dispute.offers.professionalOffer,
+        isResolved: dispute.status === 'closed',
+      }
+    });
+  } catch (error) {
+    console.error('Submit dispute offer error:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit offer' });
+  }
+});
+
+// Accept dispute offer and close dispute
+router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'walletBalance')
+      .populate('professional', 'walletBalance');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Find dispute
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Check if dispute is open or in negotiation
+    if (dispute.status !== 'open' && dispute.status !== 'negotiation') {
+      return res.status(400).json({ error: 'This dispute is already closed' });
+    }
+
+    // Check if user is involved in the dispute
+    const isClaimant = dispute.claimantId?.toString() === req.user.id;
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
+
+    if (!isClaimant && !isRespondent) {
+      return res.status(403).json({ error: 'You are not authorized to accept this dispute offer' });
+    }
+
+    // Determine if user is client or professional
+    const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
+
+    // Get the other party's offer
+    const otherPartyOffer = isClient ? 
+      dispute.offers?.professionalOffer : 
+      dispute.offers?.clientOffer;
+
+    if (otherPartyOffer === null || otherPartyOffer === undefined) {
+      return res.status(400).json({ error: 'The other party has not made an offer yet' });
+    }
+
+    // Accept the offer and resolve dispute
+    const agreedAmount = otherPartyOffer;
+    dispute.status = 'closed';
+    dispute.closedAt = new Date();
+    dispute.finalAmount = agreedAmount;
+    order.status = 'Completed';
+    order.deliveryStatus = 'completed';
+
+    // Process payment/refund if needed
+    if (agreedAmount < order.total) {
+      const refundAmount = order.total - agreedAmount;
+      // Refund to client's wallet
+      const clientWallet = await Wallet.findOne({ user: order.client });
+      if (clientWallet) {
+        clientWallet.balance += refundAmount;
+        await clientWallet.save();
+      }
+      
+      // Transfer agreed amount to professional's wallet
+      const professionalWallet = await Wallet.findOne({ user: order.professional });
+      if (professionalWallet) {
+        professionalWallet.balance += agreedAmount;
+        await professionalWallet.save();
+      }
+    } else {
+      // Transfer full amount to professional
+      const professionalWallet = await Wallet.findOne({ user: order.professional });
+      if (professionalWallet) {
+        professionalWallet.balance += agreedAmount;
+        await professionalWallet.save();
+      }
+    }
+
+    await dispute.save();
+    await order.save();
+
+    res.json({ 
+      message: 'Dispute resolved successfully',
+      dispute: {
+        id: dispute.disputeId,
+        status: dispute.status,
+        agreedAmount: agreedAmount,
+        closedAt: dispute.closedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Accept dispute offer error:', error);
+    res.status(500).json({ error: error.message || 'Failed to accept dispute offer' });
+  }
+});
+
+// Reject dispute offer
+router.post('/:orderId/dispute/reject', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { message } = req.body; // Optional message explaining rejection
+
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'firstName lastName tradingName avatar')
+      .populate('professional', 'firstName lastName tradingName avatar');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Find dispute
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Check if dispute is open or in negotiation
+    if (dispute.status !== 'open' && dispute.status !== 'negotiation') {
+      return res.status(400).json({ error: 'This dispute is already closed' });
+    }
+
+    // Check if user is involved in the dispute
+    const isClaimant = dispute.claimantId?.toString() === req.user.id;
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
+
+    if (!isClaimant && !isRespondent) {
+      return res.status(403).json({ error: 'You are not authorized to reject this dispute offer' });
+    }
+
+    // Add rejection message if provided
+    if (message && message.trim()) {
+      const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
+      const user = isClient ? order.client : order.professional;
+      
+      const rejectionMessage = {
+        id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: req.user.id,
+        userName: isClient ? 
+          `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
+          (user.tradingName || `${user.firstName || ''} ${user.lastName || ''}`.trim()),
+        userAvatar: user.avatar || '',
+        message: `Rejected offer. ${message.trim()}`,
+        timestamp: new Date(),
+        isTeamResponse: false,
+      };
+      dispute.messages.push(rejectionMessage);
+    }
+
+    await dispute.save();
+
+    res.json({ 
+      message: 'Offer rejected',
+      dispute: {
+        id: dispute.disputeId,
+        status: dispute.status,
+      }
+    });
+  } catch (error) {
+    console.error('Reject dispute offer error:', error);
+    res.status(500).json({ error: error.message || 'Failed to reject dispute offer' });
+  }
+});
+
 // Request admin arbitration (requires fee payment)
 router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    }).populate('client', 'walletBalance')
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'walletBalance')
       .populate('professional', 'walletBalance');
 
     if (!order) {
@@ -2663,9 +3190,8 @@ router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['a
       return res.status(400).json({ error: 'Winner ID is required' });
     }
 
-    const order = await Order.findOne({ 
-      $or: [{ orderNumber: orderId }, { _id: orderId }]
-    }).populate('client', 'walletBalance')
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'walletBalance')
       .populate('professional', 'walletBalance');
 
     if (!order) {

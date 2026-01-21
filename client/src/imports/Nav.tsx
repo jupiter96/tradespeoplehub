@@ -858,7 +858,7 @@ export default function Nav() {
 
   return (
     <div
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+      className={`sticky top-0 z-50 w-full transition-all duration-300 bg-white ${
         isServicesPage ? 'md:h-[78px]' : 'md:h-[122px]'
       } ${
         isServicesPage ? 'h-[73px] md:h-auto' :
@@ -867,14 +867,14 @@ export default function Nav() {
       data-name="Nav"
     >
       {/* White background layer - absolute positioning to cover entire header */}
-      <div className="absolute inset-0 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] z-0"></div>
+      <div className="absolute inset-0 bg-white z-0"></div>
       
 
       
       {/* Mobile Header - New Layout */}
       <div className="md:hidden bg-white">
         {/* Top Row: Menu Button, Logo, Login */}
-        <div className={`relative ${isHomePage ? 'h-[100px]' : 'h-[100px]'} flex items-center justify-between px-4 bg-white`}>
+        <div className={`relative ${isHomePage ? 'h-[100px]' : 'h-[100px]'} flex items-center justify-between px-4 bg-white`} style={{ backgroundColor: '#ffffff' }}>
           {/* Left: Menu Button */}
           <button
             className="z-20 cursor-pointer flex-shrink-0"
@@ -985,7 +985,7 @@ export default function Nav() {
       </div>
 
       {/* Desktop Main navigation - New Layout */}
-      <div className="hidden md:flex absolute left-4 lg:left-8 right-4 lg:right-8 top-[20px] items-center z-10 bg-white">
+      <div className="hidden md:flex absolute left-4 lg:left-8 right-4 lg:right-8 top-[20px] items-center z-10 bg-white" style={{ backgroundColor: '#ffffff' }}>
         {/* Logo - Left Aligned */}
         <Link to="/" className="flex-shrink-0 hover:opacity-90 transition-opacity">
           <img 
@@ -1284,28 +1284,30 @@ export default function Nav() {
             </div>
           )}
 
-          {/* Shopping Cart with Details */}
-          <Link
-            to="/cart"
-            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer group"
-          >
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFF5EB] transition-colors">
-              <ShoppingCart className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Poppins',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
-                  {cartCount}
+          {/* Shopping Cart with Details - Hide for professionals */}
+          {userRole !== "professional" && (
+            <Link
+              to="/cart"
+              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer group"
+            >
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFF5EB] transition-colors">
+                <ShoppingCart className="w-5 h-5 text-[#5b5b5b] group-hover:text-[#FE8A0F] transition-colors" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#FE8A0F] text-white text-[10px] font-['Poppins',sans-serif] font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
+                  My Cart
                 </span>
-              )}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] leading-tight">
-                My Cart
-              </span>
-              <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
-                £{cartTotal.toFixed(1)}
-              </span>
-            </div>
-          </Link>
+                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
+                  £{cartTotal.toFixed(1)}
+                </span>
+              </div>
+            </Link>
+          )}
 
           {/* My Account - Far Right */}
           <LoginButton />
@@ -1317,7 +1319,7 @@ export default function Nav() {
       {!isServicesPage && (
       <>
         {/* Desktop Category Bar - Absolute Positioning */}
-        <div className="hidden md:flex absolute left-0 top-[82px] right-0 items-center justify-center z-[1] bg-white">
+        <div className="hidden md:flex absolute left-0 top-[82px] right-0 items-center justify-center z-[1] bg-white" style={{ backgroundColor: '#ffffff' }}>
           {/* Left scroll button */}
           <button
             onClick={scrollLeft}

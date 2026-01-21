@@ -65,8 +65,10 @@ export interface OrderDispute {
   evidence?: string;
   status: "open" | "responded" | "negotiation" | "admin_arbitration" | "resolved" | "closed";
   messages: OrderDisputeMessage[];
-  claimantOffer?: OrderDisputeOffer;
-  respondentOffer?: OrderDisputeOffer;
+  clientOffer?: number;
+  professionalOffer?: number;
+  claimantOffer?: OrderDisputeOffer; // Deprecated - kept for backward compatibility
+  respondentOffer?: OrderDisputeOffer; // Deprecated - kept for backward compatibility
   createdAt: string;
   resolvedAt?: string;
   teamInterventionTime?: string;
@@ -165,8 +167,18 @@ export interface Order {
     status: 'open' | 'responded' | 'negotiation' | 'admin_arbitration' | 'closed';
     reason?: string;
     evidence?: string;
+    requirements?: string;
+    unmetRequirements?: string;
+    evidenceFiles?: string[];
     claimantId?: string;
     respondentId?: string;
+    claimantName?: string;
+    respondentName?: string;
+    claimantAvatar?: string;
+    respondentAvatar?: string;
+    messages?: any[];
+    clientOffer?: number;
+    professionalOffer?: number;
     responseDeadline?: string;
     respondedAt?: string;
     negotiationDeadline?: string;
@@ -233,8 +245,10 @@ interface OrdersContextType {
   respondToExtension: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
   createOrderDispute: (orderId: string, reason: string, evidence?: string) => Promise<string>;
   getOrderDisputeById: (disputeId: string) => OrderDispute | undefined;
-  addOrderDisputeMessage: (disputeId: string, message: string) => void;
-  makeOrderDisputeOffer: (disputeId: string, amount: number) => void;
+  addOrderDisputeMessage: (disputeId: string, message: string) => Promise<void>;
+  makeOrderDisputeOffer: (disputeId: string, amount: number) => Promise<void>;
+  acceptDisputeOffer: (disputeId: string) => Promise<void>;
+  rejectDisputeOffer: (disputeId: string, message?: string) => Promise<void>;
   requestCancellation: (orderId: string, reason?: string) => Promise<void>;
   respondToCancellation: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
   withdrawCancellation: (orderId: string) => Promise<void>;
@@ -808,7 +822,48 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   const getOrderDisputeById = (disputeId: string): OrderDispute | undefined => {
-    return disputes.find(d => d.id === disputeId);
+    // First try the disputes array
+    const existingDispute = disputes.find(d => d.id === disputeId);
+    if (existingDispute) return existingDispute;
+    
+    // If not found, search in orders' disputeInfo
+    for (const order of orders) {
+      if (order.disputeId === disputeId && order.disputeInfo) {
+        // Convert disputeInfo to OrderDispute format
+        return {
+          id: disputeId,
+          orderId: order.id,
+          claimantId: order.disputeInfo.claimantId || '',
+          respondentId: order.disputeInfo.respondentId || '',
+          claimantName: order.disputeInfo.claimantName || '',
+          respondentName: order.disputeInfo.respondentName || '',
+          claimantAvatar: order.disputeInfo.claimantAvatar || '',
+          respondentAvatar: order.disputeInfo.respondentAvatar || '',
+          reason: order.disputeInfo.requirements || order.disputeInfo.reason || '',
+          evidence: order.disputeInfo.unmetRequirements || order.disputeInfo.evidence || '',
+          evidenceFiles: order.disputeInfo.evidenceFiles || [],
+          status: order.disputeInfo.status || 'open',
+          createdAt: order.disputeInfo.createdAt || new Date().toISOString(),
+          messages: order.disputeInfo.messages || [],
+          teamInterventionTime: order.disputeInfo.negotiationDeadline,
+          amount: order.amountValue || parseFloat(order.amount?.replace(/[^0-9.]/g, '') || '0'),
+          clientOffer: order.disputeInfo.clientOffer,
+          professionalOffer: order.disputeInfo.professionalOffer,
+          responseDeadline: order.disputeInfo.responseDeadline,
+          negotiationDeadline: order.disputeInfo.negotiationDeadline,
+          arbitrationRequested: order.disputeInfo.arbitrationRequested,
+          arbitrationRequestedBy: order.disputeInfo.arbitrationRequestedBy,
+          arbitrationFeeAmount: order.disputeInfo.arbitrationFeeAmount,
+          winnerId: order.disputeInfo.winnerId,
+          loserId: order.disputeInfo.loserId,
+          adminDecision: order.disputeInfo.adminDecision,
+          decisionNotes: order.disputeInfo.decisionNotes,
+          autoClosed: order.disputeInfo.autoClosed,
+        } as OrderDispute;
+      }
+    }
+    
+    return undefined;
   };
 
   // Cancellation Request Management
@@ -937,29 +992,34 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addOrderDisputeMessage = (disputeId: string, message: string) => {
-    setDisputes(prev => prev.map(dispute => {
-      if (dispute.id === disputeId) {
-        // Determine current user - simplified for demo
-        const order = orders.find(o => o.id === dispute.orderId);
-        const isClient = !order?.client;
-        
-        const newMessage: OrderDisputeMessage = {
-          id: `MSG-${Date.now()}`,
-          userId: isClient ? "client-user" : "professional-user",
-          userName: isClient ? "John Client" : (order?.professional || "Current User"),
-          userAvatar: isClient ? "" : order?.professionalAvatar,
-          message: message,
-          timestamp: new Date().toISOString(),
-        };
-
-        return {
-          ...dispute,
-          messages: [...dispute.messages, newMessage]
-        };
+  const addOrderDisputeMessage = async (disputeId: string, message: string) => {
+    try {
+      // Find the order with this dispute
+      const order = orders.find(o => o.disputeId === disputeId);
+      if (!order) {
+        throw new Error('Order not found for this dispute');
       }
-      return dispute;
-    }));
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${order.id}/dispute/message`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add message');
+      }
+
+      // Refresh orders to get updated dispute info
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Add dispute message error:', error);
+      throw error;
+    }
   };
 
   // Revision Request Management
@@ -1297,28 +1357,92 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const makeOrderDisputeOffer = (disputeId: string, amount: number) => {
-    setDisputes(prev => prev.map(dispute => {
-      if (dispute.id === disputeId) {
-        // Determine current user - simplified for demo
-        const order = orders.find(o => o.id === dispute.orderId);
-        const isClient = !order?.client;
-        const userId = isClient ? "client-user" : "professional-user";
-
-        const offer: OrderDisputeOffer = {
-          userId: userId,
-          amount: amount,
-          timestamp: new Date().toISOString(),
-        };
-
-        if (userId === dispute.claimantId) {
-          return { ...dispute, claimantOffer: offer };
-        } else {
-          return { ...dispute, respondentOffer: offer };
-        }
+  const makeOrderDisputeOffer = async (disputeId: string, amount: number) => {
+    try {
+      // Find the order with this dispute
+      const order = orders.find(o => o.disputeId === disputeId);
+      if (!order) {
+        throw new Error('Order not found for this dispute');
       }
-      return dispute;
-    }));
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${order.id}/dispute/offer`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ amount }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit offer');
+      }
+
+      // Refresh orders to get updated dispute info
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Make dispute offer error:', error);
+      throw error;
+    }
+  };
+
+  // Accept dispute offer
+  const acceptDisputeOffer = async (disputeId: string): Promise<void> => {
+    try {
+      // Find the order with this dispute
+      const order = orders.find(o => o.disputeId === disputeId);
+      if (!order) {
+        throw new Error('Order not found for this dispute');
+      }
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${order.id}/dispute/accept`), {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to accept dispute offer');
+      }
+
+      // Refresh orders to get updated dispute info
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Accept dispute offer error:', error);
+      throw error;
+    }
+  };
+
+  // Reject dispute offer
+  const rejectDisputeOffer = async (disputeId: string, message?: string): Promise<void> => {
+    try {
+      // Find the order with this dispute
+      const order = orders.find(o => o.disputeId === disputeId);
+      if (!order) {
+        throw new Error('Order not found for this dispute');
+      }
+
+      const response = await fetch(resolveApiUrl(`/api/orders/${order.id}/dispute/reject`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ message: message || '' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject dispute offer');
+      }
+
+      // Refresh orders to get updated dispute info
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Reject dispute offer error:', error);
+      throw error;
+    }
   };
 
   // Add additional information to an order
@@ -1379,6 +1503,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         getOrderDisputeById,
         addOrderDisputeMessage,
         makeOrderDisputeOffer,
+        acceptDisputeOffer,
+        rejectDisputeOffer,
         requestCancellation,
         respondToCancellation,
         withdrawCancellation,
