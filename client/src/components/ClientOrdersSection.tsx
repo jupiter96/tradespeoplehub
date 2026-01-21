@@ -529,7 +529,8 @@ export default function ClientOrdersSection() {
       );
       toast.success("Revision request submitted. The professional will review your request.");
       setIsRevisionRequestDialogOpen(false);
-      setSelectedOrder(null);
+      // Keep selectedOrder to stay on detail page
+      // setSelectedOrder(null); // Removed to keep order detail page open
       setRevisionReason("");
       setRevisionMessage("");
       setRevisionFiles([]);
@@ -858,6 +859,13 @@ export default function ClientOrdersSection() {
   const currentOrder = selectedOrder
     ? orders.find((o) => o.id === selectedOrder)
     : null;
+
+  // Console log currentOrder for debugging
+  useEffect(() => {
+    if (currentOrder) {
+      console.log('Current Order:', currentOrder);
+    }
+  }, [currentOrder]);
 
   const primaryItem = currentOrder?.items?.[0];
 
@@ -1212,6 +1220,24 @@ export default function ClientOrdersSection() {
 
           {/* Timeline Tab */}
           <TabsContent value="timeline" className="mt-6 space-y-6">
+            {/* Completion Message for Completed Orders */}
+            {currentOrder.status === "Completed" && (
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+                  Your order has been completed!
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                  Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.
+                </p>
+                <Button
+                  onClick={() => setIsRatingDialogOpen(true)}
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                >
+                  View review
+                </Button>
+              </div>
+            )}
+
             {/* Cancellation Request - Pending (Client can respond) */}
             {currentOrder.cancellationRequest && 
              currentOrder.cancellationRequest.status === 'pending' && 
@@ -1301,7 +1327,7 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {currentOrder.deliveryStatus === "active" && (
+            {currentOrder.deliveryStatus === "active" && currentOrder.status !== "Completed" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                   Service In Progress
@@ -1862,35 +1888,45 @@ export default function ClientOrdersSection() {
 
             {timelineTimer}
 
-            {currentOrder.deliveryStatus === "completed" && !currentOrder.rating && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                  ✅ Service Completed
+            {currentOrder.status === "Completed" && !currentOrder.rating && (
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
+                  Your order has been completed!
                 </h4>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                  This service has been completed on <span className="text-[#2c353f]">{currentOrder.completedDate ? formatDate(currentOrder.completedDate) : "today"}</span>. Please take a moment to rate your experience with {currentOrder.professional}.
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
+                  Your order has been completed. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.
                 </p>
-                <div className="flex gap-3 flex-wrap">
+                <div className="flex gap-3 justify-end">
                   <Button
                     onClick={() => setIsRatingDialogOpen(true)}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] px-6"
                   >
-                    <Star className="w-4 h-4 mr-2" />
-                    Rate & Review
+                    View Review
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (currentOrder.professionalId) {
+                        startConversation(currentOrder.professionalId, currentOrder.professional);
+                      }
+                    }}
+                    variant="outline"
+                    className="font-['Poppins',sans-serif] px-6"
+                  >
+                    Chat
                   </Button>
                 </div>
               </div>
             )}
 
-            {currentOrder.deliveryStatus === "completed" && currentOrder.rating && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                  ✅ Service Completed
+            {currentOrder.status === "completed" && currentOrder.rating && (
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
+                  Your order has been completed!
                 </h4>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
                   Thank you for your review! You rated this service {currentOrder.rating}/5 stars.
                 </p>
-                <div className="flex gap-1 mb-3">
+                <div className="flex gap-1 mb-4">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
@@ -1899,12 +1935,25 @@ export default function ClientOrdersSection() {
                   ))}
                 </div>
                 {currentOrder.review && (
-                  <div className="bg-white border border-green-200 rounded-lg p-4 mt-3">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] italic">
                       "{currentOrder.review}"
                     </p>
                   </div>
                 )}
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    onClick={() => {
+                      if (currentOrder.professionalId) {
+                        startConversation(currentOrder.professionalId, currentOrder.professional);
+                      }
+                    }}
+                    variant="outline"
+                    className="font-['Poppins',sans-serif] px-6"
+                  >
+                    Chat
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -3555,7 +3604,24 @@ export default function ClientOrdersSection() {
                       Task Address
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      {currentOrder.address}
+                      {typeof currentOrder.address === 'string' 
+                        ? currentOrder.address 
+                        : (
+                          <>
+                            {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
+                            {currentOrder.address.addressLine1}
+                            {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
+                            <br />
+                            {currentOrder.address.city && <>{currentOrder.address.city}, </>}
+                            {currentOrder.address.postcode}
+                            {currentOrder.address.phone && (
+                              <>
+                                <br />
+                                Tel: {currentOrder.address.phone}
+                              </>
+                            )}
+                          </>
+                        )}
                     </p>
                   </div>
                 )}
@@ -3704,7 +3770,8 @@ export default function ClientOrdersSection() {
           onOpenChange={(open) => {
             setIsRevisionRequestDialogOpen(open);
             if (!open) {
-              setSelectedOrder(null);
+              // Keep selectedOrder to stay on detail page
+              // setSelectedOrder(null); // Removed to keep order detail page open
               setRevisionReason("");
               setRevisionMessage("");
               setRevisionFiles([]);
@@ -4393,7 +4460,8 @@ export default function ClientOrdersSection() {
         onOpenChange={(open) => {
           setIsRevisionRequestDialogOpen(open);
           if (!open) {
-            setSelectedOrder(null);
+            // Keep selectedOrder to stay on detail page
+            // setSelectedOrder(null); // Removed to keep order detail page open
             setRevisionReason("");
             setRevisionMessage("");
             setRevisionFiles([]);

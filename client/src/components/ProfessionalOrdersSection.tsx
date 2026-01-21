@@ -204,6 +204,13 @@ function ProfessionalOrdersSection() {
     ? orders.find((o) => o.id === selectedOrder)
     : null;
 
+  // Console log currentOrder for debugging
+  useEffect(() => {
+    if (currentOrder) {
+      console.log('Current Order (Professional):', currentOrder);
+    }
+  }, [currentOrder]);
+
   const timelineEvents = useMemo(
     () => (currentOrder ? buildProfessionalTimeline(currentOrder) : []),
     [currentOrder]
@@ -683,20 +690,6 @@ function ProfessionalOrdersSection() {
           icon: <FileText className="w-5 h-5 text-white" />,
         },
         "additional-info"
-      );
-    }
-
-    // Delivery event
-    if (order.deliveredDate) {
-      push(
-        {
-          at: order.deliveredDate,
-          label: "Work Delivered",
-          description: order.deliveryMessage || "You delivered the work to the client.",
-          colorClass: "bg-blue-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
-        },
-        "delivered"
       );
     }
 
@@ -1357,6 +1350,28 @@ function ProfessionalOrdersSection() {
               {/* Timeline Tab */}
               <TabsContent value="timeline" className="mt-6 space-y-6">
                 <div className="space-y-6 px-2 md:px-4">
+                {/* Completion Message for Completed Orders */}
+                {currentOrder.status === "Completed" && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+                      Your order has been completed!
+                    </h3>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                      Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        setIsProfessionalReviewDialogOpen(true);
+                        setBuyerRating(0);
+                        setBuyerReview("");
+                      }}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                    >
+                      View review
+                    </Button>
+                  </div>
+                )}
+
                 {/* Revision Resume Action */}
                 {currentOrder.revisionRequest?.status === "pending" && (
                   <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mt-4">
@@ -2716,22 +2731,22 @@ function ProfessionalOrdersSection() {
                   </div>
                 )}
 
-                {currentOrder.deliveryStatus === "completed" && (
+                {currentOrder.status === "Completed" && (
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">
+                    <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
                       Your order has been completed!
                     </h4>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                      Congratulations on completing your order! Please assist other users on our platform by sharing your experience of working with the buyer in the form of feedback.
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
+                      Your order has been completed. Please assist other users on our platform by sharing your experience of working with the buyer in the form of feedback.
                     </p>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 justify-end">
                       <Button
                         onClick={() => {
                           setIsProfessionalReviewDialogOpen(true);
                           setBuyerRating(0);
                           setBuyerReview("");
                         }}
-                        className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[13px]"
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] px-6"
                       >
                         View Review
                       </Button>
@@ -2748,7 +2763,7 @@ function ProfessionalOrdersSection() {
                           }
                         }}
                         variant="outline"
-                        className="font-['Poppins',sans-serif] text-[13px] border-gray-300"
+                        className="font-['Poppins',sans-serif] px-6"
                       >
                         Chat
                       </Button>
