@@ -7,6 +7,7 @@ import {
   Search,
   Play,
   Medal,
+  Clock,
 } from "lucide-react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -82,12 +83,17 @@ function VideoThumbnail({
     }
   };
 
+  // Resolve URLs for video and thumbnail
+  const resolvedVideoUrl = videoUrl.startsWith("http") || videoUrl.startsWith("blob:") ? videoUrl : resolveApiUrl(videoUrl);
+  const resolvedPoster = thumbnail ? (thumbnail.startsWith("http") || thumbnail.startsWith("blob:") ? thumbnail : resolveApiUrl(thumbnail)) : 
+                         fallbackImage ? (fallbackImage.startsWith("http") || fallbackImage.startsWith("blob:") ? fallbackImage : resolveApiUrl(fallbackImage)) : undefined;
+
   return (
     <div className={`relative ${className}`} style={style}>
       <video
         ref={videoRef}
-        src={videoUrl}
-        poster={thumbnail || fallbackImage || undefined}
+        src={resolvedVideoUrl}
+        poster={resolvedPoster}
         className="w-full h-full object-cover object-center"
         style={{ minWidth: '100%', minHeight: '100%' }}
         muted
@@ -112,6 +118,18 @@ function VideoThumbnail({
     </div>
   );
 }
+
+// Helper function to resolve media URLs (images/videos)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
 
 export default function FavouriteSection() {
   const navigate = useNavigate();
@@ -342,7 +360,7 @@ export default function FavouriteSection() {
                     />
                   ) : (
                 <img
-                  src={service.image}
+                  src={resolveMediaUrl(service.image)}
                       alt={service.description || service.title}
                       className="w-full h-full object-cover object-center"
                       style={{ minWidth: '100%', minHeight: '100%' }}
@@ -468,8 +486,8 @@ export default function FavouriteSection() {
 
                   {/* Bottom Info */}
                   <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
-                    <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
-                    <span className="text-[#999]">Available</span>
+                    <span>{service.deliveryType === "same-day" ? "Delivers in 2 days" : "Standard Delivery"}</span>
+                    <Clock className="w-3 h-3 md:w-4 md:h-4 text-[#999]" />
                   </div>
                 </div>
               </div>

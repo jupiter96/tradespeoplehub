@@ -12,6 +12,19 @@ import { Calendar } from "./ui/calendar";
 import { nameToSlug } from "./categoriesHierarchy";
 import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
+import { resolveApiUrl } from "../config/api";
+
+// Helper function to resolve media URLs (images/videos)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
 
 // Join URL path segments safely (prevents accidental double slashes)
 const joinPath = (...parts: Array<string | null | undefined>) => {
@@ -33,7 +46,9 @@ function SmartImageLayers({
   alt: string;
   mode?: "main" | "thumb";
 }) {
-  if (!src) {
+  const resolvedSrc = resolveMediaUrl(src);
+  
+  if (!resolvedSrc) {
     return <div className="absolute inset-0 bg-gray-200" aria-hidden="true" />;
   }
 
@@ -41,7 +56,7 @@ function SmartImageLayers({
     <>
       {/* Blurred background layer (use <img> instead of CSS backgroundImage so it reliably loads everywhere) */}
       <img
-        src={src}
+        src={resolvedSrc}
         alt=""
         aria-hidden="true"
         className={`absolute inset-0 h-full w-full object-cover scale-110 ${
@@ -56,7 +71,7 @@ function SmartImageLayers({
         aria-hidden="true"
       />
       <img
-        src={src}
+        src={resolvedSrc}
         alt={alt}
         className="absolute inset-0 h-full w-full object-contain"
         decoding="async"
@@ -104,14 +119,14 @@ function ThumbnailButtons({
               <>
                 {/* Blurred background video */}
                 <video
-                  src={item.url}
+                  src={resolveMediaUrl(item.url)}
                   className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-70"
                   muted
                   playsInline
                 />
                 {/* Main video */}
                 <video
-                  src={item.url}
+                  src={resolveMediaUrl(item.url)}
                   className="absolute inset-0 h-full w-full object-contain"
                   muted
                   playsInline
@@ -285,6 +300,7 @@ export default function ServiceDetailPage() {
   const [serviceStatus, setServiceStatus] = useState<string | null>(null);
   const [portfolioGalleryOpen, setPortfolioGalleryOpen] = useState(false);
   const [portfolioGalleryIndex, setPortfolioGalleryIndex] = useState(0);
+  const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const fetchService = async () => {
@@ -944,7 +960,8 @@ export default function ServiceDetailPage() {
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
       packageType: selectedPackage?.name.toLowerCase() || undefined,
-      thumbnailVideo: thumbnailVideo || undefined
+      thumbnailVideo: thumbnailVideo || undefined,
+      priceUnit: service.priceUnit || 'fixed'
     }, quantity);
     
     // Show success toast
@@ -999,7 +1016,8 @@ export default function ServiceDetailPage() {
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
       packageType: selectedPackage?.name.toLowerCase() || undefined,
-      thumbnailVideo: thumbnailVideo || undefined
+      thumbnailVideo: thumbnailVideo || undefined,
+      priceUnit: service.priceUnit || 'fixed'
     }, quantity);
     
     // Navigate to cart page
@@ -1375,7 +1393,7 @@ export default function ServiceDetailPage() {
             <>
               {/* Blurred background video */}
               <video
-                src={galleryItems[activeImageIndex]?.url}
+                src={resolveMediaUrl(galleryItems[activeImageIndex]?.url)}
                 className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-90"
                 muted
                 loop
@@ -1383,7 +1401,7 @@ export default function ServiceDetailPage() {
               />
               {/* Main video */}
               <video
-                src={galleryItems[activeImageIndex]?.url}
+                src={resolveMediaUrl(galleryItems[activeImageIndex]?.url)}
                 className="absolute inset-0 h-full w-full object-contain"
                 controls
                 autoPlay
@@ -1394,7 +1412,7 @@ export default function ServiceDetailPage() {
             </>
           ) : (
             <SmartImageLayers
-              src={mainImageUrl || service.image}
+              src={resolveMediaUrl(mainImageUrl || service.image)}
               alt={service.description}
               mode="main"
             />
@@ -1733,7 +1751,7 @@ export default function ServiceDetailPage() {
                   <>
                     {/* Blurred background video */}
                     <video
-                      src={galleryItems[activeImageIndex]?.url}
+                      src={resolveMediaUrl(galleryItems[activeImageIndex]?.url)}
                       className="absolute inset-0 h-full w-full object-cover scale-110 blur-3xl opacity-90"
                       muted
                       loop
@@ -1741,7 +1759,7 @@ export default function ServiceDetailPage() {
                     />
                     {/* Main video with controls */}
                     <video
-                      src={galleryItems[activeImageIndex]?.url}
+                      src={resolveMediaUrl(galleryItems[activeImageIndex]?.url)}
                       className="absolute inset-0 h-full w-full object-contain"
                       controls
                       autoPlay
@@ -1752,7 +1770,7 @@ export default function ServiceDetailPage() {
                   </>
                 ) : (
                   <SmartImageLayers
-                    src={mainImageUrl || service.image}
+                    src={resolveMediaUrl(mainImageUrl || service.image)}
                     alt={service.description}
                     mode="main"
                   />
@@ -1904,6 +1922,12 @@ export default function ServiceDetailPage() {
                     className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
                   >
                     Overview
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="availability"
+                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6"
+                  >
+                    Availability
                   </TabsTrigger>
                   {service.reviewCount > 0 && (
                     <TabsTrigger 
@@ -2098,7 +2122,7 @@ export default function ServiceDetailPage() {
                                   {/* Delivery Days - Fixed to bottom */}
                                   <div className="p-3 border-t border-gray-200 mt-auto">
                                     <div className="font-['Poppins',sans-serif] text-[12px] text-[#5b5b5b] text-center">
-                                      {deliveryText === "same day" ? "Same day delivery" : "Standard delivery"}
+                                      {deliveryText === "same day" ? "Delivers in 2 days" : "Standard delivery"}
                                     </div>
                                   </div>
                                 </div>
@@ -2146,6 +2170,138 @@ export default function ServiceDetailPage() {
                     </CardContent>
                   </Card>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="availability" className="mt-6 space-y-6">
+                <Card className="border-2 border-gray-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <CalendarIcon className="w-5 h-5 text-[#3D78CB]" />
+                      <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                        Availability
+                      </h2>
+                    </div>
+                    {(service.serviceType || "in-person") === "in-person" && service.availability && Object.keys(service.availability).length > 0 ? (
+                      <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm lg:w-[360px]">
+                          <Calendar
+                            mode="single"
+                            selected={availabilityDate}
+                            onSelect={setAvailabilityDate}
+                            disabled={(date) => {
+                              // Disable past dates
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              if (date < today) return true;
+
+                              // For standard delivery, disable today (must order at least 1 day in advance)
+                              if (service.deliveryType === "standard") {
+                                const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                if (dateOnly.getTime() === todayOnly.getTime()) {
+                                  return true;
+                                }
+                              }
+
+                              // Check availability based on service availability data
+                              if (service.availability) {
+                                const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                const dayName = days[date.getDay()];
+                                const dayAvailability = service.availability[dayName];
+
+                                if (!dayAvailability) return true;
+                                if (!dayAvailability.enabled || !dayAvailability.blocks || dayAvailability.blocks.length === 0) {
+                                  return true;
+                                }
+                              }
+
+                              return false;
+                            }}
+                            className="font-['Poppins',sans-serif]"
+                            modifiers={{
+                              available: (date) => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                if (date < today) return false;
+
+                                if (service.deliveryType === "standard") {
+                                  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                  if (dateOnly.getTime() === todayOnly.getTime()) return false;
+                                }
+
+                                if (service.availability) {
+                                  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                  const dayName = days[date.getDay()];
+                                  const dayAvailability = service.availability[dayName];
+
+                                  if (!dayAvailability) return false;
+                                  return dayAvailability.enabled && dayAvailability.blocks && dayAvailability.blocks.length > 0;
+                                }
+
+                                return true;
+                              }
+                            }}
+                            modifiersClassNames={{
+                              available: "bg-green-50 text-green-700 hover:bg-green-100"
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex-1 min-h-[200px]">
+                          {!availabilityDate && (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 h-full flex items-center justify-center">
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                Select a date to see available time blocks.
+                              </p>
+                            </div>
+                          )}
+                          {availabilityDate && (() => {
+                            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                            const dayName = days[availabilityDate.getDay()];
+                            const dayAvailability = service.availability?.[dayName];
+                            const blocks = dayAvailability?.blocks || [];
+
+                            if (!dayAvailability?.enabled || blocks.length === 0) {
+                              return (
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800">
+                                    No available time blocks for the selected date.
+                                  </p>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Clock className="w-4 h-4 text-[#FE8A0F]" />
+                                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                    Available time blocks
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {blocks.map((block: any, index: number) => (
+                                    <div
+                                      key={`${block.from}-${block.to}-${index}`}
+                                      className="px-3 py-1.5 rounded-full bg-[#F8FAFC] border border-gray-200 text-[13px] text-[#2c353f] font-['Poppins',sans-serif]"
+                                    >
+                                      {block.from} - {block.to}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        Availability details are not provided for this service.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {service.reviewCount > 0 && (
@@ -2368,9 +2524,7 @@ export default function ServiceDetailPage() {
                           {service.providerPortfolio.map((item: any, index: number) => {
                             // Resolve media URL - handle both local paths and external URLs
                             const rawUrl = item.url || item.image;
-                            const itemUrl = rawUrl && !rawUrl.startsWith('http') && rawUrl.startsWith('/') 
-                              ? `${window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin}${rawUrl}` 
-                              : rawUrl;
+                            const itemUrl = resolveMediaUrl(rawUrl);
                             const isVideo = item.type === 'video';
                             const isFirstItem = index === 0;
                             
@@ -2830,53 +2984,6 @@ export default function ServiceDetailPage() {
                         </span>
                       </div>
                     )}
-                    {/* Show availability for in-person services, delivery time for online services */}
-                    {!selectedPackage && (service.serviceType || "in-person") === "in-person" && service.availability && Object.keys(service.availability).length > 0 && (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <CalendarIcon className="w-4 h-4 text-[#6b6b6b]" />
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            Availability
-                          </span>
-                        </div>
-                        <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
-                          <Calendar
-                            mode="multiple"
-                            selected={[]}
-                            disabled={(date) => {
-                              // Disable past dates
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                              if (date < today) return true;
-                              
-                              // For standard delivery, disable today (must order at least 1 day in advance)
-                              if (service.deliveryType === "standard") {
-                                const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                                const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                                if (dateOnly.getTime() === todayOnly.getTime()) {
-                                  return true;
-                                }
-                              }
-                              
-                              // Check availability based on service availability data
-                              if (service.availability) {
-                                const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                                const dayName = days[date.getDay()];
-                                const dayAvailability = service.availability[dayName];
-                                
-                                if (!dayAvailability) return true;
-                                if (!dayAvailability.enabled || !dayAvailability.blocks || dayAvailability.blocks.length === 0) {
-                                  return true;
-                                }
-                              }
-                              
-                              return false;
-                            }}
-                            className="font-['Poppins',sans-serif] pointer-events-none"
-                          />
-                        </div>
-                      </div>
-                    )}
                     {!selectedPackage && (service.serviceType || "in-person") === "online" && service.onlineDeliveryDays && (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
@@ -3316,79 +3423,6 @@ export default function ServiceDetailPage() {
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                             {selectedPackage.revisions}
                           </span>
-                        </div>
-                      )}
-                      {!selectedPackage && service.availability && (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <CalendarIcon className="w-4 h-4 text-[#6b6b6b]" />
-                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                              Availability
-                            </span>
-                          </div>
-                          <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
-                            <Calendar
-                              mode="multiple"
-                              selected={[]}
-                              disabled={(date) => {
-                                // Disable past dates
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-                                if (date < today) return true;
-                                
-                                // For standard delivery, disable today (must order at least 1 day in advance)
-                                if (service.deliveryType === "standard") {
-                                  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                                  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                                  if (dateOnly.getTime() === todayOnly.getTime()) {
-                                    return true;
-                                  }
-                                }
-                                
-                                // Check availability based on service availability data
-                                if (service.availability) {
-                                  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                                  const dayName = days[date.getDay()];
-                                  const dayAvailability = service.availability[dayName];
-                                  
-                                  if (!dayAvailability) return true;
-                                  if (!dayAvailability.enabled || !dayAvailability.blocks || dayAvailability.blocks.length === 0) {
-                                    return true;
-                                  }
-                                }
-                                
-                                return false;
-                              }}
-                              className="font-['Poppins',sans-serif] pointer-events-none"
-                              modifiers={{
-                                available: (date) => {
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  if (date < today) return false;
-                                  
-                                  if (service.deliveryType === "standard") {
-                                    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                                    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                                    if (dateOnly.getTime() === todayOnly.getTime()) return false;
-                                  }
-                                  
-                                  if (service.availability) {
-                                    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                                    const dayName = days[date.getDay()];
-                                    const dayAvailability = service.availability[dayName];
-                                    
-                                    if (!dayAvailability) return false;
-                                    return dayAvailability.enabled && dayAvailability.blocks && dayAvailability.blocks.length > 0;
-                                  }
-                                  
-                                  return true;
-                                }
-                              }}
-                              modifiersClassNames={{
-                                available: "bg-green-50 text-green-700 hover:bg-green-100"
-                              }}
-                            />
-                          </div>
                         </div>
                       )}
                     </div>

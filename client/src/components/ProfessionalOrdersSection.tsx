@@ -5,6 +5,8 @@ import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import DeliveryCountdown from "./DeliveryCountdown";
 import { useCountdown } from "../hooks/useCountdown";
+import { useElapsedTime } from "../hooks/useElapsedTime";
+import { resolveApiUrl } from "../config/api";
 import {
   ShoppingBag,
   Package,
@@ -13,8 +15,6 @@ import {
   AlertTriangle,
   Calendar,
   MapPin,
-  Phone,
-  Mail,
   Eye,
   MessageCircle,
   Star,
@@ -32,6 +32,8 @@ import {
   Info,
   Upload,
   PlayCircle,
+  ThumbsUp,
+  ThumbsDown,
   Edit,
   MoreVertical,
 } from "lucide-react";
@@ -76,10 +78,10 @@ import { Label } from "./ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { toast } from "sonner";
 
-export default function ProfessionalOrdersSection() {
+function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptOrder, rejectOrder, startWork, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute } = useOrders();
+  const { orders, cancelOrder, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -96,14 +98,14 @@ export default function ProfessionalOrdersSection() {
   const [cancelReason, setCancelReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
+  const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
+  const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [showDisputeSection, setShowDisputeSection] = useState(false);
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
   const [extensionNewDate, setExtensionNewDate] = useState("");
   const [extensionNewTime, setExtensionNewTime] = useState("09:00");
-  const [shownAcceptedToasts, setShownAcceptedToasts] = useState<Set<string>>(new Set());
+  const [shownServiceTimeToasts, setShownServiceTimeToasts] = useState<Set<string>>(new Set());
   const [extensionReason, setExtensionReason] = useState("");
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
@@ -112,6 +114,14 @@ export default function ProfessionalOrdersSection() {
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionFiles, setCompletionFiles] = useState<File[]>([]);
+  
+  // Review states for professional
+  const [isProfessionalReviewDialogOpen, setIsProfessionalReviewDialogOpen] = useState(false);
+  const [buyerRating, setBuyerRating] = useState(0);
+  const [buyerReview, setBuyerReview] = useState("");
+  const [isSubmittingBuyerReview, setIsSubmittingBuyerReview] = useState(false);
+  const [hasSubmittedBuyerReview, setHasSubmittedBuyerReview] = useState(false);
+  const [clientReviewData, setClientReviewData] = useState<any>(null);
 
   // Helper function to format dates
   const formatDate = useCallback((dateString: string) => {
@@ -185,7 +195,6 @@ export default function ProfessionalOrdersSection() {
   
   // Get filtered orders by status
   const allOrders = getFilteredOrdersByStatus("all");
-  const placedOrders = getFilteredOrdersByStatus("placed");
   const inProgressOrders = getFilteredOrdersByStatus("In Progress");
   const completedOrders = getFilteredOrdersByStatus("Completed");
   const cancelledOrders = getFilteredOrdersByStatus("Cancelled");
@@ -194,6 +203,11 @@ export default function ProfessionalOrdersSection() {
   const currentOrder = selectedOrder
     ? orders.find((o) => o.id === selectedOrder)
     : null;
+
+  const timelineEvents = useMemo(
+    () => (currentOrder ? buildProfessionalTimeline(currentOrder) : []),
+    [currentOrder]
+  );
 
   // Calculate appointment deadline for countdown
   const appointmentDeadline = useMemo(() => {
@@ -225,29 +239,71 @@ export default function ProfessionalOrdersSection() {
     return null;
   }, [currentOrder]);
 
-  // Countdown hook for appointment time
+  // Countdown hook for appointment time (before order is accepted)
   const appointmentCountdown = useCountdown(appointmentDeadline);
 
-  // Show toast notification when order is accepted
+  // Elapsed time since order was accepted (work in progress timer)
+  const workStartTime = useMemo(() => {
+    if (!currentOrder) return null;
+    // Stop timer for completed or cancelled orders
+    if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled") return null;
+    if (currentOrder.deliveryStatus === "delivered" || currentOrder.deliveryStatus === "completed" || currentOrder.deliveryStatus === "cancelled") {
+      return null;
+    }
+
+    // If a revision is in progress, restart from respondedAt
+    if (currentOrder.revisionRequest?.status === "in_progress" && currentOrder.revisionRequest.respondedAt) {
+      return new Date(currentOrder.revisionRequest.respondedAt);
+    }
+
+    // Auto-start work timer when scheduled booking time arrives
+    const bookingDate = currentOrder.booking?.date;
+    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    if (bookingDate) {
+      const [hours, minutes] = bookingTime.split(":").map(Number);
+      const start = new Date(bookingDate);
+      if (!isNaN(hours)) start.setHours(hours);
+      if (!isNaN(minutes)) start.setMinutes(minutes);
+      if (Date.now() >= start.getTime()) return start;
+    }
+
+    if (currentOrder.scheduledDate) {
+      const start = new Date(currentOrder.scheduledDate);
+      if (Date.now() >= start.getTime()) return start;
+    }
+
+    return null;
+  }, [currentOrder]);
+
+  const workElapsedTime = useElapsedTime(workStartTime);
+
+  // Poll for latest order updates while viewing details
   useEffect(() => {
-    if (currentOrder && currentOrder.status === "placed" && currentOrder.acceptedByProfessional) {
+    if (!selectedOrder) return;
+    const interval = setInterval(() => {
+      refreshOrders();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedOrder, refreshOrders]);
+
+  // Show toast notification when service time has arrived
+  useEffect(() => {
+    if (currentOrder && appointmentDeadline && appointmentCountdown.expired) {
       const orderId = currentOrder.id;
-      if (!shownAcceptedToasts.has(orderId)) {
-        const bookingInfo = currentOrder.booking?.date && currentOrder.booking?.time
-          ? ` Scheduled for: ${formatDate(currentOrder.booking.date)} at ${currentOrder.booking.time}`
-          : "";
-        toast.success(`Order Accepted - Awaiting Booking Time${bookingInfo}`, {
-          description: "The order status will automatically change to 'In Progress' when the scheduled time arrives.",
+      const isPendingOrAccepted = currentOrder.deliveryStatus === "pending";
+      
+      if (isPendingOrAccepted && !shownServiceTimeToasts.has(orderId)) {
+        toast.success("Service Time Has Arrived!", {
+          description: "The scheduled appointment time has arrived. You can now start working on the service.",
+          duration: 8000,
         });
-        setShownAcceptedToasts(prev => new Set(prev).add(orderId));
+        setShownServiceTimeToasts(prev => new Set(prev).add(orderId));
       }
     }
-  }, [currentOrder, shownAcceptedToasts, formatDate]);
+  }, [currentOrder, appointmentDeadline, appointmentCountdown.expired, shownServiceTimeToasts]);
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
-      case "placed":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
       case "active":
         return "bg-blue-50 text-blue-700 border-blue-200";
       case "delivered":
@@ -269,8 +325,6 @@ export default function ProfessionalOrdersSection() {
 
   const getStatusIcon = (status?: string) => {
     switch (status) {
-      case "placed":
-        return <Clock className="w-4 h-4" />;
       case "active":
         return <Package className="w-4 h-4" />;
       case "delivered":
@@ -303,6 +357,14 @@ export default function ProfessionalOrdersSection() {
     });
   };
 
+  const resolveFileUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    return resolveApiUrl(url);
+  };
+
   type TimelineEvent = {
     id: string;
     at?: string;
@@ -310,9 +372,15 @@ export default function ProfessionalOrdersSection() {
     description?: string;
     colorClass: string;
     icon: JSX.Element;
+    message?: string;
+    files?: Array<{
+      url: string;
+      fileName: string;
+      fileType?: string;
+    }>;
   };
 
-  const buildProfessionalTimeline = (order: any): TimelineEvent[] => {
+  function buildProfessionalTimeline(order: any): TimelineEvent[] {
     const events: TimelineEvent[] = [];
 
     const push = (event: Omit<TimelineEvent, "id">, id: string) => {
@@ -348,7 +416,7 @@ export default function ProfessionalOrdersSection() {
     }
 
     // Service delivery pending
-    if (order.deliveryStatus === "pending" && order.status !== "placed") {
+    if (order.deliveryStatus === "pending") {
       push(
         {
           at: order.scheduledDate || order.expectedDelivery,
@@ -374,6 +442,22 @@ export default function ProfessionalOrdersSection() {
           icon: <PlayCircle className="w-5 h-5 text-white" />,
         },
         "in-progress"
+      );
+    }
+
+    // Additional information received
+    if (order.additionalInformation?.submittedAt) {
+      push(
+        {
+          at: order.additionalInformation.submittedAt,
+          label: "Additional Information Received",
+          description: "Client submitted additional information.",
+          message: order.additionalInformation.message,
+          files: order.additionalInformation.files,
+          colorClass: "bg-blue-500",
+          icon: <FileText className="w-5 h-5 text-white" />,
+        },
+        "additional-info"
       );
     }
 
@@ -452,6 +536,41 @@ export default function ProfessionalOrdersSection() {
             ),
         },
         "extension-responded"
+      );
+    }
+
+    // Work delivered
+    if (
+      order.deliveryStatus === "delivered" ||
+      order.deliveryMessage ||
+      (order.deliveryFiles && order.deliveryFiles.length > 0)
+    ) {
+      push(
+        {
+          at: order.deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
+          label: "Work Delivered",
+          description: "You delivered the work to the client.",
+          message: order.deliveryMessage,
+          files: order.deliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered"
+      );
+    }
+
+    if (order.revisionRequest?.status) {
+      push(
+        {
+          at: order.revisionRequest.requestedAt,
+          label: "Modification Requested",
+          description: "Client has requested modifications to the delivered work.",
+          message: order.revisionRequest.clientMessage || order.revisionRequest.reason,
+          files: order.revisionRequest.clientFiles,
+          colorClass: "bg-orange-500",
+          icon: <Edit className="w-5 h-5 text-white" />,
+        },
+        "revision-requested"
       );
     }
 
@@ -645,9 +764,9 @@ export default function ProfessionalOrdersSection() {
     return events.sort((a, b) => {
       const ta = a.at ? new Date(a.at).getTime() : 0;
       const tb = b.at ? new Date(b.at).getTime() : 0;
-      return ta - tb;
+      return tb - ta;
     });
-  };
+  }
 
   const handleViewOrder = (orderId: string) => {
     setSelectedOrder(orderId);
@@ -792,23 +911,6 @@ export default function ProfessionalOrdersSection() {
       setIsCancelDialogOpen(false);
       setCancelReason("");
       setSelectedOrder(null);
-    }
-  };
-
-  const handleRejectOrder = async () => {
-    if (!selectedOrder) {
-      toast.error("No order selected");
-      return;
-    }
-
-    try {
-      await rejectOrder(selectedOrder, rejectionReason);
-      toast.success("Order rejected successfully");
-      setIsRejectDialogOpen(false);
-      setRejectionReason("");
-      setSelectedOrder(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject order");
     }
   };
 
@@ -980,15 +1082,17 @@ export default function ProfessionalOrdersSection() {
         </Button>
         <Button
           onClick={() => {
-            if (order.client) {
+            if (order.client && order.clientId) {
               startConversation({
-                id: `client-${order.id}`,
+                id: order.clientId,
                 name: order.client,
                 avatar: order.clientAvatar,
                 online: true,
                 jobId: order.id,
                 jobTitle: order.service
               });
+            } else {
+              toast.error("Unable to start chat - client information not available");
             }
           }}
           variant="outline"
@@ -1002,6 +1106,179 @@ export default function ProfessionalOrdersSection() {
 
   // If an order is selected, show the detail view
   if (selectedOrder && currentOrder) {
+    const timelineTimer = (
+      <>
+        {/* Countdown Timer - Until booked time */}
+        {!workElapsedTime.started &&
+         appointmentDeadline &&
+         !appointmentCountdown.expired &&
+         currentOrder.status !== "Completed" &&
+         currentOrder.status !== "Cancelled" &&
+         currentOrder.deliveryStatus !== "delivered" && (
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-[#FE8A0F]" />
+              </div>
+              <div>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                  Expected Delivery Time
+                </p>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  {currentOrder.booking?.date
+                    ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                    : currentOrder.scheduledDate
+                      ? formatDate(currentOrder.scheduledDate)
+                      : "TBD"}
+                </p>
+              </div>
+            </div>
+
+            {/* Countdown Display */}
+            <div className="grid grid-cols-4 gap-3">
+              {/* Days */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.days).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Days
+                </div>
+              </div>
+
+              {/* Hours */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.hours).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Hours
+                </div>
+              </div>
+
+              {/* Minutes */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.minutes).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Minutes
+                </div>
+              </div>
+
+              {/* Seconds */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.seconds).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Seconds
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
+                  }}
+                />
+              </div>
+              <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Work In Progress Timer - Auto starts at booking time */}
+        {workElapsedTime.started &&
+         currentOrder.status !== "Completed" &&
+         currentOrder.status !== "Cancelled" &&
+         currentOrder.deliveryStatus !== "delivered" && (
+          <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 uppercase tracking-wider">
+                  Work In Progress
+                </p>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  Started: {workStartTime
+                    ? workStartTime.toLocaleString('en-GB', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Elapsed Time Display */}
+            <div className="grid grid-cols-4 gap-3">
+              {/* Days */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.days).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                  Days
+                </div>
+              </div>
+
+              {/* Hours */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.hours).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                  Hours
+                </div>
+              </div>
+
+              {/* Minutes */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.minutes).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                  Minutes
+                </div>
+              </div>
+
+              {/* Seconds */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.seconds).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                  Seconds
+                </div>
+              </div>
+            </div>
+
+            {/* Status Indicator */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              <span className="font-['Poppins',sans-serif] text-[12px] text-blue-600">
+                Timer running until you complete the order
+              </span>
+            </div>
+          </div>
+        )}
+      </>
+    );
     return (
       <div>
           {!showDisputeSection && (
@@ -1079,106 +1356,29 @@ export default function ProfessionalOrdersSection() {
 
               {/* Timeline Tab */}
               <TabsContent value="timeline" className="mt-6 space-y-6">
-                {/* Countdown Timer - Service Start Time */}
-                {(currentOrder.deliveryStatus === "pending" || (currentOrder.status === "placed" && currentOrder.acceptedByProfessional)) && 
-                 appointmentDeadline && 
-                 !appointmentCountdown.expired && (
-                  <div className="bg-gradient-to-r from-[#1E3A5F] to-[#2D5A8B] rounded-2xl p-6 shadow-lg border border-[#3D78CB]/30">
-                    {/* Header */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-white/70 uppercase tracking-wider">
-                          Expected Delivery Time
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-white font-medium">
-                          {currentOrder.booking?.date 
-                            ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
-                            : currentOrder.scheduledDate 
-                              ? formatDate(currentOrder.scheduledDate) 
-                              : "TBD"}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Countdown Display */}
-                    <div className="grid grid-cols-4 gap-3">
-                      {/* Days */}
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
-                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-white leading-none">
-                          {String(appointmentCountdown.days).padStart(2, '0')}
-                        </div>
-                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-white/60 uppercase tracking-wider mt-1">
-                          Days
-                        </div>
-                      </div>
-                      
-                      {/* Hours */}
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
-                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-white leading-none">
-                          {String(appointmentCountdown.hours).padStart(2, '0')}
-                        </div>
-                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-white/60 uppercase tracking-wider mt-1">
-                          Hours
-                        </div>
-                      </div>
-                      
-                      {/* Minutes */}
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
-                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-white leading-none">
-                          {String(appointmentCountdown.minutes).padStart(2, '0')}
-                        </div>
-                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-white/60 uppercase tracking-wider mt-1">
-                          Minutes
-                        </div>
-                      </div>
-                      
-                      {/* Seconds */}
-                      <div className="bg-[#FE8A0F]/20 backdrop-blur-sm rounded-xl p-4 text-center border border-[#FE8A0F]/40">
-                        <div className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] font-bold text-[#FFB347] leading-none">
-                          {String(appointmentCountdown.seconds).padStart(2, '0')}
-                        </div>
-                        <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#FFB347]/80 uppercase tracking-wider mt-1">
-                          Seconds
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress Indicator */}
-                    <div className="mt-4 flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
-                          style={{ 
-                            width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%` 
-                          }}
-                        />
-                      </div>
-                      <span className="font-['Poppins',sans-serif] text-[11px] text-white/50">
-                        {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Service Time Reached - Ready to Start */}
-                {(currentOrder.deliveryStatus === "pending" || (currentOrder.status === "placed" && currentOrder.acceptedByProfessional)) && 
-                 appointmentDeadline && 
-                 appointmentCountdown.expired && (
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-500 rounded-2xl p-6 shadow-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
-                        <CheckCircle2 className="w-7 h-7 text-white" />
-                      </div>
+                <div className="space-y-6 px-2 md:px-4">
+                {/* Revision Resume Action */}
+                {currentOrder.revisionRequest?.status === "pending" && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mt-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-['Poppins',sans-serif] text-[18px] text-white font-semibold">
-                          Service Time Has Arrived!
-                        </h4>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-white/80">
-                          The scheduled appointment time has arrived. You can now start working on the service.
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                          Client requested a modification. Resume work to continue and update the delivery.
                         </p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              await respondToRevision(currentOrder.id, "accept");
+                              toast.success("Revision accepted. Work resumed.");
+                            } catch (error: any) {
+                              toast.error(error.message || "Failed to resume work");
+                            }
+                          }}
+                          className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif]"
+                        >
+                          Resume Work
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1324,47 +1524,15 @@ export default function ProfessionalOrdersSection() {
                   </div>
                 )}
 
-                {/* Order Placed - Awaiting Professional Response */}
-                {currentOrder.status === "placed" && !currentOrder.acceptedByProfessional && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                      New Order Received
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                      A new order has been placed by {currentOrder.client || "the client"}. Please review the order details and accept or reject it. {currentOrder.booking?.date && currentOrder.booking?.time && (
-                        <span className="text-[#2c353f]">Scheduled for: {formatDate(currentOrder.booking.date)} at {currentOrder.booking.time}</span>
-                      )}
-                    </p>
-                    <div className="flex gap-3 flex-wrap">
-                      <Button
-                        onClick={async () => {
-                          try {
-                            await acceptOrder(currentOrder.id);
-                            toast.success("Order accepted successfully!");
-                          } catch (error: any) {
-                            toast.error(error.message || "Failed to accept order");
-                          }
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Accept Order
-                      </Button>
-                      <Button
-                        onClick={() => setIsRejectDialogOpen(true)}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Reject Order
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                {/* Order Placed - No acceptance required */}
 
 
                 {/* Status Alert Box - Service Delivery Pending (before work starts) */}
-                {currentOrder.deliveryStatus === "pending" && currentOrder.status !== "placed" && (
+                {currentOrder.deliveryStatus === "pending" &&
+                  !workElapsedTime.started &&
+                  currentOrder.status !== "Cancelled" &&
+                  currentOrder.status !== "Completed" &&
+                  currentOrder.deliveryStatus !== "delivered" && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service Delivery Pending
@@ -1381,22 +1549,25 @@ export default function ProfessionalOrdersSection() {
                             : "TBD"}
                       </span> Feel free to reach out if you have any questions using the chat button.
                     </p>
-                    <div className="flex gap-3 flex-wrap">
-                      <Button
-                        onClick={() => setIsDeliveryDialogOpen(true)}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-                      >
-                        <Truck className="w-4 h-4 mr-2" />
-                        Deliver Work
-                      </Button>
+                    {currentOrder.deliveryStatus !== "delivered" && (
+                      <div className="flex gap-3 flex-wrap">
+                        <Button
+                          onClick={() => setIsDeliveryDialogOpen(true)}
+                          className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                        >
+                          <Truck className="w-4 h-4 mr-2" />
+                          Deliver Work
+                        </Button>
                       <Button
                         onClick={() => {
-                          if (currentOrder.client) {
+                          if (currentOrder.client && currentOrder.clientId) {
                             startConversation({
-                              id: `client-${currentOrder.id}`,
+                              id: currentOrder.clientId,
                               name: currentOrder.client,
                               avatar: currentOrder.clientAvatar || "",
                             });
+                          } else {
+                            toast.error("Unable to start chat - client information not available");
                           }
                         }}
                         variant="outline"
@@ -1405,19 +1576,24 @@ export default function ProfessionalOrdersSection() {
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Chat
                       </Button>
-                      <Button
-                        onClick={() => setIsExtensionDialogOpen(true)}
-                        variant="outline"
-                        className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-orange-50 font-['Poppins',sans-serif]"
-                      >
-                        <Clock className="w-4 h-4 mr-2" />
-                        Extend Delivery Time
-                      </Button>
-                    </div>
+                        <Button
+                          onClick={() => setIsExtensionDialogOpen(true)}
+                          variant="outline"
+                          className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-orange-50 font-['Poppins',sans-serif]"
+                        >
+                          <Clock className="w-4 h-4 mr-2" />
+                          Extend Delivery Time
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {currentOrder.deliveryStatus === "active" && currentOrder.acceptedByProfessional && (
+                {(currentOrder.deliveryStatus === "active" || workElapsedTime.started) &&
+                  currentOrder.status !== "Cancelled" &&
+                  currentOrder.status !== "Completed" &&
+                  currentOrder.deliveryStatus !== "delivered" &&
+                  currentOrder.deliveryStatus !== "pending" && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service In Progress
@@ -1483,37 +1659,49 @@ export default function ProfessionalOrdersSection() {
                       </div>
                     )}
 
-                    <div className="flex gap-3 flex-wrap">
-                      {(() => {
-                        console.log('[Button Section] Rendering button section');
-                        console.log('[Button Section] Current order ID:', currentOrder.id);
-                        console.log('[Button Section] Extension request exists:', !!currentOrder.extensionRequest);
-                        console.log('[Button Section] Extension request:', currentOrder.extensionRequest);
+                    {currentOrder.deliveryStatus !== "delivered" && (
+                      <div className="flex gap-3 flex-wrap">
+                        {/* Deliver Work Button */}
+                        <Button
+                          onClick={() => {
+                            setIsDeliveryDialogOpen(true);
+                            setDeliveryMessage("");
+                            setDeliveryFiles([]);
+                          }}
+                          className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif]"
+                        >
+                          <Truck className="w-4 h-4 mr-2" />
+                          Deliver Work
+                        </Button>
                         
-                        const hasExtensionRequest = !!currentOrder.extensionRequest;
-                        const extensionStatus = currentOrder.extensionRequest?.status;
-                        const hasPendingRequest = hasExtensionRequest && extensionStatus === 'pending';
-                        const shouldShowExtensionButton = !hasPendingRequest;
-                        
-                        console.log('[Button Section] Has extension request:', hasExtensionRequest);
-                        console.log('[Button Section] Extension status:', extensionStatus);
-                        console.log('[Button Section] Has pending request:', hasPendingRequest);
-                        console.log('[Button Section] Should show extension button:', shouldShowExtensionButton);
-                        
-                        return null;
-                      })()}
-                      <Button
-                        onClick={() => setIsDeliveryDialogOpen(true)}
-                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Completed
-                      </Button>
-                    </div>
+                        {/* Request Extension Button */}
+                        {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && (
+                          <Button
+                            onClick={() => {
+                              const currentDate = currentOrder.scheduledDate 
+                                ? new Date(currentOrder.scheduledDate) 
+                                : new Date();
+                              currentDate.setDate(currentDate.getDate() + 7);
+                              setExtensionNewDate(currentDate.toISOString().split('T')[0]);
+                              setExtensionNewTime("09:00");
+                              setExtensionReason("");
+                              setIsExtensionDialogOpen(true);
+                            }}
+                            variant="outline"
+                            className="border-blue-500 text-blue-600 hover:bg-blue-50 font-['Poppins',sans-serif]"
+                          >
+                            <Clock className="w-4 h-4 mr-2" />
+                            Request Time Extension
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {currentOrder.deliveryStatus === "delivered" && (
+                {timelineTimer}
+
+                {false && currentOrder.deliveryStatus === "delivered" && (
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h4 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-3">
                       Your work has been delivered!
@@ -1554,7 +1742,7 @@ export default function ProfessionalOrdersSection() {
                       </div>
                     )}
 
-                    {/* Revision Request Section */}
+                    {/* Modification Request Section */}
                     {currentOrder.revisionRequest && (
                       <div className={`mb-6 p-4 rounded-lg border ${
                         currentOrder.revisionRequest.status === 'pending' 
@@ -1567,7 +1755,7 @@ export default function ProfessionalOrdersSection() {
                       }`}>
                         <div className="flex items-start gap-3 mb-4">
                           {currentOrder.revisionRequest.status === 'pending' && (
-                            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                            <Edit className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                           )}
                           {currentOrder.revisionRequest.status === 'in_progress' && (
                             <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -1588,17 +1776,68 @@ export default function ProfessionalOrdersSection() {
                                 ? 'text-green-700'
                                 : 'text-red-700'
                             }`}>
-                              Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : currentOrder.revisionRequest.status === 'in_progress' ? 'In Progress' : currentOrder.revisionRequest.status === 'completed' ? 'Completed' : 'Rejected'}
+                              Modification Request - {currentOrder.revisionRequest.status === 'pending' ? 'Pending Review' : currentOrder.revisionRequest.status === 'in_progress' ? 'In Progress' : currentOrder.revisionRequest.status === 'completed' ? 'Completed' : 'Rejected'}
                             </h5>
                             
                             {currentOrder.revisionRequest.reason && (
                               <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Client's request:
+                                  📝 What needs to be modified:
                                 </p>
                                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                   {currentOrder.revisionRequest.reason}
                                 </p>
+                              </div>
+                            )}
+                            {currentOrder.revisionRequest.clientMessage && (
+                              <div className="mb-3 p-3 bg-white border border-gray-200 rounded">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  💬 Additional notes from client:
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  {currentOrder.revisionRequest.clientMessage}
+                                </p>
+                              </div>
+                            )}
+                            {currentOrder.revisionRequest.clientFiles && currentOrder.revisionRequest.clientFiles.length > 0 && (
+                              <div className="mb-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                  📎 Reference files ({currentOrder.revisionRequest.clientFiles.length})
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  {currentOrder.revisionRequest.clientFiles.map((file: any, index: number) => (
+                                    <div key={index} className="relative group">
+                                      {file.fileType === 'image' ? (
+                                        <img
+                                          src={resolveFileUrl(file.url)}
+                                          alt={file.fileName}
+                                          className="w-full h-20 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                        />
+                                      ) : file.fileType === 'video' ? (
+                                        <div
+                                          className="w-full h-20 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                        >
+                                          <PlayCircle className="w-6 h-6 text-gray-600" />
+                                          <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded truncate">
+                                            {file.fileName}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className="w-full h-20 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                        >
+                                          <FileText className="w-6 h-6 text-gray-600" />
+                                          <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded truncate">
+                                            {file.fileName}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
@@ -1612,7 +1851,8 @@ export default function ProfessionalOrdersSection() {
                                   }}
                                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
                                 >
-                                  Accept Revision
+                                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                                  Accept & Start Work
                                 </Button>
                                 <Button
                                   onClick={() => {
@@ -1623,7 +1863,8 @@ export default function ProfessionalOrdersSection() {
                                   variant="outline"
                                   className="flex-1 font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
                                 >
-                                  Reject Revision
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Reject Request
                                 </Button>
                               </div>
                             )}
@@ -1839,61 +2080,286 @@ export default function ProfessionalOrdersSection() {
                   <DeliveryCountdown expectedDelivery={currentOrder.expectedDelivery} />
                 )}
 
-                {/* Extension Request Section - Timeline Tab */}
-                {currentOrder.deliveryStatus === "active" && (
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                          Delivery Time Extension
-                        </h4>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          Need more time to complete the service? Request an extension for the delivery deadline.
+                </div>
+
+                {/* Timeline Events */}
+                <div className="space-y-0">
+                  {timelineEvents.length === 0 && (
+                    <div className="text-center py-6 text-[#6b6b6b] text-[13px] font-['Poppins',sans-serif]">
+                      No timeline events yet.
+                    </div>
+                  )}
+                  {timelineEvents.map((event, index) => (
+                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
+                          {event.icon}
+                        </div>
+                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                          {event.label}
                         </p>
+                        {event.at && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                            {formatDateTime(event.at)}
+                          </p>
+                        )}
+                        {event.description && (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                            {event.description}
+                          </p>
+                        )}
+                        {event.message && (
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {event.message}
+                            </p>
+                          </div>
+                        )}
+                        {event.files && event.files.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                              📎 Attachments ({event.files.length})
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {event.files.map((file: any, index: number) => {
+                                const fileUrl = file.url || "";
+                                const fileName = file.fileName || "attachment";
+                                const isImage =
+                                  file.fileType === "image" ||
+                                  /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
+                                  /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                                const resolvedUrl = resolveFileUrl(fileUrl);
+                                return (
+                                  <div key={index} className="relative group">
+                                    {isImage ? (
+                                      <img
+                                        src={resolvedUrl}
+                                        alt={fileName}
+                                        className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => window.open(resolvedUrl, "_blank")}
+                                      />
+                                    ) : (
+                                      <div
+                                        className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                        onClick={() => window.open(resolvedUrl, "_blank")}
+                                      >
+                                        <PlayCircle className="w-8 h-8 text-gray-600" />
+                                        <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                          {fileName}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    {/* Extension Request Status */}
-                    {currentOrder.extensionRequest && 
-                     currentOrder.extensionRequest.status && 
-                     ['pending', 'approved', 'rejected'].includes(currentOrder.extensionRequest.status) && (
-                      <div className={`mb-4 p-4 rounded-lg border ${
-                        currentOrder.extensionRequest.status === 'pending' 
-                          ? 'bg-yellow-50 border-yellow-200' 
-                          : currentOrder.extensionRequest.status === 'approved'
-                          ? 'bg-green-50 border-green-200'
-                          : 'bg-red-50 border-red-200'
-                      }`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {currentOrder.extensionRequest.status === 'pending' && (
-                            <Clock className="w-5 h-5 text-yellow-600" />
-                          )}
-                          {currentOrder.extensionRequest.status === 'approved' && (
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                          )}
-                          {currentOrder.extensionRequest.status === 'rejected' && (
-                            <XCircle className="w-5 h-5 text-red-600" />
-                          )}
-                          <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium ${
-                            currentOrder.extensionRequest.status === 'pending' 
-                              ? 'text-yellow-700' 
-                              : currentOrder.extensionRequest.status === 'approved'
-                              ? 'text-green-700'
-                              : 'text-red-700'
-                          }`}>
-                            Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
-                          </h5>
+                  ))}
+                </div>
+                <div className="hidden">
+                  {/* Additional Information Submitted Timeline */}
+                  {currentOrder.additionalInformation?.submittedAt && (
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-white" />
                         </div>
-                        <div className="space-y-1">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
+                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                          Additional Information Received
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                          Client submitted additional information on{" "}
+                          <span className="text-[#2c353f]">
+                            {(() => {
+                              const d = new Date(currentOrder.additionalInformation.submittedAt);
+                              const dateStr = d.toLocaleDateString("en-GB", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              });
+                              const timeStr = d.toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              return `${dateStr} at ${timeStr}`;
+                            })()}
+                          </span>
+                        </p>
+                        {currentOrder.additionalInformation.message && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.additionalInformation.message}
+                            </p>
+                          </div>
+                        )}
+                        {currentOrder.additionalInformation.files && currentOrder.additionalInformation.files.length > 0 && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 mt-2">
+                            📎 {currentOrder.additionalInformation.files.length} file(s) attached
                           </p>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            <span className="font-medium">Requested new date & time:</span>{" "}
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Work Delivered Timeline */}
+                  {currentOrder.deliveryStatus === "delivered" && (
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
+                          <Truck className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Work Delivered
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                          You delivered your work on{" "}
+                          <span className="text-[#2c353f]">
+                            {currentOrder.deliveredDate ? formatDateTime(currentOrder.deliveredDate) : "today"}
+                          </span>
+                        </p>
+                        
+                        {/* Delivery Message and Attachments */}
+                        {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            {currentOrder.deliveryMessage && (
+                              <div className="mb-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Delivery message:
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                  {currentOrder.deliveryMessage}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 && (
+                              <div>
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                  📎 Attachments ({currentOrder.deliveryFiles.length})
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  {currentOrder.deliveryFiles.map((file, index) => (
+                                    <div key={index} className="relative group">
+                                      {file.fileType === 'image' ? (
+                                        <img 
+                                          src={resolveFileUrl(file.url)}
+                                          alt={file.fileName}
+                                          className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                        />
+                                      ) : (
+                                        <div
+                                          className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                        >
+                                          <PlayCircle className="w-8 h-8 text-gray-600" />
+                                          <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                            {file.fileName}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Status Info */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
+                            Waiting for client to approve the delivery or request modifications.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cancellation Timeline */}
+                  {currentOrder.cancellationRequest && currentOrder.cancellationRequest.status === 'approved' && currentOrder.status === 'Cancelled' && (
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
+                          <XCircle className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                          Order Cancelled
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                          {currentOrder.cancellationRequest.respondedAt 
+                            ? `Order was cancelled on ${(() => {
+                                const d = new Date(currentOrder.cancellationRequest.respondedAt);
+                                const dateStr = d.toLocaleDateString("en-GB", {
+                                  weekday: "short",
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                });
+                                const timeStr = d.toLocaleTimeString("en-GB", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                });
+                                return `${dateStr} at ${timeStr}`;
+                              })()}`
+                            : "Order has been cancelled."}
+                        </p>
+                        {currentOrder.cancellationRequest.reason && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Cancellation reason:
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.cancellationRequest.reason}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extension Request Timeline */}
+                  {currentOrder.extensionRequest && currentOrder.extensionRequest.status && (
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          currentOrder.extensionRequest.status === 'pending' 
+                            ? 'bg-yellow-500' 
+                            : currentOrder.extensionRequest.status === 'approved' 
+                              ? 'bg-green-500' 
+                              : 'bg-red-500'
+                        }`}>
+                          <Clock className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                      </div>
+                      <div className="flex-1 pb-6">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                          Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                          Requested new delivery date:{" "}
+                          <span className="text-[#2c353f]">
                             {currentOrder.extensionRequest.newDeliveryDate 
                               ? (() => {
                                   const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
                                   const dateStr = d.toLocaleDateString("en-GB", {
+                                    weekday: "short",
                                     day: "numeric",
                                     month: "short",
                                     year: "numeric",
@@ -1905,54 +2371,22 @@ export default function ProfessionalOrdersSection() {
                                   return `${dateStr} at ${timeStr}`;
                                 })()
                               : 'N/A'}
-                          </p>
-                          {currentOrder.extensionRequest.reason && (
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
-                              <span className="font-medium">Reason:</span> {currentOrder.extensionRequest.reason}
+                          </span>
+                        </p>
+                        {currentOrder.extensionRequest.reason && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Reason:
                             </p>
-                          )}
-                        </div>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.extensionRequest.reason}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    <div className="flex gap-3">
-                      {/* Request Extension Button */}
-                      {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && (
-                        <Button
-                          onClick={() => {
-                            // Set default date to 7 days from scheduled date or today
-                            const currentDate = currentOrder.scheduledDate 
-                              ? new Date(currentOrder.scheduledDate) 
-                              : new Date();
-                            currentDate.setDate(currentDate.getDate() + 7);
-                            setExtensionNewDate(currentDate.toISOString().split('T')[0]);
-                            setExtensionNewTime("09:00");
-                            setExtensionReason("");
-                            setIsExtensionDialogOpen(true);
-                          }}
-                          variant="outline"
-                          className="flex-1 font-['Poppins',sans-serif] border-blue-500 text-blue-600 hover:bg-blue-50 text-[14px] py-6"
-                        >
-                          <Clock className="w-5 h-5 mr-2" />
-                          Request Time Extension
-                        </Button>
-                      )}
-
-                      {/* Deliver Work Button */}
-                      <Button
-                        onClick={() => {
-                          setIsDeliveryDialogOpen(true);
-                          setDeliveryMessage("");
-                          setDeliveryFiles([]);
-                        }}
-                        className="flex-1 bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[14px] py-6"
-                      >
-                        <Truck className="w-5 h-5 mr-2" />
-                        Deliver Work
-                      </Button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Dispute Timeline */}
                 {currentOrder.deliveryStatus === "dispute" && (
@@ -2124,20 +2558,23 @@ export default function ProfessionalOrdersSection() {
                 {/* Order Timeline for Delivered Status */}
                 {currentOrder.deliveryStatus === "delivered" && (
                   <div className="space-y-0 mt-6">
-                    {/* Delivery #1 */}
+                    {/* Work Delivered */}
                     <div className="flex gap-4">
                       <div className="flex flex-col items-center pt-1">
-                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
                           <Truck className="w-5 h-5 text-white" />
                         </div>
                         <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                       </div>
                       <div className="flex-1 pb-6">
                         <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                          Delivery #1
+                          Work Delivered
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                          You delivered your order <span className="italic">Thu 13th November, 2025 15:39</span>
+                          You delivered your work on{" "}
+                          <span className="italic">
+                            {currentOrder.deliveredDate ? formatDateTime(currentOrder.deliveredDate) : "today"}
+                          </span>
                         </p>
                         
                         {/* Delivery Message and Attachments */}
@@ -2159,15 +2596,15 @@ export default function ProfessionalOrdersSection() {
                                     <div key={index} className="relative group">
                                       {file.fileType === 'image' ? (
                                         <img 
-                                          src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                                          src={resolveFileUrl(file.url)}
                                           alt={file.fileName}
                                           className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                                          onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                                         />
                                       ) : (
                                         <div
                                           className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                                          onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                                          onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                                         >
                                           <PlayCircle className="w-8 h-8 text-gray-600" />
                                           <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
@@ -2267,23 +2704,42 @@ export default function ProfessionalOrdersSection() {
                 )}
 
                 {currentOrder.deliveryStatus === "completed" && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                      ✅ Service Completed
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">
+                      Your order has been completed!
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                      Great job! This service has been completed on <span className="text-[#2c353f]">{currentOrder.completedDate ? formatDate(currentOrder.completedDate) : "today"}</span>. {currentOrder.rating ? `The client rated your service ${currentOrder.rating}/5 stars.` : "Waiting for client's review."}
+                      Congratulations on completing your order! Please assist other users on our platform by sharing your experience of working with the buyer in the form of feedback.
                     </p>
-                    {currentOrder.rating && (
-                      <div className="flex gap-1 mb-4">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-5 h-5 ${star <= (currentOrder.rating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => {
+                          setIsProfessionalReviewDialogOpen(true);
+                          setBuyerRating(0);
+                          setBuyerReview("");
+                        }}
+                        className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[13px]"
+                      >
+                        View Review
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (currentOrder.client && currentOrder.clientId) {
+                            startConversation({
+                              id: currentOrder.clientId,
+                              name: currentOrder.client,
+                              avatar: currentOrder.clientAvatar || "",
+                            });
+                          } else {
+                            toast.error("Unable to start chat - client information not available");
+                          }
+                        }}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif] text-[13px] border-gray-300"
+                      >
+                        Chat
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -2504,11 +2960,11 @@ export default function ProfessionalOrdersSection() {
                               <div 
                                 key={index} 
                                 className="relative border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
-                                onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                                onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                               >
                                 {file.fileType === 'image' ? (
                                   <img 
-                                    src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                                    src={resolveFileUrl(file.url)}
                                     alt={file.fileName}
                                     className="w-full h-24 object-cover"
                                   />
@@ -2608,9 +3064,40 @@ export default function ProfessionalOrdersSection() {
                       <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
                         Order Completed
                       </p>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
                         This order has been successfully completed
                       </p>
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          onClick={() => {
+                            setIsProfessionalReviewDialogOpen(true);
+                            setBuyerRating(0);
+                            setBuyerReview("");
+                            setHasSubmittedBuyerReview(false);
+                            setClientReviewData(null);
+                          }}
+                          className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[13px]"
+                        >
+                          View Review
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (currentOrder.client && currentOrder.clientId) {
+                              startConversation({
+                                id: currentOrder.clientId,
+                                name: currentOrder.client,
+                                avatar: currentOrder.clientAvatar || "",
+                              });
+                            } else {
+                              toast.error("Unable to start chat - client information not available");
+                            }
+                          }}
+                          variant="outline"
+                          className="font-['Poppins',sans-serif] text-[13px] border-gray-300"
+                        >
+                          Chat
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2671,34 +3158,20 @@ export default function ProfessionalOrdersSection() {
                       </div>
                     </div>
                   </div>
-                  {currentOrder.clientPhone && (
-                    <div className="flex items-center gap-2 mt-3 text-[#6b6b6b]">
-                      <Phone className="w-3 h-3" />
-                      <span className="font-['Poppins',sans-serif] text-[12px]">
-                        {currentOrder.clientPhone}
-                      </span>
-                    </div>
-                  )}
-                  {currentOrder.clientEmail && (
-                    <div className="flex items-center gap-2 mt-2 text-[#6b6b6b]">
-                      <Mail className="w-3 h-3" />
-                      <span className="font-['Poppins',sans-serif] text-[12px] truncate">
-                        {currentOrder.clientEmail}
-                      </span>
-                    </div>
-                  )}
                   <div className="flex gap-2 mt-3">
                     <Button
                       onClick={() => {
-                        if (currentOrder.client) {
+                        if (currentOrder.client && currentOrder.clientId) {
                           startConversation({
-                            id: `client-${currentOrder.id}`,
+                            id: currentOrder.clientId,
                             name: currentOrder.client,
                             avatar: currentOrder.clientAvatar,
                             online: true,
                             jobId: currentOrder.id,
                             jobTitle: currentOrder.service
                           });
+                        } else {
+                          toast.error("Unable to start chat - client information not available");
                         }
                       }}
                       variant="outline"
@@ -3103,60 +3576,6 @@ export default function ProfessionalOrdersSection() {
           </DialogContent>
         </Dialog>
 
-        {/* Reject Order Dialog */}
-        <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-          <DialogContent className="w-[90vw] max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                Reject Order
-              </DialogTitle>
-              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                Rejecting this order will notify the client. Please provide a reason for rejecting the order.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                  ⚠️ Are you sure you want to reject this order? The client will be notified and the order will be cancelled.
-                </p>
-              </div>
-
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Reason for Rejection (Optional)
-                </Label>
-                <Textarea
-                  placeholder="Please provide a reason for rejecting this order..."
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  rows={4}
-                  className="font-['Poppins',sans-serif] text-[13px]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsRejectDialogOpen(false);
-                    setRejectionReason("");
-                  }}
-                  className="font-['Poppins',sans-serif] text-[13px]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleRejectOrder}
-                  className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] text-[13px]"
-                >
-                  Reject Order
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Completion Request Dialog */}
         <Dialog open={isCompletionDialogOpen} onOpenChange={setIsCompletionDialogOpen}>
           <DialogContent className="w-[90vw] max-w-[600px]">
@@ -3279,6 +3698,280 @@ export default function ProfessionalOrdersSection() {
                   <CheckCircle2 className="w-4 h-4 mr-2" />
                   Submit Completion Request
                 </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Professional Review Dialog - Review Buyer */}
+        <Dialog open={isProfessionalReviewDialogOpen} onOpenChange={setIsProfessionalReviewDialogOpen}>
+          <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90vh] overflow-y-auto p-0">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Leave Public Review</DialogTitle>
+              <DialogDescription>Review your experience with this buyer</DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col lg:flex-row">
+              {/* Left Side - Review Form */}
+              <div className="flex-1 p-6 lg:p-8">
+                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-4">
+                  Leave Public Review
+                </h2>
+
+                {/* Client Review Info */}
+                {currentOrder?.rating ? (
+                  <div className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={currentOrder.clientAvatar} />
+                      <AvatarFallback className="bg-blue-100 text-blue-600">
+                        {currentOrder.client?.charAt(0) || "C"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        <span className="font-semibold">{currentOrder.client}</span> has left you a feedback. To see their review, please leave your own feedback.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-700">
+                      The client hasn't left a review yet. You can still leave your feedback about working with this buyer.
+                    </p>
+                  </div>
+                )}
+
+                {/* Review Section */}
+                <Collapsible defaultOpen className="border border-gray-200 rounded-lg overflow-hidden">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Star className="w-5 h-5 text-[#FE8A0F]" />
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                        Review your experience with this buyer
+                      </span>
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic ml-2">
+                        {currentOrder?.completedDate ? formatDateTime(currentOrder.completedDate) : ""}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="p-4 border-t border-gray-200">
+                    <div className="bg-[#3D5A80] text-white py-2 px-4 -mx-4 -mt-4 mb-4">
+                      <p className="font-['Poppins',sans-serif] text-[13px] font-medium">
+                        OVERVIEW EXPERIENCE
+                      </p>
+                    </div>
+
+                    {/* Rate Experience */}
+                    <div className="mb-6">
+                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">
+                        Rate your experience
+                      </h4>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                        How would you rate your overall experience with this buyer?
+                      </p>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            onClick={() => setBuyerRating(star)}
+                            className="transition-transform hover:scale-110"
+                          >
+                            <Star
+                              className={`w-8 h-8 ${
+                                star <= buyerRating
+                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Written Review */}
+                    <div className="mb-6">
+                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">
+                        Share some more about your experience by words (public)
+                      </h4>
+                      <Textarea
+                        placeholder="Your review..."
+                        value={buyerReview}
+                        onChange={(e) => setBuyerReview(e.target.value)}
+                        rows={5}
+                        className="font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#3D78CB] resize-none"
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="flex justify-center">
+                      <Button
+                        onClick={async () => {
+                          if (buyerRating === 0) {
+                            toast.error("Please select a rating");
+                            return;
+                          }
+                          setIsSubmittingBuyerReview(true);
+                          try {
+                            const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/buyer-review`), {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              credentials: 'include',
+                              body: JSON.stringify({
+                                rating: buyerRating,
+                                comment: buyerReview,
+                              }),
+                            });
+                            if (!response.ok) {
+                              const error = await response.json();
+                              throw new Error(error.error || 'Failed to submit review');
+                            }
+                            toast.success("Review submitted successfully!");
+                            setHasSubmittedBuyerReview(true);
+                            // Fetch client review data
+                            const reviewResponse = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/review`), {
+                              credentials: 'include',
+                            });
+                            if (reviewResponse.ok) {
+                              const reviewData = await reviewResponse.json();
+                              setClientReviewData(reviewData.review);
+                            }
+                          } catch (error: any) {
+                            toast.error(error.message || "Failed to submit review");
+                          } finally {
+                            setIsSubmittingBuyerReview(false);
+                          }
+                        }}
+                        disabled={isSubmittingBuyerReview || buyerRating === 0}
+                        className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
+                      >
+                        {isSubmittingBuyerReview ? "Submitting..." : "Submit"}
+                      </Button>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Client's Review (shown after professional submits their review) */}
+                {hasSubmittedBuyerReview && clientReviewData && (
+                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">
+                      Client's Review
+                    </h4>
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={clientReviewData.reviewer?.avatar} />
+                        <AvatarFallback className="bg-blue-100 text-blue-600">
+                          {clientReviewData.reviewer?.name?.charAt(0) || "C"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
+                          {clientReviewData.reviewer?.name || "Client"}
+                        </p>
+                        <div className="flex gap-1 mb-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= (clientReviewData.rating || 0)
+                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        {clientReviewData.comment && (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                            "{clientReviewData.comment}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasSubmittedBuyerReview && !clientReviewData && (
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-blue-700">
+                      Thank you for your review! The client hasn't submitted their review yet.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Side - Order Summary */}
+              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
+                {/* Service Image */}
+                {currentOrder?.serviceImage && (
+                  <div className="mb-4 rounded-lg overflow-hidden">
+                    <img
+                      src={resolveFileUrl(currentOrder.serviceImage)}
+                      alt={currentOrder.service}
+                      className="w-full h-40 object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Service Title */}
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
+                  {currentOrder?.service || "Service"}
+                </h3>
+
+                {/* Order Details */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
+                      Completed
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {currentOrder?.quantity || 1}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {currentOrder?.amount || "N/A"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Task Address */}
+                {currentOrder?.address && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">
+                      Task Address
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      {currentOrder.address}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </DialogContent>
@@ -3528,7 +4221,7 @@ export default function ProfessionalOrdersSection() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="flex lg:grid lg:grid-cols-4 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
+      <div className="flex lg:grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         {/* Total Orders */}
         <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">
@@ -3536,16 +4229,6 @@ export default function ProfessionalOrdersSection() {
           </p>
           <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f]">
             {orders.length}
-          </p>
-        </div>
-
-        {/* Pending */}
-        <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
-          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#92400E] mb-1 md:mb-2">
-            Placed
-          </p>
-          <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#92400E]">
-            {placedOrders.length}
           </p>
         </div>
 
@@ -3578,13 +4261,6 @@ export default function ProfessionalOrdersSection() {
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               All ({allOrders.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="placed"
-              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Placed ({placedOrders.length})
             </TabsTrigger>
             <TabsTrigger
               value="In Progress"
@@ -3685,108 +4361,17 @@ export default function ProfessionalOrdersSection() {
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              if (order.client) {
+                              if (order.client && order.clientId) {
                                 startConversation({
-                                  id: `client-${order.id}`,
+                                  id: order.clientId,
                                   name: order.client,
                                   avatar: order.clientAvatar,
                                   online: true,
                                   jobId: order.id,
                                   jobTitle: order.service
                                 });
-                              }
-                            }}>
-                              <MessageCircle className="w-4 h-4 mr-2" />
-                              Message
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="placed" className="space-y-4">
-          {placedOrders.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                No placed orders
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-['Poppins',sans-serif]">Service</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Client</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Order Date</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Amount</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {placedOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
-                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-['Poppins',sans-serif] text-[13px]">{order.client}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-['Poppins',sans-serif] text-[13px]">
-                        {formatDate(order.date)}
-                      </TableCell>
-                      <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {order.amount}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
-                          <span className="flex items-center gap-1">
-                            {getStatusIcon(order.status)}
-                            {order.status?.toUpperCase()}
-                          </span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              if (order.client) {
-                                startConversation({
-                                  id: `client-${order.id}`,
-                                  name: order.client,
-                                  avatar: order.clientAvatar,
-                                  online: true,
-                                  jobId: order.id,
-                                  jobTitle: order.service
-                                });
+                              } else {
+                                toast.error("Unable to start chat - client information not available");
                               }
                             }}>
                               <MessageCircle className="w-4 h-4 mr-2" />
@@ -3871,15 +4456,17 @@ export default function ProfessionalOrdersSection() {
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              if (order.client) {
+                              if (order.client && order.clientId) {
                                 startConversation({
-                                  id: `client-${order.id}`,
+                                  id: order.clientId,
                                   name: order.client,
                                   avatar: order.clientAvatar,
                                   online: true,
                                   jobId: order.id,
                                   jobTitle: order.service
                                 });
+                              } else {
+                                toast.error("Unable to start chat - client information not available");
                               }
                             }}>
                               <MessageCircle className="w-4 h-4 mr-2" />
@@ -3964,15 +4551,17 @@ export default function ProfessionalOrdersSection() {
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              if (order.client) {
+                              if (order.client && order.clientId) {
                                 startConversation({
-                                  id: `client-${order.id}`,
+                                  id: order.clientId,
                                   name: order.client,
                                   avatar: order.clientAvatar,
                                   online: true,
                                   jobId: order.id,
                                   jobTitle: order.service
                                 });
+                              } else {
+                                toast.error("Unable to start chat - client information not available");
                               }
                             }}>
                               <MessageCircle className="w-4 h-4 mr-2" />
@@ -4135,15 +4724,17 @@ export default function ProfessionalOrdersSection() {
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              if (order.client) {
+                              if (order.client && order.clientId) {
                                 startConversation({
-                                  id: `client-${order.id}`,
+                                  id: order.clientId,
                                   name: order.client,
                                   avatar: order.clientAvatar,
                                   online: true,
                                   jobId: order.id,
                                   jobTitle: order.service
                                 });
+                              } else {
+                                toast.error("Unable to start chat - client information not available");
                               }
                             }}>
                               <MessageCircle className="w-4 h-4 mr-2" />
@@ -4160,6 +4751,53 @@ export default function ProfessionalOrdersSection() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dispute Response Dialog */}
+      <Dialog open={isDisputeResponseDialogOpen} onOpenChange={setIsDisputeResponseDialogOpen}>
+        <DialogContent className="w-[90vw] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+              Respond to Dispute
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Send a response to the dispute. This will be visible to the client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="dispute-response" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
+                Response
+              </Label>
+              <Textarea
+                id="dispute-response"
+                placeholder="Write your response..."
+                value={disputeResponseMessage}
+                onChange={(e) => setDisputeResponseMessage(e.target.value)}
+                className="font-['Poppins',sans-serif] min-h-[120px]"
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDisputeResponseDialogOpen(false);
+                setDisputeResponseMessage("");
+              }}
+              className="font-['Poppins',sans-serif]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRespondToDispute}
+              className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif]"
+            >
+              Send Response
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Revision Response Dialog */}
       <Dialog open={isRevisionResponseDialogOpen} onOpenChange={setIsRevisionResponseDialogOpen}>
@@ -4231,3 +4869,5 @@ export default function ProfessionalOrdersSection() {
     </div>
   );
 }
+
+export default ProfessionalOrdersSection;

@@ -564,11 +564,6 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (userInfo.role !== 'client') {
-      toast.error("Only clients can start new conversations");
-      return;
-    }
-
     // Extract ID if object is passed
     const actualParticipantId = typeof participantId === 'string' ? participantId : participantId.id;
 

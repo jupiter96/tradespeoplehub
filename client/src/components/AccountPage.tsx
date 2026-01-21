@@ -4641,9 +4641,9 @@ function WithdrawSection() {
     try {
       // TODO: Implement withdrawal API call
       toast.success(`Withdrawal request for £${amount.toFixed(2)} submitted successfully!`);
-      setShowWithdrawDialog(false);
-      setWithdrawAmount("");
-      setSelectedWithdrawMethod("");
+    setShowWithdrawDialog(false);
+    setWithdrawAmount("");
+    setSelectedWithdrawMethod("");
       await fetchWalletBalance();
       await fetchTransactions();
     } catch (error: any) {
@@ -6349,8 +6349,8 @@ function MessengerSection() {
                                     );
                                   })()}
                                   <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => {
+                                  <Button
+                                    onClick={() => {
                                         const offerId = message.orderId || message.orderDetails?.offerId;
                                         if (!offerId) {
                                           toast.error("Offer ID not found");
@@ -6369,13 +6369,13 @@ function MessengerSection() {
                                           total,
                                         });
                                         setShowOfferPaymentModal(true);
-                                      }}
-                                      size="sm"
-                                      className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
-                                    >
-                                      Accept
-                                    </Button>
-                                    <Button
+                                    }}
+                                    size="sm"
+                                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
                                       onClick={async () => {
                                         try {
                                           const offerId = message.orderId || message.orderDetails?.offerId;
@@ -6401,13 +6401,13 @@ function MessengerSection() {
                                         } catch (error: any) {
                                           toast.error(error.message || "Failed to reject offer");
                                         }
-                                      }}
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
-                                    >
-                                      Decline
-                                    </Button>
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
+                                  >
+                                    Decline
+                                  </Button>
                                   </div>
                                 </div>
                               ) : message.orderId && (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Star, ChevronLeft, ChevronRight, Grid, List, Heart, MapPin, BadgeCheck, Medal, Play } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, Grid, List, Heart, MapPin, BadgeCheck, Medal, Play, Clock } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import ServicesBannerSection from "./ServicesBannerSection";
 import type { Service as ServiceDataType } from "./servicesData";
@@ -87,13 +87,18 @@ function VideoThumbnail({
     }
   };
 
+  // Resolve URLs for video and thumbnail
+  const resolvedVideoUrl = videoUrl.startsWith("http") || videoUrl.startsWith("blob:") ? videoUrl : resolveApiUrl(videoUrl);
+  const resolvedPoster = thumbnail ? (thumbnail.startsWith("http") || thumbnail.startsWith("blob:") ? thumbnail : resolveApiUrl(thumbnail)) : 
+                         fallbackImage ? (fallbackImage.startsWith("http") || fallbackImage.startsWith("blob:") ? fallbackImage : resolveApiUrl(fallbackImage)) : undefined;
+
   return (
     <div className={`relative ${className}`} style={style}>
       {/* Video element - always shown, plays on button click */}
       <video
         ref={videoRef}
-        src={videoUrl}
-        poster={thumbnail || fallbackImage || undefined}
+        src={resolvedVideoUrl}
+        poster={resolvedPoster}
         className="w-full h-full object-cover object-center"
         style={{ minWidth: '100%', minHeight: '100%' }}
         muted
@@ -119,6 +124,18 @@ function VideoThumbnail({
     </div>
   );
 }
+
+// Helper function to resolve media URLs (images/videos)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
 
 // Helper function to check if professional is verified
 const isVerified = (service: any) => {
@@ -441,7 +458,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     />
                   ) : (
                   <img
-                    src={service.image}
+                    src={resolveMediaUrl(service.image)}
                     alt={service.description}
                     className="w-full h-full object-cover object-center"
                     style={{ minWidth: '100%', minHeight: '100%' }}
@@ -721,8 +738,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                   {/* Bottom Info */}
                   <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
-                    <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
-                    <span className="text-[#999]">Available</span>
+                    <span>{service.deliveryType === "same-day" ? "Delivers in 2 days" : "Standard Delivery"}</span>
+                    <Clock className="w-3 h-3 md:w-4 md:h-4 text-[#999]" />
                   </div>
                 </div>
               </div>
@@ -768,7 +785,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     />
                   ) : (
                   <img
-                    src={service.image}
+                    src={resolveMediaUrl(service.image)}
                     alt={service.description}
                     className="w-full h-full object-cover object-center"
                     style={{ minWidth: '100%', minHeight: '100%' }}
@@ -991,8 +1008,8 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 
                   {/* Bottom Info */}
                   <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
-                    <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
-                    <span className="text-[#999]">Available</span>
+                    <span>{service.deliveryType === "same-day" ? "Delivers in 2 days" : "Standard Delivery"}</span>
+                    <Clock className="w-3 h-3 md:w-4 md:h-4 text-[#999]" />
                   </div>
                 </div>
               </div>
@@ -1160,7 +1177,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                       />
                     ) : (
                     <img
-                      src={service.image}
+                      src={resolveMediaUrl(service.image)}
                       alt={service.description}
                         className="w-full h-full object-cover object-center"
                         style={{ minWidth: '100%', minHeight: '100%' }}
@@ -1437,8 +1454,8 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
 
                       {/* Bottom Info */}
                       <div className="flex items-center justify-between text-[9px] md:text-[10px] text-[#999]">
-                        <span>{service.deliveryType === "same-day" ? "Same Day Delivery" : "Standard Delivery"}</span>
-                        <span className="text-[#999]">Available</span>
+                        <span>{service.deliveryType === "same-day" ? "Delivers in 2 days" : "Standard Delivery"}</span>
+                        <Clock className="w-3 h-3 md:w-4 md:h-4 text-[#999]" />
                     </div>
                   </div>
                 </div>

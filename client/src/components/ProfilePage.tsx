@@ -110,6 +110,18 @@ type ProfileData = {
   }>;
 };
 
+// Helper function to resolve media URLs (images/videos)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
+
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -928,7 +940,7 @@ export default function ProfilePage() {
                     {/* Image Section */}
                     <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: '180px' }}>
                       <img
-                        src={service.image}
+                        src={resolveMediaUrl(service.image)}
                         alt={service.description}
                         className="w-full h-full object-cover"
                         style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
@@ -1052,11 +1064,13 @@ export default function ProfilePage() {
                             addToCart(
                               {
                                 id: String(service.id),
+                                serviceId: String(service._id || service.id),
                                 title: service.description,
                                 seller: service.tradingName,
                                 price: parseFloat(service.price),
                                 image: service.image,
                                 rating: service.rating,
+                                priceUnit: service.priceUnit || 'fixed',
                               },
                               1
                             );

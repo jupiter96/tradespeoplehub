@@ -83,6 +83,10 @@ const cartItemSchema = new mongoose.Schema({
   thumbnailVideo: {
     type: thumbnailVideoSchema,
   },
+  priceUnit: {
+    type: String, // "hour", "cm", "sqm", "fixed", etc.
+    default: 'fixed',
+  },
   // Unique identifier for cart items (serviceId + packageType + addons hash)
   itemKey: {
     type: String,

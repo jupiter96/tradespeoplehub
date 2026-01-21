@@ -37,7 +37,8 @@ const orderItemSchema = new mongoose.Schema({
   }],
   booking: {
     date: String,
-    time: String,
+    time: String, // Start time
+    endTime: String, // End time
     timeSlot: String,
   },
   packageType: {
@@ -142,8 +143,8 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['placed', 'In Progress', 'Completed', 'Cancelled', 'Rejected', 'disputed'],
-      default: 'placed',
+      enum: ['In Progress', 'Completed', 'Cancelled', 'Rejected', 'disputed'],
+      default: 'In Progress',
       index: true,
     },
     // Order acceptance by professional
@@ -306,6 +307,16 @@ const orderSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+      clientMessage: {
+        type: String,
+        trim: true,
+      },
+      clientFiles: [{
+        url: { type: String, required: true },
+        fileName: { type: String, required: true },
+        fileType: { type: String, enum: ['image', 'video', 'document'], required: true },
+        uploadedAt: { type: Date, default: Date.now },
+      }],
       requestedAt: {
         type: Date,
         default: null,

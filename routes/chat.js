@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
+import Order from '../models/Order.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isUserOnline, io } from '../services/socket.js';
 
@@ -126,25 +127,41 @@ router.post('/conversations', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid participant ID' });
     }
 
-    // Only clients can initiate conversations with professionals
-    if (req.user.role !== 'client') {
-      return res.status(403).json({ error: 'Only clients can start new conversations' });
+    // Import mongoose for ObjectId validation
+    const mongoose = (await import('mongoose')).default;
+
+    // Validate participantId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(participantId)) {
+      return res.status(400).json({ error: 'Invalid participant ID format' });
     }
 
-    // Check if participant is a professional
+    // Check participant
     const participant = await User.findById(participantId);
     if (!participant) {
       return res.status(404).json({ error: 'Participant not found' });
     }
-
-    if (participant.role !== 'professional') {
-      return res.status(403).json({ error: 'Can only start conversations with professionals' });
+    
+    // Only allow client<->professional conversations
+    const isClientToProfessional = req.user.role === 'client' && participant.role === 'professional';
+    const isProfessionalToClient = req.user.role === 'professional' && participant.role === 'client';
+    if (!isClientToProfessional && !isProfessionalToClient) {
+      return res.status(403).json({ error: 'Can only start conversations between clients and professionals' });
     }
 
     // Convert to ObjectId
-    const mongoose = (await import('mongoose')).default;
     const userIdObj = new mongoose.Types.ObjectId(userId);
     const participantIdObj = new mongoose.Types.ObjectId(participantId);
+
+    // Professionals can initiate only if there is an order with the client
+    if (isProfessionalToClient) {
+      const hasOrder = await Order.exists({
+        client: participantIdObj,
+        professional: userIdObj,
+      });
+      if (!hasOrder) {
+        return res.status(403).json({ error: 'Professionals can only start conversations with their clients' });
+      }
+    }
 
     // Check if conversation already exists
     let conversation = await Conversation.findOne({

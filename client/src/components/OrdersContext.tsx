@@ -20,6 +20,7 @@ export interface OrderItem {
   booking?: {
     date: string;
     time: string;
+    endTime?: string;
     timeSlot?: string;
   };
   packageType?: string;
@@ -88,7 +89,7 @@ export interface Order {
   items: OrderItem[];
   service: string; // main service title for display
   date: string; // order creation date
-  status: "placed" | "In Progress" | "Completed" | "Cancelled" | "Rejected" | "disputed";
+  status: "In Progress" | "Completed" | "Cancelled" | "Rejected" | "disputed";
   amount: string; // formatted amount with £
   amountValue: number; // numeric value for sorting
   professional: string;
@@ -97,6 +98,7 @@ export interface Order {
   professionalPhone?: string;
   professionalEmail?: string;
   client?: string; // client name for professional view
+  clientId?: string;
   clientAvatar?: string;
   clientPhone?: string;
   clientEmail?: string;
@@ -111,6 +113,7 @@ export interface Order {
   booking?: {
     date: string;
     time: string;
+    endTime?: string;
     timeSlot?: string;
   };
   disputeId?: string;
@@ -189,6 +192,20 @@ export interface Order {
     }>;
     submittedAt?: string;
   };
+  revisionRequest?: {
+    status: 'pending' | 'in_progress' | 'completed' | 'rejected';
+    reason: string;
+    clientMessage?: string;
+    clientFiles?: Array<{
+      url: string;
+      fileName: string;
+      fileType: 'image' | 'video' | 'document';
+      uploadedAt?: string;
+    }>;
+    requestedAt: string;
+    respondedAt?: string;
+    additionalNotes?: string;
+  };
 }
 
 interface OrdersContextType {
@@ -203,7 +220,7 @@ interface OrdersContextType {
   }) => string; // returns order ID (deprecated, use API directly)
   addDirectOrder: (order: Partial<Order> & { id: string; service: string; professional: string; amount: string }) => void;
   updateOrderStatus: (orderId: string, status: Order["status"]) => void;
-  rateOrder: (orderId: string, rating: number, review?: string) => void;
+  rateOrder: (orderId: string, rating: number, review?: string) => Promise<void>;
   cancelOrder: (orderId: string) => void;
   acceptOrder: (orderId: string) => Promise<void>;
   rejectOrder: (orderId: string, reason?: string) => Promise<void>;
@@ -221,7 +238,7 @@ interface OrdersContextType {
   requestCancellation: (orderId: string, reason?: string) => Promise<void>;
   respondToCancellation: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
   withdrawCancellation: (orderId: string) => Promise<void>;
-  requestRevision: (orderId: string, reason: string) => Promise<void>;
+  requestRevision: (orderId: string, reason: string, message?: string, files?: File[]) => Promise<void>;
   respondToRevision: (orderId: string, action: 'accept' | 'reject', additionalNotes?: string) => Promise<void>;
   completeRevision: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
   respondToReview: (reviewId: string, response: string) => Promise<void>;
@@ -355,10 +372,33 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const rateOrder = (orderId: string, rating: number, review?: string) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { ...order, rating, review } : order
-    ));
+  const rateOrder = async (orderId: string, rating: number, review?: string) => {
+    try {
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/review`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ rating, comment: review }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit review');
+      }
+
+      // Update local state
+      setOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, rating, review } : order
+      ));
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Rate order error:', error);
+      throw error;
+    }
   };
 
   const cancelOrder = (orderId: string) => {
@@ -391,7 +431,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             ...order,
             acceptedByProfessional: true,
             acceptedAt: data.order.acceptedAt,
-            status: 'placed', // Status remains 'placed' until booking time
+            status: 'In Progress',
           };
         }
         return order;
@@ -488,7 +528,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           return {
             ...order,
             deliveryStatus: 'delivered',
-            deliveredDate: data.order.deliveredDate ? new Date(data.order.deliveredDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            deliveredDate: data.order.deliveredDate ? new Date(data.order.deliveredDate).toISOString() : new Date().toISOString(),
             deliveryFiles: data.order.deliveryFiles || [],
             deliveryMessage: data.order.deliveryMessage || undefined,
           };
@@ -923,15 +963,23 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   // Revision Request Management
-  const requestRevision = async (orderId: string, reason: string): Promise<void> => {
+  const requestRevision = async (orderId: string, reason: string, message?: string, files?: File[]): Promise<void> => {
     try {
+      const hasFiles = files && files.length > 0;
+      const hasMessage = message && message.trim();
+      const formData = new FormData();
+      formData.append('reason', reason);
+      if (hasMessage) {
+        formData.append('message', message!.trim());
+      }
+      if (hasFiles) {
+        files!.forEach(file => formData.append('files', file));
+      }
+
       const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/revision-request`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         credentials: 'include',
-        body: JSON.stringify({ reason }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -949,6 +997,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             revisionRequest: {
               status: data.revisionRequest.status,
               reason: data.revisionRequest.reason,
+              clientMessage: data.revisionRequest.clientMessage,
+              clientFiles: data.revisionRequest.clientFiles || [],
               requestedAt: data.revisionRequest.requestedAt,
               respondedAt: undefined,
               additionalNotes: undefined,

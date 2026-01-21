@@ -213,12 +213,12 @@ export default function CustomOfferModal({
           conversationId: contact.conversationId,
           serviceName: selectedService.name,
           price: parseFloat(customPrice),
-          deliveryDays: parseInt(deliveryDays),
-          description: offerDescription,
-          paymentType: paymentType,
-          milestones: paymentType === "milestone" ? milestones : undefined,
+        deliveryDays: parseInt(deliveryDays),
+        description: offerDescription,
+        paymentType: paymentType,
+        milestones: paymentType === "milestone" ? milestones : undefined,
         }),
-      });
+    });
 
       if (!response.ok) {
         const error = await response.json();
@@ -228,8 +228,8 @@ export default function CustomOfferModal({
       const data = await response.json();
 
       // The message will be created by the backend, so we just need to refresh
-      toast.success(`Custom offer sent to ${clientName}!`);
-      handleClose();
+    toast.success(`Custom offer sent to ${clientName}!`);
+    handleClose();
       
       // Refresh messages to show the new offer
       // The socket will handle this automatically

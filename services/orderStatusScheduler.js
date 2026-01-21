@@ -2,20 +2,18 @@ import cron from 'node-cron';
 import Order from '../models/Order.js';
 
 /**
- * Check orders with 'placed' status and accepted by professional
- * Change status to 'In Progress' when booking time is reached
+ * Check orders waiting on booking time
+ * Activate delivery status when booking time is reached
  */
 async function processOrderStatusUpdates() {
   try {
     const now = new Date();
     
-    // Find all orders that are:
-    // - Status is 'placed'
-    // - Accepted by professional (acceptedByProfessional = true)
-    // - Have booking information in items
+    // Find all orders that are waiting to start
     const orders = await Order.find({
-      status: 'placed',
-      acceptedByProfessional: true,
+      status: 'In Progress',
+      deliveryStatus: 'pending',
+      paymentMethod: { $ne: 'bank_transfer' },
       'items.booking.date': { $exists: true, $ne: null },
       'items.booking.time': { $exists: true, $ne: null },
     });
@@ -45,10 +43,7 @@ async function processOrderStatusUpdates() {
 
         // Check if booking time has passed
         if (now >= bookingDate) {
-          // Update order status to 'In Progress'
-          order.status = 'In Progress';
-          
-          // Also update delivery status to 'active' if not already set
+          // Update delivery status to active if not already set
           if (!order.deliveryStatus || order.deliveryStatus === 'pending') {
             order.deliveryStatus = 'active';
           }

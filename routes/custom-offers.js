@@ -289,6 +289,7 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
           amount: Math.round(totalChargeAmount * 100), // Convert to pence
           currency: 'gbp',
           payment_method: paymentMethodId,
+          customer: user.stripeCustomerId, // Include customer ID
           confirm: true,
           return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
           metadata: {
@@ -443,7 +444,8 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
       subtotal,
       discount: 0,
       serviceFee,
-      status: 'placed',
+      status: 'In Progress',
+      deliveryStatus: 'active',
       walletTransactionId,
       paymentTransactionId,
       metadata: {
@@ -683,7 +685,8 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       subtotal: customOffer.price,
       discount: 0,
       serviceFee,
-      status: 'placed',
+      status: 'In Progress',
+      deliveryStatus: 'active',
       walletTransactionId,
       paymentTransactionId,
       metadata: {

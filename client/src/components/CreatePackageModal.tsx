@@ -227,7 +227,7 @@ export default function CreatePackageModal({ onClose, onSave }: CreatePackageMod
                             ${pkg.deliveryType === "same-day" ? 'text-[#FE8A0F]' : 'text-[#2c353f]'}
                           `}
                         >
-                          Same Day Delivery
+                          Delivers in 2 days
                         </span>
                         {pkg.deliveryType === "same-day" && (
                           <CheckCircle className="w-4 h-4 ml-2 text-[#FE8A0F]" />

@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import Cart from '../models/Cart.js';
+import Service from '../models/Service.js';
 
 const router = express.Router();
 
@@ -34,21 +35,45 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
       await cart.save();
     }
 
-    // Map cart items to frontend format
-    const items = cart.items.map(item => ({
-      id: item.itemKey || item.serviceId, // Use itemKey for uniqueness
-      serviceId: item.serviceId, // Actual MongoDB service ID
-      title: item.title,
-      seller: item.seller,
-      price: item.price,
-      image: item.image,
-      rating: item.rating,
-      quantity: item.quantity,
-      addons: item.addons || [],
-      booking: item.booking,
-      packageType: item.packageType,
-      thumbnailVideo: item.thumbnailVideo || undefined,
+    console.log('🛒 [Cart API] Fetching cart with', cart.items.length, 'items');
+
+    // Map cart items to frontend format and fetch priceUnit if missing
+    const items = await Promise.all(cart.items.map(async (item) => {
+      let priceUnit = item.priceUnit;
+      
+      // If priceUnit is missing or 'fixed', try to fetch from service
+      if (!priceUnit || priceUnit === 'fixed') {
+        try {
+          const service = await Service.findById(item.serviceId);
+          if (service && service.priceUnit) {
+            priceUnit = service.priceUnit;
+            console.log('✅ [Cart API] Fetched priceUnit for', item.title, ':', priceUnit);
+          }
+        } catch (err) {
+          console.log('⚠️ [Cart API] Could not fetch service details:', err.message);
+        }
+      }
+
+      console.log('📋 [Cart API] Item:', item.title, '- priceUnit:', priceUnit);
+
+      return {
+        id: item.itemKey || item.serviceId, // Use itemKey for uniqueness
+        serviceId: item.serviceId, // Actual MongoDB service ID
+        title: item.title,
+        seller: item.seller,
+        price: item.price,
+        image: item.image,
+        rating: item.rating,
+        quantity: item.quantity,
+        addons: item.addons || [],
+        booking: item.booking,
+        packageType: item.packageType,
+        thumbnailVideo: item.thumbnailVideo || undefined,
+        priceUnit: priceUnit || 'fixed',
+      };
     }));
+
+    console.log('✅ [Cart API] Returning', items.length, 'items');
 
     return res.json({ items });
   } catch (error) {
@@ -61,6 +86,12 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
 router.post('/items', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const { item, quantity = 1 } = req.body;
+
+    console.log('📦 [Cart API] Add to cart request:', {
+      serviceId: item.serviceId || item.id,
+      title: item.title,
+      priceUnit: item.priceUnit
+    });
 
     if (!item || !item.id) {
       return res.status(400).json({ error: 'Item data is required' });
@@ -91,6 +122,23 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
       // Add new item
       // Use serviceId if provided, otherwise use id (for backward compatibility)
       const serviceId = item.serviceId || item.id;
+      
+      // Fetch service details to get priceUnit if not provided
+      let priceUnit = item.priceUnit;
+      if (!priceUnit || priceUnit === 'fixed') {
+        try {
+          const service = await Service.findById(serviceId);
+          if (service && service.priceUnit) {
+            priceUnit = service.priceUnit;
+            console.log('✅ [Cart API] Fetched priceUnit from service:', priceUnit);
+          }
+        } catch (err) {
+          console.log('⚠️ [Cart API] Could not fetch service details:', err.message);
+        }
+      }
+      
+      console.log('💾 [Cart API] Saving item with priceUnit:', priceUnit);
+      
       cart.items.push({
         serviceId: serviceId,
         title: item.title || '',
@@ -103,6 +151,7 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
         booking: item.booking,
         packageType: item.packageType,
         thumbnailVideo: item.thumbnailVideo || undefined,
+        priceUnit: priceUnit || 'fixed',
         itemKey: itemKey,
       });
     }
@@ -123,6 +172,7 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
       booking: i.booking,
       packageType: i.packageType,
       thumbnailVideo: i.thumbnailVideo || undefined,
+      priceUnit: i.priceUnit || 'fixed',
     }));
 
     return res.json({ items, message: 'Item added to cart' });
@@ -190,6 +240,7 @@ router.put('/items/:itemKey', authenticateToken, requireRole(['client']), async 
       booking: i.booking,
       packageType: i.packageType,
       thumbnailVideo: i.thumbnailVideo || undefined,
+      priceUnit: i.priceUnit || 'fixed',
     }));
 
     return res.json({ items, message: 'Cart item updated' });
@@ -227,6 +278,7 @@ router.delete('/items/:itemKey', authenticateToken, requireRole(['client']), asy
       booking: i.booking,
       packageType: i.packageType,
       thumbnailVideo: i.thumbnailVideo || undefined,
+      priceUnit: i.priceUnit || 'fixed',
     }));
 
     return res.json({ items, message: 'Item removed from cart' });

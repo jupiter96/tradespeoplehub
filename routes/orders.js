@@ -40,6 +40,10 @@ const deliveryDir = path.join(__dirname, '..', 'uploads', 'deliveries');
 // Create delivery directory if it doesn't exist
 fs.mkdir(deliveryDir, { recursive: true }).catch(() => {});
 
+// Configure multer for revision request attachments
+const revisionDir = path.join(__dirname, '..', 'uploads', 'revisions');
+fs.mkdir(revisionDir, { recursive: true }).catch(() => {});
+
 const deliveryStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, deliveryDir);
@@ -65,6 +69,36 @@ const deliveryUpload = multer({
       cb(null, true);
     } else {
       cb(new Error('Invalid file type. Only images (PNG, JPG, GIF, WEBP) and videos (MP4, MPEG, MOV, AVI, WEBM) are allowed.'));
+    }
+  }
+});
+
+const revisionStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, revisionDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const revisionUpload = multer({
+  storage: revisionStorage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+      'application/pdf', 'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images, videos, or documents are allowed.'));
     }
   }
 });
@@ -302,6 +336,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
           amount: Math.round(totalChargeAmount * 100), // Convert to pence
           currency: 'gbp',
           payment_method: paymentMethodId,
+          customer: user.stripeCustomerId, // Include customer ID
           confirm: true,
           return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
           metadata: {
@@ -473,6 +508,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         orderItem.booking = {
           date: item.booking.date,
           time: item.booking.time || '',
+          endTime: item.booking.endTime || '',
           timeSlot: item.booking.timeSlot || undefined,
         };
       } else {
@@ -483,6 +519,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     });
     
 
+    const isPaidOrder = paymentMethod !== 'bank_transfer';
     const order = new Order({
       orderNumber,
       client: user._id,
@@ -503,7 +540,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       discount,
       promoCode: promoCodeData,
       serviceFee: serviceFeeAmount,
-      status: 'placed', // New orders start with 'placed' status awaiting professional response
+      status: 'In Progress',
+      deliveryStatus: isPaidOrder ? 'active' : 'pending',
       walletTransactionId,
       paymentTransactionId,
       metadata: {
@@ -537,6 +575,286 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     return res.json(responseData);
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Failed to create order' });
+  }
+});
+
+// Create multiple orders at once (one order per item)
+router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { orders: orderRequests, paymentMethod, paymentMethodId, totalAmount, address, skipAddress } = req.body;
+
+    console.log('[Server] Bulk order request:', { 
+      orderCount: orderRequests?.length, 
+      paymentMethod, 
+      totalAmount 
+    });
+
+    if (!orderRequests || orderRequests.length === 0) {
+      return res.status(400).json({ error: 'At least one order is required' });
+    }
+
+    if (!paymentMethod || !['account_balance', 'card', 'paypal', 'bank_transfer'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method' });
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({ error: 'Invalid total amount' });
+    }
+
+    // Get user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get payment settings
+    const settings = await PaymentSettings.getSettings();
+    const serviceFeeAmount = settings.serviceFees || 0;
+
+    // Calculate total from all orders
+    let calculatedSubtotal = 0;
+    let totalDiscount = 0;
+    for (const orderReq of orderRequests) {
+      calculatedSubtotal += orderReq.subtotal;
+      totalDiscount += (orderReq.discount || 0);
+    }
+    const calculatedTotal = calculatedSubtotal - totalDiscount + serviceFeeAmount;
+
+    // Validate total (allow small floating point differences)
+    if (Math.abs(totalAmount - calculatedTotal) > 0.01) {
+      console.error('[Server] Total amount mismatch:', {
+        received: totalAmount,
+        expected: calculatedTotal,
+        subtotal: calculatedSubtotal,
+        discount: totalDiscount,
+        serviceFee: serviceFeeAmount,
+      });
+      return res.status(400).json({ 
+        error: 'Total amount mismatch',
+        expected: calculatedTotal,
+        received: totalAmount,
+        breakdown: {
+          subtotal: calculatedSubtotal,
+          discount: totalDiscount,
+          serviceFee: serviceFeeAmount,
+        }
+      });
+    }
+
+    // Handle payment for the total amount
+    let newBalance = user.walletBalance || 0;
+
+    if (paymentMethod === 'account_balance') {
+      if ((user.walletBalance || 0) < totalAmount) {
+        return res.status(400).json({ 
+          error: 'Insufficient balance',
+          required: totalAmount,
+          current: user.walletBalance || 0,
+        });
+      }
+
+      // Deduct total from wallet
+      newBalance = (user.walletBalance || 0) - totalAmount;
+      user.walletBalance = newBalance;
+      await user.save();
+    } else if (paymentMethod === 'card') {
+      if (!paymentMethodId) {
+        return res.status(400).json({ error: 'Payment method ID is required for card payments' });
+      }
+
+      try {
+        const stripe = getStripeInstance(settings);
+        const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
+        const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
+        const stripeCommission = (totalAmount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
+        const totalChargeAmount = totalAmount + stripeCommission;
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(totalChargeAmount * 100),
+          currency: 'gbp',
+          payment_method: paymentMethodId,
+          customer: user.stripeCustomerId, // Include customer ID
+          confirm: true,
+          return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+          metadata: {
+            userId: user._id.toString(),
+            type: 'bulk_order_payment',
+            orderCount: orderRequests.length.toString(),
+          },
+        });
+
+        if (paymentIntent.status !== 'succeeded') {
+          return res.status(400).json({ 
+            error: 'Payment failed',
+            status: paymentIntent.status,
+          });
+        }
+
+        // Fund wallet then deduct
+        newBalance = (user.walletBalance || 0) + totalAmount;
+        user.walletBalance = newBalance;
+        await user.save();
+
+        newBalance = newBalance - totalAmount;
+        user.walletBalance = newBalance;
+        await user.save();
+      } catch (error) {
+        console.error('[Server] Card payment error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to process card payment' });
+      }
+    } else if (paymentMethod === 'paypal') {
+      // For PayPal, return approval URL (similar to single order)
+      const environment = getPayPalClient(settings);
+      const client = new paypal.core.PayPalHttpClient(environment);
+
+      const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
+      const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
+      const paypalCommission = (totalAmount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+      const totalChargeAmount = totalAmount + paypalCommission;
+
+      const request = new paypal.orders.OrdersCreateRequest();
+      request.prefer("return=representation");
+      request.requestBody({
+        intent: "CAPTURE",
+        purchase_units: [{
+          amount: {
+            currency_code: "GBP",
+            value: totalChargeAmount.toFixed(2),
+          },
+          description: `Bulk Order Payment (${orderRequests.length} orders)`,
+        }],
+        application_context: {
+          return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+          cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
+          brand_name: "Sortars UK",
+          locale: "en-GB",
+        },
+      });
+
+      const order = await client.execute(request);
+      const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
+
+      return res.json({
+        paypalOrderId: order.result.id,
+        approveUrl,
+        requiresApproval: true,
+        orderRequests, // Return order requests for later processing
+        message: 'Please approve PayPal payment to complete orders',
+      });
+    }
+
+    // Create orders
+    const Service = (await import('../models/Service.js')).default;
+    const createdOrders = [];
+
+    for (const orderReq of orderRequests) {
+      const { item, booking, subtotal, discount = 0 } = orderReq;
+
+      // Find service and professional
+      const serviceId = item.serviceId || item.id;
+      let service = null;
+      let professionalId = null;
+
+      if (serviceId.match(/^[0-9a-fA-F]{24}$/)) {
+        service = await Service.findById(serviceId);
+      } else {
+        service = await Service.findOne({ slug: serviceId });
+      }
+
+      if (service) {
+        professionalId = service.professional;
+      } else if (item.seller) {
+        const professional = await User.findOne({ 
+          tradingName: item.seller,
+          role: 'professional'
+        });
+        if (professional) {
+          professionalId = professional._id;
+        }
+      }
+
+      if (!professionalId) {
+        console.error(`[Server] Could not find professional for service: ${serviceId}`);
+        continue; // Skip this order
+      }
+
+      // Generate order number
+      const orderNumber = generateOrderNumber();
+
+      // Create order item with booking
+      const processedItem = {
+        serviceId: serviceId,
+        title: item.title,
+        seller: item.seller,
+        price: item.price,
+        image: item.image,
+        rating: item.rating,
+        quantity: item.quantity,
+        addons: item.addons || [],
+        packageType: item.packageType,
+      };
+
+      if (booking && booking.date) {
+        processedItem.booking = {
+          date: booking.date,
+          time: booking.time || '',
+          endTime: booking.endTime || '',
+          timeSlot: booking.timeSlot || '',
+        };
+      }
+
+      // Calculate order total (item subtotal - discount, no service fee per order)
+      const orderTotal = subtotal - discount;
+
+      const isPaidOrder = paymentMethod !== 'bank_transfer';
+      const order = new Order({
+        orderNumber,
+        client: user._id,
+        professional: professionalId,
+        items: [processedItem],
+        address: address ? {
+          postcode: address.postcode,
+          address: address.address,
+          city: address.city,
+          county: address.county,
+          phone: address.phone,
+        } : undefined,
+        skipAddress: skipAddress || false,
+        paymentMethod,
+        total: orderTotal,
+        subtotal,
+        discount,
+        serviceFee: 0, // Service fee is applied once to the total, not per order
+        status: 'In Progress',
+        deliveryStatus: isPaidOrder ? 'active' : 'pending',
+        metadata: {
+          createdAt: new Date(),
+          bulkOrderId: `BULK-${Date.now()}`,
+          professionalPayoutAmount: subtotal - discount,
+        },
+      });
+
+      await order.save();
+
+      // Populate for response
+      await order.populate([
+        { path: 'client', select: 'firstName lastName email phone' },
+        { path: 'professional', select: 'firstName lastName tradingName email phone' },
+      ]);
+
+      createdOrders.push(order.toObject());
+      console.log(`[Server] Created order: ${orderNumber}`);
+    }
+
+    return res.json({
+      orders: createdOrders,
+      orderIds: createdOrders.map(o => o.orderNumber),
+      newBalance,
+      message: `Successfully created ${createdOrders.length} order(s)`,
+    });
+  } catch (error) {
+    console.error('[Server] Bulk order error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to create orders' });
   }
 });
 
@@ -702,9 +1020,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       const amount = `£${order.total.toFixed(2)}`;
       
       // Map status
-      let status = order.status || 'placed';
-      if (status === 'pending') status = 'placed';
-      if (status === 'placed') status = 'placed';
+      let status = order.status || 'In Progress';
+      if (status === 'pending') status = 'In Progress';
       if (status === 'in_progress' || status === 'In Progress') status = 'In Progress';
       if (status === 'completed' || status === 'Completed') status = 'Completed';
       if (status === 'cancelled' || status === 'Cancelled') status = 'Cancelled';
@@ -723,8 +1040,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       // Format dates
       const date = order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
       const scheduledDate = order.scheduledDate ? new Date(order.scheduledDate).toISOString().split('T')[0] : undefined;
-      const completedDate = order.completedDate ? new Date(order.completedDate).toISOString().split('T')[0] : undefined;
-      const deliveredDate = order.deliveredDate ? new Date(order.deliveredDate).toISOString().split('T')[0] : undefined;
+      const completedDate = order.completedDate ? new Date(order.completedDate).toISOString() : undefined;
+      const deliveredDate = order.deliveredDate ? new Date(order.deliveredDate).toISOString() : undefined;
       
       // Get booking info from first item
       const booking = order.items?.[0]?.booking;
@@ -760,6 +1077,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         amountValue: order.total,
         professional: professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional',
         professionalId: professional?._id ? professional._id.toString() : undefined,
+        clientId: client?._id ? client._id.toString() : undefined,
         professionalAvatar: professional?.avatar || '',
         professionalPhone: professional?.phone || '',
         professionalEmail: professional?.email || '',
@@ -812,6 +1130,13 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         revisionRequest: order.revisionRequest ? {
           status: order.revisionRequest.status,
           reason: order.revisionRequest.reason,
+          clientMessage: order.revisionRequest.clientMessage || undefined,
+          clientFiles: order.revisionRequest.clientFiles ? order.revisionRequest.clientFiles.map(file => ({
+            url: file.url,
+            fileName: file.fileName,
+            fileType: file.fileType,
+            uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
+          })) : [],
           requestedAt: order.revisionRequest.requestedAt ? new Date(order.revisionRequest.requestedAt).toISOString() : undefined,
           respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
           additionalNotes: order.revisionRequest.additionalNotes || undefined,
@@ -1144,8 +1469,7 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
     order.cancellationRequest.status = 'withdrawn';
     
     // Restore order status to previous status (before cancellation request)
-    // If status was 'placed' or 'In Progress', restore it
-    if (previousStatus === 'placed' || previousStatus === 'In Progress') {
+    if (previousStatus === 'In Progress') {
       order.status = previousStatus;
     } else if (order.status === 'Cancelled') {
       // If order was already cancelled, restore to previous status
@@ -1175,9 +1499,9 @@ router.post('/:orderId/accept', authenticateToken, requireRole(['professional'])
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if order is in placed status
-    if (order.status !== 'placed') {
-      return res.status(400).json({ error: 'Order can only be accepted when it is in placed status' });
+    // Check if order is in progress
+    if (order.status !== 'In Progress') {
+      return res.status(400).json({ error: 'Order can only be accepted when it is in progress' });
     }
 
     // Check if already accepted
@@ -1185,7 +1509,7 @@ router.post('/:orderId/accept', authenticateToken, requireRole(['professional'])
       return res.status(400).json({ error: 'Order has already been accepted' });
     }
 
-    // Accept order - status remains 'placed' until booking time
+    // Accept order - status remains in progress
     order.acceptedByProfessional = true;
     order.acceptedAt = new Date();
     order.rejectedAt = null;
@@ -1219,9 +1543,9 @@ router.post('/:orderId/reject', authenticateToken, requireRole(['professional'])
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if order is in placed status
-    if (order.status !== 'placed') {
-      return res.status(400).json({ error: 'Order can only be rejected when it is in placed status' });
+    // Check if order is in progress
+    if (order.status !== 'In Progress') {
+      return res.status(400).json({ error: 'Order can only be rejected when it is in progress' });
     }
 
     // Check if already accepted
@@ -1275,8 +1599,13 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if order is in progress
-    if (order.status !== 'In Progress') {
+    // Check if order is in progress (status 'In Progress' or deliveryStatus 'active')
+    const isInProgress = order.status === 'In Progress' || 
+                         order.status === 'in_progress' || 
+                         order.deliveryStatus === 'active' ||
+                         (order.acceptedByProfessional && order.status !== 'Completed' && order.status !== 'Cancelled');
+    
+    if (!isInProgress) {
       // Clean up uploaded files if order is not in progress
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => {
@@ -1363,11 +1692,35 @@ router.get('/deliveries/:filename', (req, res) => {
   }
 });
 
+// Serve revision request files
+router.get('/revisions/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(revisionDir, filename);
+
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Serve revision file error:', error);
+    res.status(500).json({ error: 'Failed to serve file' });
+  }
+});
+
 // Client: Request revision (modification) for delivered order
-router.post('/:orderId/revision-request', authenticateToken, requireRole(['client']), async (req, res) => {
+const maybeRevisionUpload = (req, res, next) => {
+  if (req.is('multipart/form-data')) {
+    return revisionUpload.array('files', 10)(req, res, next);
+  }
+  return next();
+};
+
+router.post('/:orderId/revision-request', authenticateToken, requireRole(['client']), maybeRevisionUpload, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason } = req.body;
+    const { reason, message } = req.body;
 
     if (!reason || !reason.trim()) {
       return res.status(400).json({ error: 'Revision reason is required' });
@@ -1389,10 +1742,28 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       return res.status(400).json({ error: 'There is already an active revision request' });
     }
 
+    // Process uploaded files
+    const revisionFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        let fileType = 'document';
+        if (file.mimetype.startsWith('image/')) fileType = 'image';
+        else if (file.mimetype.startsWith('video/')) fileType = 'video';
+        revisionFiles.push({
+          url: `/api/orders/revisions/${file.filename}`,
+          fileName: file.originalname,
+          fileType,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
     // Create revision request
     order.revisionRequest = {
       status: 'pending',
       reason: reason.trim(),
+      clientMessage: message && message.trim() ? message.trim() : null,
+      clientFiles: revisionFiles.length > 0 ? revisionFiles : [],
       requestedAt: new Date(),
       respondedAt: null,
       additionalNotes: null,
@@ -1438,9 +1809,10 @@ router.put('/:orderId/revision-request', authenticateToken, requireRole(['profes
       order.revisionRequest.status = 'in_progress';
       order.revisionRequest.additionalNotes = additionalNotes || null;
       order.revisionRequest.respondedAt = new Date();
-      
-      // Order status remains "In Progress" but revision is in progress
-      // Delivery status remains "delivered" but we track revision separately
+
+      // Resume work: move order back to in-progress state
+      order.status = 'In Progress';
+      order.deliveryStatus = 'active';
     } else {
       // Reject revision request
       order.revisionRequest.status = 'rejected';
@@ -1666,14 +2038,14 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if order is in delivered status
-    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
+    // Check if order is in delivered status or has delivery files/message
+    const isDelivered = order.deliveryStatus === 'delivered' || 
+                        (order.deliveryFiles && order.deliveryFiles.length > 0) ||
+                        order.deliveryMessage ||
+                        order.metadata?.professionalCompleteRequest;
+    
+    if (!isDelivered && order.status !== 'In Progress') {
       return res.status(400).json({ error: 'Order must be delivered before completing' });
-    }
-
-    // Check if professional has submitted completion request
-    if (!order.metadata?.professionalCompleteRequest) {
-      return res.status(400).json({ error: 'Professional must submit completion request first' });
     }
 
     // Get professional user
@@ -1832,7 +2204,130 @@ router.post('/reviews/:reviewId/respond', authenticateToken, requireRole(['profe
   }
 });
 
-// Get review for an order
+// Client: Submit review for a completed order
+router.post('/:orderId/review', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { rating, comment, communicationRating, serviceAsDescribedRating, buyAgainRating } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Valid rating (1-5) is required' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id }))
+      .populate('professional');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is completed
+    if (order.status !== 'Completed' && order.status !== 'completed') {
+      return res.status(400).json({ error: 'Can only review completed orders' });
+    }
+
+    // Get client user
+    const client = await User.findById(req.user.id);
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    // Check if review already exists
+    let reviewDoc = await Review.findOne({ order: order._id });
+    
+    if (reviewDoc) {
+      // Update existing review
+      reviewDoc.rating = rating;
+      reviewDoc.comment = comment?.trim() || '';
+      reviewDoc.reviewer = client._id;
+      reviewDoc.reviewerName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous';
+    } else {
+      // Create new review
+      const professionalId = order.professional?._id || order.professional;
+      reviewDoc = new Review({
+        professional: professionalId,
+        order: order._id,
+        reviewer: client._id,
+        reviewerName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous',
+        rating: rating,
+        comment: comment?.trim() || '',
+      });
+    }
+    
+    await reviewDoc.save();
+
+    // Update order with rating
+    order.rating = rating;
+    order.review = comment?.trim() || '';
+    await order.save();
+
+    res.json({ 
+      message: 'Review submitted successfully',
+      review: {
+        id: reviewDoc._id,
+        rating: reviewDoc.rating,
+        comment: reviewDoc.comment,
+        reviewerName: reviewDoc.reviewerName,
+        createdAt: reviewDoc.createdAt,
+      }
+    });
+  } catch (error) {
+    console.error('Submit review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit review' });
+  }
+});
+
+// Professional: Submit review for buyer (client)
+router.post('/:orderId/buyer-review', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { rating, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Valid rating (1-5) is required' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }))
+      .populate('client');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is completed
+    if (order.status !== 'Completed' && order.status !== 'completed') {
+      return res.status(400).json({ error: 'Can only review completed orders' });
+    }
+
+    // Get professional user
+    const professional = await User.findById(req.user.id);
+    if (!professional) {
+      return res.status(404).json({ error: 'Professional not found' });
+    }
+
+    // Store buyer review in order metadata
+    if (!order.metadata) order.metadata = {};
+    order.metadata.buyerReview = {
+      rating: rating,
+      comment: comment?.trim() || '',
+      reviewedBy: req.user.id,
+      reviewerName: `${professional.firstName || ''} ${professional.lastName || ''}`.trim() || professional.tradingName || 'Professional',
+      reviewedAt: new Date(),
+    };
+    
+    await order.save();
+
+    res.json({ 
+      message: 'Buyer review submitted successfully',
+      buyerReview: order.metadata.buyerReview,
+    });
+  } catch (error) {
+    console.error('Submit buyer review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit buyer review' });
+  }
+});
+
+// Get review for an order (includes both client review and professional's buyer review)
 router.get('/:orderId/review', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -1850,7 +2345,10 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
       .populate('responseBy', 'firstName lastName tradingName avatar');
 
     if (!review) {
-      return res.json({ review: null });
+      return res.json({ 
+        review: null,
+        buyerReview: order.metadata?.buyerReview || null,
+      });
     }
 
     res.json({ 
@@ -1876,7 +2374,8 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
         responseAt: review.responseAt ? new Date(review.responseAt).toISOString() : undefined,
         hasResponded: review.hasResponded,
         createdAt: new Date(review.createdAt).toISOString(),
-      }
+      },
+      buyerReview: order.metadata?.buyerReview || null,
     });
   } catch (error) {
     console.error('Get review error:', error);

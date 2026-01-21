@@ -27,7 +27,9 @@ import {
   ChevronDown,
   ChevronUp,
   Landmark,
-  Play
+  Play,
+  FileText,
+  AlertTriangle
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -36,6 +38,7 @@ import { Badge } from "./ui/badge";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Calendar as CalendarComponent } from "./ui/calendar";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { toast } from "sonner@2.0.3";
@@ -43,7 +46,6 @@ import CartPageMobileMinimalist from "./CartPageMobileMinimalist";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { resolveApiUrl } from "../config/api";
 import paypalLogo from "../assets/paypal-logo.png";
-import BookingModal from "./BookingModal";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -117,13 +119,18 @@ function VideoThumbnail({
     }
   };
 
+  // Resolve URLs for video and thumbnail
+  const resolvedVideoUrl = videoUrl.startsWith("http") || videoUrl.startsWith("blob:") ? videoUrl : resolveApiUrl(videoUrl);
+  const resolvedPoster = thumbnail ? (thumbnail.startsWith("http") || thumbnail.startsWith("blob:") ? thumbnail : resolveApiUrl(thumbnail)) : 
+                         fallbackImage ? (fallbackImage.startsWith("http") || fallbackImage.startsWith("blob:") ? fallbackImage : resolveApiUrl(fallbackImage)) : undefined;
+
   return (
     <div className={`relative ${className}`} style={style}>
       {/* Video element - always shown, plays on button click */}
       <video
         ref={videoRef}
-        src={videoUrl}
-        poster={thumbnail || fallbackImage || undefined}
+        src={resolvedVideoUrl}
+        poster={resolvedPoster}
         className="w-full h-full object-cover object-center"
         style={{ minWidth: '100%', minHeight: '100%' }}
         muted
@@ -208,9 +215,17 @@ const MastercardLogo = () => (
     <circle cx="35" cy="18" r="8" fill="#F79E1B"/>
     <path d="M28 11.5C26.25 13 25 15.35 25 18C25 20.65 26.25 23 28 24.5C29.75 23 31 20.65 31 18C31 15.35 29.75 13 28 11.5Z" fill="#FF5F00"/>
   </svg>
-);
-
-
+);// Helper function to resolve media URLs (images/videos)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, updateCartItem, cartTotal, clearCart } = useCart();
@@ -227,7 +242,7 @@ export default function CartPage() {
 
   // Log cart items to console whenever cartItems change
   useEffect(() => {
-    console.log('[Cart Page] Cart Items Updated:', {
+    console.log('🛒 [Cart Page] Cart Items Updated:', {
       totalItems: cartItems.length,
       items: cartItems.map(item => ({
         id: item.id, // Item key for uniqueness
@@ -235,15 +250,28 @@ export default function CartPage() {
         title: item.title,
         seller: item.seller,
         price: item.price,
+        priceUnit: item.priceUnit, // 🔍 Check priceUnit
         quantity: item.quantity,
         image: item.image,
         rating: item.rating,
         addons: item.addons,
         booking: item.booking,
         packageType: item.packageType,
-        thumbnailVideo: item.thumbnailVideo, // Include thumbnailVideo for debugging
+        thumbnailVideo: item.thumbnailVideo,
       })),
       cartTotal: cartTotal,
+    });
+    
+    // 🔍 Detailed priceUnit check for each item
+    cartItems.forEach((item, index) => {
+      console.log(`📋 [Cart Page] Item ${index + 1}:`, {
+        title: item.title,
+        priceUnit: item.priceUnit,
+        priceUnitType: typeof item.priceUnit,
+        displayText: item.priceUnit && item.priceUnit !== 'fixed' 
+          ? `Price per ${item.priceUnit}` 
+          : 'Price per unit'
+      });
     });
   }, [cartItems, cartTotal]);
 
@@ -311,6 +339,9 @@ export default function CartPage() {
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  
+  // Service type state - determines if address section should be shown
+  const [hasInPersonService, setHasInPersonService] = useState(true); // Default to true (show address)
 
   // Payment method state
   const [selectedPayment, setSelectedPayment] = useState<string>("account_balance");
@@ -320,11 +351,73 @@ export default function CartPage() {
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [serviceFee, setServiceFee] = useState<number>(0);
   
-  // Booking modal state
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [currentBookingItemIndex, setCurrentBookingItemIndex] = useState<number>(0);
-  const [servicesNeedingBooking, setServicesNeedingBooking] = useState<Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard"; serviceType?: "in-person" | "online" }>>([]);
-  const [isProcessingBooking, setIsProcessingBooking] = useState(false);
+  // Removed booking modal state - now using inline time slot selection
+  
+  // Time slot selection state - now per item with start/end time
+  const [itemTimeSlots, setItemTimeSlots] = useState<{[itemId: string]: {
+    date?: Date;
+    time?: string; // Start time
+    endTime?: string; // End time
+    timeSlot?: string;
+    showTimePicker?: boolean;
+  }}>({});
+  const [showTimeSection, setShowTimeSection] = useState(false);
+  
+  // Time validation errors
+  const [timeValidationErrors, setTimeValidationErrors] = useState<{[itemId: string]: {
+    startTimeError?: string;
+    endTimeError?: string;
+  }}>({});
+  
+  // Service availability data
+  interface TimeBlock {
+    id: string;
+    from: string;
+    to: string;
+  }
+  interface DayAvailability {
+    enabled: boolean;
+    blocks: TimeBlock[];
+  }
+  interface ServiceAvailability {
+    [day: string]: DayAvailability;
+  }
+  const [serviceAvailabilities, setServiceAvailabilities] = useState<{[serviceId: string]: ServiceAvailability}>({});
+  
+  // Fetch service availability for each cart item
+  useEffect(() => {
+    const fetchServiceAvailabilities = async () => {
+      if (!isLoggedIn || cartItems.length === 0) return;
+      
+      const newAvailabilities: {[serviceId: string]: ServiceAvailability} = {};
+      
+      for (const item of cartItems) {
+        const serviceId = item.serviceId || item.id;
+        if (serviceAvailabilities[serviceId]) continue; // Skip if already fetched
+        
+        try {
+          const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
+            credentials: "include",
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.service?.availability) {
+              newAvailabilities[serviceId] = data.service.availability;
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to fetch availability for service ${serviceId}:`, error);
+        }
+      }
+      
+      if (Object.keys(newAvailabilities).length > 0) {
+        setServiceAvailabilities(prev => ({ ...prev, ...newAvailabilities }));
+      }
+    };
+    
+    fetchServiceAvailabilities();
+  }, [isLoggedIn, cartItems]);
   
   // Fetch wallet balance
   useEffect(() => {
@@ -413,6 +506,50 @@ export default function CartPage() {
     
     fetchAddresses();
   }, [isLoggedIn]);
+
+  // Check service types to determine if address is needed
+  useEffect(() => {
+    const checkServiceTypes = async () => {
+      if (!cartItems || cartItems.length === 0) {
+        setHasInPersonService(true); // Default to showing address section
+        return;
+      }
+
+      let foundInPersonService = false;
+      
+      for (const item of cartItems) {
+        try {
+          const serviceId = (item as any).serviceId || item.id;
+          const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
+            credentials: "include",
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const serviceType = data?.service?.serviceType || "in-person";
+            if (serviceType === "in-person") {
+              foundInPersonService = true;
+              break; // Found an in-person service, no need to check more
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to check service type for ${item.id}:`, error);
+          // Assume in-person on error to be safe
+          foundInPersonService = true;
+          break;
+        }
+      }
+      
+      setHasInPersonService(foundInPersonService);
+      
+      // If all services are online, automatically skip address
+      if (!foundInPersonService) {
+        setSkipAddress(true);
+      }
+    };
+    
+    checkServiceTypes();
+  }, [cartItems]);
 
   // Fetch payment methods (Stripe cards)
   useEffect(() => {
@@ -756,6 +893,260 @@ export default function CartPage() {
     }
   };
 
+  // ===== Time Slot Helper Functions (from BookingModal) =====
+  
+  // Get day name from date (lowercase, e.g., "monday")
+  const getDayName = (date: Date): string => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[date.getDay()];
+  };
+
+  // Get time slot (Morning, Afternoon, Evening) for a time
+  const getTimeSlot = (time: string): string => {
+    const [hour] = time.split(':').map(Number);
+    if (hour < 12) return "Morning";
+    if (hour < 17) return "Afternoon";
+    return "Evening";
+  };
+  
+  // Get availability time range for a specific item and date
+  const getAvailabilityRange = (itemId: string, date: Date): { minTime: string; maxTime: string } | null => {
+    const item = cartItems.find(i => i.id === itemId);
+    if (!item) return null;
+    
+    const serviceId = item.serviceId || item.id;
+    const availability = serviceAvailabilities[serviceId];
+    
+    if (!availability) {
+      // Default availability if not loaded
+      return { minTime: "09:00", maxTime: "17:00" };
+    }
+    
+    const dayName = getDayName(date);
+    const dayAvailability = availability[dayName];
+    
+    if (!dayAvailability || !dayAvailability.enabled || dayAvailability.blocks.length === 0) {
+      return null;
+    }
+    
+    // Find the overall min and max times from all blocks
+    let minTime = "23:59";
+    let maxTime = "00:00";
+    
+    dayAvailability.blocks.forEach(block => {
+      if (block.from < minTime) minTime = block.from;
+      if (block.to > maxTime) maxTime = block.to;
+    });
+    
+    return { minTime, maxTime };
+  };
+  
+  // Generate time options for dropdown (every 30 minutes)
+  const generateTimeOptions = (minTime: string, maxTime: string, isEndTime: boolean = false): string[] => {
+    const options: string[] = [];
+    const [minHour, minMin] = minTime.split(':').map(Number);
+    const [maxHour, maxMin] = maxTime.split(':').map(Number);
+    
+    const minMinutes = minHour * 60 + minMin;
+    const maxMinutes = maxHour * 60 + maxMin;
+    
+    // For end time, start from 30 mins after min; for start time, include min
+    const startMinutes = isEndTime ? minMinutes + 30 : minMinutes;
+    
+    for (let minutes = startMinutes; minutes <= maxMinutes; minutes += 30) {
+      const hour = Math.floor(minutes / 60);
+      const min = minutes % 60;
+      options.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+    }
+    
+    return options;
+  };
+  
+  // Check if a date is available based on service availability
+  const isDateAvailable = (itemId: string, date: Date): boolean => {
+    const item = cartItems.find(i => i.id === itemId);
+    if (!item) return false;
+    
+    const serviceId = item.serviceId || item.id;
+    const availability = serviceAvailabilities[serviceId];
+    
+    // If no availability data, allow all dates (fallback)
+    if (!availability) return true;
+    
+    const dayName = getDayName(date);
+    const dayAvailability = availability[dayName];
+    
+    return dayAvailability?.enabled && dayAvailability?.blocks?.length > 0;
+  };
+
+  // Handle date selection - only set date, let user choose time separately
+  const handleDateSelect = (itemId: string, date: Date | undefined) => {
+    if (!date) {
+      setItemTimeSlots(prev => ({
+        ...prev,
+        [itemId]: {
+          ...prev[itemId],
+          date: undefined,
+          time: "",
+          endTime: "",
+          timeSlot: "",
+          showTimePicker: false
+        }
+      }));
+      return;
+    }
+    
+    // Only set the date, don't auto-fill time - user must select time manually
+    setItemTimeSlots(prev => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        date,
+        time: "", // Empty - user must select
+        endTime: "", // Empty - user must select
+        timeSlot: "",
+        showTimePicker: true
+      }
+    }));
+  };
+
+  // Handle start time change with validation
+  const handleStartTimeChange = (itemId: string, time: string) => {
+    const currentSlot = itemTimeSlots[itemId] || {};
+    const date = currentSlot.date;
+    
+    // Clear any previous error
+    setTimeValidationErrors(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], startTimeError: undefined }
+    }));
+    
+    // Validate against availability range
+    if (date) {
+      const range = getAvailabilityRange(itemId, date);
+      if (range) {
+        // Start time must be >= minTime
+        if (time < range.minTime) {
+          setTimeValidationErrors(prev => ({
+            ...prev,
+            [itemId]: { 
+              ...prev[itemId], 
+              startTimeError: `Start time must be at or after ${range.minTime}` 
+            }
+          }));
+          return; // Don't update if invalid
+        }
+        // Start time must be < maxTime (not equal, to leave room for end time)
+        if (time >= range.maxTime) {
+          setTimeValidationErrors(prev => ({
+            ...prev,
+            [itemId]: { 
+              ...prev[itemId], 
+              startTimeError: `Start time must be before ${range.maxTime}` 
+            }
+          }));
+          return; // Don't update if invalid
+        }
+      }
+    }
+    
+    setItemTimeSlots(prev => {
+      // If end time is set and is before or equal to new start time, clear it
+      let endTime = currentSlot.endTime || "";
+      if (endTime && endTime <= time) {
+        endTime = ""; // Clear end time so user must re-select
+        // Clear end time error as well
+        setTimeValidationErrors(prevErrors => ({
+          ...prevErrors,
+          [itemId]: { ...prevErrors[itemId], endTimeError: undefined }
+        }));
+      }
+      return {
+        ...prev,
+        [itemId]: {
+          ...currentSlot,
+          time,
+          endTime,
+          timeSlot: getTimeSlot(time)
+        }
+      };
+    });
+  };
+  
+  // Handle end time change with validation
+  const handleEndTimeChange = (itemId: string, endTime: string) => {
+    const currentSlot = itemTimeSlots[itemId] || {};
+    const date = currentSlot.date;
+    const startTime = currentSlot.time || "";
+    
+    // Clear any previous error
+    setTimeValidationErrors(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], endTimeError: undefined }
+    }));
+    
+    // Validate against availability range and start time
+    if (date) {
+      const range = getAvailabilityRange(itemId, date);
+      if (range) {
+        // End time must be <= maxTime
+        if (endTime > range.maxTime) {
+          setTimeValidationErrors(prev => ({
+            ...prev,
+            [itemId]: { 
+              ...prev[itemId], 
+              endTimeError: `End time must be at or before ${range.maxTime}` 
+            }
+          }));
+          return; // Don't update if invalid
+        }
+        // End time must be < minTime is not possible if start time is valid
+        if (endTime < range.minTime) {
+          setTimeValidationErrors(prev => ({
+            ...prev,
+            [itemId]: { 
+              ...prev[itemId], 
+              endTimeError: `End time must be at or after ${range.minTime}` 
+            }
+          }));
+          return; // Don't update if invalid
+        }
+        if (startTime && endTime <= startTime) {
+          // End time must be after start time
+          setTimeValidationErrors(prev => ({
+            ...prev,
+            [itemId]: { 
+              ...prev[itemId], 
+              endTimeError: `End time must be after start time (${startTime})` 
+            }
+          }));
+          return; // Don't update if invalid
+        }
+      }
+    }
+    
+    setItemTimeSlots(prev => ({
+      ...prev,
+      [itemId]: {
+        ...currentSlot,
+        endTime,
+      }
+    }));
+  };
+  
+  const handleBackToCalendar = (itemId: string) => {
+    setItemTimeSlots(prev => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        time: "",
+        endTime: "",
+        timeSlot: "",
+        showTimePicker: false
+      }
+    }));
+  };
+
   // Check which services need booking (have availability data)
   const checkServicesNeedingBooking = async () => {
     const servicesToCheck: Array<{ item: any; serviceId: string; availability: any; deliveryType?: "same-day" | "standard"; serviceType?: "in-person" | "online" }> = [];
@@ -829,73 +1220,13 @@ export default function CartPage() {
     return servicesToCheck;
   };
 
-  const handleBookingConfirm = async (date: Date, time: string, timeSlot: string) => {
-    
-    if (currentBookingItemIndex >= servicesNeedingBooking.length) {
-      return;
-    }
-    
-    const currentItem = servicesNeedingBooking[currentBookingItemIndex].item;
-    
-    // Generate item key to find the item in cart
-    const generateItemKey = (item: any) => {
-      const parts = [item.id];
-      if (item.packageType) {
-        parts.push(item.packageType);
-      }
-      if (item.addons && item.addons.length > 0) {
-        const addonsKey = item.addons
-          .sort((a: any, b: any) => a.id - b.id)
-          .map((a: any) => `${a.id}-${a.price}`)
-          .join(',');
-        parts.push(addonsKey);
-      }
-      return parts.join('|');
-    };
-    
-    const itemKey = generateItemKey(currentItem);
-    
-    const bookingData = {
-      date: date.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD format
-      time: time,
-      timeSlot: timeSlot,
-    };
-    
-    await updateCartItem(itemKey, {
-      booking: bookingData,
-    });
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    try {
-      const response = await fetch(resolveApiUrl("/api/cart"), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-      }
-    } catch (error) {
-      console.error('[Booking] Failed to refresh cart:', error);
-    }
-    
-    // Move to next item or proceed with order
-    if (currentBookingItemIndex < servicesNeedingBooking.length - 1) {
-      setCurrentBookingItemIndex(currentBookingItemIndex + 1);
-    } else {
-      // All bookings completed, proceed with order
-      setShowBookingModal(false);
-      setIsProcessingBooking(false);
-      
-      // Wait a bit more to ensure all updates are complete
-      await new Promise(resolve => setTimeout(resolve, 200));
-      proceedWithOrder();
-    }
-  };
+  // Removed handleBookingConfirm - booking is now handled directly in handlePlaceOrder
 
   const proceedWithOrder = async () => {
-    if (!skipAddress && !selectedAddress) {
-      console.error('[Order] No address selected');
-      toast.error("Please select a delivery address");
+    // Only require address for in-person services
+    if (hasInPersonService && !selectedAddress) {
+      console.error('[Order] No address selected for in-person service');
+      toast.error("Please select a service location");
       return;
     }
     if (!selectedPayment) {
@@ -904,298 +1235,196 @@ export default function CartPage() {
       return;
     }
 
-    // Get selected address details
-    const addressDetails = skipAddress 
-      ? undefined 
-      : addresses.find(addr => addr.id === selectedAddress);
+    // Get selected address details (only for in-person services)
+    const addressDetails = hasInPersonService 
+      ? addresses.find(addr => addr.id === selectedAddress)
+      : undefined;
 
-    
     const subtotal = cartTotal;
     const orderTotal = subtotal - discount + serviceFee;
     
-    let finalCartItems = cartItems;
-    try {
-      const cartResponse = await fetch(resolveApiUrl("/api/cart"), {
-        credentials: "include",
-      });
-      if (cartResponse.ok) {
-        const cartData = await cartResponse.json();
-        finalCartItems = cartData.items || cartItems;
-      } else {
-        console.warn('[Order] Failed to refresh cart, using existing cartItems');
+    console.log('🛒 [Order] Creating bulk orders for', cartItems.length, 'items');
+    
+    // Build order requests for each item with their individual time slots
+    const orderRequests = cartItems.map((item, index) => {
+      const timeSlot = itemTimeSlots[item.id];
+      const itemSubtotal = (item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity;
+      
+      // Format date for booking
+      let bookingInfo: { date: string; time: string; endTime?: string; timeSlot: string } | undefined = undefined;
+      if (timeSlot && timeSlot.date && timeSlot.time) {
+        const dateStr = timeSlot.date.toLocaleDateString('en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).split('/').reverse().join('-');
+        
+        bookingInfo = {
+          date: dateStr,
+          time: timeSlot.time,
+          endTime: timeSlot.endTime || '',
+          timeSlot: timeSlot.timeSlot || '',
+        };
       }
-    } catch (error) {
-      console.error('[Order] Error refreshing cart:', error);
-      console.warn('[Order] Using existing cartItems');
-    }
+      
+      // Apply total discount to the first item only
+      const itemDiscount = index === 0 ? discount : 0;
+      
+      return {
+        item: {
+          id: item.id,
+          serviceId: item.serviceId || item.id,
+          title: item.title,
+          seller: item.seller,
+          price: item.price,
+          image: item.image,
+          rating: item.rating,
+          quantity: item.quantity,
+          addons: item.addons || [],
+          packageType: item.packageType,
+        },
+        booking: bookingInfo,
+        subtotal: itemSubtotal,
+        discount: itemDiscount, // Apply total discount to first item
+      };
+    });
+    
+    console.log('📦 [Order] Order requests:', orderRequests);
     
     try {
-      // Handle different payment methods
-      if (selectedPayment === "account_balance") {
-        // Check if balance is sufficient
-        if (walletBalance < orderTotal) {
-          toast.error("Insufficient balance", {
-            description: `You need £${(orderTotal - walletBalance).toFixed(2)} more. Current balance: £${walletBalance.toFixed(2)}`
-          });
-          return;
+      // Determine payment method type
+      let paymentMethodType = selectedPayment;
+      let paymentMethodId = undefined;
+      
+      if (selectedPayment !== "account_balance" && selectedPayment !== "paypal" && selectedPayment !== "bank_transfer") {
+        const selectedMethod = paymentMethods.find(m => m.id === selectedPayment && m.type === "card");
+        if (selectedMethod) {
+          paymentMethodType = "card";
+          paymentMethodId = selectedMethod.id;
         }
-        const orderItems = finalCartItems.map((item: any) => ({
-          ...item,
-          // Ensure booking is included if it exists
-          booking: item.booking || undefined,
-        }));
-        
-        
-        const orderPayload = {
-          items: orderItems,
+      }
+      
+      // Check balance for account_balance payment
+      if (paymentMethodType === "account_balance" && walletBalance < orderTotal) {
+        toast.error("Insufficient balance", {
+          description: `You need £${(orderTotal - walletBalance).toFixed(2)} more. Current balance: £${walletBalance.toFixed(2)}`
+        });
+        return;
+      }
+      
+      // Create bulk orders
+      const response = await fetch(resolveApiUrl("/api/orders/bulk"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          orders: orderRequests,
+          paymentMethod: paymentMethodType,
+          paymentMethodId: paymentMethodId,
+          totalAmount: orderTotal,
           address: addressDetails,
           skipAddress: skipAddress,
-          paymentMethod: "account_balance",
-          total: orderTotal,
-          subtotal: subtotal,
-          discount: discount,
-          serviceFee: serviceFee,
-        };
-        // Create order with account balance payment
-        const response = await fetch(resolveApiUrl("/api/orders"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(orderPayload),
-        });
+        }),
+      });
 
-        if (!response.ok) {
-          const error = await response.json();
-          console.error('[Order] Order creation failed:', error);
-          throw new Error(error.error || "Failed to place order");
-        }
-
-        const result = await response.json();
-        if (result.order?.items) {
-          console.log('[Order] Saved order items with booking:', result.order.items.map((item: any) => ({
-            title: item.title,
-            booking: item.booking,
-            hasBooking: !!item.booking,
-          })));
-        }
-        
-        // Update local balance
-        setWalletBalance(result.newBalance || 0);
-        
-        // Refresh orders to show new order in account page
-        if (refreshOrders) {
-          await refreshOrders();
-        }
-        
-        // Clear cart
-        clearCart();
-        
-        // Navigate to thank you page with order ID immediately
-        navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`, { replace: true });
-        
-        toast.success("Order placed successfully!", {
-          description: `Order ${result.orderId} created. £${orderTotal.toFixed(2)} deducted from your account balance.`
-        });
-      } else if (selectedPayment === "card" || paymentMethods.find(m => m.id === selectedPayment)?.type === "card") {
-        // Get selected card payment method
-        const selectedMethod = paymentMethods.find(m => m.id === selectedPayment && m.type === "card");
-        if (!selectedMethod) {
-          toast.error("Please select a valid payment method");
-          return;
-        }
-
-        // Create order with card payment (will fund wallet first, then deduct)
-        const orderItemsCardFinal = finalCartItems.map((item: any) => ({
-          ...item,
-          booking: item.booking || undefined,
-        }));
-        
-        const response = await fetch(resolveApiUrl("/api/orders"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            items: orderItemsCardFinal,
-            address: addressDetails,
-            skipAddress: skipAddress,
-            paymentMethod: "card",
-            paymentMethodId: selectedMethod.id,
-            total: orderTotal,
-            subtotal: subtotal,
-            discount: discount,
-            serviceFee: serviceFee,
-            promoCode: appliedPromo ? {
-              code: appliedPromo.code,
-              type: appliedPromo.type,
-            } : undefined,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to place order");
-        }
-
-        const result = await response.json();
-        
-        // Update local balance if returned
-        if (result.newBalance !== undefined) {
-          setWalletBalance(result.newBalance);
-        }
-        
-        // Refresh orders to show new order in account page
-        if (refreshOrders) {
-          await refreshOrders();
-        }
-        
-        toast.success("Order placed successfully!", {
-          description: `Order ${result.orderId} created. Payment processed via card.`
-        });
-        
-        // Clear cart
-        clearCart();
-        
-        // Navigate to thank you page with order ID
-        setTimeout(() => {
-          navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
-        }, 1500);
-      } else if (selectedPayment === "paypal") {
-        const orderItemsPayPal = finalCartItems.map((item: any) => ({
-          ...item,
-          booking: item.booking || undefined,
-        }));
-        // Create order with PayPal payment (will fund wallet first, then deduct)
-        const response = await fetch(resolveApiUrl("/api/orders"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            items: orderItemsPayPal,
-            address: addressDetails,
-            skipAddress: skipAddress,
-            paymentMethod: "paypal",
-            total: orderTotal,
-            subtotal: subtotal,
-            discount: discount,
-            serviceFee: serviceFee,
-            promoCode: appliedPromo ? {
-              code: appliedPromo.code,
-              type: appliedPromo.type,
-            } : undefined,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to place order");
-        }
-
-        const result = await response.json();
-        
-        // If PayPal order needs approval, redirect to PayPal
-        if (result.paypalOrderId && result.approveUrl) {
-          window.location.href = result.approveUrl;
-          return;
-        }
-        
-        // Update local balance if returned
-        if (result.newBalance !== undefined) {
-          setWalletBalance(result.newBalance);
-        }
-        
-        // Refresh orders to show new order in account page
-        if (refreshOrders) {
-          await refreshOrders();
-        }
-        
-        toast.success("Order placed successfully!", {
-          description: `Order ${result.orderId} created. Payment processed via PayPal.`
-        });
-        
-        // Clear cart
-        clearCart();
-        
-        // Navigate to thank you page with order ID
-        setTimeout(() => {
-          navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
-        }, 1500);
-      } else if (selectedPayment === "bank_transfer") {
-        const orderItemsBank = finalCartItems.map((item: any) => ({
-          ...item,
-          booking: item.booking || undefined,
-        }));
-        // Create order with bank transfer payment (will create pending transaction)
-        const response = await fetch(resolveApiUrl("/api/orders"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            items: orderItemsBank,
-            address: addressDetails,
-            skipAddress: skipAddress,
-            paymentMethod: "bank_transfer",
-            total: orderTotal,
-            subtotal: subtotal,
-            discount: discount,
-            serviceFee: serviceFee,
-            promoCode: appliedPromo ? {
-              code: appliedPromo.code,
-              type: appliedPromo.type,
-            } : undefined,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to place order");
-        }
-
-        const result = await response.json();
-        
-        // Refresh orders to show new order in account page
-        if (refreshOrders) {
-          await refreshOrders();
-        }
-        
-        toast.success("Order placed successfully!", {
-          description: `Order ${result.orderId} created. Please complete bank transfer to finalize payment.`
-        });
-        
-        // Clear cart
-        clearCart();
-        
-        // Navigate to thank you page with order ID
-        setTimeout(() => {
-          navigate(`/thank-you?orderId=${result.orderId || result.orderNumber || ''}`);
-        }, 1500);
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('[Order] Bulk order creation failed:', error);
+        throw new Error(error.error || "Failed to place orders");
       }
+
+      const result = await response.json();
+      console.log('✅ [Order] Bulk orders created:', result);
+      
+      // If PayPal order needs approval, redirect to PayPal
+      if (result.paypalOrderId && result.approveUrl) {
+        window.location.href = result.approveUrl;
+        return;
+      }
+      
+      // Update local balance if returned
+      if (result.newBalance !== undefined) {
+        setWalletBalance(result.newBalance);
+      }
+      
+      // Refresh orders to show new orders in account page
+      if (refreshOrders) {
+        await refreshOrders();
+      }
+      
+      // Clear cart
+      clearCart();
+      
+      // Navigate to thank you page with all order IDs
+      const orderIds = result.orderIds?.join(',') || '';
+      navigate(`/thank-you?orderIds=${orderIds}`, { replace: true });
+      
+      toast.success(`${result.orders?.length || 1} order(s) placed successfully!`, {
+        description: `£${orderTotal.toFixed(2)} total. Check your account for order details.`
+      });
     } catch (error: any) {
+      console.error('[Order] Error:', error);
       toast.error(error.message || "Failed to place order. Please try again.");
     }
   };
 
   const handlePlaceOrder = async () => {
-    // Check if any services need booking
-    const servicesToBook = await checkServicesNeedingBooking();
+    console.log('🛒 [CartPage] Place Order button clicked');
     
-    if (servicesToBook.length > 0) {
-      // Show booking modal for first service
-      setServicesNeedingBooking(servicesToBook);
-      setCurrentBookingItemIndex(0);
-      setIsProcessingBooking(true);
-      setShowBookingModal(true);
-    } else {
-      // No services need booking, proceed directly
-      proceedWithOrder();
+    // Check each item has a time slot selected (date, start time, and end time)
+    const missingTimeSlots = cartItems.filter(item => {
+      const timeSlot = itemTimeSlots[item.id];
+      return !timeSlot || !timeSlot.date || !timeSlot.time || !timeSlot.endTime;
+    });
+    
+    if (missingTimeSlots.length > 0) {
+      toast.error(`Please select date and time range for all items (${missingTimeSlots.length} item${missingTimeSlots.length > 1 ? 's' : ''} missing)`);
+      setShowTimeSection(true);
+      return;
     }
+    
+    // Validate time slots are within availability ranges
+    const invalidTimeSlots: string[] = [];
+    cartItems.forEach(item => {
+      const timeSlot = itemTimeSlots[item.id];
+      if (timeSlot?.date && timeSlot?.time && timeSlot?.endTime) {
+        const range = getAvailabilityRange(item.id, timeSlot.date);
+        if (range) {
+          // Start time must be >= minTime and < maxTime
+          if (timeSlot.time < range.minTime) {
+            invalidTimeSlots.push(`${item.title}: Start time is before minimum time (${range.minTime})`);
+          }
+          if (timeSlot.time >= range.maxTime) {
+            invalidTimeSlots.push(`${item.title}: Start time is at or after maximum time (${range.maxTime})`);
+          }
+          // End time must be > startTime and <= maxTime
+          if (timeSlot.endTime <= timeSlot.time) {
+            invalidTimeSlots.push(`${item.title}: End time must be after start time`);
+          }
+          if (timeSlot.endTime > range.maxTime) {
+            invalidTimeSlots.push(`${item.title}: End time exceeds maximum time (${range.maxTime})`);
+          }
+          if (timeSlot.endTime < range.minTime) {
+            invalidTimeSlots.push(`${item.title}: End time is before minimum time (${range.minTime})`);
+          }
+        }
+      }
+    });
+    
+    if (invalidTimeSlots.length > 0) {
+      toast.error("Invalid time slots detected", {
+        description: invalidTimeSlots.join('; ')
+      });
+      setShowTimeSection(true);
+      return;
+    }
+    
+    console.log('✅ [CartPage] All items have time slots selected');
+    
+    // Proceed with creating multiple orders
+    proceedWithOrder();
   };
 
     const subtotal = cartTotal;
@@ -1295,7 +1524,8 @@ export default function CartPage() {
               {/* Left Column - Checkout Steps */}
               <div className="lg:col-span-2 space-y-4 md:space-y-5 order-2 lg:order-1">
               
-              {/* Step 1: Delivery Address - Minimalist Modern */}
+              {/* Step 1: Delivery Address - Minimalist Modern (Only show for in-person services) */}
+              {hasInPersonService && (
               <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {/* Header with Toggle - Mobile Responsive */}
                 <button
@@ -1308,7 +1538,7 @@ export default function CartPage() {
                         <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">1</span>
                       </div>
                       <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
-                        Delivery Address
+                        Service Location
                       </h2>
                     </div>
                     {/* Toggle Icon */}
@@ -1325,29 +1555,87 @@ export default function CartPage() {
                 {/* Collapsible Content */}
                 <div className={`${showAddressSection ? 'block' : 'hidden'}`}>
                   <div className="p-4 md:p-6">
-                    {/* Skip Address Option - Minimalist */}
-                    <div className="mb-4 md:mb-5 p-3 md:p-4 bg-blue-50/50 border border-blue-100 rounded-lg md:rounded-xl">
-                      <label className="flex items-start gap-2 md:gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={skipAddress}
-                          onChange={(e) => setSkipAddress(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 text-[#3B82F6] rounded accent-[#3B82F6]"
-                        />
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
-                            Skip for now
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
-                            Discuss location with professional after booking
-                          </p>
-                        </div>
-                      </label>
-                    </div>
+                    {/* Add New Address Button */}
+                    <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-5">
+                      <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            className="flex-1 border-2 border-dashed border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 h-auto"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add New Address
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="w-full">
+                          <DialogHeader>
+                            <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                              Add New Address
+                            </DialogTitle>
+                            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              Enter your delivery address details
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 mt-4">
+                              <div>
+                                <AddressAutocomplete
+                                  postcode={newAddress.postcode || ""}
+                                  onPostcodeChange={(value) => setNewAddress({...newAddress, postcode: value})}
+                                  address={newAddress.address || ""}
+                                  onAddressChange={(value) => setNewAddress({...newAddress, address: value})}
+                                  townCity={newAddress.city || ""}
+                                  onTownCityChange={(value) => setNewAddress({...newAddress, city: value})}
+                                  county={newAddress.county || ""}
+                                  onCountyChange={(value) => setNewAddress({...newAddress, county: value})}
+                                  onAddressSelect={(address) => {
+                                    setNewAddress({
+                                      ...newAddress,
+                                      postcode: address.postcode || "",
+                                      address: address.address || "",
+                                      city: address.townCity || "",
+                                      county: address.county || "",
+                                    });
+                                  }}
+                                  label="Postcode"
+                                  required
+                                  showAddressField={true}
+                                  showTownCityField={true}
+                                  showCountyField={true}
+                                  addressLabel="Address"
+                                  className="font-['Poppins',sans-serif]"
+                                />
+                              </div>
+                              <div>
+                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Phone Number *</Label>
+                                <Input
+                                  value={newAddress.phone}
+                                  onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})}
+                                  className="mt-1 font-['Poppins',sans-serif]"
+                                  placeholder="07123 456789"
+                                />
+                              </div>
+                              <div className="flex gap-3 pt-4">
+                                <Button
+                                  onClick={handleAddAddress}
+                                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                                >
+                                  Save Address
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setShowAddressDialog(false)}
+                                  className="flex-1 font-['Poppins',sans-serif]"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
 
-                    {!skipAddress && (
-                      <>
-                        {loadingAddresses ? (
+                    {/* Address List */}
+                    {loadingAddresses ? (
                           <div className="flex items-center justify-center py-8">
                             <div className="text-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-2"></div>
@@ -1357,7 +1645,7 @@ export default function CartPage() {
                         ) : addresses.length === 0 ? (
                           <div className="text-center py-6">
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                              No addresses saved. Please add an address below.
+                              No addresses saved. Please add an address using the button above.
                             </p>
                           </div>
                         ) : (
@@ -1423,90 +1711,12 @@ export default function CartPage() {
                           ))}
                           </RadioGroup>
                         )}
-
-                        {/* Add New Address Button */}
-                        <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
-                          <DialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              className="w-full border-2 border-dashed border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6"
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add New Address
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="w-full">
-                            <DialogHeader>
-                              <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                                Add New Address
-                              </DialogTitle>
-                              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                                Enter your delivery address details
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 mt-4">
-                              <div>
-                                <AddressAutocomplete
-                                  postcode={newAddress.postcode || ""}
-                                  onPostcodeChange={(value) => setNewAddress({...newAddress, postcode: value})}
-                                  address={newAddress.address || ""}
-                                  onAddressChange={(value) => setNewAddress({...newAddress, address: value})}
-                                  townCity={newAddress.city || ""}
-                                  onTownCityChange={(value) => setNewAddress({...newAddress, city: value})}
-                                  county={newAddress.county || ""}
-                                  onCountyChange={(value) => setNewAddress({...newAddress, county: value})}
-                                  onAddressSelect={(address) => {
-                                    setNewAddress({
-                                      ...newAddress,
-                                      postcode: address.postcode || "",
-                                      address: address.address || "",
-                                      city: address.townCity || "",
-                                      county: address.county || "",
-                                    });
-                                  }}
-                                  label="Postcode"
-                                  required
-                                  showAddressField={true}
-                                  showTownCityField={true}
-                                  showCountyField={true}
-                                  addressLabel="Address"
-                                  className="font-['Poppins',sans-serif]"
-                                />
-                              </div>
-                              <div>
-                                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">Phone Number *</Label>
-                                <Input
-                                  value={newAddress.phone}
-                                  onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})}
-                                  className="mt-1 font-['Poppins',sans-serif]"
-                                  placeholder="07123 456789"
-                                />
-                              </div>
-                              <div className="flex gap-3 pt-4">
-                                <Button
-                                  onClick={handleAddAddress}
-                                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-                                >
-                                  Save Address
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setShowAddressDialog(false)}
-                                  className="flex-1 font-['Poppins',sans-serif]"
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Step 2: Payment Method */}
+              {/* Step: Payment Method */}
               <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {/* Header with Toggle */}
                 <button
@@ -1516,7 +1726,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-between gap-2 md:gap-3">
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className="w-6 h-6 md:w-7 md:h-7 bg-[#3B82F6] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">2</span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">{hasInPersonService ? '2' : '1'}</span>
                       </div>
                       <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
                         Payment Method
@@ -1571,7 +1781,6 @@ export default function CartPage() {
                                   {method.type === "card" && (
                                     <>
                                       <div className="flex items-center gap-2 md:gap-3">
-                                        {/* Display card brand logo - Mobile Smaller */}
                                         <div className="shrink-0 scale-90 md:scale-100">
                                           {getCardType(method.brand, method.cardNumber) === 'visa' ? (
                                             <VisaLogo />
@@ -1592,7 +1801,6 @@ export default function CartPage() {
                                               <Badge className="bg-[#10B981] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
                                             )}
                                           </div>
-                                          {/* Mobile: Hide card holder, show only expiry */}
                                           <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
                                             <span className="hidden md:inline">{method.cardHolder} • </span>Exp. {method.expiryDate}
                                           </p>
@@ -1665,12 +1873,297 @@ export default function CartPage() {
                 </div>
               </div>
 
+              {/* Step: Choose Time Slot for Each Service */}
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Header with Toggle */}
+                <button
+                  onClick={() => setShowTimeSection(!showTimeSection)}
+                  className="w-full px-4 md:px-6 py-3 md:py-4 border-b border-gray-100"
+                >
+                  <div className="flex items-center justify-between gap-2 md:gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-6 h-6 md:w-7 md:h-7 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">{hasInPersonService ? '3' : '2'}</span>
+                      </div>
+                      <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
+                        Choose Time Slots
+                      </h2>
+                      {/* Show completion status */}
+                      <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                        ({Object.values(itemTimeSlots).filter(slot => slot.date && slot.time).length}/{cartItems.length} selected)
+                      </span>
+                    </div>
+                    {/* Toggle Icon */}
+                    <div>
+                      {showTimeSection ? (
+                        <ChevronUp className="w-5 h-5 text-[#6b6b6b]" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Collapsible Content */}
+                <div className={`${showTimeSection ? 'block' : 'hidden'}`}>
+                  <div className="p-4 md:p-6">
+                    {/* Info message */}
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-blue-700">
+                        📅 Each service will be created as a separate order. Please select date and time for each.
+                      </p>
+                    </div>
+                    
+                    {/* Time Slot Picker for Each Item */}
+                    <div className="space-y-4">
+                      {cartItems.map((item) => {
+                        const currentSlot = itemTimeSlots[item.id] || {};
+                        const showPicker = currentSlot.showTimePicker;
+                        
+                        return (
+                          <div key={item.id} className="border-2 border-gray-200 rounded-2xl p-4 bg-gradient-to-br from-white to-gray-50">
+                            {/* Item Header */}
+                            <div className="mb-3 pb-3 border-b border-gray-200">
+                              <div className="flex gap-3 items-center">
+                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                  {item.image ? (
+                                    <img src={resolveMediaUrl(item.image)} alt={item.title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                      <ShoppingBag className="w-5 h-5 text-gray-400" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold truncate">
+                                    {item.title}
+                                  </h4>
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                    £{item.price.toFixed(2)} × {item.quantity}
+                                  </p>
+                                </div>
+                                {currentSlot.date && currentSlot.time && (
+                                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Selected Time Display or Picker */}
+                            {currentSlot.date && currentSlot.time && currentSlot.endTime ? (
+                              // Show selected time range with edit button
+                              <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                                    <p className="font-['Poppins',sans-serif] text-[13px] text-green-700 font-medium">
+                                      {currentSlot.date.toLocaleDateString('en-GB', { 
+                                        weekday: 'short', 
+                                        month: 'short', 
+                                        day: 'numeric' 
+                                      })} • {currentSlot.time} - {currentSlot.endTime}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => setItemTimeSlots(prev => ({
+                                      ...prev,
+                                      [item.id]: { ...prev[item.id], date: undefined, time: undefined, endTime: undefined, showTimePicker: false }
+                                    }))}
+                                    className="text-green-600 hover:text-green-700 font-['Poppins',sans-serif] text-[12px] font-medium"
+                                  >
+                                    Change
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              // Show Calendar and Time Range Picker side by side
+                              <div className="flex flex-col lg:flex-row gap-4">
+                                {/* Calendar Section */}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-6 h-6 bg-[#FE8A0F] rounded-full flex items-center justify-center">
+                                      <Calendar className="w-3 h-3 text-white" />
+                                    </div>
+                                    <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                                      Select Date
+                                    </h4>
+                                  </div>
+                                  <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm flex justify-center">
+                                    <CalendarComponent
+                                      mode="single"
+                                      selected={currentSlot.date}
+                                      onSelect={(date) => handleDateSelect(item.id, date)}
+                                      disabled={(date) => {
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        if (date < today) return true;
+                                        // Check if date is available based on service availability
+                                        return !isDateAvailable(item.id, date);
+                                      }}
+                                      className="font-['Poppins',sans-serif]"
+                                      modifiers={{
+                                        available: (date) => {
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          if (date < today) return false;
+                                          return isDateAvailable(item.id, date);
+                                        }
+                                      }}
+                                      modifiersClassNames={{
+                                        available: "bg-green-50 text-green-700 hover:bg-green-100"
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Time Range Picker Section - Always visible */}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-6 h-6 bg-[#3B82F6] rounded-full flex items-center justify-center">
+                                      <Clock className="w-3 h-3 text-white" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                                        Select Time
+                                      </h4>
+                                      {currentSlot.date && (
+                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                                          {currentSlot.date.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                    {!currentSlot.date ? (
+                                      // Placeholder when no date selected
+                                      <div className="text-center py-6">
+                                        <Clock className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                          Please select a date first
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      // Time Range Input Fields
+                                      <div className="space-y-4">
+                                        {/* Time Input Row - Matching the image design */}
+                                        <div className="flex items-center gap-3">
+                                          {/* Clock Icon */}
+                                          <Clock className="w-5 h-5 text-[#FE8A0F] shrink-0" />
+                                          
+                                          {/* Start Time Input */}
+                                          <div className="relative flex-1">
+                                            <input
+                                              type="time"
+                                              value={currentSlot.time || ""}
+                                              onChange={(e) => handleStartTimeChange(item.id, e.target.value)}
+                                              min={(() => {
+                                                const range = getAvailabilityRange(item.id, currentSlot.date);
+                                                return range?.minTime || "00:00";
+                                              })()}
+                                              max={(() => {
+                                                const range = getAvailabilityRange(item.id, currentSlot.date);
+                                                if (!range) return "23:59";
+                                                // Start time max should be before the end time to allow selection
+                                                // Subtract 30 minutes from maxTime
+                                                const [hours, minutes] = range.maxTime.split(':').map(Number);
+                                                const totalMinutes = hours * 60 + minutes - 30;
+                                                const maxHours = Math.floor(totalMinutes / 60);
+                                                const maxMinutes = totalMinutes % 60;
+                                                return `${String(maxHours).padStart(2, '0')}:${String(maxMinutes).padStart(2, '0')}`;
+                                              })()}
+                                              className={`w-full pl-3 pr-10 py-2.5 border rounded-full font-['Poppins',sans-serif] text-[14px] text-[#2c353f] focus:outline-none focus:ring-1 bg-white ${
+                                                timeValidationErrors[item.id]?.startTimeError 
+                                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                                  : 'border-gray-300 focus:border-[#FE8A0F] focus:ring-[#FE8A0F]'
+                                              }`}
+                                              style={{ colorScheme: 'light' }}
+                                            />
+                                            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                          </div>
+                                          
+                                          {/* To Label */}
+                                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">to</span>
+                                          
+                                          {/* End Time Input */}
+                                          <div className="relative flex-1">
+                                            <input
+                                              type="time"
+                                              value={currentSlot.endTime || ""}
+                                              onChange={(e) => handleEndTimeChange(item.id, e.target.value)}
+                                              disabled={!currentSlot.time}
+                                              min={currentSlot.time || (() => {
+                                                const range = getAvailabilityRange(item.id, currentSlot.date);
+                                                return range?.minTime || "00:00";
+                                              })()}
+                                              max={(() => {
+                                                const range = getAvailabilityRange(item.id, currentSlot.date);
+                                                return range?.maxTime || "23:59";
+                                              })()}
+                                              className={`w-full pl-3 pr-10 py-2.5 border rounded-full font-['Poppins',sans-serif] text-[14px] text-[#2c353f] focus:outline-none focus:ring-1 ${
+                                                !currentSlot.time 
+                                                  ? 'bg-gray-50 cursor-not-allowed border-gray-200' 
+                                                  : timeValidationErrors[item.id]?.endTimeError 
+                                                    ? 'bg-white border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                                    : 'bg-white border-gray-300 focus:border-[#FE8A0F] focus:ring-[#FE8A0F]'
+                                              }`}
+                                              style={{ colorScheme: 'light' }}
+                                            />
+                                            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Validation Error Messages */}
+                                        {(timeValidationErrors[item.id]?.startTimeError || timeValidationErrors[item.id]?.endTimeError) && (
+                                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                            {timeValidationErrors[item.id]?.startTimeError && (
+                                              <p className="font-['Poppins',sans-serif] text-[12px] text-red-700 flex items-center gap-1.5">
+                                                <AlertTriangle className="w-3.5 h-3.5" />
+                                                {timeValidationErrors[item.id].startTimeError}
+                                              </p>
+                                            )}
+                                            {timeValidationErrors[item.id]?.endTimeError && (
+                                              <p className="font-['Poppins',sans-serif] text-[12px] text-red-700 flex items-center gap-1.5 mt-1">
+                                                <AlertTriangle className="w-3.5 h-3.5" />
+                                                {timeValidationErrors[item.id].endTimeError}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                        
+                                        {/* Availability Info */}
+                                        {(() => {
+                                          const range = getAvailabilityRange(item.id, currentSlot.date);
+                                          if (range) {
+                                            return (
+                                              <div className="bg-blue-50 rounded-lg p-3">
+                                                <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700">
+                                                  <span className="font-medium">Available hours:</span> {range.minTime} - {range.maxTime}
+                                                </p>
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1 order-1 lg:order-2">
               <div className="space-y-4 md:space-y-5">
-                {/* Step 3: Review Items - Moved to top of Order Summary */}
+                {/* Order Summary Section */}
                 <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   {/* Header with Toggle */}
                   <button
@@ -1679,13 +2172,10 @@ export default function CartPage() {
                   >
                     <div className="flex items-center justify-between gap-2 md:gap-3">
                       <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-6 h-6 md:w-7 md:h-7 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
-                          <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">3</span>
-                        </div>
-                        <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium">
-                          Review Items
+                        <h2 className="font-['Poppins',sans-serif] text-[18px] md:text-[20px] text-[#2c353f] font-semibold">
+                          Order Summary
                         </h2>
-                        <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px] ml-auto">{cartItems.length}</Badge>
+                        <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px]">{cartItems.length} items</Badge>
                       </div>
                       {/* Toggle Icon */}
                       <div>
@@ -1718,7 +2208,7 @@ export default function CartPage() {
                                 />
                               ) : item.image ? (
                                 <img
-                                  src={item.image}
+                                  src={resolveMediaUrl(item.image)}
                                   alt={item.title}
                                   className="w-full h-full object-cover"
                                 />
@@ -1764,7 +2254,7 @@ export default function CartPage() {
                                       month: 'short', 
                                       day: 'numeric',
                                       year: 'numeric'
-                                    })} • {item.booking.time}
+                                    })} • {item.booking.time}{item.booking.endTime ? ` - ${item.booking.endTime}` : ''}
                                   </p>
                                 </div>
                               )}
@@ -1809,12 +2299,8 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                {/* Order Summary */}
+                {/* Price Details */}
                 <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6 sticky top-32">
-                  <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
-                    Order Summary
-                  </h2>
-
                 {/* Promo Code */}
                 <div className="mb-6">
                   <label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 flex items-center gap-2">
@@ -1868,51 +2354,126 @@ export default function CartPage() {
 
                 <Separator className="my-6" />
 
-                {/* Price Breakdown */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      Subtotal ({cartItems.length} {cartItems.length === 1 ? 'item' : 'items'})
-                    </span>
-                    <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                      £{subtotal.toFixed(2)}
-                    </span>
+                {/* Modern Invoice-Style Breakdown */}
+                <div className="mb-6">
+                  <div className="bg-gradient-to-br from-[#FFF5EB] to-[#FFE8CC] rounded-xl p-4 mb-4">
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-[#FE8A0F]" />
+                      Order Invoice
+                    </h3>
                   </div>
+                  
+                  {/* Single Invoice Card */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="space-y-3">
+                      {/* Item-by-item breakdown */}
+                      {cartItems.map((item, index) => (
+                        <div key={item.id + index} className={index > 0 ? 'pt-3 border-t border-gray-300' : ''}>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold mb-2">
+                            {item.title}
+                          </p>
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center">
+                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                {(() => {
+                                  if (!item.priceUnit || item.priceUnit === 'fixed') {
+                                    return 'Price per unit';
+                                  }
+                                  // Check if priceUnit already starts with "per"
+                                  const unit = item.priceUnit.toLowerCase().startsWith('per ') 
+                                    ? item.priceUnit 
+                                    : `per ${item.priceUnit}`;
+                                  return `Price ${unit}`;
+                                })()}
+                              </span>
+                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                                £{item.price.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                Quantity
+                              </span>
+                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                                {item.quantity}
+                              </span>
+                            </div>
+                            {item.addons && item.addons.length > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                  Addons
+                                </span>
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                                  £{item.addons.reduce((sum, addon) => sum + addon.price, 0).toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                            {(item.booking || (itemTimeSlots[item.id]?.date && itemTimeSlots[item.id]?.time)) && (
+                              <div className="flex justify-between items-center bg-blue-50 -mx-2 px-2 py-1.5 rounded">
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#3B82F6] font-medium">
+                                  Delivered by
+                                </span>
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#3B82F6] font-semibold">
+                                  {item.booking ? (
+                                    <>
+                                      {new Date(item.booking.date).toLocaleDateString('en-GB', { 
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric'
+                                      })} • {item.booking.time}{item.booking.endTime ? ` - ${item.booking.endTime}` : ''}
+                                    </>
+                                  ) : itemTimeSlots[item.id]?.date ? (
+                                    <>
+                                      {itemTimeSlots[item.id].date!.toLocaleDateString('en-GB', { 
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric'
+                                      })} • {itemTimeSlots[item.id]?.time}{itemTimeSlots[item.id]?.endTime ? ` - ${itemTimeSlots[item.id]?.endTime}` : ''}
+                                    </>
+                                  ) : null}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
 
-                  {discount > 0 && appliedPromo && (
-                    <div className="flex justify-between items-center text-green-600">
-                      <span className="font-['Poppins',sans-serif] text-[14px]">
-                        Discount ({appliedPromo.code})
-                      </span>
-                      <span className="font-['Poppins',sans-serif] text-[16px]">
-                        -£{discount.toFixed(2)}
-                      </span>
+                      {/* Discount if applied */}
+                      {discount > 0 && appliedPromo && (
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-green-600 flex items-center gap-1 font-medium">
+                            <Tag className="w-3.5 h-3.5" />
+                            Discount ({appliedPromo.code})
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[15px] text-green-600 font-semibold">
+                            -£{discount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Service Fee */}
+                      {serviceFee > 0 && (
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] font-medium">
+                            Service Fee
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold">
+                            £{serviceFee.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Total */}
+                      <div className="flex justify-between items-center pt-3 border-t-2 border-gray-400">
+                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-bold">
+                          Total
+                        </span>
+                        <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-bold">
+                          £{total.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  {serviceFee > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Service Fee
-                      </span>
-                      <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                        £{serviceFee.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                </div>
-
-                <Separator className="my-6" />
-
-                {/* Total */}
-                <div className="flex justify-between items-center mb-6">
-                  <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                    Total
-                  </span>
-                  <span className="font-['Poppins',sans-serif] text-[28px] text-[#FE8A0F]">
-                    £{total.toFixed(2)}
-                  </span>
+                  </div>
                 </div>
 
                 {/* Place Order Button */}
@@ -1953,24 +2514,6 @@ export default function CartPage() {
         </div>
       </div>
       <Footer />
-      
-      {/* Booking Modal for services requiring date/time selection */}
-      {showBookingModal && servicesNeedingBooking.length > 0 && currentBookingItemIndex < servicesNeedingBooking.length && (
-        <BookingModal
-          isOpen={showBookingModal}
-          onClose={() => {
-            setShowBookingModal(false);
-            setIsProcessingBooking(false);
-            setServicesNeedingBooking([]);
-            setCurrentBookingItemIndex(0);
-          }}
-          onConfirm={handleBookingConfirm}
-          sellerName={servicesNeedingBooking[currentBookingItemIndex].item.seller}
-          serviceTitle={servicesNeedingBooking[currentBookingItemIndex].item.title}
-          availability={servicesNeedingBooking[currentBookingItemIndex].availability}
-          deliveryType={servicesNeedingBooking[currentBookingItemIndex].deliveryType || "standard"}
-        />
-      )}
     </div>
     </>
   );

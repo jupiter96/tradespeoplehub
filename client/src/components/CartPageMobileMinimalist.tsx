@@ -14,6 +14,19 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
+import { resolveApiUrl } from "../config/api";
+
+// Helper function to resolve media URLs (images/videos)
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return resolveApiUrl(url);
+  }
+  return url;
+};
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -87,13 +100,18 @@ function VideoThumbnail({
     }
   };
 
+  // Resolve URLs for video and thumbnail
+  const resolvedVideoUrl = videoUrl.startsWith("http") || videoUrl.startsWith("blob:") ? videoUrl : resolveApiUrl(videoUrl);
+  const resolvedPoster = thumbnail ? (thumbnail.startsWith("http") || thumbnail.startsWith("blob:") ? thumbnail : resolveApiUrl(thumbnail)) : 
+                         fallbackImage ? (fallbackImage.startsWith("http") || fallbackImage.startsWith("blob:") ? fallbackImage : resolveApiUrl(fallbackImage)) : undefined;
+
   return (
     <div className={`relative ${className}`} style={style}>
       {/* Video element - always shown, plays on button click */}
       <video
         ref={videoRef}
-        src={videoUrl}
-        poster={thumbnail || fallbackImage || undefined}
+        src={resolvedVideoUrl}
+        poster={resolvedPoster}
         className="w-full h-full object-cover object-center"
         style={{ minWidth: '100%', minHeight: '100%' }}
         muted
@@ -253,7 +271,7 @@ export default function CartPageMobileMinimalist({
                   />
                 ) : (
                   <img
-                    src={item.image}
+                    src={resolveMediaUrl(item.image)}
                     alt={item.title}
                     className="w-full h-full object-cover"
                   />

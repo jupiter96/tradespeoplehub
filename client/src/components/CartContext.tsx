@@ -10,7 +10,8 @@ export interface CartItemAddon {
 
 export interface BookingInfo {
   date: string; // ISO date string
-  time: string; // "09:00", "14:30", etc.
+  time: string; // "09:00", "14:30", etc. (start time)
+  endTime?: string; // "17:00", etc. (end time)
   timeSlot?: string; // "Morning", "Afternoon", "Evening"
 }
 
@@ -27,6 +28,7 @@ export interface CartItem {
   booking?: BookingInfo;
   packageType?: string; // "basic", "standard", "premium"
   thumbnailVideo?: { url: string; thumbnail?: string }; // Video thumbnail for cart display
+  priceUnit?: string; // "hour", "cm", "sqm", "fixed", etc.
 }
 
 interface CartContextType {
@@ -75,19 +77,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       try {
         setLoading(true);
+        console.log('🔄 [CartContext] Fetching cart from API...');
         const response = await fetch(resolveApiUrl("/api/cart"), {
           credentials: "include",
         });
 
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ [CartContext] Cart fetched successfully:', {
+            itemCount: data.items?.length || 0,
+            items: data.items?.map((item: CartItem) => ({
+              title: item.title,
+              priceUnit: item.priceUnit,
+            }))
+          });
           setCartItems(data.items || []);
         } else {
           // If cart doesn't exist yet, it will be created on first add
+          console.log('⚠️ [CartContext] Cart not found, will create on first add');
           setCartItems([]);
         }
       } catch (error) {
-        console.error("Failed to fetch cart:", error);
+        console.error("❌ [CartContext] Failed to fetch cart:", error);
         // Keep existing cart items on error
       } finally {
         setLoading(false);
@@ -109,6 +120,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ...item,
       serviceId: (item as any).serviceId || item.id, // Use serviceId if provided, otherwise use id
     };
+    
+    console.log('➕ [CartContext] Adding item to cart:', {
+      title: cartItem.title,
+      serviceId: cartItem.serviceId,
+      priceUnit: cartItem.priceUnit,
+      quantity
+    });
+    
     const itemKey = generateItemKey(cartItem);
     // Optimistic update
     setCartItems((prev) => {
@@ -148,6 +167,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ [CartContext] Item added to cart, API response:', {
+            itemCount: data.items?.length || 0,
+            items: data.items?.map((item: CartItem) => ({
+              title: item.title,
+              priceUnit: item.priceUnit,
+            }))
+          });
           setCartItems(data.items || []);
         } else {
           // Revert optimistic update on error

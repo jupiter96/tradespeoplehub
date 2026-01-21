@@ -348,3 +348,24 @@ input[type="checkbox"]:checked {
   background-color: #FE8A0F;
   border-color: #FE8A0F;
 }
+
+/* Ensure Dialog modals appear on top of everything */
+[data-slot="dialog-overlay"],
+[data-slot="dialog-content"] {
+  z-index: 99999 !important;
+}
+
+[data-slot="dialog-overlay"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99998 !important;
+}
+
+[data-slot="dialog-content"] {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}

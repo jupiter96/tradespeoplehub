@@ -4,7 +4,7 @@ export default function CategorySection() {
   const taglines = [
     { id: 1, name: "Transparent Price", icon: CheckCircle2 },
     { id: 2, name: "Satisfaction Guarantee", icon: Shield },
-    { id: 3, name: "Same Day Delivery", icon: Clock },
+    { id: 3, name: "Delivers in 2 days", icon: Clock },
     { id: 4, name: "Milestone Payment", icon: CreditCard },
     { id: 5, name: "Verified Professionals", icon: Award },
   ];

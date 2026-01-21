@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import DeliveryCountdown from "./DeliveryCountdown";
+import { useCountdown } from "../hooks/useCountdown";
+import { useElapsedTime } from "../hooks/useElapsedTime";
+import { resolveApiUrl } from "../config/api";
 import {
   ShoppingBag,
   Package,
@@ -12,8 +15,6 @@ import {
   AlertTriangle,
   Calendar,
   MapPin,
-  Phone,
-  Mail,
   Eye,
   MessageCircle,
   Star,
@@ -84,7 +85,7 @@ import { toast } from "sonner@2.0.3";
 export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo } = useOrders();
+  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
   const { startConversation } = useMessenger();
   const { userInfo } = useAccount();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -98,6 +99,11 @@ export default function ClientOrdersSection() {
   const [rating, setRating] = useState(0);
   const [cancelReason, setCancelReason] = useState("");
   const [review, setReview] = useState("");
+  // Detailed rating categories
+  const [communicationRating, setCommunicationRating] = useState(5);
+  const [serviceAsDescribedRating, setServiceAsDescribedRating] = useState(5);
+  const [buyAgainRating, setBuyAgainRating] = useState(5);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
   const [showDisputeSection, setShowDisputeSection] = useState(false);
@@ -105,6 +111,8 @@ export default function ClientOrdersSection() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
   const [revisionReason, setRevisionReason] = useState("");
+  const [revisionMessage, setRevisionMessage] = useState("");
+  const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
@@ -165,7 +173,6 @@ export default function ClientOrdersSection() {
   
   // Get filtered orders by status
   const allOrders = getFilteredOrdersByStatus("all");
-  const placedOrders = getFilteredOrdersByStatus("placed");
   const inProgressOrders = getFilteredOrdersByStatus("In Progress");
   const completedOrders = getFilteredOrdersByStatus("Completed");
   const cancelledOrders = getFilteredOrdersByStatus("Cancelled");
@@ -173,8 +180,6 @@ export default function ClientOrdersSection() {
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
-      case "placed":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
       case "active":
       case "In Progress":
         return "bg-blue-50 text-blue-700 border-blue-200";
@@ -233,6 +238,211 @@ export default function ClientOrdersSection() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+    });
+  };
+
+  const formatMoney = (value?: number | string, fallback = "0.00") => {
+    const num = typeof value === "string" ? Number(value) : value;
+    if (num === undefined || num === null || Number.isNaN(num)) {
+      return fallback;
+    }
+    return Number(num).toFixed(2);
+  };
+
+  const resolveFileUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    return resolveApiUrl(url);
+  };
+
+  type ClientTimelineEvent = {
+    id: string;
+    at?: string;
+    title: string;
+    description?: string;
+    colorClass: string;
+    icon: JSX.Element;
+    message?: string;
+    files?: Array<{
+      url: string;
+      fileName: string;
+      fileType?: string;
+    }>;
+  };
+
+  const buildClientTimeline = (order: any): ClientTimelineEvent[] => {
+    const events: ClientTimelineEvent[] = [];
+    const push = (event: Omit<ClientTimelineEvent, "id">, id: string) =>
+      events.push({ ...event, id });
+
+    if (order.createdAt || order.date) {
+      push(
+        {
+          at: order.createdAt || order.date,
+          title: "Order Placed",
+          description: "Your order has been placed successfully.",
+          colorClass: "bg-gray-800",
+          icon: <ShoppingBag className="w-5 h-5 text-white" />,
+        },
+        "placed"
+      );
+    }
+
+    if (order.acceptedByProfessional && order.acceptedAt) {
+      push(
+        {
+          at: order.acceptedAt,
+          title: "Order Accepted",
+          description: `${order.professional || "Professional"} accepted your order.`,
+          colorClass: "bg-green-600",
+          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        },
+        "accepted"
+      );
+    }
+
+    if (order.deliveryStatus === "active") {
+      push(
+        {
+          at: order.expectedDelivery || order.scheduledDate,
+          title: "Service In Progress",
+          description:
+            "The professional is currently working on your service.",
+          colorClass: "bg-blue-500",
+          icon: <PlayCircle className="w-5 h-5 text-white" />,
+        },
+        "in-progress"
+      );
+    }
+
+    if (order.revisionRequest?.status) {
+      push(
+        {
+          at: order.revisionRequest.requestedAt,
+          title: "Modification Requested",
+          description: "You requested modifications to the delivered work.",
+          message: order.revisionRequest.clientMessage || order.revisionRequest.reason,
+          files: order.revisionRequest.clientFiles,
+          colorClass: "bg-orange-500",
+          icon: <Edit className="w-5 h-5 text-white" />,
+        },
+        "revision-requested"
+      );
+    }
+
+    if (order.additionalInformation?.submittedAt) {
+      push(
+        {
+          at: order.additionalInformation.submittedAt,
+          title: "Additional Information Submitted",
+          description: "You submitted additional information for this order.",
+          message: order.additionalInformation.message,
+          files: order.additionalInformation.files,
+          colorClass: "bg-blue-500",
+          icon: <FileText className="w-5 h-5 text-white" />,
+        },
+        "additional-info"
+      );
+    }
+
+    if (order.extensionRequest?.requestedAt) {
+      push(
+        {
+          at: order.extensionRequest.requestedAt,
+          title: "Extension Requested",
+          description: order.extensionRequest.reason
+            ? `Extension requested: ${order.extensionRequest.reason}`
+            : "Extension requested for the delivery deadline.",
+          colorClass: "bg-indigo-500",
+          icon: <Clock className="w-5 h-5 text-white" />,
+        },
+        "extension-requested"
+      );
+    }
+
+    if (order.extensionRequest?.respondedAt && order.extensionRequest?.status) {
+      push(
+        {
+          at: order.extensionRequest.respondedAt,
+          title:
+            order.extensionRequest.status === "approved"
+              ? "Extension Approved"
+              : "Extension Rejected",
+          description: order.extensionRequest.status === "approved"
+            ? "Your extension request was approved."
+            : "Your extension request was rejected.",
+          colorClass:
+            order.extensionRequest.status === "approved"
+              ? "bg-green-600"
+              : "bg-red-600",
+          icon:
+            order.extensionRequest.status === "approved" ? (
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            ) : (
+              <XCircle className="w-5 h-5 text-white" />
+            ),
+        },
+        "extension-response"
+      );
+    }
+
+    if (
+      order.deliveryStatus === "delivered" ||
+      order.deliveryMessage ||
+      (order.deliveryFiles && order.deliveryFiles.length > 0)
+    ) {
+      push(
+        {
+          at: order.deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
+          title: "Work Delivered",
+          description: `${order.professional || "Professional"} delivered the work.`,
+          message: order.deliveryMessage,
+          files: order.deliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered"
+      );
+    }
+
+    if (
+      order.cancellationRequest &&
+      order.cancellationRequest.status === "approved" &&
+      order.status === "Cancelled"
+    ) {
+      push(
+        {
+          at: order.cancellationRequest.respondedAt,
+          title: "Order Cancelled",
+          description: order.cancellationRequest.reason
+            ? `Cancellation reason: ${order.cancellationRequest.reason}`
+            : "Order has been cancelled.",
+          colorClass: "bg-red-600",
+          icon: <XCircle className="w-5 h-5 text-white" />,
+        },
+        "cancelled"
+      );
+    }
+
+    if (order.status === "Completed") {
+      push(
+        {
+          at: order.completedDate,
+          title: "Order Completed",
+          description: "This order has been completed successfully.",
+          colorClass: "bg-green-600",
+          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        },
+        "completed"
+      );
+    }
+
+    return events.sort((a, b) => {
+      const aTime = a.at ? new Date(a.at).getTime() : 0;
+      const bTime = b.at ? new Date(b.at).getTime() : 0;
+      return bTime - aTime;
     });
   };
 
@@ -306,18 +516,62 @@ export default function ClientOrdersSection() {
   };
 
   const handleRequestRevision = async () => {
-    if (!selectedOrder || !revisionReason.trim()) {
-      toast.error("Please provide a reason for the revision request");
+    console.log('[Request Modification] handleRequestRevision called');
+    console.log('[Request Modification] selectedOrder:', selectedOrder);
+    console.log('[Request Modification] currentOrder?.id:', currentOrder?.id);
+    console.log('[Request Modification] revisionReason:', revisionReason);
+    console.log('[Request Modification] revisionMessage:', revisionMessage);
+    console.log('[Request Modification] revisionFiles:', revisionFiles);
+    
+    const orderId = selectedOrder || currentOrder?.id;
+    console.log('[Request Modification] Resolved orderId:', orderId);
+    
+    if (!orderId || !revisionReason.trim()) {
+      console.log('[Request Modification] Validation failed - orderId:', orderId, 'revisionReason:', revisionReason);
+      toast.error("Please describe what modifications you need");
       return;
     }
     try {
-      await requestRevision(selectedOrder, revisionReason);
-      toast.success("Revision request submitted. The professional will review your request.");
+      console.log('[Request Modification] Calling requestRevision API...');
+      await requestRevision(
+        orderId,
+        revisionReason,
+        revisionMessage.trim() ? revisionMessage : undefined,
+        revisionFiles.length > 0 ? revisionFiles : undefined
+      );
+      console.log('[Request Modification] API call successful');
+      toast.success("Modification request submitted! The professional will review your request and make the necessary changes.");
       setIsRevisionRequestDialogOpen(false);
       setRevisionReason("");
+      setRevisionMessage("");
+      setRevisionFiles([]);
+      setSelectedOrder(null);
     } catch (error: any) {
-      toast.error(error.message || "Failed to request revision");
+      console.error('[Request Modification] API call failed:', error);
+      toast.error(error.message || "Failed to submit modification request");
     }
+  };
+
+  const handleRevisionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const newFiles = Array.from(e.target.files);
+    const validFiles = newFiles.filter(file => {
+      const type = file.type;
+      return type.startsWith('image/') || type.startsWith('video/') || type === 'application/pdf' || type === 'text/plain';
+    });
+    if (validFiles.length !== newFiles.length) {
+      toast.error("Only images, videos, or documents are allowed");
+    }
+    const filesToAdd = validFiles.slice(0, 10 - revisionFiles.length);
+    if (filesToAdd.length < validFiles.length) {
+      toast.error("Maximum 10 files allowed");
+    }
+    setRevisionFiles(prev => [...prev, ...filesToAdd]);
+    e.target.value = '';
+  };
+
+  const handleRemoveRevisionFile = (index: number) => {
+    setRevisionFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleRespondToDispute = async () => {
@@ -446,25 +700,40 @@ export default function ClientOrdersSection() {
     }
   };
 
-  const handleSubmitRating = () => {
-    if (rating === 0) {
-      toast.error("Please select a rating");
+  const handleSubmitRating = async () => {
+    // Calculate average rating from all categories
+    const averageRating = Math.round((communicationRating + serviceAsDescribedRating + buyAgainRating) / 3);
+    
+    if (averageRating === 0) {
+      toast.error("Please provide ratings");
       return;
     }
-    if (selectedOrder) {
-      rateOrder(selectedOrder, rating, review);
+    
+    setIsSubmittingReview(true);
+    try {
+      if (selectedOrder) {
+        await rateOrder(selectedOrder, averageRating, review);
+      }
+      toast.success("Thank you for your feedback! Your review has been submitted.");
+      setIsRatingDialogOpen(false);
+      setRating(0);
+      setReview("");
+      setCommunicationRating(5);
+      setServiceAsDescribedRating(5);
+      setBuyAgainRating(5);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit review");
+    } finally {
+      setIsSubmittingReview(false);
     }
-    toast.success("Thank you for your feedback!");
-    setIsRatingDialogOpen(false);
-    setRating(0);
-    setReview("");
   };
 
   const handleStartConversation = (professionalName: string, professionalAvatar?: string) => {
     if (professionalName && selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
+      const participantId = order?.professionalId || `prof-${selectedOrder}`;
       startConversation({
-        id: `prof-${selectedOrder}`,
+        id: participantId,
         name: professionalName,
         avatar: professionalAvatar || "",
         online: true,
@@ -574,7 +843,7 @@ export default function ClientOrdersSection() {
           onClick={() => {
             if (order.professional) {
               startConversation({
-                id: `prof-${order.id}`,
+                id: order.professionalId || `prof-${order.id}`,
                 name: order.professional,
                 avatar: order.professionalAvatar,
                 online: true,
@@ -597,8 +866,289 @@ export default function ClientOrdersSection() {
     ? orders.find((o) => o.id === selectedOrder)
     : null;
 
+  const primaryItem = currentOrder?.items?.[0];
+
+  const timelineEvents = useMemo(
+    () => (currentOrder ? buildClientTimeline(currentOrder) : []),
+    [currentOrder]
+  );
+
+  // Calculate appointment deadline for countdown
+  const appointmentDeadline = useMemo(() => {
+    if (!currentOrder) return null;
+    
+    // Use booking date/time or scheduled date + time
+    const bookingDate = currentOrder.booking?.date;
+    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    
+    if (bookingDate) {
+      // Combine date and time
+      const [hours, minutes] = bookingTime.split(':').map(Number);
+      const deadline = new Date(bookingDate);
+      if (!isNaN(hours)) deadline.setHours(hours);
+      if (!isNaN(minutes)) deadline.setMinutes(minutes);
+      return deadline;
+    }
+    
+    // Fallback to scheduled date
+    if (currentOrder.scheduledDate) {
+      return new Date(currentOrder.scheduledDate);
+    }
+    
+    // Fallback to expected delivery
+    if (currentOrder.expectedDelivery) {
+      return new Date(currentOrder.expectedDelivery);
+    }
+    
+    return null;
+  }, [currentOrder]);
+
+  // Use countdown hook for appointment time
+  const appointmentCountdown = useCountdown(appointmentDeadline);
+
+  // Elapsed time since booking time arrives (work in progress timer)
+  const workStartTime = useMemo(() => {
+    if (!currentOrder) return null;
+    // Stop timer for completed or cancelled orders
+    if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled") return null;
+    if (currentOrder.deliveryStatus === "delivered" || currentOrder.deliveryStatus === "completed" || currentOrder.deliveryStatus === "cancelled") {
+      return null;
+    }
+
+    // Auto-start work timer when scheduled booking time arrives
+    const bookingDate = currentOrder.booking?.date;
+    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    if (bookingDate) {
+      const [hours, minutes] = bookingTime.split(":").map(Number);
+      const start = new Date(bookingDate);
+      if (!isNaN(hours)) start.setHours(hours);
+      if (!isNaN(minutes)) start.setMinutes(minutes);
+      if (Date.now() >= start.getTime()) return start;
+    }
+
+    if (currentOrder.scheduledDate) {
+      const start = new Date(currentOrder.scheduledDate);
+      if (Date.now() >= start.getTime()) return start;
+    }
+
+    return null;
+  }, [currentOrder]);
+
+  const workElapsedTime = useElapsedTime(workStartTime);
+
+  // Debug: Track isRevisionRequestDialogOpen state changes and ensure modal visibility
+  useEffect(() => {
+    console.log('[Request Modification] isRevisionRequestDialogOpen state changed:', isRevisionRequestDialogOpen);
+    console.log('[Request Modification] selectedOrder:', selectedOrder);
+    console.log('[Request Modification] currentOrder?.id:', currentOrder?.id);
+    
+    if (isRevisionRequestDialogOpen) {
+      // Ensure modal is visible by setting z-index on DOM elements
+      setTimeout(() => {
+        const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+        const content = document.querySelector('[data-slot="dialog-content"]');
+        
+        console.log('[Request Modification] Overlay found:', !!overlay);
+        console.log('[Request Modification] Content found:', !!content);
+        
+        if (overlay) {
+          (overlay as HTMLElement).style.zIndex = '9998';
+          console.log('[Request Modification] Overlay z-index set to 9998');
+        }
+        
+        if (content) {
+          (content as HTMLElement).style.zIndex = '9999';
+          (content as HTMLElement).style.position = 'fixed';
+          console.log('[Request Modification] Content z-index set to 9999');
+        }
+      }, 100);
+    }
+  }, [isRevisionRequestDialogOpen, selectedOrder, currentOrder?.id]);
+
+  // Poll for latest order updates while viewing details
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const interval = setInterval(() => {
+      refreshOrders();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedOrder, refreshOrders]);
+
   // If an order is selected, show the detail view
   if (selectedOrder && currentOrder) {
+    const timelineTimer = (
+      <>
+        {/* Countdown Timer - Until booked time */}
+        {!workElapsedTime.started &&
+         appointmentDeadline &&
+         !appointmentCountdown.expired &&
+         currentOrder.status !== "Completed" &&
+         currentOrder.status !== "Cancelled" &&
+         currentOrder.deliveryStatus !== "delivered" && (
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-[#FE8A0F]" />
+              </div>
+              <div>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                  Expected Delivery Time
+                </p>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  {currentOrder.booking?.date
+                    ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                    : currentOrder.scheduledDate
+                      ? formatDate(currentOrder.scheduledDate)
+                      : "TBD"}
+                </p>
+              </div>
+            </div>
+
+            {/* Countdown Display */}
+            <div className="grid grid-cols-4 gap-3">
+              {/* Days */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.days).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Days
+                </div>
+              </div>
+
+              {/* Hours */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.hours).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Hours
+                </div>
+              </div>
+
+              {/* Minutes */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.minutes).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Minutes
+                </div>
+              </div>
+
+              {/* Seconds */}
+              <div className="bg-gray-100 rounded-xl p-4 text-center border border-gray-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                  {String(appointmentCountdown.seconds).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                  Seconds
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
+                  }}
+                />
+              </div>
+              <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Work In Progress Timer - Auto starts at booking time */}
+        {workElapsedTime.started &&
+         currentOrder.status !== "Completed" &&
+         currentOrder.status !== "Cancelled" &&
+         currentOrder.deliveryStatus !== "delivered" && (
+          <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 uppercase tracking-wider">
+                  Work In Progress
+                </p>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                  Started: {workStartTime
+                    ? workStartTime.toLocaleString('en-GB', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Elapsed Time Display */}
+            <div className="grid grid-cols-4 gap-3">
+              {/* Days */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.days).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-blue-600 uppercase tracking-wider mt-1">
+                  Days
+                </div>
+              </div>
+
+              {/* Hours */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.hours).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-blue-600 uppercase tracking-wider mt-1">
+                  Hours
+                </div>
+              </div>
+
+              {/* Minutes */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.minutes).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-blue-600 uppercase tracking-wider mt-1">
+                  Minutes
+                </div>
+              </div>
+
+              {/* Seconds */}
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
+                  {String(workElapsedTime.seconds).padStart(2, '0')}
+                </div>
+                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-blue-600 uppercase tracking-wider mt-1">
+                  Seconds
+                </div>
+              </div>
+            </div>
+
+            {/* Status Indicator */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              <span className="font-['Poppins',sans-serif] text-[12px] text-blue-600">
+                Professional is working on your order
+              </span>
+            </div>
+          </div>
+        )}
+      </>
+    );
     return (
       <div>
           {!showDisputeSection && (
@@ -955,7 +1505,7 @@ export default function ClientOrdersSection() {
                               {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => (
                                 <div key={index} className="border border-gray-200 rounded p-2">
                                   {file.fileType === 'image' ? (
-                                    <img src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`} alt={file.fileName} className="w-full h-24 object-cover rounded" />
+                                    <img src={resolveFileUrl(file.url)} alt={file.fileName} className="w-full h-24 object-cover rounded" />
                                   ) : (
                                     <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
                                       <PlayCircle className="w-8 h-8 text-gray-600" />
@@ -1030,20 +1580,22 @@ export default function ClientOrdersSection() {
                               Verification Files:
                             </p>
                             <div className="grid grid-cols-2 gap-2">
-                              {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => (
-                                <div key={index} className="border border-gray-200 rounded p-2">
-                                  {file.fileType === 'image' ? (
-                                    <img src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`} alt={file.fileName} className="w-full h-24 object-cover rounded" />
-                                  ) : (
-                                    <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
-                                      <PlayCircle className="w-8 h-8 text-gray-600" />
-                                    </div>
-                                  )}
-                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 truncate">
-                                    {file.fileName}
-                                  </p>
-                                </div>
-                              ))}
+                              {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => {
+                                return (
+                                  <div key={index} className="border border-gray-200 rounded p-2">
+                                    {file.fileType === 'image' ? (
+                                      <img src={resolveFileUrl(file.url)} alt={file.fileName} className="w-full h-24 object-cover rounded" />
+                                    ) : (
+                                      <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
+                                        <PlayCircle className="w-8 h-8 text-gray-600" />
+                                      </div>
+                                    )}
+                                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 truncate">
+                                      {file.fileName}
+                                    </p>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -1075,15 +1627,15 @@ export default function ClientOrdersSection() {
                         <div key={index} className="relative group">
                           {file.fileType === 'image' ? (
                             <img
-                              src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                              src={resolveFileUrl(file.url)}
                               alt={file.fileName}
                               className="w-full h-32 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                             />
                           ) : (
                             <div
                               className="w-full h-32 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                              onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                             >
                               <PlayCircle className="w-12 h-12 text-gray-600" />
                               <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded truncate">
@@ -1103,51 +1655,119 @@ export default function ClientOrdersSection() {
                     className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Completed
+                    Approve
                   </Button>
-                  {/* Show Request Revision button only if no active revision request */}
-                  {(!currentOrder.revisionRequest || currentOrder.revisionRequest.status === 'completed' || currentOrder.revisionRequest.status === 'rejected') && (
+                  {/* Show Request Modification button only if no active revision request */}
+                  {(() => {
+                    const shouldShow = !currentOrder.revisionRequest || currentOrder.revisionRequest.status === 'completed' || currentOrder.revisionRequest.status === 'rejected';
+                    console.log('[Request Modification] Button render check:', {
+                      hasRevisionRequest: !!currentOrder.revisionRequest,
+                      revisionStatus: currentOrder.revisionRequest?.status,
+                      shouldShow
+                    });
+                    return shouldShow;
+                  })() && (
                     <Button
                       onClick={() => {
+                        console.log('[Request Modification] Button clicked');
+                        console.log('[Request Modification] currentOrder.id:', currentOrder.id);
+                        console.log('[Request Modification] currentOrder:', currentOrder);
+                        console.log('[Request Modification] isRevisionRequestDialogOpen (before):', isRevisionRequestDialogOpen);
+                        setSelectedOrder(currentOrder.id);
                         setIsRevisionRequestDialogOpen(true);
                         setRevisionReason("");
+                        setRevisionMessage("");
+                        setRevisionFiles([]);
+                        console.log('[Request Modification] State updated, isRevisionRequestDialogOpen should be true');
                       }}
                       variant="outline"
                       className="font-['Poppins',sans-serif] border-orange-500 text-orange-600 hover:bg-orange-50"
                     >
                       <Edit className="w-4 h-4 mr-2" />
-                      Request Revision
+                      Request Modification
                     </Button>
                   )}
                   
-                  {/* Show revision request status if pending or in progress */}
+                  {/* Show modification request status if pending or in progress */}
                   {currentOrder.revisionRequest && (currentOrder.revisionRequest.status === 'pending' || currentOrder.revisionRequest.status === 'in_progress') && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <div className={`rounded-lg p-4 mb-4 ${
+                      currentOrder.revisionRequest.status === 'pending' 
+                        ? 'bg-orange-50 border border-orange-200' 
+                        : 'bg-blue-50 border border-blue-200'
+                    }`}>
                       <div className="flex items-start gap-3 mb-2">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        {currentOrder.revisionRequest.status === 'pending' ? (
+                          <Edit className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        )}
                         <div className="flex-1">
-                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-orange-700 mb-1">
-                            Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : 'In Progress'}
+                          <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium mb-1 ${
+                            currentOrder.revisionRequest.status === 'pending' ? 'text-orange-700' : 'text-blue-700'
+                          }`}>
+                            Modification Request - {currentOrder.revisionRequest.status === 'pending' ? 'Pending Review' : 'In Progress'}
                           </h5>
                           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                             {currentOrder.revisionRequest.status === 'pending' 
-                              ? 'Your revision request has been submitted. The professional will review it shortly.'
-                              : 'The professional is working on your revision request.'}
+                              ? 'Your modification request has been submitted. The professional will review it shortly.'
+                              : 'The professional is working on your modification request.'}
                           </p>
                           {currentOrder.revisionRequest.reason && (
-                            <div className="mt-2 p-2 bg-white border border-orange-200 rounded">
+                            <div className="mt-2 p-2 bg-white border border-gray-200 rounded">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Your request:
+                                📝 Your request:
                               </p>
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                 {currentOrder.revisionRequest.reason}
                               </p>
                             </div>
                           )}
-                          {currentOrder.revisionRequest.status === 'in_progress' && currentOrder.revisionRequest.additionalNotes && (
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                          {currentOrder.revisionRequest.clientMessage && (
+                            <div className="mt-2 p-2 bg-white border border-gray-200 rounded">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Professional's notes:
+                                💬 Additional notes:
+                              </p>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                {currentOrder.revisionRequest.clientMessage}
+                              </p>
+                            </div>
+                          )}
+                          {currentOrder.revisionRequest.clientFiles && currentOrder.revisionRequest.clientFiles.length > 0 && (
+                            <div className="mt-2">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                📎 Your attached files ({currentOrder.revisionRequest.clientFiles.length})
+                              </p>
+                              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                                {currentOrder.revisionRequest.clientFiles.map((file: any, index: number) => (
+                                  <div key={index} className="relative group">
+                                    {file.fileType === 'image' ? (
+                                      <img
+                                        src={resolveFileUrl(file.url)}
+                                        alt={file.fileName}
+                                        className="w-full h-16 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                      />
+                                    ) : (
+                                      <div
+                                        className="w-full h-16 bg-gray-100 rounded border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                        onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                      >
+                                        {file.fileType === 'video' ? (
+                                          <PlayCircle className="w-5 h-5 text-gray-600" />
+                                        ) : (
+                                          <FileText className="w-5 h-5 text-gray-600" />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {currentOrder.revisionRequest.status === 'in_progress' && currentOrder.revisionRequest.additionalNotes && (
+                            <div className="mt-2 p-2 bg-blue-100 border border-blue-200 rounded">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                💼 Professional's notes:
                               </p>
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                                 {currentOrder.revisionRequest.additionalNotes}
@@ -1159,17 +1779,17 @@ export default function ClientOrdersSection() {
                     </div>
                   )}
 
-                  {/* Show completed revision status */}
+                  {/* Show completed modification status */}
                   {currentOrder.revisionRequest && currentOrder.revisionRequest.status === 'completed' && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                         <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
-                          Revision Completed
+                          Modification Completed
                         </h5>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        The professional has completed your revision request. Please review the updated work above.
+                        The professional has completed your modification request. Please review the updated work above.
                       </p>
                     </div>
                   )}
@@ -1345,6 +1965,8 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
+            {timelineTimer}
+
             {currentOrder.deliveryStatus === "completed" && !currentOrder.rating && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                 <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
@@ -1412,6 +2034,122 @@ export default function ClientOrdersSection() {
 
             {/* Timeline Events */}
             <div className="space-y-0">
+              {timelineEvents.length === 0 && (
+                <div className="text-center py-6 text-[#6b6b6b] text-[13px] font-['Poppins',sans-serif]">
+                  No timeline events yet.
+                </div>
+              )}
+              {timelineEvents.map((event, index) => (
+                <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-6">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className={`w-10 h-10 rounded-lg ${event.colorClass} flex items-center justify-center flex-shrink-0`}>
+                      {event.icon}
+                    </div>
+                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                      {event.title}
+                    </p>
+                    {event.at && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                        {formatDateTime(event.at)}
+                      </p>
+                    )}
+                    {event.description && (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                        {event.description}
+                      </p>
+                    )}
+                    {event.message && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          {event.message}
+                        </p>
+                      </div>
+                    )}
+                    {event.files && event.files.length > 0 && (
+                      <div className="mt-3">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                          📎 Attachments ({event.files.length})
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {event.files.map((file: any, index: number) => {
+                            const fileUrl = file.url || "";
+                            const fileName = file.fileName || "attachment";
+                            const isImage =
+                              file.fileType === "image" ||
+                              /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
+                              /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                            const resolvedUrl = resolveFileUrl(fileUrl);
+                            return (
+                            <div key={index} className="relative group">
+                              {isImage ? (
+                                <img
+                                  src={resolvedUrl}
+                                  alt={fileName}
+                                  className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(resolvedUrl, "_blank")}
+                                />
+                              ) : (
+                                <div
+                                  className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                  onClick={() => window.open(resolvedUrl, "_blank")}
+                                >
+                                  <PlayCircle className="w-8 h-8 text-gray-600" />
+                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                    {fileName}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {event.id === "delivered" && (
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
+                        <div className="flex gap-2 mb-4">
+                          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
+                            Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
+                              const deliveryDate = new Date(currentOrder.deliveredDate);
+                              const deadlineDate = new Date(deliveryDate);
+                              deadlineDate.setDate(deadlineDate.getDate() + 1);
+                              return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                            })()} If no action is taken by then, the order will be automatically completed.
+                          </p>
+                        </div>
+                        <div className="flex gap-3 justify-center">
+                          <Button
+                            onClick={() => handleAcceptDelivery(currentOrder.id)}
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              console.log('[Request Modification] Timeline button clicked');
+                              console.log('[Request Modification] currentOrder.id:', currentOrder.id);
+                              console.log('[Request Modification] isRevisionRequestDialogOpen (before):', isRevisionRequestDialogOpen);
+                              setSelectedOrder(currentOrder.id);
+                              setIsRevisionRequestDialogOpen(true);
+                              console.log('[Request Modification] State updated from timeline');
+                            }}
+                            variant="outline"
+                            className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
+                          >
+                            Request Modification
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden">
               {/* Additional Information Submitted Timeline */}
               {currentOrder.additionalInformation?.submittedAt && (
                 <div className="flex gap-4 mb-6">
@@ -1471,6 +2209,60 @@ export default function ClientOrdersSection() {
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                           {currentOrder.cancellationRequest.reason}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Extension Request Timeline */}
+              {currentOrder.extensionRequest && currentOrder.extensionRequest.status && (
+                <div className="flex gap-4 mb-6">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      currentOrder.extensionRequest.status === 'pending' 
+                        ? 'bg-yellow-500' 
+                        : currentOrder.extensionRequest.status === 'approved' 
+                          ? 'bg-green-500' 
+                          : 'bg-red-500'
+                    }`}>
+                      <Clock className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
+                      Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                      Professional requested new delivery date:{" "}
+                      <span className="text-[#2c353f]">
+                        {currentOrder.extensionRequest.newDeliveryDate 
+                          ? (() => {
+                              const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                              const dateStr = d.toLocaleDateString("en-GB", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              });
+                              const timeStr = d.toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              return `${dateStr} at ${timeStr}`;
+                            })()
+                          : 'N/A'}
+                      </span>
+                    </p>
+                    {currentOrder.extensionRequest.reason && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                          Reason:
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          {currentOrder.extensionRequest.reason}
                         </p>
                       </div>
                     )}
@@ -1666,27 +2458,49 @@ export default function ClientOrdersSection() {
                       </span>
                     </p>
 
-                    {/* Delivery Content Box */}
-                    {(currentOrder.description || (currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image)) && (
+                    {/* Delivery Content Box - Show delivery message and files */}
+                    {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
                       <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                        {currentOrder.description && (
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                            {currentOrder.description}
-                          </p>
+                        {currentOrder.deliveryMessage && (
+                          <div className="mb-3">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Delivery message:
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              {currentOrder.deliveryMessage}
+                            </p>
+                          </div>
                         )}
                         
-                        {/* Attachments */}
-                        {currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image && (
+                        {/* Delivery Attachments */}
+                        {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 && (
                           <div>
-                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-                              Attachments
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                              📎 Attachments ({currentOrder.deliveryFiles.length})
                             </p>
-                            <div className="bg-white border border-gray-200 rounded-lg p-2 inline-block">
-                              <img 
-                                src={currentOrder.items[0].image || serviceVector}
-                                alt="Delivery attachment"
-                                className="w-48 h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                              />
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {currentOrder.deliveryFiles.map((file: any, index: number) => (
+                                <div key={index} className="relative group">
+                                  {file.fileType === 'image' ? (
+                                    <img
+                                      src={resolveFileUrl(file.url)}
+                                      alt={file.fileName}
+                                      className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                      onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                    />
+                                  ) : (
+                                    <div
+                                      className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                      onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
+                                    >
+                                      <PlayCircle className="w-8 h-8 text-gray-600" />
+                                      <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                        {file.fileName}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -1714,7 +2528,10 @@ export default function ClientOrdersSection() {
                           Approve
                         </Button>
                         <Button
-                          onClick={() => handleRequestRevision(currentOrder.id)}
+                          onClick={() => {
+                            setSelectedOrder(currentOrder.id);
+                            setIsRevisionRequestDialogOpen(true);
+                          }}
                           variant="outline"
                           className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
                         >
@@ -1726,22 +2543,6 @@ export default function ClientOrdersSection() {
                 </div>
               )}
 
-              {/* Delivery Data Updated */}
-              {currentOrder.deliveryStatus === "delivered" && (
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center pt-1">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
-                  </div>
-                  <div className="flex-1 pb-6">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Your delivery data was updated to Sun 12th October, 2025 17:00-
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* Order Started */}
               {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "delivered") && (
@@ -1894,7 +2695,7 @@ export default function ClientOrdersSection() {
             <div className="bg-white border border-gray-200 rounded-xl p-8">
               {/* Service Title */}
               <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
-                {currentOrder.service}
+                {currentOrder.service || primaryItem?.title || "Service"}
               </h2>
 
               {/* Service Category */}
@@ -1928,14 +2729,14 @@ export default function ClientOrdersSection() {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full">
                   <tbody>
-                    {currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0] && (
+                    {primaryItem && (
                       <>
                         <tr className="bg-gray-50">
                           <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                             Unit Price
                           </td>
                           <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            £{currentOrder.items[0].price?.toFixed(2) || "0.00"}
+                            £{formatMoney(primaryItem.price)}
                           </td>
                         </tr>
                         <tr className="border-t border-gray-200">
@@ -1943,7 +2744,7 @@ export default function ClientOrdersSection() {
                             Quantity
                           </td>
                           <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            {currentOrder.items[0].quantity || 1}
+                            {primaryItem.quantity || 1}
                           </td>
                         </tr>
                       </>
@@ -1974,7 +2775,7 @@ export default function ClientOrdersSection() {
                           Discount
                         </td>
                         <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-green-600">
-                          -£{currentOrder.discount.toFixed(2)}
+                          -£{formatMoney(currentOrder.discount)}
                         </td>
                       </tr>
                     )}
@@ -1983,7 +2784,7 @@ export default function ClientOrdersSection() {
                         Sub Total
                       </td>
                       <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £{(currentOrder.subtotal || currentOrder.amountValue || 0).toFixed(2)}
+                        £{formatMoney(currentOrder.subtotal ?? currentOrder.amountValue ?? 0)}
                       </td>
                     </tr>
                     {currentOrder.serviceFee && currentOrder.serviceFee > 0 && (
@@ -1992,7 +2793,7 @@ export default function ClientOrdersSection() {
                           Service Fee
                         </td>
                         <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          £{currentOrder.serviceFee.toFixed(2)}
+                          £{formatMoney(currentOrder.serviceFee)}
                         </td>
                       </tr>
                     )}
@@ -2001,7 +2802,7 @@ export default function ClientOrdersSection() {
                         Total
                       </td>
                       <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                        {currentOrder.amount}
+                        £{formatMoney(currentOrder.amountValue ?? currentOrder.amount ?? 0)}
                       </td>
                     </tr>
                   </tbody>
@@ -2053,11 +2854,11 @@ export default function ClientOrdersSection() {
                           <div 
                             key={index} 
                             className="relative border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
-                            onClick={() => window.open(file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`, '_blank')}
+                            onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
                           >
                             {file.fileType === 'image' ? (
                               <img 
-                                src={file.url.startsWith('http') ? file.url : `${window.location.origin}${file.url}`}
+                                src={resolveFileUrl(file.url)}
                                 alt={file.fileName}
                                 className="w-full h-24 object-cover"
                               />
@@ -2528,66 +3329,226 @@ export default function ClientOrdersSection() {
             );
           })()}
 
-        {/* Rating Dialog */}
+        {/* Rating Dialog - Full Page Style */}
         <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
-          <DialogContent className="w-[70vw]">
-            <DialogHeader>
-              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
-                Rate Your Service
-              </DialogTitle>
-              <DialogDescription className="sr-only">
-                Provide your rating and review for the service
-              </DialogDescription>
+          <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90vh] overflow-y-auto p-0">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Rate Your Service</DialogTitle>
+              <DialogDescription>Provide your rating and review for the service</DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6">
-              {/* Star Rating */}
-              <div>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                  How would you rate this service?
-                </p>
-                <div className="flex gap-2 justify-center">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setRating(star)}
-                      className="transition-transform hover:scale-110"
-                    >
-                      <Star
-                        className={`w-10 h-10 ${
-                          star <= rating
-                            ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                            : "text-gray-300"
-                        }`}
-                      />
-                    </button>
-                  ))}
+            {/* Success Banner */}
+            <div className="bg-green-50 border-b border-green-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-green-800 font-semibold">
+                    Congratulation for completing your order
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-green-600">
+                    Share your experience with other users
+                  </p>
                 </div>
               </div>
+            </div>
 
-              <Separator />
+            <div className="flex flex-col lg:flex-row">
+              {/* Left Side - Review Form */}
+              <div className="flex-1 p-6 lg:p-8">
+                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-2">
+                  Leave a public review
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-6">
+                  Share your experience of what is it like working with {currentOrder?.professional || "this professional"}.
+                </p>
 
-              {/* Review Text */}
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Write a review (optional)
-                </Label>
-                <Textarea
-                  placeholder="Share your experience with this professional..."
-                  value={review}
-                  onChange={(e) => setReview(e.target.value)}
-                  rows={4}
-                  className="font-['Poppins',sans-serif] text-[13px]"
-                />
+                {/* Rating Categories */}
+                <div className="space-y-6 mb-8">
+                  {/* Communication With Seller */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold">
+                        Communication With Seller
+                      </h4>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        How responsive was the seller during the process?
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setCommunicationRating(star)}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= communicationRating
+                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Service as Described */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold">
+                        Service as Described
+                      </h4>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        Did the result match the service's description?
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setServiceAsDescribedRating(star)}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= serviceAsDescribedRating
+                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Buy Again or Recommended */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold">
+                        Buy Again or Recommended
+                      </h4>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        Would you recommend buying this service?
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setBuyAgainRating(star)}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= buyAgainRating
+                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Review Text */}
+                <div className="mb-6">
+                  <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">
+                    What was it like working with this Seller?
+                  </h4>
+                  <Textarea
+                    placeholder="Your review..."
+                    value={review}
+                    onChange={(e) => setReview(e.target.value)}
+                    rows={5}
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#3D78CB] resize-none"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  onClick={handleSubmitRating}
+                  disabled={isSubmittingReview}
+                  className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
+                >
+                  {isSubmittingReview ? "Submitting..." : "Submit"}
+                </Button>
               </div>
 
-              {/* Submit Button */}
-              <Button
-                onClick={handleSubmitRating}
-                className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
-              >
-                Submit Rating
-              </Button>
+              {/* Right Side - Order Summary */}
+              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
+                {/* Service Image */}
+                {currentOrder?.serviceImage && (
+                  <div className="mb-4 rounded-lg overflow-hidden">
+                    <img
+                      src={resolveFileUrl(currentOrder.serviceImage)}
+                      alt={currentOrder.service}
+                      className="w-full h-40 object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Service Title */}
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
+                  {currentOrder?.service || "Service"}
+                </h3>
+
+                {/* Order Details */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
+                      Completed
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {currentOrder?.quantity || 1}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {currentOrder?.amount || "N/A"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Task Address */}
+                {currentOrder?.address && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">
+                      Task Address
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      {currentOrder.address}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -2765,7 +3726,7 @@ export default function ClientOrdersSection() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="flex lg:grid lg:grid-cols-4 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
+      <div className="flex lg:grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         {/* Total Orders */}
         <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">
@@ -2773,16 +3734,6 @@ export default function ClientOrdersSection() {
           </p>
           <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f]">
             {orders.length}
-          </p>
-        </div>
-
-        {/* Pending */}
-        <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
-          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#92400E] mb-1 md:mb-2">
-            Placed
-          </p>
-          <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#92400E]">
-            {placedOrders.length}
           </p>
         </div>
 
@@ -2815,13 +3766,6 @@ export default function ClientOrdersSection() {
               className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
             >
               All ({allOrders.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="placed"
-              className="font-['Poppins',sans-serif] text-[13px] whitespace-nowrap flex-shrink-0"
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Placed ({placedOrders.length})
             </TabsTrigger>
             <TabsTrigger
               value="In Progress"
@@ -2924,100 +3868,7 @@ export default function ClientOrdersSection() {
                             <DropdownMenuItem onClick={() => {
                               if (order.professional) {
                                 startConversation({
-                                  id: `prof-${order.id}`,
-                                  name: order.professional,
-                                  avatar: order.professionalAvatar,
-                                  online: true,
-                                  jobId: order.id,
-                                  jobTitle: order.service
-                                });
-                              }
-                            }}>
-                              <MessageCircle className="w-4 h-4 mr-2" />
-                              Message
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="placed" className="space-y-4">
-          {placedOrders.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                No placed orders
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-['Poppins',sans-serif]">Service</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Professional</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Order Date</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Amount</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif]">Status</TableHead>
-                    <TableHead className="font-['Poppins',sans-serif] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {placedOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.professionalAvatar} />
-                            <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-['Poppins',sans-serif] text-[13px]">
-                        {formatDate(order.date)}
-                      </TableCell>
-                      <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {order.amount}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
-                          <span className="flex items-center gap-1">
-                            {getStatusIcon(order.status)}
-                            {order.status?.toUpperCase()}
-                          </span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              if (order.professional) {
-                                startConversation({
-                                  id: `prof-${order.id}`,
+                                  id: order.professionalId || `prof-${order.id}`,
                                   name: order.professional,
                                   avatar: order.professionalAvatar,
                                   online: true,
@@ -3110,7 +3961,7 @@ export default function ClientOrdersSection() {
                             <DropdownMenuItem onClick={() => {
                               if (order.professional) {
                                 startConversation({
-                                  id: `prof-${order.id}`,
+                                  id: order.professionalId || `prof-${order.id}`,
                                   name: order.professional,
                                   avatar: order.professionalAvatar,
                                   online: true,
@@ -3203,7 +4054,7 @@ export default function ClientOrdersSection() {
                             <DropdownMenuItem onClick={() => {
                               if (order.professional) {
                                 startConversation({
-                                  id: `prof-${order.id}`,
+                                  id: order.professionalId || `prof-${order.id}`,
                                   name: order.professional,
                                   avatar: order.professionalAvatar,
                                   online: true,
@@ -3374,7 +4225,7 @@ export default function ClientOrdersSection() {
                             <DropdownMenuItem onClick={() => {
                               if (order.professional) {
                                 startConversation({
-                                  id: `prof-${order.id}`,
+                                  id: order.professionalId || `prof-${order.id}`,
                                   name: order.professional,
                                   avatar: order.professionalAvatar,
                                   online: true,
@@ -3398,54 +4249,169 @@ export default function ClientOrdersSection() {
         </TabsContent>
       </Tabs>
 
-      {/* Revision Request Dialog */}
-      <Dialog open={isRevisionRequestDialogOpen} onOpenChange={setIsRevisionRequestDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-2xl">
+      {/* Request Modification Dialog */}
+      {console.log('[Request Modification] Rendering Dialog, isRevisionRequestDialogOpen:', isRevisionRequestDialogOpen)}
+      {isRevisionRequestDialogOpen && console.log('[Request Modification] Dialog should be visible now')}
+      <Dialog 
+        open={isRevisionRequestDialogOpen} 
+        onOpenChange={(open) => {
+          console.log('[Request Modification] onOpenChange called with:', open);
+          setIsRevisionRequestDialogOpen(open);
+          if (!open) {
+            console.log('[Request Modification] Closing dialog, resetting state');
+            setRevisionReason("");
+            setRevisionMessage("");
+            setRevisionFiles([]);
+            setSelectedOrder(null);
+          }
+        }}
+      >
+        <DialogContent 
+          className="w-[90vw] max-w-[600px] !z-[9999]"
+          style={{ zIndex: 9999 }}
+        >
+          {console.log('[Request Modification] DialogContent rendering, isRevisionRequestDialogOpen:', isRevisionRequestDialogOpen)}
           <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
-              Request Revision
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Request Modification
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              Please provide a detailed reason for the revision request. This will be sent to the professional.
+            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+              Upload reference images and describe what changes you need. The professional will see this in their timeline.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+
+          <div className="space-y-4">
+            {/* File Upload */}
             <div>
-              <Label htmlFor="revision-reason" className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
-                Revision Reason <span className="text-red-500">*</span>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Upload Reference Images/Files (Optional)
+              </Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition-colors">
+                <input
+                  type="file"
+                  id="revision-files"
+                  accept="image/*,video/*,.pdf,.txt"
+                  multiple
+                  onChange={handleRevisionFileChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="revision-files"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload className="w-8 h-8 text-orange-400 mb-2" />
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1">
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                    Images, videos, PDFs or text files - Max 10 files
+                  </p>
+                </label>
+              </div>
+              
+              {/* Selected Files Preview */}
+              {revisionFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    Selected Files ({revisionFiles.length}/10):
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {revisionFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                      >
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : file.type.startsWith('video/') ? (
+                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                            <PlayCircle className="w-6 h-6 text-gray-600" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-gray-600" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                            {file.name}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveRevisionFile(index)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modification Description */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                What needs to be modified? <span className="text-red-500">*</span>
               </Label>
               <Textarea
-                id="revision-reason"
-                placeholder="Describe what needs to be modified or improved..."
+                placeholder="Describe the changes you need (e.g., 'Please change the color to blue', 'The logo needs to be bigger'...)"
                 value={revisionReason}
                 onChange={(e) => setRevisionReason(e.target.value)}
-                className="font-['Poppins',sans-serif] min-h-[120px]"
-                rows={5}
+                rows={4}
+                className="font-['Poppins',sans-serif] text-[13px]"
               />
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
-                Be as specific as possible to help the professional understand what changes you need.
-              </p>
+            </div>
+
+            {/* Additional Notes */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Additional Notes (Optional)
+              </Label>
+              <Textarea
+                placeholder="Any extra details, reference links, or context..."
+                value={revisionMessage}
+                onChange={(e) => setRevisionMessage(e.target.value)}
+                rows={3}
+                className="font-['Poppins',sans-serif] text-[13px]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRevisionRequestDialogOpen(false);
+                  setRevisionReason("");
+                  setRevisionMessage("");
+                  setRevisionFiles([]);
+                  setSelectedOrder(null);
+                }}
+                className="font-['Poppins',sans-serif] text-[13px]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRequestRevision}
+                disabled={!revisionReason.trim()}
+                className="bg-orange-500 hover:bg-orange-600 text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Submit Modification Request
+              </Button>
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsRevisionRequestDialogOpen(false);
-                setRevisionReason("");
-              }}
-              className="font-['Poppins',sans-serif]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRequestRevision}
-              disabled={!revisionReason.trim()}
-              className="font-['Poppins',sans-serif] bg-orange-600 hover:bg-orange-700 text-white"
-            >
-              Submit Revision Request
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -3559,70 +4525,6 @@ export default function ClientOrdersSection() {
                 {isSubmittingAddInfo ? "Submitting..." : "Add Additional Information"}
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rating Dialog */}
-      <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
-        <DialogContent className="w-[70vw]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
-              Rate Your Service
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Provide your rating and review for the service
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            {/* Star Rating */}
-            <div>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
-                How would you rate this service?
-              </p>
-              <div className="flex gap-2 justify-center">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => setRating(star)}
-                    className="transition-transform hover:scale-110"
-                  >
-                    <Star
-                      className={`w-10 h-10 ${
-                        star <= rating
-                          ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Review Text */}
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Write a review (optional)
-              </Label>
-              <Textarea
-                placeholder="Share your experience with this professional..."
-                value={review}
-                onChange={(e) => setReview(e.target.value)}
-                rows={4}
-                className="font-['Poppins',sans-serif] text-[13px]"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmitRating}
-              className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
-            >
-              Submit Rating
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

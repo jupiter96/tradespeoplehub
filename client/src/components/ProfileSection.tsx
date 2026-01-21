@@ -1939,7 +1939,7 @@ export default function ProfileSection() {
                                 className="flex gap-3 md:gap-4 p-3 md:p-4 border border-gray-200 rounded-xl hover:border-[#FE8A0F] hover:shadow-md transition-all cursor-pointer"
                               >
                                 <ImageWithFallback
-                                  src={service.image}
+                                  src={resolveMediaUrl(service.image)}
                                   alt={service.description}
                                   className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover flex-shrink-0"
                                 />
@@ -2114,7 +2114,7 @@ export default function ProfileSection() {
                             className="flex flex-col sm:flex-row gap-2 md:gap-3 p-2 md:p-3 border border-gray-200 rounded-lg hover:border-[#FE8A0F] transition-all cursor-pointer"
                           >
                             <ImageWithFallback
-                              src={service.image}
+                              src={resolveMediaUrl(service.image)}
                               alt={service.description}
                               className="w-full sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-md object-cover flex-shrink-0"
                             />

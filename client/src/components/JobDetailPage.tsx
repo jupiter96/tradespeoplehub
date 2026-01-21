@@ -256,7 +256,7 @@ export default function JobDetailPage() {
     // Start a conversation with the professional
     startConversation(pro.id).then(() => {
       navigate(`/account?tab=messenger`);
-      toast.success(`Opening chat with ${pro.name}`);
+    toast.success(`Opening chat with ${pro.name}`);
     });
   };
 

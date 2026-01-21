@@ -3109,10 +3109,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         formData.append("portfolioVideo", file);
 
         const uploadPromise = (async () => {
-          const { resolveApiUrl } = await import("../config/api");
-          const apiUrl = resolveApiUrl("/api/auth/profile/portfolio/upload-video");
-          
-          const response = await fetch(apiUrl, {
+          const response = await fetch(resolveApiUrl("/api/auth/profile/portfolio/upload-video"), {
             method: "POST",
             credentials: "include",
             body: formData,
@@ -3125,14 +3122,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
           const data = await response.json();
           
-          // Convert relative URL to absolute URL for display
-          const baseUrl = apiUrl.replace('/api/auth/profile/portfolio/upload-video', '');
-          const fullVideoUrl = data.videoUrl.startsWith('http') ? data.videoUrl : `${baseUrl}${data.videoUrl}`;
-          const fullThumbnailUrl = data.thumbnail.startsWith('http') ? data.thumbnail : `${baseUrl}${data.thumbnail}`;
-          
+          // Store relative URLs - they will be resolved at display time by resolvePortfolioUrl
           return {
-            videoUrl: fullVideoUrl,
-            thumbnail: fullThumbnailUrl,
+            videoUrl: data.videoUrl,
+            thumbnail: data.thumbnail,
             duration: data.duration,
             size: data.size,
           };
@@ -4525,6 +4518,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // Initialize finalServiceData
       let finalServiceData = serviceData;
       let onlyAvailabilityChanged = false; // Track if only availability was changed
+      let availabilityOnlyUpdate = false; // Strong flag for availability-only updates on existing services
 
       // If updating existing service, compare with original data and send only changed fields
       if (isUpdatingExisting && originalServiceData.current) {
@@ -4644,6 +4638,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
         // Check if only availability was changed
         onlyAvailabilityChanged = changedFieldNames.length === 1 && changedFieldNames[0] === 'availability';
+        availabilityOnlyUpdate = isUpdatingExisting && changedFieldNames.length > 0 && changedFieldNames.every(field => field === 'availability');
 
         // If no fields changed, show message and return early
         if (changedFieldNames.length === 0) {
@@ -4699,18 +4694,18 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       
       // Show appropriate message based on service status
       // PRIORITY: Check onlyAvailabilityChanged FIRST - this takes precedence over everything else
-      const isDraftUpdate = draftId || initialService?.status === 'draft';
+      const isDraftUpdate = !isUpdatingExisting && (draftId || initialService?.status === 'draft');
       const wasApprovedRemainsApproved = initialService?.status === 'approved' && updatedService?.status === 'approved';
       const wasApprovedNowPending = initialService?.status === 'approved' && updatedService?.status === 'pending';
 
-      // If only availability was changed, show "live now" message (highest priority check)
-      if (onlyAvailabilityChanged && isEditMode && !isDraftUpdate) {
-        toast.success("Your service is live now.");
+      // If only availability was changed, show "listing updated and published" message (highest priority check)
+      if (availabilityOnlyUpdate) {
+        toast.success("Listing updated and published");
       } else if (!isEditMode || isDraftUpdate) {
         toast.success("Your listing has been submitted to approval and will go live shortly if approved.");
       } else if (wasApprovedRemainsApproved) {
         // Service was approved and remains approved (only availability or price/availability fields changed)
-        toast.success("Your service is live now.");
+        toast.success("Listing updated and published.");
       } else if (wasApprovedNowPending) {
         toast.success("Your service content has been updated and submitted for admin approval. Price and availability changes are live.");
       } else if (isEditMode && updatedService?.status === 'pending') {
@@ -5809,7 +5804,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="standard">Standard Delivery</SelectItem>
-                                <SelectItem value="same-day">Same Day Delivery</SelectItem>
+                                <SelectItem value="same-day">Delivers in 2 days</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -6197,9 +6192,13 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           ) : item.type === 'image' ? (
                             <>
                               <img 
-                                src={item.url} 
+                                src={resolvePortfolioUrl(item.url)} 
                                 alt={`Gallery ${index + 1}`} 
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50" y="50" font-size="12" fill="%239ca3af" text-anchor="middle" dy=".3em">Failed to load</text></svg>';
+                                }}
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                               <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-2 py-1 rounded-md font-['Poppins',sans-serif] text-[10px] font-medium">
@@ -6225,7 +6224,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                           ) : (
                             <>
                               <video 
-                                src={item.url} 
+                                src={resolvePortfolioUrl(item.url)} 
+                                poster={item.thumbnail ? resolvePortfolioUrl(item.thumbnail) : undefined}
                                 className="w-full h-full object-cover"
                                 controls
                                 preload="metadata"
