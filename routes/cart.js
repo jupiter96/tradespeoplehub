@@ -35,7 +35,7 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
       await cart.save();
     }
 
-    console.log('🛒 [Cart API] Fetching cart with', cart.items.length, 'items');
+
 
     // Map cart items to frontend format and fetch priceUnit if missing
     const items = await Promise.all(cart.items.map(async (item) => {
@@ -47,14 +47,11 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
           const service = await Service.findById(item.serviceId);
           if (service && service.priceUnit) {
             priceUnit = service.priceUnit;
-            console.log('✅ [Cart API] Fetched priceUnit for', item.title, ':', priceUnit);
           }
         } catch (err) {
           console.log('⚠️ [Cart API] Could not fetch service details:', err.message);
         }
       }
-
-      console.log('📋 [Cart API] Item:', item.title, '- priceUnit:', priceUnit);
 
       return {
         id: item.itemKey || item.serviceId, // Use itemKey for uniqueness
@@ -73,7 +70,6 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
       };
     }));
 
-    console.log('✅ [Cart API] Returning', items.length, 'items');
 
     return res.json({ items });
   } catch (error) {
@@ -86,12 +82,6 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
 router.post('/items', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const { item, quantity = 1 } = req.body;
-
-    console.log('📦 [Cart API] Add to cart request:', {
-      serviceId: item.serviceId || item.id,
-      title: item.title,
-      priceUnit: item.priceUnit
-    });
 
     if (!item || !item.id) {
       return res.status(400).json({ error: 'Item data is required' });
@@ -130,14 +120,11 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
           const service = await Service.findById(serviceId);
           if (service && service.priceUnit) {
             priceUnit = service.priceUnit;
-            console.log('✅ [Cart API] Fetched priceUnit from service:', priceUnit);
           }
         } catch (err) {
           console.log('⚠️ [Cart API] Could not fetch service details:', err.message);
         }
       }
-      
-      console.log('💾 [Cart API] Saving item with priceUnit:', priceUnit);
       
       cart.items.push({
         serviceId: serviceId,

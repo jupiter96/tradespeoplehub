@@ -920,8 +920,6 @@ export default function PromoCodeSection() {
               <Select
                 value={formData.category}
                 onValueChange={(value) => {
-                  console.log('[PromoCodeSection] Category selected:', value);
-                  console.log('[PromoCodeSection] Setting categories array to:', [value]);
                   setFormData({ ...formData, category: value, categories: value ? [value] : [] });
                 }}
                 disabled={!formData.sector}

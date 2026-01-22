@@ -29,7 +29,11 @@ import {
   Landmark,
   Play,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Image,
+  Upload,
+  Film,
+  Info
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -38,6 +42,7 @@ import { Badge } from "./ui/badge";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Textarea } from "./ui/textarea";
 import { Calendar as CalendarComponent } from "./ui/calendar";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
@@ -242,35 +247,11 @@ export default function CartPage() {
 
   // Log cart items to console whenever cartItems change
   useEffect(() => {
-    console.log('🛒 [Cart Page] Cart Items Updated:', {
-      totalItems: cartItems.length,
-      items: cartItems.map(item => ({
-        id: item.id, // Item key for uniqueness
-        serviceId: (item as any).serviceId || item.id, // Actual MongoDB service ID
-        title: item.title,
-        seller: item.seller,
-        price: item.price,
-        priceUnit: item.priceUnit, // 🔍 Check priceUnit
-        quantity: item.quantity,
-        image: item.image,
-        rating: item.rating,
-        addons: item.addons,
-        booking: item.booking,
-        packageType: item.packageType,
-        thumbnailVideo: item.thumbnailVideo,
-      })),
-      cartTotal: cartTotal,
-    });
     
     // 🔍 Detailed priceUnit check for each item
     cartItems.forEach((item, index) => {
       console.log(`📋 [Cart Page] Item ${index + 1}:`, {
-        title: item.title,
-        priceUnit: item.priceUnit,
-        priceUnitType: typeof item.priceUnit,
-        displayText: item.priceUnit && item.priceUnit !== 'fixed' 
-          ? `Price per ${item.priceUnit}` 
-          : 'Price per unit'
+        title: item.title
       });
     });
   }, [cartItems, cartTotal]);
@@ -304,14 +285,12 @@ export default function CartPage() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log("[CartPage] Available promo codes:", data.promoCodes);
           setAvailablePromoCodes(data.promoCodes || []);
         } else {
           console.error("[CartPage] Failed to fetch available promo codes");
           setAvailablePromoCodes([]);
         }
       } catch (error) {
-        console.error("[CartPage] Error fetching available promo codes:", error);
         setAvailablePromoCodes([]);
       }
     };
@@ -368,6 +347,12 @@ export default function CartPage() {
     startTimeError?: string;
     endTimeError?: string;
   }}>({});
+  
+  // Additional information state
+  const [showAdditionalInfoDialog, setShowAdditionalInfoDialog] = useState(false);
+  const [additionalInfoMessage, setAdditionalInfoMessage] = useState("");
+  const [additionalInfoFiles, setAdditionalInfoFiles] = useState<File[]>([]);
+  const additionalInfoFileInputRef = useRef<HTMLInputElement>(null);
   
   // Service availability data
   interface TimeBlock {
@@ -691,7 +676,6 @@ export default function CartPage() {
           };
         }),
       };
-      console.log("[CartPage] Applying promo code:", requestPayload);
       const response = await fetch(resolveApiUrl("/api/promo-codes/validate"), {
         method: "POST",
         headers: {
@@ -743,15 +727,6 @@ export default function CartPage() {
                                   service.professional?.toString() || 
                                   String(service.professional);
               return serviceProId === promoProfessionalId;
-            });
-            
-            console.log("[CartPage] Pro promo code owner validation:", {
-              promoProfessionalId,
-              services: services.map(s => ({
-                serviceId: s._id?.toString(),
-                professionalId: s.professional?._id?.toString() || s.professional?.toString()
-              })),
-              allServicesBelongToPro
             });
             
             if (!allServicesBelongToPro) {
@@ -940,6 +915,42 @@ export default function CartPage() {
     
     return { minTime, maxTime };
   };
+
+  // Get availability blocks for a selected date
+  const getAvailabilityBlocks = (itemId: string, date: Date): TimeBlock[] => {
+    const item = cartItems.find(i => i.id === itemId);
+    if (!item || !date) return [];
+    
+    const serviceId = item.serviceId || item.id;
+    const availability = serviceAvailabilities[serviceId];
+    
+    if (!availability) return [];
+    
+    const dayName = getDayName(date);
+    const dayAvailability = availability[dayName];
+    
+    if (!dayAvailability || !dayAvailability.enabled || dayAvailability.blocks.length === 0) {
+      return [];
+    }
+
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    // For same-day booking, filter out blocks that are in the past or too soon
+    if (isToday) {
+      const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+      const minTimeMinutes = currentTimeMinutes + 120; // Add 2 hours buffer
+      
+      return dayAvailability.blocks.filter(block => {
+        const [toHour, toMin] = block.to.split(':').map(Number);
+        const toMinutes = toHour * 60 + toMin;
+        // Only show blocks that haven't ended yet (with 2 hour buffer)
+        return toMinutes > minTimeMinutes;
+      });
+    }
+    
+    return dayAvailability.blocks;
+  };
   
   // Generate time options for dropdown (every 30 minutes)
   const generateTimeOptions = (minTime: string, maxTime: string, isEndTime: boolean = false): string[] => {
@@ -1073,6 +1084,36 @@ export default function CartPage() {
     });
   };
   
+  // Handle time block selection - directly set both start and end time
+  const handleTimeBlockSelect = (itemId: string, block: TimeBlock) => {
+    const currentSlot = itemTimeSlots[itemId] || {};
+    const date = currentSlot.date;
+    
+    if (!date) {
+      toast.error("Please select a date first");
+      return;
+    }
+    
+    // Clear any previous errors
+    setTimeValidationErrors(prev => ({
+      ...prev,
+      [itemId]: { startTimeError: undefined, endTimeError: undefined }
+    }));
+    
+    // Directly set both times from the block
+    setItemTimeSlots(prev => ({
+      ...prev,
+      [itemId]: {
+        ...currentSlot,
+        time: block.from,
+        endTime: block.to,
+        timeSlot: getTimeSlot(block.from)
+      }
+    }));
+    
+    toast.success(`Time slot selected: ${block.from} - ${block.to}`);
+  };
+
   // Handle end time change with validation
   const handleEndTimeChange = (itemId: string, endTime: string) => {
     const currentSlot = itemTimeSlots[itemId] || {};
@@ -1243,7 +1284,6 @@ export default function CartPage() {
     const subtotal = cartTotal;
     const orderTotal = subtotal - discount + serviceFee;
     
-    console.log('🛒 [Order] Creating bulk orders for', cartItems.length, 'items');
     
     // Build order requests for each item with their individual time slots
     const orderRequests = cartItems.map((item, index) => {
@@ -1289,8 +1329,6 @@ export default function CartPage() {
       };
     });
     
-    console.log('📦 [Order] Order requests:', orderRequests);
-    
     try {
       // Determine payment method type
       let paymentMethodType = selectedPayment;
@@ -1312,6 +1350,47 @@ export default function CartPage() {
         return;
       }
       
+      // Upload files first if any, then prepare additional information
+      let uploadedFiles: Array<{url: string, fileName: string, fileType: string}> = [];
+      
+      if (additionalInfoFiles.length > 0) {
+        try {
+          // Upload each file
+          for (const file of additionalInfoFiles) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const uploadResponse = await fetch(resolveApiUrl("/api/orders/upload-attachment"), {
+              method: "POST",
+              credentials: "include",
+              body: formData,
+            });
+            
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              uploadedFiles.push({
+                url: uploadData.url,
+                fileName: uploadData.fileName,
+                fileType: uploadData.fileType
+              });
+            } else {
+              const errorData = await uploadResponse.json().catch(() => ({ error: 'Upload failed' }));
+              console.error(`Failed to upload file: ${file.name}`, errorData);
+              toast.error(`Failed to upload ${file.name}. ${errorData.error || 'Please try again.'}`);
+            }
+          }
+        } catch (error: any) {
+          console.error('File upload error:', error);
+          toast.error("Failed to upload some files. Please try again.");
+        }
+      }
+      
+      // Prepare additional information if provided
+      const additionalInfo = (additionalInfoMessage?.trim() || uploadedFiles.length > 0) ? {
+        message: additionalInfoMessage?.trim() || '',
+        files: uploadedFiles,
+      } : undefined;
+
       // Create bulk orders
       const response = await fetch(resolveApiUrl("/api/orders/bulk"), {
         method: "POST",
@@ -1326,6 +1405,7 @@ export default function CartPage() {
           totalAmount: orderTotal,
           address: addressDetails,
           skipAddress: skipAddress,
+          additionalInformation: additionalInfo,
         }),
       });
 
@@ -1336,7 +1416,6 @@ export default function CartPage() {
       }
 
       const result = await response.json();
-      console.log('✅ [Order] Bulk orders created:', result);
       
       // If PayPal order needs approval, redirect to PayPal
       if (result.paypalOrderId && result.approveUrl) {
@@ -1371,7 +1450,6 @@ export default function CartPage() {
   };
 
   const handlePlaceOrder = async () => {
-    console.log('🛒 [CartPage] Place Order button clicked');
     
     // Check each item has a time slot selected (date, start time, and end time)
     const missingTimeSlots = cartItems.filter(item => {
@@ -1421,7 +1499,6 @@ export default function CartPage() {
       return;
     }
     
-    console.log('✅ [CartPage] All items have time slots selected');
     
     // Proceed with creating multiple orders
     proceedWithOrder();
@@ -2067,107 +2144,73 @@ export default function CartPage() {
                                         </p>
                                       </div>
                                     ) : (
-                                      // Time Range Input Fields
+                                      // Time Block Buttons - Display availability blocks directly
                                       <div className="space-y-4">
-                                        {/* Time Input Row - Matching the image design */}
-                                        <div className="flex items-center gap-3">
-                                          {/* Clock Icon */}
-                                          <Clock className="w-5 h-5 text-[#FE8A0F] shrink-0" />
-                                          
-                                          {/* Start Time Input */}
-                                          <div className="relative flex-1">
-                                            <input
-                                              type="time"
-                                              value={currentSlot.time || ""}
-                                              onChange={(e) => handleStartTimeChange(item.id, e.target.value)}
-                                              min={(() => {
-                                                const range = getAvailabilityRange(item.id, currentSlot.date);
-                                                return range?.minTime || "00:00";
-                                              })()}
-                                              max={(() => {
-                                                const range = getAvailabilityRange(item.id, currentSlot.date);
-                                                if (!range) return "23:59";
-                                                // Start time max should be before the end time to allow selection
-                                                // Subtract 30 minutes from maxTime
-                                                const [hours, minutes] = range.maxTime.split(':').map(Number);
-                                                const totalMinutes = hours * 60 + minutes - 30;
-                                                const maxHours = Math.floor(totalMinutes / 60);
-                                                const maxMinutes = totalMinutes % 60;
-                                                return `${String(maxHours).padStart(2, '0')}:${String(maxMinutes).padStart(2, '0')}`;
-                                              })()}
-                                              className={`w-full pl-3 pr-10 py-2.5 border rounded-full font-['Poppins',sans-serif] text-[14px] text-[#2c353f] focus:outline-none focus:ring-1 bg-white ${
-                                                timeValidationErrors[item.id]?.startTimeError 
-                                                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
-                                                  : 'border-gray-300 focus:border-[#FE8A0F] focus:ring-[#FE8A0F]'
-                                              }`}
-                                              style={{ colorScheme: 'light' }}
-                                            />
-                                            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                          </div>
-                                          
-                                          {/* To Label */}
-                                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">to</span>
-                                          
-                                          {/* End Time Input */}
-                                          <div className="relative flex-1">
-                                            <input
-                                              type="time"
-                                              value={currentSlot.endTime || ""}
-                                              onChange={(e) => handleEndTimeChange(item.id, e.target.value)}
-                                              disabled={!currentSlot.time}
-                                              min={currentSlot.time || (() => {
-                                                const range = getAvailabilityRange(item.id, currentSlot.date);
-                                                return range?.minTime || "00:00";
-                                              })()}
-                                              max={(() => {
-                                                const range = getAvailabilityRange(item.id, currentSlot.date);
-                                                return range?.maxTime || "23:59";
-                                              })()}
-                                              className={`w-full pl-3 pr-10 py-2.5 border rounded-full font-['Poppins',sans-serif] text-[14px] text-[#2c353f] focus:outline-none focus:ring-1 ${
-                                                !currentSlot.time 
-                                                  ? 'bg-gray-50 cursor-not-allowed border-gray-200' 
-                                                  : timeValidationErrors[item.id]?.endTimeError 
-                                                    ? 'bg-white border-red-500 focus:border-red-500 focus:ring-red-500' 
-                                                    : 'bg-white border-gray-300 focus:border-[#FE8A0F] focus:ring-[#FE8A0F]'
-                                              }`}
-                                              style={{ colorScheme: 'light' }}
-                                            />
-                                            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Validation Error Messages */}
-                                        {(timeValidationErrors[item.id]?.startTimeError || timeValidationErrors[item.id]?.endTimeError) && (
-                                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                            {timeValidationErrors[item.id]?.startTimeError && (
-                                              <p className="font-['Poppins',sans-serif] text-[12px] text-red-700 flex items-center gap-1.5">
-                                                <AlertTriangle className="w-3.5 h-3.5" />
-                                                {timeValidationErrors[item.id].startTimeError}
-                                              </p>
-                                            )}
-                                            {timeValidationErrors[item.id]?.endTimeError && (
-                                              <p className="font-['Poppins',sans-serif] text-[12px] text-red-700 flex items-center gap-1.5 mt-1">
-                                                <AlertTriangle className="w-3.5 h-3.5" />
-                                                {timeValidationErrors[item.id].endTimeError}
-                                              </p>
-                                            )}
-                                          </div>
-                                        )}
-                                        
-                                        {/* Availability Info */}
-                                        {(() => {
-                                          const range = getAvailabilityRange(item.id, currentSlot.date);
-                                          if (range) {
+                                        <div>
+                                          <label className="block font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-3">
+                                            Select Time Block
+                                          </label>
+                                          {(() => {
+                                            const blocks = getAvailabilityBlocks(item.id, currentSlot.date);
+                                            if (blocks.length === 0) {
+                                              return (
+                                                <div className="text-center py-6 bg-gray-50 rounded-lg">
+                                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                                    No available time blocks for this date
+                                                  </p>
+                                                </div>
+                                              );
+                                            }
                                             return (
-                                              <div className="bg-blue-50 rounded-lg p-3">
-                                                <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700">
-                                                  <span className="font-medium">Available hours:</span> {range.minTime} - {range.maxTime}
-                                                </p>
+                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {blocks.map((block, index) => {
+                                                  const isSelected = currentSlot.time === block.from && currentSlot.endTime === block.to;
+                                                  return (
+                                                    <button
+                                                      key={`${block.from}-${block.to}-${index}`}
+                                                      type="button"
+                                                      onClick={() => handleTimeBlockSelect(item.id, block)}
+                                                      className={`
+                                                        py-3 px-4 rounded-lg border-2 transition-all font-['Poppins',sans-serif] text-[14px] text-center
+                                                        ${isSelected
+                                                          ? 'border-[#3B82F6] bg-blue-50 text-[#3B82F6] font-medium shadow-sm' 
+                                                          : 'border-gray-200 bg-white hover:border-[#3B82F6] hover:bg-blue-50 text-[#2c353f] cursor-pointer'
+                                                        }
+                                                      `}
+                                                    >
+                                                      {block.from} - {block.to}
+                                                    </button>
+                                                  );
+                                                })}
                                               </div>
                                             );
-                                          }
-                                          return null;
-                                        })()}
+                                          })()}
+                                          {(timeValidationErrors[item.id]?.startTimeError || timeValidationErrors[item.id]?.endTimeError) && (
+                                            <div className="mt-2 space-y-1">
+                                              {timeValidationErrors[item.id]?.startTimeError && (
+                                                <p className="font-['Poppins',sans-serif] text-[12px] text-red-700 flex items-center gap-1.5">
+                                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                                  {timeValidationErrors[item.id].startTimeError}
+                                                </p>
+                                              )}
+                                              {timeValidationErrors[item.id]?.endTimeError && (
+                                                <p className="font-['Poppins',sans-serif] text-[12px] text-red-700 flex items-center gap-1.5">
+                                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                                  {timeValidationErrors[item.id].endTimeError}
+                                                </p>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Selected Time Range Display */}
+                                        {currentSlot.time && currentSlot.endTime && (
+                                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                            <p className="font-['Poppins',sans-serif] text-[13px] text-green-700">
+                                              <span className="font-medium">Selected:</span> {currentSlot.time} - {currentSlot.endTime}
+                                            </p>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -2500,6 +2543,21 @@ export default function CartPage() {
                   </div>
                 </div>
 
+                {/* Additional Information Button */}
+                <Button 
+                  onClick={() => setShowAdditionalInfoDialog(true)}
+                  variant="outline"
+                  className="w-full border-2 border-[#3D78CB] text-[#3D78CB] hover:!bg-[#3D78CB] hover:!text-white py-4 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[15px] mb-3 font-semibold"
+                >
+                  <Info className="w-5 h-5 mr-2" />
+                  Additional Information
+                  {(additionalInfoMessage || additionalInfoFiles.length > 0) && (
+                    <span className="ml-2 bg-[#3D78CB] text-white rounded-full px-2 py-0.5 text-xs">
+                      {additionalInfoFiles.length > 0 ? `${additionalInfoFiles.length} file${additionalInfoFiles.length > 1 ? 's' : ''}` : 'Added'}
+                    </span>
+                  )}
+                </Button>
+
                 {/* Place Order Button */}
                 <Button 
                   onClick={handlePlaceOrder}
@@ -2537,6 +2595,138 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Additional Information Dialog */}
+      <Dialog open={showAdditionalInfoDialog} onOpenChange={setShowAdditionalInfoDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Additional Information
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Add any special requirements or additional information for your order
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {/* Message Input */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Message (Optional)
+              </Label>
+              <Textarea
+                placeholder="Enter any special requirements, instructions, or additional information..."
+                value={additionalInfoMessage}
+                onChange={(e) => setAdditionalInfoMessage(e.target.value)}
+                rows={5}
+                className="font-['Poppins',sans-serif] text-[13px]"
+              />
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Attachments (Optional) - Max 10 files
+              </Label>
+              <div 
+                className="border-2 border-dashed border-[#3D78CB] rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer"
+                onClick={() => additionalInfoFileInputRef.current?.click()}
+              >
+                <input
+                  ref={additionalInfoFileInputRef}
+                  type="file"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      const newFiles = Array.from(e.target.files);
+                      const validFiles = newFiles.filter(file => {
+                        const type = file.type;
+                        return type.startsWith('image/') || 
+                               type.startsWith('video/') || 
+                               type === 'application/pdf' ||
+                               type === 'application/msword' ||
+                               type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                               type === 'text/plain';
+                      });
+
+                      if (validFiles.length !== newFiles.length) {
+                        toast.error("Some files were not added. Only images, videos, and documents are allowed.");
+                      }
+
+                      setAdditionalInfoFiles(prev => [...prev, ...validFiles].slice(0, 10));
+                    }
+                  }}
+                  className="hidden"
+                />
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="w-8 h-8 text-[#3D78CB]" />
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] font-medium">
+                    Click to upload files ({additionalInfoFiles.length}/10)
+                  </span>
+                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    Images, videos, PDF, DOC, DOCX, or TXT files
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Selected Files */}
+            {additionalInfoFiles.length > 0 && (
+              <div className="space-y-2">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                  Selected Files:
+                </Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {additionalInfoFiles.map((file, index) => {
+                    const getFileIcon = () => {
+                      if (file.type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" />;
+                      if (file.type.startsWith('video/')) return <Film className="w-5 h-5 text-purple-500" />;
+                      return <FileText className="w-5 h-5 text-gray-500" />;
+                    };
+                    
+                    return (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                        {getFileIcon()}
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] flex-1 truncate">
+                          {file.name}
+                        </span>
+                        <button 
+                          onClick={() => setAdditionalInfoFiles(prev => prev.filter((_, i) => i !== index))} 
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAdditionalInfoMessage("");
+                  setAdditionalInfoFiles([]);
+                  setShowAdditionalInfoDialog(false);
+                }}
+                className="font-['Poppins',sans-serif]"
+              >
+                Clear & Close
+              </Button>
+              <Button
+                onClick={() => setShowAdditionalInfoDialog(false)}
+                className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif]"
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Footer />
     </div>
     </>

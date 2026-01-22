@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
@@ -42,6 +42,7 @@ import {
   X,
   PoundSterling,
   Paperclip,
+  Play,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -84,6 +85,111 @@ import {
 } from "./ui/dropdown-menu";
 import { toast } from "sonner@2.0.3";
 
+// Video Thumbnail Component with Play Button
+function VideoThumbnail({
+  videoUrl,
+  thumbnail,
+  fallbackImage,
+  className = "",
+  style = {},
+}: {
+  videoUrl: string;
+  thumbnail?: string;
+  fallbackImage?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Set video to middle frame when metadata loads
+  useEffect(() => {
+    if (!videoRef.current || isPlaying) return;
+    
+    const video = videoRef.current;
+    
+    const handleLoadedMetadata = () => {
+      if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+        // Seek to middle of video for thumbnail
+        video.currentTime = video.duration / 2;
+      }
+    };
+    
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [isPlaying]);
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      setIsPlaying(true);
+      videoRef.current.play().catch(() => {
+        setIsPlaying(false);
+      });
+    }
+  };
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        setIsPlaying(true);
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const handleVideoEnd = () => {
+    if (videoRef.current) {
+      if (videoRef.current.duration && !isNaN(videoRef.current.duration)) {
+        videoRef.current.currentTime = videoRef.current.duration / 2;
+      }
+      setIsPlaying(false);
+    }
+  };
+
+  // Resolve URLs for video and thumbnail
+  const resolvedVideoUrl = videoUrl.startsWith("http") || videoUrl.startsWith("blob:") ? videoUrl : resolveApiUrl(videoUrl);
+  const resolvedPoster = thumbnail ? (thumbnail.startsWith("http") || thumbnail.startsWith("blob:") ? thumbnail : resolveApiUrl(thumbnail)) : 
+                       fallbackImage ? (fallbackImage.startsWith("http") || fallbackImage.startsWith("blob:") ? fallbackImage : resolveApiUrl(fallbackImage)) : undefined;
+
+  return (
+    <div className={`relative ${className}`} style={style}>
+      <video
+        ref={videoRef}
+        src={resolvedVideoUrl}
+        poster={resolvedPoster}
+        className="w-full h-full object-cover object-center"
+        style={{ minWidth: '100%', minHeight: '100%' }}
+        muted
+        playsInline
+        loop
+        onEnded={handleVideoEnd}
+        onClick={handleVideoClick}
+        preload="metadata"
+      />
+      
+      {!isPlaying && (
+        <button
+          onClick={handlePlayClick}
+          className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group z-10"
+          aria-label="Play video"
+        >
+          <div className="bg-white/90 group-hover:bg-white rounded-full p-2 shadow-lg transform group-hover:scale-110 transition-transform">
+            <Play className="w-4 h-4 text-[#FE8A0F] fill-[#FE8A0F]" />
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,6 +204,7 @@ export default function ClientOrdersSection() {
   const [orderDetailTab, setOrderDetailTab] = useState("timeline");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");
+  const [serviceThumbnails, setServiceThumbnails] = useState<{[orderId: string]: { type: 'image' | 'video', url: string, thumbnail?: string }}>({});
   const [rating, setRating] = useState(0);
   const [cancelReason, setCancelReason] = useState("");
   const [review, setReview] = useState("");
@@ -261,6 +368,14 @@ export default function ClientOrdersSection() {
       return url;
     }
     return resolveApiUrl(url);
+  };
+
+  // Check if a file is a video based on extension or URL
+  const isVideoFile = (url?: string): boolean => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    const lowerUrl = url.toLowerCase();
+    return videoExtensions.some(ext => lowerUrl.includes(ext));
   };
 
   type ClientTimelineEvent = {
@@ -918,6 +1033,81 @@ export default function ClientOrdersSection() {
   const currentOrder = selectedOrder
     ? orders.find((o) => o.id === selectedOrder)
     : null;
+
+  // Fetch service thumbnail for current order
+  useEffect(() => {
+    const fetchServiceThumbnail = async () => {
+      if (!currentOrder || !currentOrder.items || currentOrder.items.length === 0) return;
+      
+      const serviceId = (currentOrder.items[0] as any)?.serviceId || currentOrder.items[0]?.id;
+      if (!serviceId || serviceThumbnails[currentOrder.id]) return; // Already fetched
+      
+      try {
+        const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const service = data.service;
+          
+          if (service) {
+            // Check gallery first (new format)
+            let thumbnail: { type: 'image' | 'video', url: string, thumbnail?: string } | null = null;
+            
+            if (service.gallery && Array.isArray(service.gallery) && service.gallery.length > 0) {
+              const firstItem = service.gallery[0];
+              if (firstItem.type === 'video' && firstItem.url) {
+                thumbnail = {
+                  type: 'video',
+                  url: firstItem.url,
+                  thumbnail: firstItem.thumbnail
+                };
+              } else if (firstItem.type === 'image' && firstItem.url) {
+                thumbnail = {
+                  type: 'image',
+                  url: firstItem.url
+                };
+              }
+            }
+            
+            // Fallback to legacy format
+            if (!thumbnail) {
+              if (service.videos && Array.isArray(service.videos) && service.videos.length > 0) {
+                const firstVideo = service.videos[0];
+                thumbnail = {
+                  type: 'video',
+                  url: firstVideo.url || firstVideo,
+                  thumbnail: firstVideo.thumbnail
+                };
+              } else if (service.images && Array.isArray(service.images) && service.images.length > 0) {
+                thumbnail = {
+                  type: 'image',
+                  url: service.images[0]
+                };
+              } else if (service.image) {
+                thumbnail = {
+                  type: 'image',
+                  url: service.image
+                };
+              }
+            }
+            
+            if (thumbnail) {
+              setServiceThumbnails(prev => ({
+                ...prev,
+                [currentOrder.id]: thumbnail!
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        // Silently fail - will use fallback image
+      }
+    };
+    
+    fetchServiceThumbnail();
+  }, [currentOrder?.id, (currentOrder?.items?.[0] as any)?.serviceId || currentOrder?.items?.[0]?.id]);
 
   // Console log currentOrder for debugging
   useEffect(() => {
@@ -1998,13 +2188,6 @@ export default function ClientOrdersSection() {
             )} */}
 
             {(() => {
-              console.log('=== Client Order Check ===');
-              console.log('Order ID:', currentOrder.id);
-              console.log('Order Status:', currentOrder.status);
-              console.log('Order Delivery Status:', currentOrder.deliveryStatus);
-              console.log('Order disputeId:', currentOrder.disputeId);
-              console.log('Full currentOrder:', currentOrder);
-              console.log('==========================');
               return null;
             })()}
             
@@ -2808,7 +2991,7 @@ export default function ClientOrdersSection() {
                         </td>
                       </tr>
                     )}
-                    {currentOrder.discount && currentOrder.discount > 0 && (
+                    {currentOrder.discount > 0 && (
                       <tr className="bg-gray-50 border-t border-gray-200">
                         <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                           Discount
@@ -2826,7 +3009,7 @@ export default function ClientOrdersSection() {
                         £{formatMoney(currentOrder.subtotal ?? currentOrder.amountValue ?? 0)}
                       </td>
                     </tr>
-                    {currentOrder.serviceFee && currentOrder.serviceFee > 0 && (
+                    {currentOrder.serviceFee > 0 && (
                       <tr className="border-t border-gray-200">
                         <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                           Service Fee
@@ -3170,17 +3353,67 @@ export default function ClientOrdersSection() {
                     Service
                   </p>
                   <div className="flex gap-3 items-start">
-                    <img 
-                      src={currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image 
-                        ? resolveFileUrl(currentOrder.items[0].image) 
-                        : serviceVector}
-                      alt="Service thumbnail"
-                      className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = serviceVector;
-                      }}
-                    />
+                    {(() => {
+                      // First try to use fetched service thumbnail
+                      const fetchedThumbnail = serviceThumbnails[currentOrder.id];
+                      
+                      if (fetchedThumbnail) {
+                        if (fetchedThumbnail.type === 'video') {
+                          return (
+                            <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-gray-900">
+                              <VideoThumbnail
+                                videoUrl={resolveFileUrl(fetchedThumbnail.url)}
+                                thumbnail={fetchedThumbnail.thumbnail ? resolveFileUrl(fetchedThumbnail.thumbnail) : undefined}
+                                className="w-full h-full"
+                              />
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <img 
+                              src={resolveFileUrl(fetchedThumbnail.url)}
+                              alt="Service thumbnail"
+                              className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = serviceVector;
+                              }}
+                            />
+                          );
+                        }
+                      }
+                      
+                      // Fallback to order item image
+                      const serviceImage = currentOrder.items && currentOrder.items.length > 0 && currentOrder.items[0]?.image 
+                        ? currentOrder.items[0].image 
+                        : currentOrder.serviceImage || serviceVector;
+                      
+                      const imageUrl = serviceImage !== serviceVector ? resolveFileUrl(serviceImage) : serviceVector;
+                      const isVideo = isVideoFile(serviceImage);
+                      
+                      if (isVideo && serviceImage !== serviceVector) {
+                        return (
+                          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-gray-900">
+                            <VideoThumbnail
+                              videoUrl={imageUrl}
+                              className="w-full h-full"
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <img 
+                            src={imageUrl}
+                            alt="Service thumbnail"
+                            className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = serviceVector;
+                            }}
+                          />
+                        );
+                      }
+                    })()}
                     <div className="flex-1 min-w-0">
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                         {currentOrder.service}
@@ -4232,33 +4465,42 @@ export default function ClientOrdersSection() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="flex lg:grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
+      <div className="flex lg:grid lg:grid-cols-3 gap-4 md:gap-6 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         {/* Total Orders */}
-        <div className="bg-white rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
-          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">
+        <div 
+          className="rounded-2xl p-5 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0 shadow-[0_8px_24px_rgba(99,102,241,0.25)] hover:shadow-[0_12px_32px_rgba(99,102,241,0.35)] transition-all duration-300 transform hover:-translate-y-1"
+          style={{ background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' }}
+        >
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-white/90 mb-2 md:mb-3 font-medium">
             Total Orders
           </p>
-          <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f]">
+          <p className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] text-white font-bold">
             {orders.length}
           </p>
         </div>
 
-        {/* Confirmed */}
-        <div className="bg-[#DBEAFE] border border-[#BFDBFE] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
-          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#1E40AF] mb-1 md:mb-2">
+        {/* In Progress */}
+        <div 
+          className="rounded-2xl p-5 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0 shadow-[0_8px_24px_rgba(59,130,246,0.25)] hover:shadow-[0_12px_32px_rgba(59,130,246,0.35)] transition-all duration-300 transform hover:-translate-y-1"
+          style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)' }}
+        >
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-white/90 mb-2 md:mb-3 font-medium">
             In Progress
           </p>
-          <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#1E40AF]">
+          <p className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] text-white font-bold">
             {inProgressOrders.length}
           </p>
         </div>
 
         {/* Completed */}
-        <div className="bg-[#D1FAE5] border border-[#A7F3D0] rounded-xl p-4 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0">
-          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#065F46] mb-1 md:mb-2">
+        <div 
+          className="rounded-2xl p-5 md:p-6 min-w-[200px] lg:min-w-0 flex-shrink-0 shadow-[0_8px_24px_rgba(16,185,129,0.25)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.35)] transition-all duration-300 transform hover:-translate-y-1"
+          style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+        >
+          <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-white/90 mb-2 md:mb-3 font-medium">
             Completed
           </p>
-          <p className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#065F46]">
+          <p className="font-['Poppins',sans-serif] text-[32px] md:text-[40px] text-white font-bold">
             {completedOrders.length}
           </p>
         </div>
@@ -4427,7 +4669,11 @@ export default function ClientOrdersSection() {
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={order.service}>
+                            {order.service && order.service.length > 30 
+                              ? `${order.service.substring(0, 30)}...` 
+                              : order.service}
+                          </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
                         </div>
                       </TableCell>
@@ -4520,7 +4766,11 @@ export default function ClientOrdersSection() {
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={order.service}>
+                            {order.service && order.service.length > 30 
+                              ? `${order.service.substring(0, 30)}...` 
+                              : order.service}
+                          </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
                         </div>
                       </TableCell>
@@ -4613,7 +4863,11 @@ export default function ClientOrdersSection() {
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={order.service}>
+                            {order.service && order.service.length > 30 
+                              ? `${order.service.substring(0, 30)}...` 
+                              : order.service}
+                          </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
                         </div>
                       </TableCell>
@@ -4691,7 +4945,11 @@ export default function ClientOrdersSection() {
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">{order.service}</p>
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]" title={order.service}>
+                            {order.service && order.service.length > 30 
+                              ? `${order.service.substring(0, 30)}...` 
+                              : order.service}
+                          </p>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{order.id}</p>
                         </div>
                       </TableCell>

@@ -11,10 +11,8 @@ router.post('/validate', authenticateToken, async (req, res) => {
   try {
     const { code, subtotal, items } = req.body;
     
-    console.log('[Promo Code Validate] Request body:', { code, subtotal, items, userId: req.user?.id });
     
     if (!code || !subtotal) {
-      console.log('[Promo Code Validate] Missing required fields:', { hasCode: !!code, hasSubtotal: !!subtotal });
       return res.status(400).json({ error: 'Code and subtotal are required' });
     }
     
@@ -23,14 +21,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
       code: code.toUpperCase().trim(),
       status: 'active'
     });
-    
-    console.log('[Promo Code Validate] Found promo code:', promoCode ? { 
-      id: promoCode._id, 
-      code: promoCode.code, 
-      type: promoCode.type,
-      professional: promoCode.professional,
-      status: promoCode.status 
-    } : 'Not found');
     
     if (!promoCode) {
       return res.status(404).json({ error: 'Invalid promo code' });
@@ -82,8 +72,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
         };
       });
       
-      console.log('[Promo Code Validate] Services with owner IDs:', servicesWithOwnerIds);
-      
       // Extract promo professional ID properly
       let promoProId = null;
       if (promoCode.professional) {
@@ -106,11 +94,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
       
       servicesBelongToPro = allServicesBelongToPro;
       
-      console.log('[Promo Code Validate] Pro promo code - services belong to pro:', {
-        servicesBelongToPro,
-        promoProfessionalId: promoProId,
-        serviceProfessionalIds: servicesWithOwnerIds.map(s => s.ownerId)
-      });
     }
     
     // Check validity - for pro promo codes on their own services, skip validFrom check
@@ -147,7 +130,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
       }
     }
     
-    console.log('[Promo Code Validate] Validation result:', validation);
     if (!validation.valid) {
       return res.status(400).json({ error: validation.reason });
     }
@@ -184,7 +166,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
         });
         
         if (!allServicesBelongToPro) {
-          console.log('[Promo Code Validate] Pro promo code - service professional mismatch');
           return res.status(400).json({ 
             error: 'This promo code can only be used for services from the professional who created it' 
           });
@@ -199,16 +180,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
         }).select('professional serviceCategory title').lean();
       }
       
-      console.log('[Promo Code Validate] Pro promo code - checking services:', {
-        promoProfessional: promoCode.professional.toString(),
-        serviceIds: items.map(item => item.serviceId || item.id).filter(Boolean),
-        serviceProfessionals: services.map(s => ({
-          serviceId: s._id.toString(),
-          professional: s.professional?.toString() || s.professional,
-          serviceCategory: s.serviceCategory?.toString() || s.serviceCategory
-        })),
-        promoCategories: promoCode.categories?.map(c => c.toString()) || []
-      });
       
       // If pro promo code has categories, also check if items match those categories
       if (promoCode.categories && promoCode.categories.length > 0) {
@@ -265,13 +236,6 @@ router.post('/validate', authenticateToken, async (req, res) => {
         const hasMatchingCategory = serviceCategoryIds.some(catId => 
           promoCategoryIds.includes(catId)
         );
-        
-        console.log('[Promo Code Validate] Pro promo code - category check:', {
-          serviceCategoryIds,
-          promoCategoryIds,
-          hasMatchingCategory
-        });
-        
         if (!hasMatchingCategory) {
           return res.status(400).json({ 
             error: 'This promo code is not applicable to the selected services' 

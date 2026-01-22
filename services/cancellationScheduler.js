@@ -67,8 +67,6 @@ export function startCancellationScheduler() {
     scheduled: true,
     timezone: 'UTC',
   });
-
-  console.log('[Cancellation Scheduler] Started - checking every minute for expired cancellation requests');
 }
 
 /**

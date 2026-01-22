@@ -46,8 +46,6 @@ export function startCustomOfferScheduler() {
   cron.schedule('*/5 * * * *', async () => {
     await processExpiredCustomOffers();
   });
-
-  console.log('✅ Custom offer expiration scheduler started (runs every 5 minutes)');
   
   // Run immediately on startup
   processExpiredCustomOffers();

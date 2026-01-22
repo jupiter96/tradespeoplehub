@@ -617,13 +617,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
 // Create multiple orders at once (one order per item)
 router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
-    const { orders: orderRequests, paymentMethod, paymentMethodId, totalAmount, address, skipAddress } = req.body;
+    const { orders: orderRequests, paymentMethod, paymentMethodId, totalAmount, address, skipAddress, additionalInformation } = req.body;
 
-    console.log('[Server] Bulk order request:', { 
-      orderCount: orderRequests?.length, 
-      paymentMethod, 
-      totalAmount 
-    });
 
     if (!orderRequests || orderRequests.length === 0) {
       return res.status(400).json({ error: 'At least one order is required' });
@@ -843,6 +838,42 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       const orderTotal = subtotal - discount;
 
       const isPaidOrder = paymentMethod !== 'bank_transfer';
+      
+        // Prepare additional information if provided (apply to all orders in bulk)
+        let additionalInfo = undefined;
+        if (additionalInformation && (additionalInformation.message?.trim() || (additionalInformation.files && additionalInformation.files.length > 0))) {
+          const additionalFiles = [];
+          if (additionalInformation.files && Array.isArray(additionalInformation.files)) {
+            for (const file of additionalInformation.files) {
+              // Ensure fileType is one of the allowed values
+              let fileType = file.fileType;
+              if (!fileType || !['image', 'video', 'document'].includes(fileType)) {
+                // Try to determine from URL or default to document
+                if (file.url && (file.url.includes('.jpg') || file.url.includes('.jpeg') || file.url.includes('.png') || file.url.includes('.gif') || file.url.includes('.webp'))) {
+                  fileType = 'image';
+                } else if (file.url && (file.url.includes('.mp4') || file.url.includes('.webm') || file.url.includes('.mov') || file.url.includes('.avi'))) {
+                  fileType = 'video';
+                } else {
+                  fileType = 'document';
+                }
+              }
+              
+              additionalFiles.push({
+                url: file.url,
+                fileName: file.fileName,
+                fileType: fileType,
+                uploadedAt: new Date(),
+              });
+            }
+          }
+          
+          additionalInfo = {
+            message: additionalInformation.message?.trim() || '',
+            files: additionalFiles,
+            submittedAt: new Date(),
+          };
+        }
+      
       const order = new Order({
         orderNumber,
         client: user._id,
@@ -863,6 +894,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
         serviceFee: 0, // Service fee is applied once to the total, not per order
         status: 'In Progress',
         deliveryStatus: isPaidOrder ? 'active' : 'pending',
+        additionalInformation: additionalInfo,
         metadata: {
           createdAt: new Date(),
           bulkOrderId: `BULK-${Date.now()}`,
@@ -879,7 +911,6 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       ]);
 
       createdOrders.push(order.toObject());
-      console.log(`[Server] Created order: ${orderNumber}`);
     }
 
     return res.json({
@@ -1061,20 +1092,6 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       const dispute = disputeMap[order._id.toString()];
       const client = order.client;
       const professional = order.professional;
-      
-      // Debug log for disputed orders
-      if (order.status === 'disputed' || dispute) {
-        console.log('=== Backend: Disputed Order Found ===');
-        console.log('Order Number:', order.orderNumber);
-        console.log('Order ID (_id):', order._id.toString());
-        console.log('Order Status:', order.status);
-        console.log('Order disputeId (from order):', order.disputeId);
-        console.log('Dispute found:', !!dispute);
-        console.log('Dispute ID:', dispute?.disputeId);
-        console.log('Dispute Status:', dispute?.status);
-        console.log('Will return disputeId:', order.disputeId || dispute?.disputeId || undefined);
-        console.log('=====================================');
-      }
       
       // Determine service name from first item
       const serviceName = order.items?.[0]?.title || 'Service Order';
@@ -3473,6 +3490,43 @@ router.get('/attachments/:filename', (req, res) => {
     res.sendFile(filePath);
   } else {
     res.status(404).json({ error: 'File not found' });
+  }
+});
+
+// Upload attachment file (for additional information before order creation)
+router.post('/upload-attachment', authenticateToken, requireRole(['client']), additionalInfoUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    const fileUrl = `/api/orders/attachments/${req.file.filename}`;
+    
+    // Determine file type
+    let fileType = 'document';
+    if (req.file.mimetype.startsWith('image/')) {
+      fileType = 'image';
+    } else if (req.file.mimetype.startsWith('video/')) {
+      fileType = 'video';
+    } else if (req.file.mimetype === 'application/pdf' || 
+               req.file.mimetype === 'application/msword' ||
+               req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+               req.file.mimetype === 'text/plain') {
+      fileType = 'document';
+    }
+    
+    res.json({
+      url: fileUrl,
+      fileName: req.file.originalname,
+      fileType: fileType
+    });
+  } catch (error) {
+    // Clean up uploaded file on error
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path).catch(err => console.error('Error deleting file:', err));
+    }
+    console.error('Attachment upload error:', error);
+    res.status(500).json({ error: error.message || 'Failed to upload attachment' });
   }
 });
 

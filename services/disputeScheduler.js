@@ -127,7 +127,6 @@ export function startDisputeScheduler() {
     scheduled: true,
     timezone: 'UTC',
   });
-  console.log('[Dispute Scheduler] Started - checking every minute for expired dispute response deadlines');
 }
 
 export async function triggerAutomaticDisputeClosure() {
