@@ -44,6 +44,9 @@ import {
   Paperclip,
   Play,
 } from "lucide-react";
+
+// Import separated order components
+import { AddInfoDialog } from "./orders";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
@@ -229,9 +232,6 @@ export default function ClientOrdersSection() {
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
-  const [addInfoMessage, setAddInfoMessage] = useState("");
-  const [addInfoFiles, setAddInfoFiles] = useState<File[]>([]);
-  const [isSubmittingAddInfo, setIsSubmittingAddInfo] = useState(false);
 
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
@@ -733,60 +733,6 @@ export default function ClientOrdersSection() {
     }
   };
 
-  // Additional Info File Handlers
-  const handleAddInfoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      const validFiles = newFiles.filter(file => {
-        const type = file.type;
-        return type.startsWith('image/') || 
-               type.startsWith('video/') || 
-               type === 'application/pdf' ||
-               type === 'application/msword' ||
-               type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-               type === 'text/plain';
-      });
-
-      if (validFiles.length !== newFiles.length) {
-        toast.error("Some files were not added. Only images, videos, and documents are allowed.");
-      }
-
-      setAddInfoFiles(prev => [...prev, ...validFiles].slice(0, 10));
-    }
-  };
-
-  const handleRemoveAddInfoFile = (index: number) => {
-    setAddInfoFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmitAdditionalInfo = async () => {
-    if (!addInfoMessage.trim() && addInfoFiles.length === 0) {
-      toast.error("Please add a message or upload files");
-      return;
-    }
-
-    if (!selectedOrder) return;
-
-    setIsSubmittingAddInfo(true);
-    try {
-      await addAdditionalInfo(selectedOrder, addInfoMessage, addInfoFiles.length > 0 ? addInfoFiles : undefined);
-      toast.success("Additional information submitted successfully!");
-      setIsAddInfoDialogOpen(false);
-      setAddInfoMessage("");
-      setAddInfoFiles([]);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit additional information");
-    } finally {
-      setIsSubmittingAddInfo(false);
-    }
-  };
-
-  const getAddInfoFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" />;
-    if (file.type.startsWith('video/')) return <Film className="w-5 h-5 text-purple-500" />;
-    return <FileText className="w-5 h-5 text-gray-500" />;
-  };
-
   const handleCreateDispute = async () => {
     // Validate required fields
     if (!disputeRequirements.trim()) {
@@ -1034,6 +980,7 @@ export default function ClientOrdersSection() {
     ? orders.find((o) => o.id === selectedOrder)
     : null;
 
+
   // Fetch service thumbnail for current order
   useEffect(() => {
     const fetchServiceThumbnail = async () => {
@@ -1112,7 +1059,7 @@ export default function ClientOrdersSection() {
   // Console log currentOrder for debugging
   useEffect(() => {
     if (currentOrder) {
-      console.log('Current Order:', currentOrder);
+      // console.log('Current Order:', currentOrder);
     }
   }, [currentOrder]);
 
@@ -1319,7 +1266,7 @@ export default function ClientOrdersSection() {
             {/* Elapsed Time Display */}
             <div className="grid grid-cols-4 gap-3">
               {/* Days */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.days).padStart(2, '0')}
                 </div>
@@ -1329,7 +1276,7 @@ export default function ClientOrdersSection() {
               </div>
 
               {/* Hours */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.hours).padStart(2, '0')}
                 </div>
@@ -1339,7 +1286,7 @@ export default function ClientOrdersSection() {
               </div>
 
               {/* Minutes */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.minutes).padStart(2, '0')}
                 </div>
@@ -1349,7 +1296,7 @@ export default function ClientOrdersSection() {
               </div>
 
               {/* Seconds */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.seconds).padStart(2, '0')}
                 </div>
@@ -1481,7 +1428,7 @@ export default function ClientOrdersSection() {
           <TabsContent value="timeline" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
             {/* Completion Message for Completed Orders */}
             {currentOrder.status === "Completed" && (
-              <div className="bg-white rounded-lg p-4 sm:p-6">
+              <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                   Your order has been completed!
                 </h3>
@@ -1501,7 +1448,7 @@ export default function ClientOrdersSection() {
             {currentOrder.cancellationRequest && 
              currentOrder.cancellationRequest.status === 'pending' && 
              currentOrder.cancellationRequest.requestedBy !== userInfo?.id && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 sm:p-6">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <div className="flex items-start gap-2 sm:gap-3 mb-4">
                   <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
@@ -1574,7 +1521,7 @@ export default function ClientOrdersSection() {
 
             {/* Status Alert Box */}
             {currentOrder.deliveryStatus === "pending" && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Waiting for Professional to Start
                 </h4>
@@ -1587,7 +1534,7 @@ export default function ClientOrdersSection() {
             )}
 
             {currentOrder.deliveryStatus === "active" && currentOrder.status !== "Completed" && currentOrder.status !== "disputed" && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service In Progress
                 </h4>
@@ -1725,7 +1672,7 @@ export default function ClientOrdersSection() {
 
                 {/* Professional Completion Request - Show in "In Progress" status */}
                 {currentOrder.metadata?.professionalCompleteRequest && (
-                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
                     <div className="flex items-start gap-2 sm:gap-3 mb-3">
                       <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
@@ -1796,7 +1743,7 @@ export default function ClientOrdersSection() {
             )}
 
             {currentOrder.deliveryStatus === "delivered" && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 sm:p-6">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service Delivered - Review Required
                 </h4>
@@ -1806,7 +1753,7 @@ export default function ClientOrdersSection() {
 
                 {/* Professional Completion Request */}
                 {currentOrder.metadata?.professionalCompleteRequest && (
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
                     <div className="flex items-start gap-3 mb-3">
                       <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
@@ -1855,7 +1802,7 @@ export default function ClientOrdersSection() {
                 
                 {/* Delivery Message */}
                 {currentOrder.deliveryMessage && (
-                  <div className="bg-white border border-purple-200 rounded-lg p-4 mb-4">
+                  <div className="bg-white border border-purple-200 rounded-lg p-4 mb-4 shadow-md">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
                       Remarks:
                     </p>
@@ -1931,7 +1878,7 @@ export default function ClientOrdersSection() {
                   
                   {/* Show revision request status if pending or in progress */}
                   {currentOrder.revisionRequest && (currentOrder.revisionRequest.status === 'pending' || currentOrder.revisionRequest.status === 'in_progress') && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4 shadow-md">
                       <div className="flex items-start gap-3 mb-2">
                         <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
@@ -1944,7 +1891,7 @@ export default function ClientOrdersSection() {
                               : 'The professional is working on your revision request.'}
                           </p>
                           {currentOrder.revisionRequest.reason && (
-                            <div className="mt-2 p-2 bg-white border border-orange-200 rounded">
+                            <div className="mt-2 p-2 bg-white border border-orange-200 rounded shadow-sm">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Your request:
                               </p>
@@ -1954,7 +1901,7 @@ export default function ClientOrdersSection() {
                             </div>
                           )}
                           {currentOrder.revisionRequest.status === 'in_progress' && currentOrder.revisionRequest.additionalNotes && (
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded shadow-sm">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Professional's notes:
                               </p>
@@ -1970,7 +1917,7 @@ export default function ClientOrdersSection() {
 
                   {/* Show completed revision status */}
                   {currentOrder.revisionRequest && currentOrder.revisionRequest.status === 'completed' && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 shadow-md">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                         <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
@@ -2001,7 +1948,7 @@ export default function ClientOrdersSection() {
 
                   {/* Show dispute status if dispute exists */}
                   {currentOrder.disputeInfo && (
-                    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4">
+                    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 shadow-md">
                       <div className="flex items-start gap-2 sm:gap-3 mb-2">
                         <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
@@ -2149,7 +2096,7 @@ export default function ClientOrdersSection() {
 
 
             {/* {currentOrder.status === "completed" && currentOrder.rating && (
-              <div className="bg-white rounded-lg p-6">
+              <div className="bg-white rounded-lg p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
                   Your order has been completed!
                 </h4>
@@ -2165,7 +2112,7 @@ export default function ClientOrdersSection() {
                   ))}
                 </div>
                 {currentOrder.review && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4 shadow-md">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] italic">
                       "{currentOrder.review}"
                     </p>
@@ -2192,7 +2139,7 @@ export default function ClientOrdersSection() {
             })()}
             
             {currentOrder.status === "disputed" && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6">
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <div className="flex items-start gap-3 mb-3">
                   <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
@@ -2271,7 +2218,7 @@ export default function ClientOrdersSection() {
                       </p>
                     )}
                     {event.message && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3 mt-2">
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3 mt-2 shadow-sm">
                         <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
                           {event.message}
                         </p>
@@ -2323,7 +2270,7 @@ export default function ClientOrdersSection() {
                      (!currentOrder.revisionRequest || 
                       (currentOrder.revisionRequest.status !== 'pending' && 
                        currentOrder.revisionRequest.status !== 'in_progress')) && (
-                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4 shadow-sm">
                         <div className="flex gap-2 mb-3 sm:mb-4">
                           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                           <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-blue-900 break-words">
@@ -2502,7 +2449,7 @@ export default function ClientOrdersSection() {
                       </p>
                       
                       {/* Orange Alert Box */}
-                      <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 mt-3">
+                      <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 mt-3 shadow-sm">
                         <div className="flex gap-2">
                           <Info className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
                           <p className="font-['Poppins',sans-serif] text-[13px] text-orange-800">
@@ -2567,7 +2514,7 @@ export default function ClientOrdersSection() {
                     </h3>
                     
                     {/* Dispute Info */}
-                    <div className="bg-white rounded-lg p-6 mb-6">
+                    <div className="bg-white rounded-lg p-6 mb-6 shadow-md">
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div>
                           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -2727,7 +2674,7 @@ export default function ClientOrdersSection() {
                      (!currentOrder.revisionRequest || 
                       (currentOrder.revisionRequest.status !== 'pending' && 
                        currentOrder.revisionRequest.status !== 'in_progress')) && (
-                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 shadow-sm">
                         <div className="flex gap-2 mb-4">
                           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                           <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
@@ -2800,7 +2747,7 @@ export default function ClientOrdersSection() {
                       <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-3">
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3 shadow-sm">
                         {currentOrder.address && (
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
@@ -2846,7 +2793,7 @@ export default function ClientOrdersSection() {
                       <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-3">
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3 shadow-sm">
                         <div>
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                             Order Date
@@ -2914,7 +2861,7 @@ export default function ClientOrdersSection() {
 
           {/* Details Tab */}
           <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
-            <div className="bg-white rounded-xl p-8">
+            <div className="bg-white rounded-xl p-8 shadow-md">
               {/* Service Title */}
               <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
                 {currentOrder.service || primaryItem?.title || "Service"}
@@ -3036,15 +2983,19 @@ export default function ClientOrdersSection() {
           {/* Additional Info Tab */}
           <TabsContent value="additional-info" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
             {/* Additional Information Section */}
-            <div className="bg-white rounded-xl p-6">
+            <div className="bg-white rounded-xl p-6 shadow-md">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                   Additional Information
                 </h3>
-                {!currentOrder.additionalInformation?.submittedAt && (
+                {!currentOrder?.additionalInformation?.submittedAt && currentOrder && (
                   <Button
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px]"
-                    onClick={() => setIsAddInfoDialogOpen(true)}
+                    type="button"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px] relative z-10"
+                    onClick={() => {
+                      setSelectedOrder(currentOrder.id);
+                      setIsAddInfoDialogOpen(true);
+                    }}
                   >
                     + Add now
                   </Button>
@@ -3118,26 +3069,11 @@ export default function ClientOrdersSection() {
                 </p>
               )}
             </div>
-
-            {/* Task Address Section */}
-            {currentOrder.address && (
-              <div className="bg-white rounded-xl p-6">
-                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
-                  Task Address
-                </h3>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-red-600">
-                  {currentOrder.address.addressLine1}
-                  {currentOrder.address.addressLine2 && `, ${currentOrder.address.addressLine2}`}
-                  {currentOrder.address.city && `, ${currentOrder.address.city}`}
-                  {currentOrder.address.postcode && `-${currentOrder.address.postcode}`}
-                </p>
-              </div>
-            )}
           </TabsContent>
 
           {/* Delivery Tab */}
           <TabsContent value="delivery" className="mt-4 md:mt-6 px-4 md:px-6">
-            <div className="bg-white rounded-xl p-6">
+            <div className="bg-white rounded-xl p-6 shadow-md">
               {(() => {
                 // Get all "Work Delivered" timeline events
                 const timeline = buildClientTimeline(currentOrder);
@@ -3333,6 +3269,21 @@ export default function ClientOrdersSection() {
                   )}
                 </div>
               )}
+
+            {/* Task Address Section */}
+            {currentOrder.address && (
+              <div className="bg-white rounded-xl p-6 mt-4 md:mt-6 shadow-md">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
+                  Task Address
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-red-600">
+                  {currentOrder.address.addressLine1}
+                  {currentOrder.address.addressLine2 && `, ${currentOrder.address.addressLine2}`}
+                  {currentOrder.address.city && `, ${currentOrder.address.city}`}
+                  {currentOrder.address.postcode && `-${currentOrder.address.postcode}`}
+                </p>
+              </div>
+            )}
             </div>
           </TabsContent>
         </Tabs>
@@ -3342,7 +3293,7 @@ export default function ClientOrdersSection() {
 
             {/* Right Side - Order Summary Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl p-6 sticky top-6">
+              <div className="bg-white rounded-xl p-6 sticky top-6 shadow-md">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-6">
                   Order Details
                 </h3>
@@ -3548,7 +3499,7 @@ export default function ClientOrdersSection() {
                   </h2>
 
                   {/* Dispute Info Card */}
-                  <div className="bg-white rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6 shadow-md">
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div>
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -4555,7 +4506,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4652,7 +4603,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4749,7 +4700,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4846,7 +4797,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -4928,7 +4879,7 @@ export default function ClientOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -5146,118 +5097,16 @@ export default function ClientOrdersSection() {
       </Dialog>
 
       {/* Additional Info Dialog */}
-      <Dialog open={isAddInfoDialogOpen} onOpenChange={setIsAddInfoDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Add additional information
-            </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-              If you have any additional information or special requirements that you need the PRO to submit it now or click skip it below if you do not have one.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Message Input */}
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                What do you need to add?
-              </Label>
-              <Textarea
-                placeholder="Enter any special requirements or additional information..."
-                value={addInfoMessage}
-                onChange={(e) => setAddInfoMessage(e.target.value)}
-                rows={4}
-                className="font-['Poppins',sans-serif] text-[14px]"
-              />
-            </div>
-
-            {/* File Upload Area */}
-            <div>
-              <div 
-                className="border-2 border-dashed border-[#3D78CB] rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer"
-                onClick={() => document.getElementById('add-info-files')?.click()}
-              >
-                <input
-                  id="add-info-files"
-                  type="file"
-                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-                  multiple
-                  onChange={handleAddInfoFileSelect}
-                  className="hidden"
-                />
-                <div className="flex flex-col items-center">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] font-medium mb-1">
-                    Attachments
-                  </p>
-                  <Image className="w-6 h-6 text-[#3D78CB] mb-2" />
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB]">
-                    Drag & drop Photo or Browser
-                  </p>
-                </div>
-              </div>
-
-              {/* Selected Files Preview */}
-              {addInfoFiles.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    Selected Files ({addInfoFiles.length}/10):
-                  </p>
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {addInfoFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                      >
-                        {getAddInfoFileIcon(file)}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] truncate">
-                            {file.name}
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            {(file.size / (1024 * 1024)).toFixed(2)} MB
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveAddInfoFile(index);
-                          }}
-                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddInfoDialogOpen(false);
-                  setAddInfoMessage("");
-                  setAddInfoFiles([]);
-                }}
-                className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:text-[#2c5ba0] underline transition-colors"
-              >
-                Skip Additional Information
-              </button>
-              <Button
-                onClick={handleSubmitAdditionalInfo}
-                disabled={isSubmittingAddInfo || (!addInfoMessage.trim() && addInfoFiles.length === 0)}
-                className="bg-[#22C55E] hover:bg-[#16A34A] text-white font-['Poppins',sans-serif] text-[14px] px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmittingAddInfo ? "Submitting..." : "Add Additional Information"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddInfoDialog
+        open={isAddInfoDialogOpen}
+        onOpenChange={setIsAddInfoDialogOpen}
+        order={orders.find(o => o.id === selectedOrder) || null}
+        onSubmit={async (orderId, message, files) => {
+          await addAdditionalInfo(orderId, message, files);
+          // Refresh orders to update Additional Info tab and Timeline
+          await refreshOrders();
+        }}
+      />
 
       {/* Dispute Response Dialog */}
       <Dialog open={isDisputeResponseDialogOpen} onOpenChange={setIsDisputeResponseDialogOpen}>

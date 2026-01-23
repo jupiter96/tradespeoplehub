@@ -96,6 +96,7 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
       
       // Service Fee
       serviceFees: settings.serviceFees || 0,
+      serviceFeeThreshold: settings.serviceFeeThreshold || 0,
     };
     
     

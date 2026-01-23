@@ -33,7 +33,8 @@ import {
   Image,
   Upload,
   Film,
-  Info
+  Info,
+  StickyNote
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -174,12 +175,11 @@ interface Address {
 
 interface PaymentMethod {
   id: string;
-  type: "account_balance" | "card" | "paypal" | "bank_transfer";
+  type: "card" | "paypal";
   cardNumber?: string;
   cardHolder?: string;
   expiryDate?: string;
   isDefault?: boolean;
-  balance?: number; // For account_balance
 }
 
 // Helper function to determine card type from brand or card number
@@ -323,12 +323,13 @@ export default function CartPage() {
   const [hasInPersonService, setHasInPersonService] = useState(true); // Default to true (show address)
 
   // Payment method state
-  const [selectedPayment, setSelectedPayment] = useState<string>("account_balance");
+  const [selectedPayment, setSelectedPayment] = useState<string>("");
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [serviceFee, setServiceFee] = useState<number>(0);
+  const [serviceFeeThreshold, setServiceFeeThreshold] = useState<number>(0);
   
   // Removed booking modal state - now using inline time slot selection
   
@@ -348,11 +349,10 @@ export default function CartPage() {
     endTimeError?: string;
   }}>({});
   
-  // Additional information state
+  // Additional information state - per cart item
   const [showAdditionalInfoDialog, setShowAdditionalInfoDialog] = useState(false);
-  const [additionalInfoMessage, setAdditionalInfoMessage] = useState("");
-  const [additionalInfoFiles, setAdditionalInfoFiles] = useState<File[]>([]);
-  const additionalInfoFileInputRef = useRef<HTMLInputElement>(null);
+  const [additionalInfoPerItem, setAdditionalInfoPerItem] = useState<{[itemId: string]: {message: string; files: File[]}}>({});
+  const additionalInfoFileInputRefs = useRef<{[itemId: string]: HTMLInputElement | null}>({});
   
   // Service availability data
   interface TimeBlock {
@@ -428,7 +428,7 @@ export default function CartPage() {
     fetchBalance();
   }, [isLoggedIn]);
 
-  // Fetch service fee from payment settings
+  // Fetch service fee and threshold from payment settings
   useEffect(() => {
     const fetchServiceFee = async () => {
       if (!isLoggedIn) return;
@@ -441,6 +441,7 @@ export default function CartPage() {
         if (response.ok) {
           const data = await response.json();
           setServiceFee(data.serviceFees || 0);
+          setServiceFeeThreshold(data.serviceFeeThreshold || 0);
         }
       } catch (error) {
         console.error("Failed to fetch service fee:", error);
@@ -449,6 +450,15 @@ export default function CartPage() {
     
     fetchServiceFee();
   }, [isLoggedIn]);
+
+  // Calculate actual service fee based on threshold
+  const actualServiceFee = React.useMemo(() => {
+    const subtotal = cartTotal;
+    if (serviceFeeThreshold > 0 && subtotal >= serviceFeeThreshold) {
+      return 0;
+    }
+    return serviceFee;
+  }, [cartTotal, serviceFee, serviceFeeThreshold]);
 
   // Fetch addresses
   useEffect(() => {
@@ -543,13 +553,24 @@ export default function CartPage() {
       
       try {
         setLoadingPaymentMethods(true);
-        const response = await fetch(resolveApiUrl("/api/payment-methods"), {
-          credentials: "include",
-        });
         
-        if (response.ok) {
-          const data = await response.json();
-          const cards = (data.paymentMethods || []).map((pm: any) => ({
+        // Fetch both payment methods and PayPal availability
+        const [methodsResponse, settingsResponse] = await Promise.all([
+          fetch(resolveApiUrl("/api/payment-methods"), {
+            credentials: "include",
+          }),
+          fetch(resolveApiUrl("/api/payment/publishable-key"), {
+            credentials: "include",
+          }),
+        ]);
+        
+        let cards: PaymentMethod[] = [];
+        let paypalEnabled = false;
+        let stripeEnabled = false;
+        
+        if (methodsResponse.ok) {
+          const methodsData = await methodsResponse.json();
+          cards = (methodsData.paymentMethods || []).map((pm: any) => ({
             id: pm.paymentMethodId || pm.id,
             type: "card" as const,
             cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
@@ -558,62 +579,117 @@ export default function CartPage() {
             isDefault: pm.isDefault || false,
             brand: pm.card?.brand || 'visa', // Store card brand for accurate type detection
           }));
-          
-          // Build payment methods list: Account Balance first, then cards, PayPal, Bank Transfer
-          const methods: PaymentMethod[] = [
-            {
-              id: "account_balance",
-              type: "account_balance",
-              isDefault: true,
-              balance: walletBalance,
-            },
-            ...cards,
-            {
-              id: "paypal",
-              type: "paypal",
-              isDefault: false,
-            },
-            {
-              id: "bank_transfer",
-              type: "bank_transfer",
-              isDefault: false,
-            },
-          ];
-          
-          setPaymentMethods(methods);
-          
-          // Set default payment method (account_balance if balance > 0, otherwise first card or paypal)
-          if (walletBalance > 0) {
-            setSelectedPayment("account_balance");
-          } else if (cards.length > 0) {
-            setSelectedPayment(cards[0].id);
-          } else {
-            setSelectedPayment("paypal");
-          }
         }
-      } catch (error) {
-        console.error("Failed to fetch payment methods:", error);
-        // Fallback payment methods
-        const fallbackMethods: PaymentMethod[] = [
-          {
-            id: "account_balance",
-            type: "account_balance",
-            isDefault: true,
-            balance: walletBalance,
-          },
-          {
+        
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          paypalEnabled = Boolean(settingsData.paypalEnabled);
+          stripeEnabled = Boolean(settingsData.stripeEnabled);
+          console.log('[Payment Methods] Payment settings:', {
+            stripeEnabled,
+            paypalEnabled,
+            settings: settingsData
+          });
+        }
+        
+        // Build payment methods list: Only show saved cards and PayPal if enabled
+        const methods: PaymentMethod[] = [];
+        
+        // Add saved cards only (no generic card option)
+        if (cards.length > 0) {
+          methods.push(...cards);
+        }
+        
+        // Add PayPal if enabled
+        if (paypalEnabled) {
+          methods.push({
             id: "paypal",
             type: "paypal",
             isDefault: false,
-          },
-          {
-            id: "bank_transfer",
-            type: "bank_transfer",
-            isDefault: false,
-          },
-        ];
-        setPaymentMethods(fallbackMethods);
-        setSelectedPayment("account_balance");
+          });
+        }
+        
+        console.log('[Payment Methods] Fetched methods:', {
+          savedCardsCount: cards.length,
+          stripeEnabled,
+          paypalEnabled,
+          totalMethods: methods.length,
+          methods: methods.map(m => ({ id: m.id, type: m.type }))
+        });
+        
+        setPaymentMethods(methods);
+        
+        // Set default payment method (first card or paypal)
+        if (methods.length > 0) {
+          // Prefer saved card, then PayPal
+          const savedCard = methods.find(m => m.type === "card");
+          const paypal = methods.find(m => m.type === "paypal");
+          
+          if (savedCard) {
+            setSelectedPayment(savedCard.id);
+          } else if (paypal) {
+            setSelectedPayment(paypal.id);
+          } else {
+            setSelectedPayment(methods[0].id);
+          }
+        } else {
+          // No payment methods available
+          setSelectedPayment("");
+        }
+      } catch (error) {
+        console.error("Failed to fetch payment methods:", error);
+        // Fallback: Try to show payment methods based on settings
+        try {
+          const settingsResponse = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
+            credentials: "include",
+          });
+          if (settingsResponse.ok) {
+            const settingsData = await settingsResponse.json();
+            const paypalEnabled = Boolean(settingsData.paypalEnabled);
+            const stripeEnabled = Boolean(settingsData.stripeEnabled);
+            
+            console.log('[Payment Methods] Fallback - Payment settings:', {
+              stripeEnabled,
+              paypalEnabled
+            });
+            
+            const fallbackMethods: PaymentMethod[] = [];
+            
+            // Add card option if Stripe is enabled
+            // Don't add generic card option - only show saved cards
+            
+            // Add PayPal if enabled
+            if (paypalEnabled) {
+              fallbackMethods.push({
+                id: "paypal",
+                type: "paypal",
+                isDefault: false,
+              });
+            }
+            
+            setPaymentMethods(fallbackMethods);
+            
+            // Set default payment method
+            if (fallbackMethods.length > 0) {
+              const paypal = fallbackMethods.find(m => m.type === "paypal");
+              const card = fallbackMethods.find(m => m.type === "card");
+              setSelectedPayment(paypal ? paypal.id : (card ? card.id : fallbackMethods[0].id));
+            } else {
+              // No payment methods available
+              setPaymentMethods([]);
+              setSelectedPayment("");
+            }
+          } else {
+            // Settings fetch failed, show empty state
+            console.error('[Payment Methods] Failed to fetch payment settings');
+            setPaymentMethods([]);
+            setSelectedPayment("");
+          }
+        } catch (fallbackError) {
+          console.error("Failed to fetch payment availability:", fallbackError);
+          setPaymentMethods([]);
+          setSelectedPayment("");
+        }
       } finally {
         setLoadingPaymentMethods(false);
       }
@@ -1264,15 +1340,16 @@ export default function CartPage() {
   // Removed handleBookingConfirm - booking is now handled directly in handlePlaceOrder
 
   const proceedWithOrder = async () => {
+    // Check if account balance is 0
+    if (walletBalance === 0 || walletBalance <= 0) {
+      toast.error("Please top up account balance first.");
+      return;
+    }
+
     // Only require address for in-person services
     if (hasInPersonService && !selectedAddress) {
       console.error('[Order] No address selected for in-person service');
       toast.error("Please select a service location");
-      return;
-    }
-    if (!selectedPayment) {
-      console.error('[Order] No payment method selected');
-      toast.error("Please select a payment method");
       return;
     }
 
@@ -1282,7 +1359,18 @@ export default function CartPage() {
       : undefined;
 
     const subtotal = cartTotal;
-    const orderTotal = subtotal - discount + serviceFee;
+    const orderTotal = subtotal - discount + actualServiceFee;
+    
+    // Calculate wallet deduction and remainder payment
+    const walletAmount = Math.min(walletBalance, orderTotal);
+    const remainderAmount = Math.max(0, orderTotal - walletBalance);
+    
+    // Only require payment method if remainder > 0
+    if (remainderAmount > 0 && !selectedPayment) {
+      console.error('[Order] No payment method selected');
+      toast.error("Please select a payment method");
+      return;
+    }
     
     
     // Build order requests for each item with their individual time slots
@@ -1326,70 +1414,98 @@ export default function CartPage() {
         booking: bookingInfo,
         subtotal: itemSubtotal,
         discount: itemDiscount, // Apply total discount to first item
+        additionalInformation: undefined, // Will be set after file uploads
       };
     });
     
     try {
-      // Determine payment method type
-      let paymentMethodType = selectedPayment;
+      // Determine payment method type for remainder (only card or paypal)
+      let paymentMethodType = "card"; // Default to card
       let paymentMethodId = undefined;
       
-      if (selectedPayment !== "account_balance" && selectedPayment !== "paypal" && selectedPayment !== "bank_transfer") {
+      if (selectedPayment === "paypal") {
+        paymentMethodType = "paypal";
+      } else {
+        // Find selected card
         const selectedMethod = paymentMethods.find(m => m.id === selectedPayment && m.type === "card");
         if (selectedMethod) {
           paymentMethodType = "card";
           paymentMethodId = selectedMethod.id;
+        } else {
+          // If no valid card selected, show error
+          if (remainderAmount > 0) {
+            toast.error("Please select a valid payment method");
+            return;
+          }
         }
       }
       
-      // Check balance for account_balance payment
-      if (paymentMethodType === "account_balance" && walletBalance < orderTotal) {
-        toast.error("Insufficient balance", {
-          description: `You need £${(orderTotal - walletBalance).toFixed(2)} more. Current balance: £${walletBalance.toFixed(2)}`
-        });
-        return;
+      // If remainder is 0, wallet covers full amount, no payment method needed
+      // If remainder > 0, validate payment method is selected and valid
+      if (remainderAmount > 0) {
+        if (!selectedPayment) {
+          toast.error("Please select a payment method");
+          return;
+        }
+        if (paymentMethodType === "card" && !paymentMethodId) {
+          toast.error("Please select a valid payment card");
+          return;
+        }
       }
       
-      // Upload files first if any, then prepare additional information
-      let uploadedFiles: Array<{url: string, fileName: string, fileType: string}> = [];
+      // If remainder is 0, set payment method to wallet (will be handled by backend)
+      if (remainderAmount === 0) {
+        paymentMethodType = "wallet";
+        paymentMethodId = undefined;
+      }
       
-      if (additionalInfoFiles.length > 0) {
-        try {
-          // Upload each file
-          for (const file of additionalInfoFiles) {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const uploadResponse = await fetch(resolveApiUrl("/api/orders/upload-attachment"), {
-              method: "POST",
-              credentials: "include",
-              body: formData,
-            });
-            
-            if (uploadResponse.ok) {
-              const uploadData = await uploadResponse.json();
-              uploadedFiles.push({
-                url: uploadData.url,
-                fileName: uploadData.fileName,
-                fileType: uploadData.fileType
-              });
-            } else {
-              const errorData = await uploadResponse.json().catch(() => ({ error: 'Upload failed' }));
-              console.error(`Failed to upload file: ${file.name}`, errorData);
-              toast.error(`Failed to upload ${file.name}. ${errorData.error || 'Please try again.'}`);
+      // Upload files and prepare additional information per item
+      for (let i = 0; i < orderRequests.length; i++) {
+        const item = cartItems[i];
+        const itemInfo = additionalInfoPerItem[item.id];
+        
+        if (itemInfo && (itemInfo.message?.trim() || itemInfo.files.length > 0)) {
+          let uploadedFiles: Array<{url: string, fileName: string, fileType: string}> = [];
+          
+          // Upload files for this item
+          if (itemInfo.files.length > 0) {
+            try {
+              for (const file of itemInfo.files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const uploadResponse = await fetch(resolveApiUrl("/api/orders/upload-attachment"), {
+                  method: "POST",
+                  credentials: "include",
+                  body: formData,
+                });
+                
+                if (uploadResponse.ok) {
+                  const uploadData = await uploadResponse.json();
+                  uploadedFiles.push({
+                    url: uploadData.url,
+                    fileName: uploadData.fileName,
+                    fileType: uploadData.fileType
+                  });
+                } else {
+                  const errorData = await uploadResponse.json().catch(() => ({ error: 'Upload failed' }));
+                  console.error(`Failed to upload file: ${file.name}`, errorData);
+                  toast.error(`Failed to upload ${file.name}. ${errorData.error || 'Please try again.'}`);
+                }
+              }
+            } catch (error: any) {
+              console.error('File upload error:', error);
+              toast.error("Failed to upload some files. Please try again.");
             }
           }
-        } catch (error: any) {
-          console.error('File upload error:', error);
-          toast.error("Failed to upload some files. Please try again.");
+          
+          // Set additional information for this order
+          orderRequests[i].additionalInformation = {
+            message: itemInfo.message?.trim() || '',
+            files: uploadedFiles,
+          };
         }
       }
-      
-      // Prepare additional information if provided
-      const additionalInfo = (additionalInfoMessage?.trim() || uploadedFiles.length > 0) ? {
-        message: additionalInfoMessage?.trim() || '',
-        files: uploadedFiles,
-      } : undefined;
 
       // Create bulk orders
       const response = await fetch(resolveApiUrl("/api/orders/bulk"), {
@@ -1403,9 +1519,10 @@ export default function CartPage() {
           paymentMethod: paymentMethodType,
           paymentMethodId: paymentMethodId,
           totalAmount: orderTotal,
+          walletAmount: walletAmount,
+          remainderAmount: remainderAmount,
           address: addressDetails,
           skipAddress: skipAddress,
-          additionalInformation: additionalInfo,
         }),
       });
 
@@ -1505,7 +1622,11 @@ export default function CartPage() {
   };
 
     const subtotal = cartTotal;
-    const total = subtotal - discount + serviceFee;
+    const total = subtotal - discount + actualServiceFee;
+    
+    // Calculate wallet deduction and remainder payment for display
+    const walletAmount = Math.min(walletBalance, total);
+    const remainderAmount = Math.max(0, total - walletBalance);
 
   if (cartItems.length === 0) {
     return (
@@ -1575,10 +1696,12 @@ export default function CartPage() {
               skipAddress={skipAddress}
               setSkipAddress={setSkipAddress}
               onPlaceOrder={handlePlaceOrder}
-              subtotal={subtotal}
+              subtotal={cartTotal}
               discount={discount}
-              serviceFee={serviceFee}
+              serviceFee={actualServiceFee}
+              serviceFeeThreshold={serviceFeeThreshold}
               total={total}
+              walletBalance={walletBalance}
               appliedPromo={appliedPromo}
               onApplyPromo={handleApplyPromo}
               onRemovePromo={handleRemovePromo}
@@ -1823,8 +1946,29 @@ export default function CartPage() {
                 {/* Collapsible Content */}
                 <div className={`${showPaymentSection ? 'block' : 'hidden'}`}>
                   <div className="p-4 md:p-6">
-                    <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
-                      {paymentMethods.map((method) => (
+                    {loadingPaymentMethods ? (
+                      <div className="text-center py-4">
+                        <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b]">
+                          Loading payment methods...
+                        </p>
+                      </div>
+                    ) : paymentMethods.length === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-3">
+                          No payment methods available. Please add a payment method.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          className="border-2 border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px]"
+                          onClick={() => navigate('/account?tab=billing&section=fund')}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Payment Method
+                        </Button>
+                      </div>
+                    ) : (
+                      <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
+                        {paymentMethods.map((method) => (
                         <div key={method.id} className="mb-3 md:mb-4">
                           <div className={`relative border-2 rounded-lg md:rounded-xl p-3 md:p-4 transition-all ${
                             selectedPayment === method.id 
@@ -1835,55 +1979,33 @@ export default function CartPage() {
                               <RadioGroupItem value={method.id} id={`payment-${method.id}`} className="mt-0.5 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <Label htmlFor={`payment-${method.id}`} className="cursor-pointer">
-                                  {method.type === "account_balance" && (
+                                  {method.type === "card" && (
                                     <div className="flex items-center gap-2 md:gap-3">
-                                      <div className="w-10 h-10 md:w-12 md:h-12 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
-                                        <Gift className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                                      <div className="shrink-0 scale-90 md:scale-100">
+                                        {getCardType(method.brand, method.cardNumber) === 'visa' ? (
+                                          <VisaLogo />
+                                        ) : getCardType(method.brand, method.cardNumber) === 'mastercard' ? (
+                                          <MastercardLogo />
+                                        ) : (
+                                          <div className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
+                                            <CreditCard className="w-4 h-4 text-gray-400" />
+                                          </div>
+                                        )}
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                           <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
-                                            Account Balance
+                                            {method.cardNumber}
                                           </span>
                                           {method.isDefault && (
                                             <Badge className="bg-[#10B981] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
                                           )}
                                         </div>
                                         <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
-                                          Available: £{walletBalance.toFixed(2)}
+                                          <span className="hidden md:inline">{method.cardHolder} • </span>Exp. {method.expiryDate}
                                         </p>
                                       </div>
                                     </div>
-                                  )}
-                                  {method.type === "card" && (
-                                    <>
-                                      <div className="flex items-center gap-2 md:gap-3">
-                                        <div className="shrink-0 scale-90 md:scale-100">
-                                          {getCardType(method.brand, method.cardNumber) === 'visa' ? (
-                                            <VisaLogo />
-                                          ) : getCardType(method.brand, method.cardNumber) === 'mastercard' ? (
-                                            <MastercardLogo />
-                                          ) : (
-                                            <div className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
-                                              <CreditCard className="w-4 h-4 text-gray-400" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
-                                              {method.cardNumber}
-                                            </span>
-                                            {method.isDefault && (
-                                              <Badge className="bg-[#10B981] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
-                                            )}
-                                          </div>
-                                          <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
-                                            <span className="hidden md:inline">{method.cardHolder} • </span>Exp. {method.expiryDate}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </>
                                   )}
                                   {method.type === "paypal" && (
                                     <div className="flex items-center gap-2 md:gap-3">
@@ -1905,30 +2027,16 @@ export default function CartPage() {
                                       </div>
                                     </div>
                                   )}
-                                  {method.type === "bank_transfer" && (
-                                    <div className="flex items-center gap-2 md:gap-3">
-                                      <div className="w-10 h-6 md:w-12 md:h-7 flex items-center justify-center bg-white rounded shrink-0 border border-gray-200">
-                                        <Landmark className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
-                                          Bank Transfer
-                                        </span>
-                                        <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5">
-                                          Transfer funds directly from your bank
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
                                 </Label>
                               </div>
                             </div>
                           </div>
                         </div>
                       ))}
-                    </RadioGroup>
+                      </RadioGroup>
+                    )}
 
-                    {selectedPayment !== "account_balance" && selectedPayment !== "paypal" && selectedPayment !== "bank_transfer" && (
+                    {selectedPayment && selectedPayment !== "paypal" && paymentMethods.find(m => m.id === selectedPayment && m.type === "card") && (
                       <Button 
                         variant="outline" 
                         className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 mt-1 md:mt-2"
@@ -2013,11 +2121,8 @@ export default function CartPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold truncate">
-                                    {item.title}
+                                    {item.title} ({item.quantity} × £{item.price.toFixed(2)})
                                   </h4>
-                                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                                    £{item.price.toFixed(2)} × {item.quantity}
-                                  </p>
                                 </div>
                                 {currentSlot.date && currentSlot.time && (
                                   <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
@@ -2436,35 +2541,15 @@ export default function CartPage() {
                       {/* Item-by-item breakdown */}
                       {cartItems.map((item, index) => (
                         <div key={item.id + index} className={index > 0 ? 'pt-3 border-t border-gray-300' : ''}>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold mb-2">
-                            {item.title}
-                          </p>
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold">
+                              {item.title} ({item.quantity} × £{item.price.toFixed(2)})
+                            </p>
+                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                              £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
                           <div className="space-y-1.5">
-                            <div className="flex justify-between items-center">
-                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                                {(() => {
-                                  if (!item.priceUnit || item.priceUnit === 'fixed') {
-                                    return 'Price per unit';
-                                  }
-                                  // Check if priceUnit already starts with "per"
-                                  const unit = item.priceUnit.toLowerCase().startsWith('per ') 
-                                    ? item.priceUnit 
-                                    : `per ${item.priceUnit}`;
-                                  return `Price ${unit}`;
-                                })()}
-                              </span>
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                                £{item.price.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                                Quantity
-                              </span>
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                                {item.quantity}
-                              </span>
-                            </div>
                             {item.addons && item.addons.length > 0 && (
                               <div className="flex justify-between items-center">
                                 <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
@@ -2519,14 +2604,23 @@ export default function CartPage() {
                       )}
 
                       {/* Service Fee */}
-                      {serviceFee > 0 && (
+                      {actualServiceFee > 0 && (
                         <div className="flex justify-between items-center pt-3 border-t border-gray-300">
                           <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] font-medium">
                             Service Fee
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold">
-                            £{serviceFee.toFixed(2)}
+                            £{actualServiceFee.toFixed(2)}
                           </span>
+                        </div>
+                      )}
+
+                      {/* Service Fee Threshold Alert */}
+                      {serviceFeeThreshold > 0 && cartTotal < serviceFeeThreshold && actualServiceFee > 0 && (
+                        <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-4 mt-3 mb-3">
+                          <p className="font-['Poppins',sans-serif] text-[14px] md:text-[15px] text-[#FE8A0F] font-semibold text-center">
+                            Add £{(serviceFeeThreshold - cartTotal).toFixed(2)} more for FREE service fee!
+                          </p>
                         </div>
                       )}
 
@@ -2539,24 +2633,46 @@ export default function CartPage() {
                           £{total.toFixed(2)}
                         </span>
                       </div>
+
+                      {/* Wallet Balance Deduction */}
+                      {walletBalance > 0 && walletAmount > 0 && (
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] font-medium flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-[#10B981]" />
+                            Wallet Balance Used
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#10B981] font-semibold">
+                            -£{walletAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Remaining Amount to Pay */}
+                      {remainderAmount > 0 && (
+                        <div className="flex justify-between items-center pt-3 border-t-2 border-[#3B82F6] bg-blue-50/50 -mx-2 px-2 py-2 rounded">
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#3B82F6] font-semibold">
+                            Remaining to Pay
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[18px] text-[#3B82F6] font-bold">
+                            £{remainderAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Full Payment by Wallet */}
+                      {walletAmount > 0 && remainderAmount === 0 && (
+                        <div className="flex justify-between items-center pt-3 border-t-2 border-[#10B981] bg-green-50/50 -mx-2 px-2 py-2 rounded">
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#10B981] font-semibold">
+                            Paid by Wallet
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[18px] text-[#10B981] font-bold">
+                            £{walletAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Additional Information Button */}
-                <Button 
-                  onClick={() => setShowAdditionalInfoDialog(true)}
-                  variant="outline"
-                  className="w-full border-2 border-[#3D78CB] text-[#3D78CB] hover:!bg-[#3D78CB] hover:!text-white py-4 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[15px] mb-3 font-semibold"
-                >
-                  <Info className="w-5 h-5 mr-2" />
-                  Additional Information
-                  {(additionalInfoMessage || additionalInfoFiles.length > 0) && (
-                    <span className="ml-2 bg-[#3D78CB] text-white rounded-full px-2 py-0.5 text-xs">
-                      {additionalInfoFiles.length > 0 ? `${additionalInfoFiles.length} file${additionalInfoFiles.length > 1 ? 's' : ''}` : 'Added'}
-                    </span>
-                  )}
-                </Button>
 
                 {/* Place Order Button */}
                 <Button 
@@ -2565,6 +2681,21 @@ export default function CartPage() {
                 >
                   <CheckCircle2 className="w-5 h-5 mr-2" />
                   Place Order
+                </Button>
+
+                {/* Add Remarks Button */}
+                <Button 
+                  onClick={() => setShowAdditionalInfoDialog(true)}
+                  variant="ghost"
+                  className="w-full border-0 text-[#3D78CB] hover:bg-[#3D78CB] hover:text-[#3D78CB] py-3 rounded-md transition-all duration-300 font-['Poppins',sans-serif] text-[14px] mb-3"
+                >
+                  <StickyNote className="w-4 h-4 mr-2" />
+                  Add Remarks
+                  {Object.keys(additionalInfoPerItem).length > 0 && (
+                    <span className="ml-2 bg-[#3D78CB] text-white rounded px-1.5 py-0.5 text-xs">
+                      {Object.keys(additionalInfoPerItem).length} service{Object.keys(additionalInfoPerItem).length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </Button>
 
                 {/* Trust Badges */}
@@ -2596,121 +2727,164 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Additional Information Dialog */}
+      {/* Add Remarks Dialog */}
       <Dialog open={showAdditionalInfoDialog} onOpenChange={setShowAdditionalInfoDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Additional Information
+              Add Remarks
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              Add any special requirements or additional information for your order
+              Add any special requirements or remarks for each service
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 mt-4">
-            {/* Message Input */}
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Message (Optional)
-              </Label>
-              <Textarea
-                placeholder="Enter any special requirements, instructions, or additional information..."
-                value={additionalInfoMessage}
-                onChange={(e) => setAdditionalInfoMessage(e.target.value)}
-                rows={5}
-                className="font-['Poppins',sans-serif] text-[13px]"
-              />
-            </div>
+          <div className="space-y-6 mt-4">
+            {cartItems.map((item) => {
+              const itemInfo = additionalInfoPerItem[item.id] || { message: "", files: [] };
+              
+              return (
+                <div key={item.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  {/* Service Name */}
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-3">
+                    {item.title}
+                  </h3>
+                  
+                  {/* Message Input */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Message
+                    </Label>
+                    <Textarea
+                      placeholder="Enter any special requirements, instructions, or additional information..."
+                      value={itemInfo.message}
+                      onChange={(e) => {
+                        setAdditionalInfoPerItem(prev => ({
+                          ...prev,
+                          [item.id]: {
+                            ...prev[item.id],
+                            message: e.target.value,
+                            files: prev[item.id]?.files || []
+                          }
+                        }));
+                      }}
+                      rows={4}
+                      className="font-['Poppins',sans-serif] text-[13px]"
+                    />
+                  </div>
 
-            {/* File Upload */}
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Attachments (Optional) - Max 10 files
-              </Label>
-              <div 
-                className="border-2 border-dashed border-[#3D78CB] rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer"
-                onClick={() => additionalInfoFileInputRef.current?.click()}
-              >
-                <input
-                  ref={additionalInfoFileInputRef}
-                  type="file"
-                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-                  multiple
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      const newFiles = Array.from(e.target.files);
-                      const validFiles = newFiles.filter(file => {
-                        const type = file.type;
-                        return type.startsWith('image/') || 
-                               type.startsWith('video/') || 
-                               type === 'application/pdf' ||
-                               type === 'application/msword' ||
-                               type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                               type === 'text/plain';
-                      });
+                  {/* File Upload */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Attachments (Optional) - Max 10 files
+                    </Label>
+                    <div 
+                      className="border-2 border-dashed border-[#3D78CB] rounded-lg p-4 text-center hover:bg-blue-50 transition-colors cursor-pointer"
+                      onClick={() => additionalInfoFileInputRefs.current[item.id]?.click()}
+                    >
+                      <input
+                        ref={(el) => {
+                          additionalInfoFileInputRefs.current[item.id] = el;
+                        }}
+                        type="file"
+                        accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                        multiple
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            const newFiles = Array.from(e.target.files);
+                            const validFiles = newFiles.filter(file => {
+                              const type = file.type;
+                              return type.startsWith('image/') || 
+                                     type.startsWith('video/') || 
+                                     type === 'application/pdf' ||
+                                     type === 'application/msword' ||
+                                     type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                                     type === 'text/plain';
+                            });
 
-                      if (validFiles.length !== newFiles.length) {
-                        toast.error("Some files were not added. Only images, videos, and documents are allowed.");
-                      }
+                            if (validFiles.length !== newFiles.length) {
+                              toast.error("Some files were not added. Only images, videos, and documents are allowed.");
+                            }
 
-                      setAdditionalInfoFiles(prev => [...prev, ...validFiles].slice(0, 10));
-                    }
-                  }}
-                  className="hidden"
-                />
-                <div className="flex flex-col items-center gap-2">
-                  <Upload className="w-8 h-8 text-[#3D78CB]" />
-                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] font-medium">
-                    Click to upload files ({additionalInfoFiles.length}/10)
-                  </span>
-                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                    Images, videos, PDF, DOC, DOCX, or TXT files
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Selected Files */}
-            {additionalInfoFiles.length > 0 && (
-              <div className="space-y-2">
-                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                  Selected Files:
-                </Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {additionalInfoFiles.map((file, index) => {
-                    const getFileIcon = () => {
-                      if (file.type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" />;
-                      if (file.type.startsWith('video/')) return <Film className="w-5 h-5 text-purple-500" />;
-                      return <FileText className="w-5 h-5 text-gray-500" />;
-                    };
-                    
-                    return (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                        {getFileIcon()}
-                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] flex-1 truncate">
-                          {file.name}
+                            setAdditionalInfoPerItem(prev => ({
+                              ...prev,
+                              [item.id]: {
+                                ...prev[item.id],
+                                message: prev[item.id]?.message || "",
+                                files: [...(prev[item.id]?.files || []), ...validFiles].slice(0, 10)
+                              }
+                            }));
+                          }
+                          // Reset input
+                          if (e.target) {
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="w-6 h-6 text-[#3D78CB]" />
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] font-medium">
+                          Click to upload files ({itemInfo.files.length}/10)
                         </span>
-                        <button 
-                          onClick={() => setAdditionalInfoFiles(prev => prev.filter((_, i) => i !== index))} 
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                          Images, videos, PDF, DOC, DOCX, or TXT files
+                        </span>
                       </div>
-                    );
-                  })}
+                    </div>
+                  </div>
+
+                  {/* Selected Files */}
+                  {itemInfo.files.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                        Selected Files:
+                      </Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {itemInfo.files.map((file, index) => {
+                          const getFileIcon = () => {
+                            if (file.type.startsWith('image/')) return <Image className="w-4 h-4 text-blue-500" />;
+                            if (file.type.startsWith('video/')) return <Film className="w-4 h-4 text-purple-500" />;
+                            return <FileText className="w-4 h-4 text-gray-500" />;
+                          };
+                          
+                          return (
+                            <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                              {getFileIcon()}
+                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] flex-1 truncate">
+                                {file.name}
+                              </span>
+                              <button 
+                                onClick={() => {
+                                  setAdditionalInfoPerItem(prev => ({
+                                    ...prev,
+                                    [item.id]: {
+                                      ...prev[item.id],
+                                      message: prev[item.id]?.message || "",
+                                      files: (prev[item.id]?.files || []).filter((_, i) => i !== index)
+                                    }
+                                  }));
+                                }} 
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })}
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => {
-                  setAdditionalInfoMessage("");
-                  setAdditionalInfoFiles([]);
+                  setAdditionalInfoPerItem({});
                   setShowAdditionalInfoDialog(false);
                 }}
                 className="font-['Poppins',sans-serif]"

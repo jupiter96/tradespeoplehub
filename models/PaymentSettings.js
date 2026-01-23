@@ -266,6 +266,11 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    serviceFeeThreshold: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     
     // Updated by
     updatedBy: {

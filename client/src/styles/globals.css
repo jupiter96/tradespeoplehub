@@ -329,12 +329,21 @@ html {
 }
 
 /* Ensure dialogs always appear on top */
-[data-slot="dialog-overlay"] {
-  z-index: 9998 !important;
+[data-radix-portal] {
+  z-index: 99999 !important;
+  position: relative !important;
 }
 
-[data-slot="dialog-content"] {
-  z-index: 9999 !important;
+[data-slot="dialog-overlay"],
+[data-radix-dialog-overlay] {
+  z-index: 99999 !important;
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+[data-slot="dialog-content"],
+[data-radix-dialog-content] {
+  z-index: 100000 !important;
   position: fixed !important;
 }
 

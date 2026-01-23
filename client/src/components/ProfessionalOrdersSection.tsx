@@ -561,6 +561,21 @@ function ProfessionalOrdersSection() {
     return resolveApiUrl(url);
   };
 
+  // Helper function to resolve and validate avatar URL
+  const resolveAvatarUrl = (avatar?: string): string | undefined => {
+    if (!avatar) return undefined;
+    // Filter out fake/placeholder images
+    if (/images\.unsplash\.com/i.test(avatar) || 
+        /placeholder|dummy|fake|default-avatar/i.test(avatar.toLowerCase())) {
+      return undefined;
+    }
+    // Resolve relative URLs
+    if (avatar.startsWith("http://") || avatar.startsWith("https://") || avatar.startsWith("blob:")) {
+      return avatar;
+    }
+    return resolveApiUrl(avatar);
+  };
+
   // Check if a file is a video based on extension or URL
   const isVideoFile = (url?: string): boolean => {
     if (!url) return false;
@@ -1276,7 +1291,7 @@ function ProfessionalOrdersSection() {
       {/* Client Info */}
       <div className="flex items-center gap-3 mb-4">
         <Avatar className="w-10 h-10">
-          <AvatarImage src={order.clientAvatar} />
+          <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
             {order.client
               ?.split(" ")
@@ -1471,7 +1486,7 @@ function ProfessionalOrdersSection() {
             {/* Elapsed Time Display */}
             <div className="grid grid-cols-4 gap-3">
               {/* Days */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.days).padStart(2, '0')}
                 </div>
@@ -1481,7 +1496,7 @@ function ProfessionalOrdersSection() {
               </div>
 
               {/* Hours */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.hours).padStart(2, '0')}
                 </div>
@@ -1491,7 +1506,7 @@ function ProfessionalOrdersSection() {
               </div>
 
               {/* Minutes */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.minutes).padStart(2, '0')}
                 </div>
@@ -1501,7 +1516,7 @@ function ProfessionalOrdersSection() {
               </div>
 
               {/* Seconds */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200">
+              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
                 <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
                   {String(workElapsedTime.seconds).padStart(2, '0')}
                 </div>
@@ -1635,7 +1650,7 @@ function ProfessionalOrdersSection() {
                 <div className="space-y-4 md:space-y-6 px-4 md:px-6">
                 {/* Completion Message for Completed Orders */}
                 {currentOrder.status === "Completed" && (
-                  <div className="bg-white rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6 shadow-md">
                     <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
                       Your order has been completed!
                     </h3>
@@ -1657,7 +1672,7 @@ function ProfessionalOrdersSection() {
 
                 {/* Revision Resume Action */}
                 {currentOrder.revisionRequest?.status === "pending" && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mt-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mt-4 shadow-md">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
                       <div className="flex-1">
@@ -1687,7 +1702,7 @@ function ProfessionalOrdersSection() {
                  currentOrder.cancellationRequest.status === 'pending' && 
                  currentOrder.cancellationRequest.requestedBy && 
                  currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 shadow-md">
                     <div className="flex items-start gap-3 mb-4">
                       <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
@@ -1757,7 +1772,7 @@ function ProfessionalOrdersSection() {
                  currentOrder.cancellationRequest.status === 'pending' && 
                  currentOrder.cancellationRequest.requestedBy && 
                  currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6 shadow-md">
                     <div className="flex items-start gap-3 mb-4">
                       <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
@@ -1831,7 +1846,7 @@ function ProfessionalOrdersSection() {
                   currentOrder.status !== "Cancelled" &&
                   currentOrder.status !== "Completed" &&
                   currentOrder.deliveryStatus !== "delivered" && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 shadow-md">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service Delivery Pending
                     </h4>
@@ -1893,7 +1908,7 @@ function ProfessionalOrdersSection() {
                   currentOrder.status !== "disputed" &&
                   currentOrder.deliveryStatus !== "delivered" &&
                   currentOrder.deliveryStatus !== "pending" && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-md">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
                       Service In Progress
                     </h4>
@@ -2001,7 +2016,7 @@ function ProfessionalOrdersSection() {
                 {timelineTimer}
 
                 {false && currentOrder.deliveryStatus === "delivered" && (
-                  <div className="bg-white rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6 shadow-md">
                     <h4 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-3">
                       Your work has been delivered!
                     </h4>
@@ -2011,7 +2026,7 @@ function ProfessionalOrdersSection() {
 
                     {/* Professional Complete Request Status */}
                     {currentOrder.metadata?.professionalCompleteRequest && (
-                      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
                         <div className="flex items-center gap-2 mb-2">
                           <CheckCircle2 className="w-5 h-5 text-blue-600" />
                           <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700">
@@ -2192,7 +2207,7 @@ function ProfessionalOrdersSection() {
 
                     {/* Show dispute status if dispute exists */}
                     {currentOrder.disputeInfo && (
-                      <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 shadow-md">
                         <div className="flex items-start gap-3 mb-2">
                           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
@@ -2309,7 +2324,7 @@ function ProfessionalOrdersSection() {
                               </p>
                             )}
                             {currentOrder.disputeInfo.reason && (
-                              <div className="mt-3 p-3 bg-white border border-red-200 rounded">
+                              <div className="mt-3 p-3 bg-white border border-red-200 rounded shadow-sm">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Dispute reason:
                                 </p>
@@ -2348,7 +2363,7 @@ function ProfessionalOrdersSection() {
                 })()}
                 
                 {currentOrder.status === "disputed" && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6">
+                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6 shadow-md">
                     <div className="flex items-start gap-3 mb-3">
                       <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
@@ -2434,7 +2449,7 @@ function ProfessionalOrdersSection() {
                           </p>
                         )}
                         {event.message && (
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2">
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2 shadow-sm">
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                               {event.message}
                             </p>
@@ -2520,7 +2535,7 @@ function ProfessionalOrdersSection() {
                           </span>
                         </p>
                         {currentOrder.additionalInformation.message && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 shadow-sm">
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                               {currentOrder.additionalInformation.message}
                             </p>
@@ -2557,7 +2572,7 @@ function ProfessionalOrdersSection() {
                         
                         {/* Delivery Message and Attachments */}
                         {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
-                          <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
                             {currentOrder.deliveryMessage && (
                               <div className="mb-3">
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
@@ -2604,7 +2619,7 @@ function ProfessionalOrdersSection() {
                         )}
 
                         {/* Status Info */}
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 shadow-sm">
                           <p className="font-['Poppins',sans-serif] text-[13px] text-blue-800">
                             Waiting for client to approve the delivery or request modifications.
                           </p>
@@ -2730,7 +2745,7 @@ function ProfessionalOrdersSection() {
                         </p>
                         
                         {/* Orange Alert Box */}
-                        <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 mt-3">
+                        <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 mt-3 shadow-sm">
                           <div className="flex gap-2">
                             <Info className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
                             <p className="font-['Poppins',sans-serif] text-[13px] text-orange-800">
@@ -2795,7 +2810,7 @@ function ProfessionalOrdersSection() {
                       </h3>
                       
                       {/* Dispute Info */}
-                      <div className="bg-white rounded-lg p-6 mb-6">
+                      <div className="bg-white rounded-lg p-6 mb-6 shadow-md">
                         <div className="grid grid-cols-3 gap-4 mb-6">
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -2903,7 +2918,7 @@ function ProfessionalOrdersSection() {
                         
                         {/* Delivery Message and Attachments */}
                         {(currentOrder.deliveryMessage || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
-                          <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
                             {currentOrder.deliveryMessage && (
                               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
                                 {currentOrder.deliveryMessage}
@@ -3102,7 +3117,7 @@ function ProfessionalOrdersSection() {
 
               {/* Details Tab */}
               <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
-                <div className="bg-white rounded-xl p-8">
+                <div className="bg-white rounded-xl p-8 shadow-md">
                   <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
                     {currentOrder.service}
                   </h2>
@@ -3215,7 +3230,7 @@ function ProfessionalOrdersSection() {
               {/* Additional Info Tab */}
               <TabsContent value="additional-info" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
                 {/* Client's Additional Information */}
-                <div className="bg-white rounded-xl p-6">
+                <div className="bg-white rounded-xl p-6 shadow-md">
                   <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
                     Additional Information from Client
                   </h3>
@@ -3224,7 +3239,7 @@ function ProfessionalOrdersSection() {
                     <div className="space-y-4">
                       {/* Submitted Message */}
                       {currentOrder.additionalInformation.message && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
                           <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                             Client's message:
                           </p>
@@ -3288,22 +3303,8 @@ function ProfessionalOrdersSection() {
                   )}
                 </div>
 
-                {currentOrder.address && (
-                  <div className="bg-white rounded-xl p-6">
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
-                      Service Address
-                    </h3>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      {currentOrder.address.addressLine1}
-                      {currentOrder.address.addressLine2 && `, ${currentOrder.address.addressLine2}`}
-                      <br />
-                      {currentOrder.address.city}, {currentOrder.address.postcode}
-                    </p>
-                  </div>
-                )}
-
                 {currentOrder.description && (
-                  <div className="bg-white rounded-xl p-6">
+                  <div className="bg-white rounded-xl p-6 shadow-md">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
                       Client Requirements
                     </h3>
@@ -3316,7 +3317,7 @@ function ProfessionalOrdersSection() {
 
               {/* Delivery Tab */}
               <TabsContent value="delivery" className="mt-4 md:mt-6 px-4 md:px-6">
-                <div className="bg-white rounded-xl p-6">
+                <div className="bg-white rounded-xl p-6 shadow-md">
                   {(() => {
                     // Get all "Work Delivered" timeline events
                     const timeline = buildProfessionalTimeline(currentOrder);
@@ -3495,6 +3496,21 @@ function ProfessionalOrdersSection() {
                     </div>
                   )}
                 </div>
+
+                {/* Service Address Section */}
+                {currentOrder.address && (
+                  <div className="bg-white rounded-xl p-6 mt-4 md:mt-6 shadow-md">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-3">
+                      Service Address
+                    </h3>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      {currentOrder.address.addressLine1}
+                      {currentOrder.address.addressLine2 && `, ${currentOrder.address.addressLine2}`}
+                      <br />
+                      {currentOrder.address.city}, {currentOrder.address.postcode}
+                    </p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -3502,7 +3518,7 @@ function ProfessionalOrdersSection() {
 
             {/* Right Side - Order Summary Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl p-6 sticky top-6">
+              <div className="bg-white rounded-xl p-6 sticky top-6 shadow-md">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-6">
                   Order Details
                 </h3>
@@ -3591,7 +3607,7 @@ function ProfessionalOrdersSection() {
                   </p>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={currentOrder.clientAvatar} />
+                      <AvatarImage src={resolveAvatarUrl(currentOrder.clientAvatar)} />
                       <AvatarFallback className="bg-[#3D78CB] text-white">
                         {currentOrder.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                       </AvatarFallback>
@@ -3752,7 +3768,7 @@ function ProfessionalOrdersSection() {
                   </h2>
 
                   {/* Dispute Info Card */}
-                  <div className="bg-white rounded-lg p-6">
+                  <div className="bg-white rounded-lg p-6 shadow-md">
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div>
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
@@ -4239,7 +4255,7 @@ function ProfessionalOrdersSection() {
                     </h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar} />
+                        <AvatarImage src={resolveAvatarUrl(clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar)} />
                         <AvatarFallback className="bg-blue-100 text-blue-600">
                           {(clientReviewData?.reviewer?.name || currentOrder.client)?.charAt(0) || "C"}
                         </AvatarFallback>
@@ -4324,7 +4340,7 @@ function ProfessionalOrdersSection() {
                 {currentOrder?.rating ? (
                   <div className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={currentOrder.clientAvatar} />
+                      <AvatarImage src={resolveAvatarUrl(currentOrder.clientAvatar)} />
                       <AvatarFallback className="bg-blue-100 text-blue-600">
                         {currentOrder.client?.charAt(0) || "C"}
                       </AvatarFallback>
@@ -4464,7 +4480,7 @@ function ProfessionalOrdersSection() {
                     </h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={clientReviewData.reviewer?.avatar} />
+                        <AvatarImage src={resolveAvatarUrl(clientReviewData.reviewer?.avatar)} />
                         <AvatarFallback className="bg-blue-100 text-blue-600">
                           {clientReviewData.reviewer?.name?.charAt(0) || "C"}
                         </AvatarFallback>
@@ -5077,7 +5093,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -5105,7 +5121,7 @@ function ProfessionalOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                             </AvatarFallback>
@@ -5176,7 +5192,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -5200,7 +5216,7 @@ function ProfessionalOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                             </AvatarFallback>
@@ -5271,7 +5287,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -5295,7 +5311,7 @@ function ProfessionalOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                             </AvatarFallback>
@@ -5366,7 +5382,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -5390,7 +5406,7 @@ function ProfessionalOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                             </AvatarFallback>
@@ -5444,7 +5460,7 @@ function ProfessionalOrdersSection() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -5468,7 +5484,7 @@ function ProfessionalOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.clientAvatar} />
+                            <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                             </AvatarFallback>

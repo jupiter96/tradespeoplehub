@@ -181,25 +181,65 @@ function generateOrderNumber() {
 router.post('/', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     
-    const { items, address, skipAddress, paymentMethod, paymentMethodId, total, subtotal, discount = 0, serviceFee = 0, promoCode } = req.body;
+    const { items, address, skipAddress, paymentMethod, paymentMethodId, total, subtotal, discount = 0, serviceFee = 0, promoCode, walletAmount = 0, remainderAmount = 0 } = req.body;
 
     if (!items || items.length === 0) {
       console.error('[Server] No items provided');
       return res.status(400).json({ error: 'Order must contain at least one item' });
     }
 
-    if (!paymentMethod || !['account_balance', 'card', 'paypal', 'bank_transfer'].includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Invalid payment method' });
+    if (!paymentMethod || !['card', 'paypal', 'wallet'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method. Only card and paypal are allowed.' });
     }
 
     if (!total || total <= 0) {
       return res.status(400).json({ error: 'Invalid order total' });
     }
 
-    // Get user
+    // Get user first (needed for wallet balance validation)
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Validate wallet and remainder amounts
+    const calculatedWalletAmount = Math.min(user.walletBalance || 0, total);
+    const calculatedRemainderAmount = Math.max(0, total - (user.walletBalance || 0));
+    
+    // Validate amounts match
+    if (Math.abs(walletAmount - calculatedWalletAmount) > 0.01) {
+      return res.status(400).json({ 
+        error: 'Wallet amount mismatch',
+        expected: calculatedWalletAmount,
+        received: walletAmount 
+      });
+    }
+    
+    if (Math.abs(remainderAmount - calculatedRemainderAmount) > 0.01) {
+      return res.status(400).json({ 
+        error: 'Remainder amount mismatch',
+        expected: calculatedRemainderAmount,
+        received: remainderAmount 
+      });
+    }
+    
+    // Validate wallet balance is sufficient
+    if (walletAmount > (user.walletBalance || 0)) {
+      return res.status(400).json({ 
+        error: 'Insufficient wallet balance',
+        required: walletAmount,
+        current: user.walletBalance || 0 
+      });
+    }
+    
+    // If remainder > 0, payment method must be provided
+    if (remainderAmount > 0 && !paymentMethodId && paymentMethod === 'card') {
+      return res.status(400).json({ error: 'Payment method ID is required for card payments when remainder > 0' });
+    }
+    
+    // If remainder is 0, payment method should be wallet
+    if (remainderAmount === 0 && paymentMethod !== 'wallet') {
+      return res.status(400).json({ error: 'Payment method must be wallet when remainder is 0' });
     }
 
     // Get professional from first item (assuming all items are from same professional)
@@ -255,12 +295,17 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     // Get payment settings to retrieve service fee
     const settings = await PaymentSettings.getSettings();
     const serviceFeeAmount = settings.serviceFees || 0;
+    const serviceFeeThreshold = settings.serviceFeeThreshold || 0;
+    
+    // Calculate actual service fee based on threshold
+    // If subtotal is equal to or above threshold, service fee is 0
+    const actualServiceFee = (serviceFeeThreshold > 0 && subtotal >= serviceFeeThreshold) ? 0 : serviceFeeAmount;
 
     // Validate service fee if provided
-    if (serviceFee !== undefined && serviceFee !== serviceFeeAmount) {
+    if (serviceFee !== undefined && serviceFee !== actualServiceFee) {
       return res.status(400).json({ 
         error: 'Service fee mismatch', 
-        expected: serviceFeeAmount,
+        expected: actualServiceFee,
         received: serviceFee 
       });
     }
@@ -287,7 +332,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     }
 
     // Recalculate total to include service fee (if not already included)
-    const calculatedTotal = subtotal - discount + serviceFeeAmount;
+    const calculatedTotal = subtotal - discount + actualServiceFee;
 
     // Validate total matches calculated total
     if (Math.abs(total - calculatedTotal) > 0.01) {
@@ -298,7 +343,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         breakdown: {
           subtotal,
           discount,
-          serviceFee: serviceFeeAmount,
+          serviceFee: actualServiceFee,
         }
       });
     }
@@ -314,216 +359,174 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       professionalPayoutAmount = subtotal - discount;
     }
 
-    // Handle payment based on method
+    // Handle split payment: wallet first, then payment method
     let walletTransactionId = null;
     let paymentTransactionId = null;
     let newBalance = user.walletBalance || 0;
+    const Wallet = (await import('../models/WalletTransaction.js')).default;
 
-    if (paymentMethod === 'account_balance') {
-      // Check if balance is sufficient
-      if ((user.walletBalance || 0) < total) {
-        return res.status(400).json({ 
-          error: 'Insufficient balance',
-          required: total,
-          current: user.walletBalance || 0,
-          shortfall: total - (user.walletBalance || 0),
-        });
-      }
-
-      // Deduct from wallet balance
-      newBalance = (user.walletBalance || 0) - total;
+    // Step 1: Deduct from wallet if walletAmount > 0
+    if (walletAmount > 0) {
+      newBalance = (user.walletBalance || 0) - walletAmount;
       user.walletBalance = newBalance;
       await user.save();
-
-      // Create payment transaction
-      const paymentTransaction = new Wallet({
-        userId: user._id,
-        type: 'payment',
-        amount: total,
-        balance: newBalance,
-        status: 'completed',
-        paymentMethod: 'wallet',
-        description: `Order Payment - ${orderNumber}`,
-        orderId: null, // Will be updated after order creation
-        metadata: {
-          orderNumber,
-        },
-      });
-      await paymentTransaction.save();
-      paymentTransactionId = paymentTransaction._id;
-    } else if (paymentMethod === 'card') {
-      // Card payment: fund wallet first, then deduct
-      if (!paymentMethodId) {
-        return res.status(400).json({ error: 'Payment method ID is required for card payments' });
-      }
-
-      try {
-        const settings = await PaymentSettings.getSettings();
-        const stripe = getStripeInstance(settings);
-
-        // Calculate Stripe fees
-        const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
-        const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
-        const stripeCommission = (total * stripeCommissionPercentage / 100) + stripeCommissionFixed;
-        const totalChargeAmount = total + stripeCommission;
-
-        // Create payment intent
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(totalChargeAmount * 100), // Convert to pence
-          currency: 'gbp',
-          payment_method: paymentMethodId,
-          customer: user.stripeCustomerId, // Include customer ID
-          confirm: true,
-          return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
-          metadata: {
-            userId: user._id.toString(),
-            type: 'order_payment',
-            orderNumber,
-          },
-        });
-
-        if (paymentIntent.status !== 'succeeded') {
-          return res.status(400).json({ 
-            error: 'Payment failed',
-            status: paymentIntent.status,
-            requiresAction: paymentIntent.status === 'requires_action',
-          });
-        }
-
-        // Fund wallet with order amount (before deducting)
-        newBalance = (user.walletBalance || 0) + total;
-        user.walletBalance = newBalance;
-        await user.save();
-
-        // Create deposit transaction
-        const depositTransaction = new Wallet({
-          userId: user._id,
-          type: 'deposit',
-          amount: total,
-          balance: newBalance,
-          status: 'completed',
-          paymentMethod: 'card',
-          stripePaymentIntentId: paymentIntent.id,
-          stripeChargeId: paymentIntent.latest_charge,
-          description: `Card Deposit - Order ${orderNumber}`,
-          metadata: {
-            depositAmount: total,
-            fee: stripeCommission,
-            feePercentage: stripeCommissionPercentage,
-            feeFixed: stripeCommissionFixed,
-            orderNumber,
-          },
-        });
-        await depositTransaction.save();
-        walletTransactionId = depositTransaction._id;
-
-        // Deduct from wallet for order payment
-        newBalance = newBalance - total;
-        user.walletBalance = newBalance;
-        await user.save();
-
-        // Create payment transaction
-        const paymentTransaction = new Wallet({
-          userId: user._id,
-          type: 'payment',
-          amount: total,
-          balance: newBalance,
-          status: 'completed',
-          paymentMethod: 'wallet',
-          description: `Order Payment - ${orderNumber}${promoCodeData ? ` (Promo: ${promoCodeData.code})` : ''}`,
-          orderId: null, // Will be updated after order creation
-          metadata: {
-            orderNumber,
-            depositTransactionId: depositTransaction._id.toString(),
-            promoCode: promoCodeData ? {
-              code: promoCodeData.code,
-              type: promoCodeData.type,
-              discount: discount,
-            } : null,
-            professionalPayoutAmount,
-          },
-        });
-        await paymentTransaction.save();
-        paymentTransactionId = paymentTransaction._id;
-      } catch (error) {
-        return res.status(500).json({ error: error.message || 'Failed to process card payment' });
-      }
-    } else if (paymentMethod === 'paypal') {
-      // PayPal payment: fund wallet first, then deduct
-      try {
-        const settings = await PaymentSettings.getSettings();
-        const environment = getPayPalClient(settings);
-        const client = new paypal.core.PayPalHttpClient(environment);
-
-        // Calculate PayPal fees
-        const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
-        const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
-        const paypalCommission = (total * paypalCommissionPercentage / 100) + paypalCommissionFixed;
-        const totalChargeAmount = total + paypalCommission;
-
-        // Create PayPal order
-        const request = new paypal.orders.OrdersCreateRequest();
-        request.prefer("return=representation");
-        request.requestBody({
-          intent: "CAPTURE",
-          purchase_units: [{
-            amount: {
-              currency_code: "GBP",
-              value: totalChargeAmount.toFixed(2),
-            },
-            description: `Order Payment - ${orderNumber}`,
-            custom_id: orderNumber,
-          }],
-          application_context: {
-            return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
-            cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
-            brand_name: "Sortars UK",
-            locale: "en-GB",
-          },
-        });
-
-        const order = await client.execute(request);
-
-        if (order.statusCode !== 201) {
-          return res.status(400).json({ error: 'Failed to create PayPal order' });
-        }
-
-        // Return PayPal approval URL for client to redirect
-        const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
-
-        return res.json({
-          orderId: orderNumber, // Temporary order number
-          paypalOrderId: order.result.id,
-          approveUrl,
-          requiresApproval: true,
-          message: 'Please approve PayPal payment to complete order',
-        });
-      } catch (error) {
-        return res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
-      }
-    } else if (paymentMethod === 'bank_transfer') {
-      // Bank transfer: create pending transaction
-      // For bank transfer, we create the order but it will be pending until admin approves the transfer
       
-      // Create pending deposit transaction
-      const depositTransaction = new Wallet({
-        userId: user._id,
-        type: 'deposit',
-        amount: total,
-        balance: user.walletBalance || 0, // Balance unchanged until approved
-        status: 'pending',
-        paymentMethod: 'manual_transfer',
-        description: `Bank Transfer Deposit - Order ${orderNumber}`,
-        metadata: {
-          orderNumber,
-          pendingOrder: true,
-        },
+      // Create wallet transaction record
+      const walletTransaction = new Wallet({
+        user: user._id,
+        type: 'debit',
+        amount: walletAmount,
+        description: `Order payment - ${orderNumber}`,
+        status: 'completed',
+        orderId: null, // Will be updated after order creation
       });
-      await depositTransaction.save();
-      walletTransactionId = depositTransaction._id;
+      await walletTransaction.save();
+      walletTransactionId = walletTransaction._id;
+    }
 
-      // Order will be created with pending status
-      // When admin approves the bank transfer, the wallet will be funded and then deducted
+    // Step 2: Process remainder payment if remainderAmount > 0
+    if (remainderAmount > 0) {
+      if (paymentMethod === 'card') {
+        if (!paymentMethodId) {
+          // Rollback wallet deduction if card payment fails
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await Wallet.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          return res.status(400).json({ error: 'Payment method ID is required for card payments' });
+        }
+
+        try {
+          const settings = await PaymentSettings.getSettings();
+          const stripe = getStripeInstance(settings);
+
+          // Calculate Stripe fees on remainder amount only
+          const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
+          const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
+          const stripeCommission = (remainderAmount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
+          const totalChargeAmount = remainderAmount + stripeCommission;
+
+          // Create payment intent for remainder amount
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(totalChargeAmount * 100),
+            currency: 'gbp',
+            payment_method: paymentMethodId,
+            customer: user.stripeCustomerId,
+            confirm: true,
+            return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+            metadata: {
+              userId: user._id.toString(),
+              type: 'order_payment',
+              orderNumber,
+              walletAmount: walletAmount.toString(),
+              remainderAmount: remainderAmount.toString(),
+            },
+          });
+
+          if (paymentIntent.status !== 'succeeded') {
+            // Rollback wallet deduction if card payment fails
+            if (walletAmount > 0) {
+              user.walletBalance = (user.walletBalance || 0) + walletAmount;
+              await user.save();
+              if (walletTransactionId) {
+                await Wallet.findByIdAndDelete(walletTransactionId);
+              }
+            }
+            return res.status(400).json({ 
+              error: 'Payment failed',
+              status: paymentIntent.status,
+              requiresAction: paymentIntent.status === 'requires_action',
+            });
+          }
+
+          paymentTransactionId = paymentIntent.id;
+        } catch (error) {
+          // Rollback wallet deduction if card payment fails
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await Wallet.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          return res.status(500).json({ error: error.message || 'Failed to process card payment' });
+        }
+      } else if (paymentMethod === 'paypal') {
+        // PayPal payment: return approval URL for remainder amount
+        try {
+          const settings = await PaymentSettings.getSettings();
+          const environment = getPayPalClient(settings);
+          const client = new paypal.core.PayPalHttpClient(environment);
+
+          // Calculate PayPal fees on remainder amount only
+          const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
+          const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
+          const paypalCommission = (remainderAmount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+          const totalChargeAmount = remainderAmount + paypalCommission;
+
+          // Create PayPal order for remainder amount
+          const request = new paypal.orders.OrdersCreateRequest();
+          request.prefer("return=representation");
+          request.requestBody({
+            intent: "CAPTURE",
+            purchase_units: [{
+              amount: {
+                currency_code: "GBP",
+                value: totalChargeAmount.toFixed(2),
+              },
+              description: `Order Payment - ${orderNumber} - Remainder: £${remainderAmount.toFixed(2)}${walletAmount > 0 ? `, Wallet: £${walletAmount.toFixed(2)}` : ''}`,
+              custom_id: orderNumber,
+            }],
+            application_context: {
+              return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+              cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
+              brand_name: "Sortars UK",
+              locale: "en-GB",
+            },
+          });
+
+          const order = await client.execute(request);
+
+          if (order.statusCode !== 201) {
+            // Rollback wallet deduction if PayPal order creation fails
+            if (walletAmount > 0) {
+              user.walletBalance = (user.walletBalance || 0) + walletAmount;
+              await user.save();
+              if (walletTransactionId) {
+                await Wallet.findByIdAndDelete(walletTransactionId);
+              }
+            }
+            return res.status(400).json({ error: 'Failed to create PayPal order' });
+          }
+
+          // Return PayPal approval URL for client to redirect
+          const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
+
+          return res.json({
+            orderId: orderNumber,
+            paypalOrderId: order.result.id,
+            approveUrl,
+            requiresApproval: true,
+            walletAmount,
+            remainderAmount,
+            walletTransactionId: walletTransactionId?.toString(),
+            message: 'Please approve PayPal payment to complete order',
+          });
+        } catch (error) {
+          // Rollback wallet deduction if PayPal order creation fails
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await Wallet.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          return res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
+        }
+      }
     }
 
     const processedItems = items.map((item, index) => {
@@ -555,7 +558,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     });
     
 
-    const isPaidOrder = paymentMethod !== 'bank_transfer';
+    const isPaidOrder = true; // All orders are paid (wallet + card/paypal)
     const order = new Order({
       orderNumber,
       client: user._id,
@@ -569,8 +572,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         phone: address.phone,
       } : undefined,
       skipAddress: skipAddress || false,
-      paymentMethod,
-      paymentMethodId: paymentMethod === 'card' ? paymentMethodId : undefined,
+      paymentMethod: walletAmount > 0 && remainderAmount > 0 ? 'split' : (walletAmount > 0 ? 'wallet' : paymentMethod),
+      paymentMethodId: remainderAmount > 0 && paymentMethod === 'card' ? paymentMethodId : undefined,
       total,
       subtotal,
       discount,
@@ -605,6 +608,10 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       orderId: order.orderNumber,
       order: order.toObject(),
       newBalance,
+      walletAmount,
+      remainderAmount,
+      walletTransactionId: walletTransactionId?.toString(),
+      paymentTransactionId: paymentTransactionId?.toString(),
       message: 'Order created successfully',
     };
     
@@ -617,15 +624,15 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
 // Create multiple orders at once (one order per item)
 router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
-    const { orders: orderRequests, paymentMethod, paymentMethodId, totalAmount, address, skipAddress, additionalInformation } = req.body;
+    const { orders: orderRequests, paymentMethod, paymentMethodId, totalAmount, walletAmount = 0, remainderAmount = 0, address, skipAddress, additionalInformation } = req.body;
 
 
     if (!orderRequests || orderRequests.length === 0) {
       return res.status(400).json({ error: 'At least one order is required' });
     }
 
-    if (!paymentMethod || !['account_balance', 'card', 'paypal', 'bank_transfer'].includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Invalid payment method' });
+    if (!paymentMethod || !['card', 'paypal', 'wallet'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method. Only card and paypal are allowed.' });
     }
 
     if (!totalAmount || totalAmount <= 0) {
@@ -638,9 +645,50 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Validate wallet and remainder amounts
+    const calculatedWalletAmount = Math.min(user.walletBalance || 0, totalAmount);
+    const calculatedRemainderAmount = Math.max(0, totalAmount - (user.walletBalance || 0));
+    
+    // Validate amounts match
+    if (Math.abs(walletAmount - calculatedWalletAmount) > 0.01) {
+      return res.status(400).json({ 
+        error: 'Wallet amount mismatch',
+        expected: calculatedWalletAmount,
+        received: walletAmount 
+      });
+    }
+    
+    if (Math.abs(remainderAmount - calculatedRemainderAmount) > 0.01) {
+      return res.status(400).json({ 
+        error: 'Remainder amount mismatch',
+        expected: calculatedRemainderAmount,
+        received: remainderAmount 
+      });
+    }
+    
+    // Validate wallet balance is sufficient
+    if (walletAmount > (user.walletBalance || 0)) {
+      return res.status(400).json({ 
+        error: 'Insufficient wallet balance',
+        required: walletAmount,
+        current: user.walletBalance || 0 
+      });
+    }
+    
+    // If remainder > 0, payment method must be provided
+    if (remainderAmount > 0 && !paymentMethodId && paymentMethod === 'card') {
+      return res.status(400).json({ error: 'Payment method ID is required for card payments when remainder > 0' });
+    }
+    
+    // If remainder is 0, payment method should be wallet
+    if (remainderAmount === 0 && paymentMethod !== 'wallet') {
+      return res.status(400).json({ error: 'Payment method must be wallet when remainder is 0' });
+    }
+
     // Get payment settings
     const settings = await PaymentSettings.getSettings();
     const serviceFeeAmount = settings.serviceFees || 0;
+    const serviceFeeThreshold = settings.serviceFeeThreshold || 0;
 
     // Calculate total from all orders
     let calculatedSubtotal = 0;
@@ -649,7 +697,12 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       calculatedSubtotal += orderReq.subtotal;
       totalDiscount += (orderReq.discount || 0);
     }
-    const calculatedTotal = calculatedSubtotal - totalDiscount + serviceFeeAmount;
+    
+    // Calculate actual service fee based on threshold
+    // If subtotal is equal to or above threshold, service fee is 0
+    const actualServiceFee = (serviceFeeThreshold > 0 && calculatedSubtotal >= serviceFeeThreshold) ? 0 : serviceFeeAmount;
+    
+    const calculatedTotal = calculatedSubtotal - totalDiscount + actualServiceFee;
 
     // Validate total (allow small floating point differences)
     if (Math.abs(totalAmount - calculatedTotal) > 0.01) {
@@ -658,7 +711,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
         expected: calculatedTotal,
         subtotal: calculatedSubtotal,
         discount: totalDiscount,
-        serviceFee: serviceFeeAmount,
+        serviceFee: actualServiceFee,
       });
       return res.status(400).json({ 
         error: 'Total amount mismatch',
@@ -667,111 +720,143 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
         breakdown: {
           subtotal: calculatedSubtotal,
           discount: totalDiscount,
-          serviceFee: serviceFeeAmount,
+          serviceFee: actualServiceFee,
         }
       });
     }
 
-    // Handle payment for the total amount
+    // Handle split payment: wallet first, then payment method
     let newBalance = user.walletBalance || 0;
+    let walletTransactionId = null;
+    let paymentTransactionId = null;
 
-    if (paymentMethod === 'account_balance') {
-      if ((user.walletBalance || 0) < totalAmount) {
-        return res.status(400).json({ 
-          error: 'Insufficient balance',
-          required: totalAmount,
-          current: user.walletBalance || 0,
-        });
-      }
-
-      // Deduct total from wallet
-      newBalance = (user.walletBalance || 0) - totalAmount;
+    // Step 1: Deduct from wallet if walletAmount > 0
+    if (walletAmount > 0) {
+      newBalance = (user.walletBalance || 0) - walletAmount;
       user.walletBalance = newBalance;
       await user.save();
-    } else if (paymentMethod === 'card') {
-      if (!paymentMethodId) {
-        return res.status(400).json({ error: 'Payment method ID is required for card payments' });
-      }
+      
+      // Create wallet transaction record
+      const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
+      walletTransactionId = (await WalletTransaction.create({
+        user: user._id,
+        type: 'debit',
+        amount: walletAmount,
+        description: `Order payment (${orderRequests.length} order${orderRequests.length > 1 ? 's' : ''})`,
+        status: 'completed',
+        orderId: null, // Will be updated after orders are created
+      }))._id;
+    }
 
-      try {
-        const stripe = getStripeInstance(settings);
-        const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
-        const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
-        const stripeCommission = (totalAmount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
-        const totalChargeAmount = totalAmount + stripeCommission;
+    // Step 2: Process remainder payment if remainderAmount > 0
+    if (remainderAmount > 0) {
+      if (paymentMethod === 'card') {
+        if (!paymentMethodId) {
+          // Rollback wallet deduction if card payment fails
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await WalletTransaction.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          return res.status(400).json({ error: 'Payment method ID is required for card payments' });
+        }
 
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(totalChargeAmount * 100),
-          currency: 'gbp',
-          payment_method: paymentMethodId,
-          customer: user.stripeCustomerId, // Include customer ID
-          confirm: true,
-          return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
-          metadata: {
-            userId: user._id.toString(),
-            type: 'bulk_order_payment',
-            orderCount: orderRequests.length.toString(),
+        try {
+          const stripe = getStripeInstance(settings);
+          const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
+          const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
+          const stripeCommission = (remainderAmount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
+          const totalChargeAmount = remainderAmount + stripeCommission;
+
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(totalChargeAmount * 100),
+            currency: 'gbp',
+            payment_method: paymentMethodId,
+            customer: user.stripeCustomerId,
+            confirm: true,
+            return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+            metadata: {
+              userId: user._id.toString(),
+              type: 'bulk_order_payment',
+              orderCount: orderRequests.length.toString(),
+              walletAmount: walletAmount.toString(),
+              remainderAmount: remainderAmount.toString(),
+            },
+          });
+
+          if (paymentIntent.status !== 'succeeded') {
+            // Rollback wallet deduction if card payment fails
+            if (walletAmount > 0) {
+              user.walletBalance = (user.walletBalance || 0) + walletAmount;
+              await user.save();
+              if (walletTransactionId) {
+                await WalletTransaction.findByIdAndDelete(walletTransactionId);
+              }
+            }
+            return res.status(400).json({ 
+              error: 'Payment failed',
+              status: paymentIntent.status,
+            });
+          }
+
+          paymentTransactionId = paymentIntent.id;
+        } catch (error) {
+          // Rollback wallet deduction if card payment fails
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await WalletTransaction.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          console.error('[Server] Card payment error:', error);
+          return res.status(500).json({ error: error.message || 'Failed to process card payment' });
+        }
+      } else if (paymentMethod === 'paypal') {
+        // For PayPal, return approval URL (similar to single order)
+        const environment = getPayPalClient(settings);
+        const client = new paypal.core.PayPalHttpClient(environment);
+
+        const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
+        const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
+        const paypalCommission = (remainderAmount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+        const totalChargeAmount = remainderAmount + paypalCommission;
+
+        const request = new paypal.orders.OrdersCreateRequest();
+        request.prefer("return=representation");
+        request.requestBody({
+          intent: "CAPTURE",
+          purchase_units: [{
+            amount: {
+              currency_code: "GBP",
+              value: totalChargeAmount.toFixed(2),
+            },
+            description: `Bulk Order Payment (${orderRequests.length} orders) - Remainder: £${remainderAmount.toFixed(2)}${walletAmount > 0 ? `, Wallet: £${walletAmount.toFixed(2)}` : ''}`,
+          }],
+          application_context: {
+            return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+            cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
+            brand_name: "Sortars UK",
+            locale: "en-GB",
           },
         });
 
-        if (paymentIntent.status !== 'succeeded') {
-          return res.status(400).json({ 
-            error: 'Payment failed',
-            status: paymentIntent.status,
-          });
-        }
+        const order = await client.execute(request);
+        const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
 
-        // Fund wallet then deduct
-        newBalance = (user.walletBalance || 0) + totalAmount;
-        user.walletBalance = newBalance;
-        await user.save();
-
-        newBalance = newBalance - totalAmount;
-        user.walletBalance = newBalance;
-        await user.save();
-      } catch (error) {
-        console.error('[Server] Card payment error:', error);
-        return res.status(500).json({ error: error.message || 'Failed to process card payment' });
+        return res.json({
+          paypalOrderId: order.result.id,
+          approveUrl,
+          requiresApproval: true,
+          orderRequests, // Return order requests for later processing
+          walletAmount,
+          remainderAmount,
+          walletTransactionId: walletTransactionId?.toString(),
+          message: 'Please approve PayPal payment to complete orders',
+        });
       }
-    } else if (paymentMethod === 'paypal') {
-      // For PayPal, return approval URL (similar to single order)
-      const environment = getPayPalClient(settings);
-      const client = new paypal.core.PayPalHttpClient(environment);
-
-      const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
-      const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
-      const paypalCommission = (totalAmount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
-      const totalChargeAmount = totalAmount + paypalCommission;
-
-      const request = new paypal.orders.OrdersCreateRequest();
-      request.prefer("return=representation");
-      request.requestBody({
-        intent: "CAPTURE",
-        purchase_units: [{
-          amount: {
-            currency_code: "GBP",
-            value: totalChargeAmount.toFixed(2),
-          },
-          description: `Bulk Order Payment (${orderRequests.length} orders)`,
-        }],
-        application_context: {
-          return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
-          cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
-          brand_name: "Sortars UK",
-          locale: "en-GB",
-        },
-      });
-
-      const order = await client.execute(request);
-      const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
-
-      return res.json({
-        paypalOrderId: order.result.id,
-        approveUrl,
-        requiresApproval: true,
-        orderRequests, // Return order requests for later processing
-        message: 'Please approve PayPal payment to complete orders',
-      });
     }
 
     // Create orders
@@ -779,7 +864,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
     const createdOrders = [];
 
     for (const orderReq of orderRequests) {
-      const { item, booking, subtotal, discount = 0 } = orderReq;
+      const { item, booking, subtotal, discount = 0, additionalInformation: orderAdditionalInfo } = orderReq;
 
       // Find service and professional
       const serviceId = item.serviceId || item.id;
@@ -837,42 +922,43 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       // Calculate order total (item subtotal - discount, no service fee per order)
       const orderTotal = subtotal - discount;
 
-      const isPaidOrder = paymentMethod !== 'bank_transfer';
+      const isPaidOrder = true; // All orders are paid (wallet + card/paypal)
       
-        // Prepare additional information if provided (apply to all orders in bulk)
-        let additionalInfo = undefined;
-        if (additionalInformation && (additionalInformation.message?.trim() || (additionalInformation.files && additionalInformation.files.length > 0))) {
-          const additionalFiles = [];
-          if (additionalInformation.files && Array.isArray(additionalInformation.files)) {
-            for (const file of additionalInformation.files) {
-              // Ensure fileType is one of the allowed values
-              let fileType = file.fileType;
-              if (!fileType || !['image', 'video', 'document'].includes(fileType)) {
-                // Try to determine from URL or default to document
-                if (file.url && (file.url.includes('.jpg') || file.url.includes('.jpeg') || file.url.includes('.png') || file.url.includes('.gif') || file.url.includes('.webp'))) {
-                  fileType = 'image';
-                } else if (file.url && (file.url.includes('.mp4') || file.url.includes('.webm') || file.url.includes('.mov') || file.url.includes('.avi'))) {
-                  fileType = 'video';
-                } else {
-                  fileType = 'document';
-                }
+      // Prepare additional information - use per-order info if available, otherwise fall back to global
+      const infoToUse = orderAdditionalInfo || additionalInformation;
+      let additionalInfo = undefined;
+      if (infoToUse && (infoToUse.message?.trim() || (infoToUse.files && infoToUse.files.length > 0))) {
+        const additionalFiles = [];
+        if (infoToUse.files && Array.isArray(infoToUse.files)) {
+          for (const file of infoToUse.files) {
+            // Ensure fileType is one of the allowed values
+            let fileType = file.fileType;
+            if (!fileType || !['image', 'video', 'document'].includes(fileType)) {
+              // Try to determine from URL or default to document
+              if (file.url && (file.url.includes('.jpg') || file.url.includes('.jpeg') || file.url.includes('.png') || file.url.includes('.gif') || file.url.includes('.webp'))) {
+                fileType = 'image';
+              } else if (file.url && (file.url.includes('.mp4') || file.url.includes('.webm') || file.url.includes('.mov') || file.url.includes('.avi'))) {
+                fileType = 'video';
+              } else {
+                fileType = 'document';
               }
-              
-              additionalFiles.push({
-                url: file.url,
-                fileName: file.fileName,
-                fileType: fileType,
-                uploadedAt: new Date(),
-              });
             }
+            
+            additionalFiles.push({
+              url: file.url,
+              fileName: file.fileName,
+              fileType: fileType,
+              uploadedAt: new Date(),
+            });
           }
-          
-          additionalInfo = {
-            message: additionalInformation.message?.trim() || '',
-            files: additionalFiles,
-            submittedAt: new Date(),
-          };
         }
+        
+        additionalInfo = {
+          message: infoToUse.message?.trim() || '',
+          files: additionalFiles,
+          submittedAt: new Date(),
+        };
+      }
       
       const order = new Order({
         orderNumber,
@@ -887,13 +973,13 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
           phone: address.phone,
         } : undefined,
         skipAddress: skipAddress || false,
-        paymentMethod,
+        paymentMethod: walletAmount > 0 && remainderAmount > 0 ? 'split' : (walletAmount > 0 ? 'wallet' : paymentMethod),
         total: orderTotal,
         subtotal,
         discount,
         serviceFee: 0, // Service fee is applied once to the total, not per order
         status: 'In Progress',
-        deliveryStatus: isPaidOrder ? 'active' : 'pending',
+        deliveryStatus: 'active', // All orders are paid (wallet + card/paypal)
         additionalInformation: additionalInfo,
         metadata: {
           createdAt: new Date(),
@@ -916,6 +1002,11 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
     return res.json({
       orders: createdOrders,
       orderIds: createdOrders.map(o => o.orderNumber),
+      newBalance,
+      walletAmount,
+      remainderAmount,
+      walletTransactionId: walletTransactionId?.toString(),
+      paymentTransactionId: paymentTransactionId?.toString(),
       newBalance,
       message: `Successfully created ${createdOrders.length} order(s)`,
     });

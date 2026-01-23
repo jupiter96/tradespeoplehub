@@ -7,7 +7,6 @@ import {
   X,
   Plus,
   CreditCard,
-  Landmark,
   Play
 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -152,12 +151,11 @@ interface Address {
 
 interface PaymentMethod {
   id: string;
-  type: "account_balance" | "card" | "paypal" | "bank_transfer";
+  type: "card" | "paypal";
   cardNumber?: string;
   cardHolder?: string;
   expiryDate?: string;
   isDefault?: boolean;
-  balance?: number; // For account_balance
   brand?: string; // Card brand (visa, mastercard, etc.) from Stripe
 }
 
@@ -188,6 +186,7 @@ interface Props {
   discount: number;
   serviceFee?: number;
   total: number;
+  walletBalance?: number;
   appliedPromo: { code: string; type: 'pro' | 'admin'; discount: number } | null;
   onApplyPromo: (code: string) => void;
   onRemovePromo: () => void;
@@ -235,11 +234,16 @@ export default function CartPageMobileMinimalist({
   subtotal,
   discount,
   serviceFee = 0,
+  serviceFeeThreshold = 0,
   total,
+  walletBalance = 0,
   appliedPromo,
   onApplyPromo,
   onRemovePromo
 }: Props) {
+  // Calculate wallet deduction and remainder payment for display
+  const walletAmount = Math.min(walletBalance, total);
+  const remainderAmount = Math.max(0, total - walletBalance);
   const [showAddressSection, setShowAddressSection] = useState(false);
   const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
@@ -427,33 +431,11 @@ export default function CartPageMobileMinimalist({
                 </div>
               </>
             )}
-            {selectedPaymentData.type === "account_balance" && (
-              <div className="flex-1">
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                  Account Balance
-                </p>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                  Available: £{selectedPaymentData.balance?.toFixed(2) || '0.00'}
-                </p>
-              </div>
-            )}
             {selectedPaymentData.type === "paypal" && (
               <div className="flex-1">
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
                   PayPal
                 </p>
-              </div>
-            )}
-            {selectedPaymentData.type === "bank_transfer" && (
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-6 flex items-center justify-center bg-white rounded shrink-0 border border-gray-200">
-                  <Landmark className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                    Bank Transfer
-                  </p>
-                </div>
               </div>
             )}
             <button
@@ -498,16 +480,6 @@ export default function CartPageMobileMinimalist({
                         </Label>
                       </>
                     )}
-                    {method.type === "account_balance" && (
-                      <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                          Account Balance
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                          Available: £{method.balance?.toFixed(2) || '0.00'}
-                        </p>
-                      </Label>
-                    )}
                     {method.type === "paypal" && (
                       <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
@@ -517,21 +489,6 @@ export default function CartPageMobileMinimalist({
                           Pay securely with PayPal
                         </p>
                       </Label>
-                    )}
-                    {method.type === "bank_transfer" && (
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className="w-10 h-6 flex items-center justify-center bg-white rounded shrink-0 border border-gray-200">
-                          <Landmark className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <Label htmlFor={`payment-${method.id}`} className="flex-1 cursor-pointer">
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                            Bank Transfer
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            Transfer funds directly from your bank
-                          </p>
-                        </Label>
-                      </div>
                     )}
                   </div>
                 </div>
@@ -625,8 +582,17 @@ export default function CartPageMobileMinimalist({
           </div>
         )}
 
+        {/* Service Fee Threshold Alert */}
+        {serviceFeeThreshold > 0 && subtotal < serviceFeeThreshold && serviceFee > 0 && (
+          <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-3 my-3">
+            <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F] font-semibold text-center">
+              Add £{(serviceFeeThreshold - subtotal).toFixed(2)} more for FREE service fee!
+            </p>
+          </div>
+        )}
+
         {/* Grand Total */}
-        <div className="flex items-center justify-between py-4">
+        <div className="flex items-center justify-between py-4 border-b border-dotted border-gray-300">
           <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
             Grand Total
           </span>
@@ -634,6 +600,43 @@ export default function CartPageMobileMinimalist({
             £{total.toFixed(2)}
           </span>
         </div>
+
+        {/* Wallet Balance Deduction */}
+        {walletBalance > 0 && walletAmount > 0 && (
+          <div className="flex items-center justify-between py-3 border-b border-dotted border-gray-300">
+            <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] font-medium flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-[#10B981]" />
+              Wallet Balance Used
+            </span>
+            <span className="font-['Poppins',sans-serif] text-[14px] text-[#10B981] font-semibold">
+              -£{walletAmount.toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        {/* Remaining Amount to Pay */}
+        {remainderAmount > 0 && (
+          <div className="flex items-center justify-between py-3 bg-blue-50/50 rounded-lg px-3">
+            <span className="font-['Poppins',sans-serif] text-[15px] text-[#3B82F6] font-semibold">
+              Remaining to Pay
+            </span>
+            <span className="font-['Poppins',sans-serif] text-[18px] text-[#3B82F6] font-bold">
+              £{remainderAmount.toFixed(2)}
+            </span>
+          </div>
+        )}
+        
+        {/* Full Payment by Wallet */}
+        {walletAmount > 0 && remainderAmount === 0 && (
+          <div className="flex items-center justify-between py-3 bg-green-50/50 rounded-lg px-3">
+            <span className="font-['Poppins',sans-serif] text-[15px] text-[#10B981] font-semibold">
+              Paid by Wallet
+            </span>
+            <span className="font-['Poppins',sans-serif] text-[18px] text-[#10B981] font-bold">
+              £{walletAmount.toFixed(2)}
+            </span>
+          </div>
+        )}
 
         {/* Delivery Date */}
         {cartItems[0]?.booking && (

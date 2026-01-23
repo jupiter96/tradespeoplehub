@@ -71,6 +71,7 @@ export default function AdminPaymentSettingsPage() {
     arbitrationFeeDeadlineDays: 1,
     searchApiKey: "",
     serviceFees: 0,
+    serviceFeeThreshold: 0,
   });
 
   useEffect(() => {
@@ -1031,6 +1032,27 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="serviceFeeThreshold" className="font-['Poppins',sans-serif]">
+                        Service Fee Threshold:
+                      </Label>
+                      <div className="relative mt-2">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">£</span>
+                        <Input
+                          id="serviceFeeThreshold"
+                          type="number"
+                          value={settings.serviceFeeThreshold || 0}
+                          onChange={(e) => updateField("serviceFeeThreshold", parseFloat(e.target.value) || 0)}
+                          className="pl-8 font-['Poppins',sans-serif]"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600 font-['Poppins',sans-serif]">
+                        Orders with subtotal equal to or above this amount will have FREE service fee
+                      </p>
                     </div>
                   </div>
                 </div>
