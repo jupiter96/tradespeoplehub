@@ -1,25 +1,17 @@
-import { ArrowLeft, AlertTriangle, MoreVertical } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
 import { Order } from "./types";
 import { getStatusBadge, getStatusIcon, getStatusLabel } from "./utils";
 
 interface ProfessionalOrderDetailHeaderProps {
   order: Order;
   onBack: () => void;
-  onOpenDispute: () => void;
 }
 
 export default function ProfessionalOrderDetailHeader({
   order,
   onBack,
-  onOpenDispute,
 }: ProfessionalOrderDetailHeaderProps) {
   const cancellationRequest = (order as any).cancellationRequest ?? order.metadata?.cancellationRequest;
   const displayStatus =
@@ -55,31 +47,6 @@ export default function ProfessionalOrderDetailHeader({
               {getStatusLabel(displayStatus)}
             </span>
           </Badge>
-          
-          {order.status !== "Cancelled" && order.status !== "Cancellation Pending" &&
-           (order.deliveryStatus === "pending" || order.deliveryStatus === "active") && 
-           order.deliveryFiles && order.deliveryFiles.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={onOpenDispute}
-                  className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Open Dispute
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
       </div>
     </>

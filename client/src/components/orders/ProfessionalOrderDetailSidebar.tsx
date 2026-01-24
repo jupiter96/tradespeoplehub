@@ -1,4 +1,4 @@
-import { Calendar, Clock, MessageCircle, Upload, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, MessageCircle, Upload, AlertTriangle, MoreVertical, XCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -7,6 +7,12 @@ import { Order, ServiceThumbnail } from "./types";
 import { formatDate, resolveFileUrl, resolveAvatarUrl, isVideoFile } from "./utils";
 import serviceVector from "../../assets/service_vector.jpg";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 interface ProfessionalOrderDetailSidebarProps {
   order: Order;
@@ -21,6 +27,7 @@ interface ProfessionalOrderDetailSidebarProps {
   }) => void;
   onOpenDeliveryModal: () => void;
   onOpenDisputeModal: () => void;
+  onOpenCancellationRequest?: () => void;
 }
 
 export default function ProfessionalOrderDetailSidebar({
@@ -29,6 +36,7 @@ export default function ProfessionalOrderDetailSidebar({
   onStartConversation,
   onOpenDeliveryModal,
   onOpenDisputeModal,
+  onOpenCancellationRequest,
 }: ProfessionalOrderDetailSidebarProps) {
   const handleStartChat = () => {
     if (order.client && order.clientId) {
@@ -106,12 +114,51 @@ export default function ProfessionalOrderDetailSidebar({
     }
   };
 
+  const cancellationRequest = (order as any).cancellationRequest ?? order.metadata?.cancellationRequest;
+
   return (
     <div className="lg:col-span-1">
       <div className="bg-white rounded-xl p-6 sticky top-6 shadow-md">
-        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-6">
-          Order Details
-        </h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+            Order Details
+          </h3>
+          {/* Three Dots Menu */}
+          {order.status !== "Cancelled" && order.status !== "Cancellation Pending" &&
+           (order.deliveryStatus === "pending" || order.deliveryStatus === "active") && 
+           (!cancellationRequest?.status || cancellationRequest.status !== "pending") && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {order.deliveryFiles && order.deliveryFiles.length > 0 ? (
+                  <DropdownMenuItem
+                    onClick={onOpenDisputeModal}
+                    className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
+                  >
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Open Dispute
+                  </DropdownMenuItem>
+                ) : onOpenCancellationRequest ? (
+                  <DropdownMenuItem
+                    onClick={onOpenCancellationRequest}
+                    className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Request Cancellation
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
         {/* Service Preview */}
         <div className="mb-6">

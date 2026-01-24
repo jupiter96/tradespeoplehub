@@ -1458,43 +1458,6 @@ export default function ClientOrdersSection() {
                   </Badge>
                 );
               })()}
-              
-              {/* Three Dots Menu - Hide when Cancelled or Cancellation Pending */}
-              {currentOrder.status !== "Cancelled" && currentOrder.status !== "Cancellation Pending" &&
-               (currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") &&
-               (!((currentOrder as any).cancellationRequest?.status === "pending" || (currentOrder as any).metadata?.cancellationRequest?.status === "pending") ||
-                (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                    >
-                      <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 ? (
-                      <DropdownMenuItem
-                        onClick={() => openModal('dispute')}
-                        className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
-                      >
-                        <AlertTriangle className="w-4 h-4 mr-2" />
-                        Open Dispute
-                      </DropdownMenuItem>
-                    ) : ((currentOrder as any).cancellationRequest?.status !== "pending" && (currentOrder as any).metadata?.cancellationRequest?.status !== "pending") ? (
-                      <DropdownMenuItem
-                        onClick={() => openModal('cancel')}
-                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Cancel Order
-                      </DropdownMenuItem>
-                    ) : null}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
           </div>
 
@@ -1705,25 +1668,63 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Service In Progress - Only show if no pending cancellation request from client and order is not cancelled */}
-            {currentOrder.deliveryStatus === "active" && 
-             currentOrder.status !== "Completed" && 
-             currentOrder.status !== "Cancelled" &&
-             currentOrder.status !== "Cancellation Pending" &&
-             currentOrder.status !== "disputed" && 
-             !(currentOrder.cancellationRequest && 
-               currentOrder.cancellationRequest.status === 'pending' && 
-               currentOrder.cancellationRequest.requestedBy && 
-               currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString()) && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
-                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                  Service In Progress
-                </h4>
-                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
-                  {currentOrder.professional} is currently working on your service. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
-                    <span className="text-[#2c353f] block mt-1">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
-                  )}. Feel free to reach out if you have any questions.
-                </p>
+            {/* Service In Progress / Work Delivered - Show based on delivery status */}
+            {((currentOrder.deliveryStatus === "active" && 
+               currentOrder.status !== "Completed" && 
+               currentOrder.status !== "Cancelled" &&
+               currentOrder.status !== "Cancellation Pending" &&
+               currentOrder.status !== "disputed" && 
+               currentOrder.deliveryStatus !== "delivered" &&
+               !(currentOrder.cancellationRequest && 
+                 currentOrder.cancellationRequest.status === 'pending' && 
+                 currentOrder.cancellationRequest.requestedBy && 
+                 currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString())) ||
+              (currentOrder.deliveryStatus === "delivered" && 
+               currentOrder.status !== "Completed" && 
+               currentOrder.status !== "Cancelled" &&
+               currentOrder.status !== "Cancellation Pending")) && (
+              <div className={`border rounded-lg p-4 sm:p-6 shadow-md ${
+                currentOrder.deliveryStatus === "delivered" 
+                  ? "bg-white border-gray-200" 
+                  : "bg-blue-50 border-blue-200"
+              }`}>
+                {currentOrder.deliveryStatus === "delivered" ? (
+                  <>
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2 break-words">
+                      Your work has been delivered!
+                    </h3>
+                    <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+                      {currentOrder.deliveredDate ? (() => {
+                        const deliveryDate = new Date(currentOrder.deliveredDate);
+                        const deadlineDate = new Date(deliveryDate);
+                        deadlineDate.setDate(deadlineDate.getDate() + 1);
+                        deadlineDate.setHours(7, 0, 0, 0);
+                        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                        const day = deadlineDate.getDate();
+                        const dayName = dayNames[deadlineDate.getDay()];
+                        const month = monthNames[deadlineDate.getMonth()];
+                        const year = deadlineDate.getFullYear();
+                        const hours = deadlineDate.getHours().toString().padStart(2, "0");
+                        const minutes = deadlineDate.getMinutes().toString().padStart(2, "0");
+                        const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                        const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+                        return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                      })() : "Your work has been delivered. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                      Service In Progress
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
+                      {currentOrder.professional} is currently working on your service. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
+                        <span className="text-[#2c353f] block mt-1">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
+                      )}. Feel free to reach out if you have any questions.
+                    </p>
+                  </>
+                )}
 
                 {/* Extension Request Alert */}
                 {currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending' && (
@@ -3478,9 +3479,47 @@ export default function ClientOrdersSection() {
             {/* Right Side - Order Summary Sidebar */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-xl p-6 sticky top-6 shadow-md">
-                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-6">
-                  Order Details
-                </h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
+                    Order Details
+                  </h3>
+                  {/* Three Dots Menu - Hide when Cancelled or Cancellation Pending */}
+                  {currentOrder.status !== "Cancelled" && currentOrder.status !== "Cancellation Pending" &&
+                   (currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") &&
+                   (!((currentOrder as any).cancellationRequest?.status === "pending" || (currentOrder as any).metadata?.cancellationRequest?.status === "pending") ||
+                    (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                        >
+                          <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 ? (
+                          <DropdownMenuItem
+                            onClick={() => openModal('dispute')}
+                            className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
+                          >
+                            <AlertTriangle className="w-4 h-4 mr-2" />
+                            Open Dispute
+                          </DropdownMenuItem>
+                        ) : ((currentOrder as any).cancellationRequest?.status !== "pending" && (currentOrder as any).metadata?.cancellationRequest?.status !== "pending") ? (
+                          <DropdownMenuItem
+                            onClick={() => openModal('cancel')}
+                            className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Cancel Order
+                          </DropdownMenuItem>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
 
                 {/* Service Preview */}
                 <div className="mb-6">

@@ -1127,7 +1127,6 @@ function ProfessionalOrdersSection() {
           <ProfessionalOrderDetailHeader
             order={currentOrder}
             onBack={handleBackToList}
-            onOpenDispute={() => openModal('dispute')}
           />
 
           {/* Main Layout - Left Content + Right Sidebar */}
@@ -1260,6 +1259,10 @@ function ProfessionalOrdersSection() {
               onStartConversation={startConversation}
               onOpenDeliveryModal={() => openModal('delivery')}
               onOpenDisputeModal={() => openModal('dispute')}
+              onOpenCancellationRequest={() => {
+                setCancellationReason("");
+                openModal('cancellationRequest');
+              }}
             />
           </div>
           </>
