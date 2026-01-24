@@ -52,6 +52,7 @@ import CartPageMobileMinimalist from "./CartPageMobileMinimalist";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { resolveApiUrl } from "../config/api";
 import paypalLogo from "../assets/paypal-logo.png";
+import PaymentMethodModal from "./PaymentMethodModal";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -331,6 +332,8 @@ export default function CartPage() {
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
   const [serviceFee, setServiceFee] = useState<number>(0);
   const [serviceFeeThreshold, setServiceFeeThreshold] = useState<number>(0);
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
   
   // Removed booking modal state - now using inline time slot selection
   
@@ -547,81 +550,90 @@ export default function CartPage() {
     checkServiceTypes();
   }, [cartItems]);
 
-  // Fetch payment methods (Stripe cards)
-  useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      if (!isLoggedIn) return;
+  // Fetch payment methods (Stripe cards) - Made reusable
+  const fetchPaymentMethods = async (selectNewCardId?: string) => {
+    if (!isLoggedIn) return;
+    
+    try {
+      setLoadingPaymentMethods(true);
       
-      try {
-        setLoadingPaymentMethods(true);
-        
-        // Fetch both payment methods and PayPal availability
-        const [methodsResponse, settingsResponse] = await Promise.all([
-          fetch(resolveApiUrl("/api/payment-methods"), {
-            credentials: "include",
-          }),
-          fetch(resolveApiUrl("/api/payment/publishable-key"), {
-            credentials: "include",
-          }),
-        ]);
-        
-        let cards: PaymentMethod[] = [];
-        let paypalEnabled = false;
-        let stripeEnabled = false;
-        
-        if (methodsResponse.ok) {
-          const methodsData = await methodsResponse.json();
-          cards = (methodsData.paymentMethods || []).map((pm: any) => ({
-            id: pm.paymentMethodId || pm.id,
-            type: "card" as const,
-            cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
-            cardHolder: pm.billing_details?.name || "Card Holder",
-            expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
-            isDefault: pm.isDefault || false,
-            brand: pm.card?.brand || 'visa', // Store card brand for accurate type detection
-          }));
+      // Fetch both payment methods and PayPal availability
+      const [methodsResponse, settingsResponse] = await Promise.all([
+        fetch(resolveApiUrl("/api/payment-methods"), {
+          credentials: "include",
+        }),
+        fetch(resolveApiUrl("/api/payment/publishable-key"), {
+          credentials: "include",
+        }),
+      ]);
+      
+      let cards: PaymentMethod[] = [];
+      let paypalEnabled = false;
+      let stripeEnabled = false;
+      
+      // Parse settings response once
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        // Store publishable key for add card modal
+        if (settingsData.publishableKey) {
+          setPublishableKey(settingsData.publishableKey);
         }
-        
-        if (settingsResponse.ok) {
-          const settingsData = await settingsResponse.json();
-          paypalEnabled = Boolean(settingsData.paypalEnabled);
-          stripeEnabled = Boolean(settingsData.stripeEnabled);
-          console.log('[Payment Methods] Payment settings:', {
-            stripeEnabled,
-            paypalEnabled,
-            settings: settingsData
-          });
-        }
-        
-        // Build payment methods list: Only show saved cards and PayPal if enabled
-        const methods: PaymentMethod[] = [];
-        
-        // Add saved cards only (no generic card option)
-        if (cards.length > 0) {
-          methods.push(...cards);
-        }
-        
-        // Add PayPal if enabled
-        if (paypalEnabled) {
-          methods.push({
-            id: "paypal",
-            type: "paypal",
-            isDefault: false,
-          });
-        }
-        
-        console.log('[Payment Methods] Fetched methods:', {
-          savedCardsCount: cards.length,
+        paypalEnabled = Boolean(settingsData.paypalEnabled);
+        stripeEnabled = Boolean(settingsData.stripeEnabled);
+        console.log('[Payment Methods] Payment settings:', {
           stripeEnabled,
           paypalEnabled,
-          totalMethods: methods.length,
-          methods: methods.map(m => ({ id: m.id, type: m.type }))
+          settings: settingsData
         });
-        
-        setPaymentMethods(methods);
-        
-        // Set default payment method (first card or paypal)
-        if (methods.length > 0) {
+      }
+      
+      // Parse methods response
+      if (methodsResponse.ok) {
+        const methodsData = await methodsResponse.json();
+        cards = (methodsData.paymentMethods || []).map((pm: any) => ({
+          id: pm.paymentMethodId || pm.id,
+          type: "card" as const,
+          cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
+          cardHolder: pm.billing_details?.name || "Card Holder",
+          expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
+          isDefault: pm.isDefault || false,
+          brand: pm.card?.brand || 'visa', // Store card brand for accurate type detection
+        }));
+      }
+      
+      // Build payment methods list: Only show saved cards and PayPal if enabled
+      const methods: PaymentMethod[] = [];
+      
+      // Add saved cards only (no generic card option)
+      if (cards.length > 0) {
+        methods.push(...cards);
+      }
+      
+      // Add PayPal if enabled
+      if (paypalEnabled) {
+        methods.push({
+          id: "paypal",
+          type: "paypal",
+          isDefault: false,
+        });
+      }
+      
+      console.log('[Payment Methods] Fetched methods:', {
+        savedCardsCount: cards.length,
+        stripeEnabled,
+        paypalEnabled,
+        totalMethods: methods.length,
+        methods: methods.map(m => ({ id: m.id, type: m.type }))
+      });
+      
+      setPaymentMethods(methods);
+      
+      // Set default payment method (first card or paypal, or newly added card)
+      if (methods.length > 0) {
+        // If a new card ID is provided, select it
+        if (selectNewCardId && methods.find(m => m.id === selectNewCardId)) {
+          setSelectedPayment(selectNewCardId);
+        } else {
           // Prefer saved card, then PayPal
           const savedCard = methods.find(m => m.type === "card");
           const paypal = methods.find(m => m.type === "paypal");
@@ -633,69 +645,72 @@ export default function CartPage() {
           } else {
             setSelectedPayment(methods[0].id);
           }
-        } else {
-          // No payment methods available
-          setSelectedPayment("");
         }
-      } catch (error) {
-        console.error("Failed to fetch payment methods:", error);
-        // Fallback: Try to show payment methods based on settings
-        try {
-          const settingsResponse = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
-            credentials: "include",
+      } else {
+        // No payment methods available
+        setSelectedPayment("");
+      }
+    } catch (error) {
+      console.error("Failed to fetch payment methods:", error);
+      // Fallback: Try to show payment methods based on settings
+      try {
+        const settingsResponse = await fetch(resolveApiUrl("/api/payment/publishable-key"), {
+          credentials: "include",
+        });
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          const paypalEnabled = Boolean(settingsData.paypalEnabled);
+          const stripeEnabled = Boolean(settingsData.stripeEnabled);
+          
+          console.log('[Payment Methods] Fallback - Payment settings:', {
+            stripeEnabled,
+            paypalEnabled
           });
-          if (settingsResponse.ok) {
-            const settingsData = await settingsResponse.json();
-            const paypalEnabled = Boolean(settingsData.paypalEnabled);
-            const stripeEnabled = Boolean(settingsData.stripeEnabled);
-            
-            console.log('[Payment Methods] Fallback - Payment settings:', {
-              stripeEnabled,
-              paypalEnabled
+          
+          const fallbackMethods: PaymentMethod[] = [];
+          
+          // Add card option if Stripe is enabled
+          // Don't add generic card option - only show saved cards
+          
+          // Add PayPal if enabled
+          if (paypalEnabled) {
+            fallbackMethods.push({
+              id: "paypal",
+              type: "paypal",
+              isDefault: false,
             });
-            
-            const fallbackMethods: PaymentMethod[] = [];
-            
-            // Add card option if Stripe is enabled
-            // Don't add generic card option - only show saved cards
-            
-            // Add PayPal if enabled
-            if (paypalEnabled) {
-              fallbackMethods.push({
-                id: "paypal",
-                type: "paypal",
-                isDefault: false,
-              });
-            }
-            
-            setPaymentMethods(fallbackMethods);
-            
-            // Set default payment method
-            if (fallbackMethods.length > 0) {
-              const paypal = fallbackMethods.find(m => m.type === "paypal");
-              const card = fallbackMethods.find(m => m.type === "card");
-              setSelectedPayment(paypal ? paypal.id : (card ? card.id : fallbackMethods[0].id));
-            } else {
-              // No payment methods available
-              setPaymentMethods([]);
-              setSelectedPayment("");
-            }
+          }
+          
+          setPaymentMethods(fallbackMethods);
+          
+          // Set default payment method
+          if (fallbackMethods.length > 0) {
+            const paypal = fallbackMethods.find(m => m.type === "paypal");
+            const card = fallbackMethods.find(m => m.type === "card");
+            setSelectedPayment(paypal ? paypal.id : (card ? card.id : fallbackMethods[0].id));
           } else {
-            // Settings fetch failed, show empty state
-            console.error('[Payment Methods] Failed to fetch payment settings');
+            // No payment methods available
             setPaymentMethods([]);
             setSelectedPayment("");
           }
-        } catch (fallbackError) {
-          console.error("Failed to fetch payment availability:", fallbackError);
+        } else {
+          // Settings fetch failed, show empty state
+          console.error('[Payment Methods] Failed to fetch payment settings');
           setPaymentMethods([]);
           setSelectedPayment("");
         }
-      } finally {
-        setLoadingPaymentMethods(false);
+      } catch (fallbackError) {
+        console.error("Failed to fetch payment availability:", fallbackError);
+        setPaymentMethods([]);
+        setSelectedPayment("");
       }
-    };
-    
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  // Fetch payment methods on mount
+  useEffect(() => {
     fetchPaymentMethods();
   }, [isLoggedIn, walletBalance]);
 
@@ -1775,6 +1790,48 @@ export default function CartPage() {
         </div>
         <Footer />
       </div>
+
+      {/* Add Card Modal */}
+      {publishableKey && (
+        <PaymentMethodModal
+          isOpen={showAddCardModal}
+          onClose={() => setShowAddCardModal(false)}
+          onSuccess={async () => {
+            // Fetch payment methods again to get the newly added card
+            const response = await fetch(resolveApiUrl("/api/payment-methods"), {
+              credentials: "include",
+            });
+            if (response.ok) {
+              const data = await response.json();
+              const newCards = (data.paymentMethods || []).map((pm: any) => ({
+                id: pm.paymentMethodId || pm.id,
+                type: "card" as const,
+                cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
+                cardHolder: pm.billing_details?.name || "Card Holder",
+                expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
+                isDefault: pm.isDefault || false,
+                brand: pm.card?.brand || 'visa',
+              }));
+              
+              // Find the most recently added card by comparing with existing cards
+              const existingCardIds = paymentMethods.filter(m => m.type === "card").map(m => m.id);
+              const newCard = newCards.find(card => !existingCardIds.includes(card.id));
+              
+              // Refresh payment methods and select the new card
+              if (newCard) {
+                await fetchPaymentMethods(newCard.id);
+              } else {
+                // If we can't find a new card, just refresh and select the first card
+                await fetchPaymentMethods();
+              }
+            } else {
+              // If fetch fails, just refresh without selecting
+              await fetchPaymentMethods();
+            }
+          }}
+          publishableKey={publishableKey}
+        />
+      )}
       </>
     );
   }
@@ -2172,7 +2229,7 @@ export default function CartPage() {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      navigate('/account?tab=billing&section=card');
+                                      setShowAddCardModal(true);
                                     }}
                                     className="px-3 py-1.5 md:px-4 md:py-2 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex items-center gap-1.5 md:gap-2 shadow-md hover:shadow-lg font-['Poppins',sans-serif] text-[12px] md:text-[13px]"
                                   >
@@ -3043,6 +3100,48 @@ export default function CartPage() {
       </Dialog>
       <Footer />
     </div>
+
+    {/* Add Card Modal */}
+    {publishableKey && (
+      <PaymentMethodModal
+        isOpen={showAddCardModal}
+        onClose={() => setShowAddCardModal(false)}
+        onSuccess={async () => {
+          // Fetch payment methods again to get the newly added card
+          const response = await fetch(resolveApiUrl("/api/payment-methods"), {
+            credentials: "include",
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const newCards = (data.paymentMethods || []).map((pm: any) => ({
+              id: pm.paymentMethodId || pm.id,
+              type: "card" as const,
+              cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
+              cardHolder: pm.billing_details?.name || "Card Holder",
+              expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
+              isDefault: pm.isDefault || false,
+              brand: pm.card?.brand || 'visa',
+            }));
+            
+            // Find the most recently added card by comparing with existing cards
+            const existingCardIds = paymentMethods.filter(m => m.type === "card").map(m => m.id);
+            const newCard = newCards.find(card => !existingCardIds.includes(card.id));
+            
+            // Refresh payment methods and select the new card
+            if (newCard) {
+              await fetchPaymentMethods(newCard.id);
+            } else {
+              // If we can't find a new card, just refresh and select the first card
+              await fetchPaymentMethods();
+            }
+          } else {
+            // If fetch fails, just refresh without selecting
+            await fetchPaymentMethods();
+          }
+        }}
+        publishableKey={publishableKey}
+      />
+    )}
     </>
   );
 }

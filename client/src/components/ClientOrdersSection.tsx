@@ -1688,7 +1688,10 @@ export default function ClientOrdersSection() {
                   ? "bg-white border-gray-200" 
                   : "bg-blue-50 border-blue-200"
               }`}>
-                {currentOrder.deliveryStatus === "delivered" ? (
+                {currentOrder.status === "delivered" &&
+                  currentOrder.status !== "Completed" &&
+                  currentOrder.status !== "Cancelled" &&
+                  currentOrder.status !== "Cancellation Pending" && (
                   <>
                     <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2 break-words">
                       Your work has been delivered!
@@ -1711,17 +1714,6 @@ export default function ClientOrdersSection() {
                         const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
                         return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
                       })() : "Your work has been delivered. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                      Service In Progress
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
-                      {currentOrder.professional} is currently working on your service. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
-                        <span className="text-[#2c353f] block mt-1">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
-                      )}. Feel free to reach out if you have any questions.
                     </p>
                   </>
                 )}
