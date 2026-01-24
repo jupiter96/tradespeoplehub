@@ -13,6 +13,7 @@ import { nameToSlug } from "./categoriesHierarchy";
 import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 import { resolveApiUrl } from "../config/api";
+import { resolveAvatarUrl } from "./orders/utils";
 
 // Helper function to resolve media URLs (images/videos)
 const resolveMediaUrl = (url: string | undefined): string => {
@@ -179,7 +180,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useCart } from "./CartContext";
 import { useAccount } from "./AccountContext";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
+// Removed defaultAvatar import - using resolveAvatarUrl instead
 import serviceVector from "../assets/service_vector.jpg";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { 
@@ -218,9 +219,8 @@ const generateReviews = (serviceId: number, reviewCount: number, providerName: s
     "Lisa Thompson", "James Brown", "Sophie Taylor", "Robert Wilson"
   ];
   
-  const userAvatars = [
-    defaultAvatar,
-    defaultAvatar
+  const userAvatars: string[] = [
+    // Removed defaultAvatar - using text-based avatars instead
   ];
   
   const userLocations = ["Southwark", "Chelsea", "Westminster", "Camden", "Islington", "Kensington"];
@@ -1621,7 +1621,9 @@ export default function ServiceDetailPage() {
             className="flex items-center gap-3 flex-1 cursor-pointer group"
           >
             <Avatar className="w-14 h-14 border-2 border-[#FE8A0F] flex-shrink-0 group-hover:border-[#FF9E2C] transition-colors">
-              <AvatarImage src={service.providerImage} alt={service.tradingName} />
+              {resolveAvatarUrl(service.providerImage) && (
+                <AvatarImage src={resolveAvatarUrl(service.providerImage)} alt={service.tradingName} />
+              )}
               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                 {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
               </AvatarFallback>
@@ -1834,7 +1836,9 @@ export default function ServiceDetailPage() {
                       className="flex items-center gap-3 flex-1 cursor-pointer group"
                     >
                       <Avatar className="w-16 h-16 border-2 border-[#FE8A0F] flex-shrink-0 group-hover:border-[#FF9E2C] transition-colors">
-                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        {resolveAvatarUrl(service.providerImage) && (
+                          <AvatarImage src={resolveAvatarUrl(service.providerImage)} alt={service.tradingName} />
+                        )}
                         <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                           {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </AvatarFallback>
@@ -1947,12 +1951,14 @@ export default function ServiceDetailPage() {
                   >
                     Overview
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="availability"
-                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
-                  >
-                    Availability
-                  </TabsTrigger>
+                  {(service.serviceType || "in-person") !== "online" && (
+                    <TabsTrigger
+                      value="availability"
+                      className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
+                    >
+                      Availability
+                    </TabsTrigger>
+                  )}
                   {service.reviewCount > 0 && (
                     <TabsTrigger 
                       value="reviews"
@@ -2196,7 +2202,8 @@ export default function ServiceDetailPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="availability" className="mt-6 space-y-6">
+              {(service.serviceType || "in-person") !== "online" && (
+                <TabsContent value="availability" className="mt-6 space-y-6">
                 <Card className="border-2 border-gray-200">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-2 mb-4">
@@ -2326,7 +2333,8 @@ export default function ServiceDetailPage() {
                     )}
                   </CardContent>
                 </Card>
-              </TabsContent>
+                </TabsContent>
+              )}
 
               {service.reviewCount > 0 && (
                 <TabsContent value="reviews" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
@@ -2380,7 +2388,9 @@ export default function ServiceDetailPage() {
                         <CardContent className="p-6">
                           <div className="flex items-start gap-4 mb-4">
                             <Avatar className="w-12 h-12">
-                              <AvatarImage src={review.userAvatar} alt={review.userName} />
+                              {resolveAvatarUrl(review.userAvatar) && (
+                                <AvatarImage src={resolveAvatarUrl(review.userAvatar)} alt={review.userName} />
+                              )}
                               <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif]">
                                 {review.userName.split(" ").map(n => n[0]).join("").toUpperCase()}
                               </AvatarFallback>
@@ -2453,7 +2463,9 @@ export default function ServiceDetailPage() {
                                 {/* Profile link removed - provider ID not available in review data */}
                                 <div className="flex items-center gap-3">
                                   <Avatar className="w-8 h-8">
-                                    <AvatarImage src={review.professionalResponse.providerImage} alt={review.professionalResponse.providerName} />
+                                    {resolveAvatarUrl(review.professionalResponse.providerImage) && (
+                                      <AvatarImage src={resolveAvatarUrl(review.professionalResponse.providerImage)} alt={review.professionalResponse.providerName} />
+                                    )}
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[11px]">
                                       {review.professionalResponse.providerName.split(" ").map(n => n[0]).join("").toUpperCase()}
                                     </AvatarFallback>

@@ -14,6 +14,7 @@ import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X } from "lucide-re
 import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
+import { resolveAvatarUrl } from "./orders/utils";
 
 export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
@@ -353,7 +354,9 @@ export default function DisputeDiscussionPage() {
               <div className="border-b border-gray-200 pb-4 mb-4">
                 <div className="flex gap-3 items-start">
                   <Avatar className="w-12 h-12 flex-shrink-0">
-                    <AvatarImage src={dispute.claimantAvatar} />
+                    {resolveAvatarUrl(dispute.claimantAvatar) && (
+                      <AvatarImage src={resolveAvatarUrl(dispute.claimantAvatar)} />
+                    )}
                     <AvatarFallback className="bg-[#3D78CB] text-white">
                       {dispute.claimantName?.charAt(0) || 'C'}
                     </AvatarFallback>
@@ -425,7 +428,9 @@ export default function DisputeDiscussionPage() {
                       <div key={msg.id} className={`border rounded-lg p-4 ${showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
                         <div className="flex gap-3">
                           <Avatar className="w-12 h-12 flex-shrink-0">
-                            <AvatarImage src={msg.userAvatar} />
+                            {resolveAvatarUrl(msg.userAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white">
                               {senderName?.charAt(0) || 'U'}
                             </AvatarFallback>

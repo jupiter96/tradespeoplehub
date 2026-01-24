@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import type { Order, ServiceThumbnail } from "./types";
-import { formatDate, getStatusBadge, getDeliveryStatusBadge, getDeliveryStatusLabel } from "./utils";
+import { formatDate, getStatusBadge, getDeliveryStatusBadge, getDeliveryStatusLabel, resolveAvatarUrl } from "./utils";
 import serviceVector from "../../assets/service_vector.jpg";
 
 interface OrderCardProps {
@@ -62,7 +62,9 @@ export default function OrderCard({
         {/* Professional */}
         <div className="flex items-center gap-2 mb-3">
           <Avatar className="w-6 h-6">
-            <AvatarImage src={order.professionalAvatar} />
+            {resolveAvatarUrl(order.professionalAvatar) && (
+              <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+            )}
             <AvatarFallback className="bg-[#3D78CB] text-white text-[10px]">
               {order.professional?.charAt(0)?.toUpperCase() || "P"}
             </AvatarFallback>

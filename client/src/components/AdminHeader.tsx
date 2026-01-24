@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import API_BASE_URL from "../config/api";
 import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { resolveAvatarUrl } from "./orders/utils";
 
 interface Admin {
   id: string;
@@ -426,7 +427,9 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                 }`}
               >
                 <Avatar className="w-6 h-6 mr-2">
-                  <AvatarImage src={currentAdmin?.avatar || undefined} alt="Admin Avatar" />
+                  {resolveAvatarUrl(currentAdmin?.avatar || undefined) && (
+                    <AvatarImage src={resolveAvatarUrl(currentAdmin?.avatar || undefined)} alt="Admin Avatar" />
+                  )}
                   <AvatarFallback className="bg-[#FE8A0F] text-white text-xs">
                     {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
                   </AvatarFallback>
@@ -577,7 +580,9 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                   <Label className="text-black dark:text-white">Avatar</Label>
                   <div className="relative">
                     <Avatar className="w-24 h-24">
-                      <AvatarImage src={avatarPreview || currentAdmin?.avatar || undefined} alt="Admin Avatar" />
+                      {resolveAvatarUrl(avatarPreview || currentAdmin?.avatar || undefined) && (
+                        <AvatarImage src={resolveAvatarUrl(avatarPreview || currentAdmin?.avatar || undefined)} alt="Admin Avatar" />
+                      )}
                       <AvatarFallback className="bg-[#FE8A0F] text-white text-2xl">
                         {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
                       </AvatarFallback>

@@ -137,7 +137,9 @@ export default function ProfessionalOrderDetailSidebar({
           </p>
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+              {resolveAvatarUrl(order.clientAvatar) && (
+                <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+              )}
               <AvatarFallback className="bg-[#3D78CB] text-white">
                 {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
               </AvatarFallback>

@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Star, MapPin, CheckCircle2, Send, Info, MessageCircle, Briefcase } from "lucide-react";
@@ -53,7 +54,9 @@ export default function RecommendedProfessionals({
               {/* Professional Header */}
               <div className="flex items-start gap-4 mb-4">
                 <Avatar className="w-20 h-20 border-2 border-gray-100 group-hover:border-[#FE8A0F] transition-colors flex-shrink-0">
-                  <AvatarImage src={pro.image} />
+                  {resolveAvatarUrl(pro.image) && (
+                    <AvatarImage src={resolveAvatarUrl(pro.image)} />
+                  )}
                   <AvatarFallback className="bg-gradient-to-br from-[#FE8A0F] to-[#FF6B35] text-white font-['Poppins',sans-serif] text-[20px]">
                     {pro.name.charAt(0)}
                   </AvatarFallback>

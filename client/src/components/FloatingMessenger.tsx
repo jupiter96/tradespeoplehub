@@ -33,6 +33,7 @@ import CustomOfferPaymentModal from "./CustomOfferPaymentModal";
 import { toast } from "sonner";
 import { resolveApiUrl } from "../config/api";
 import { useCountdown } from "../hooks/useCountdown";
+import { resolveAvatarUrl } from "./orders/utils";
 
 export default function FloatingMessenger() {
   const {
@@ -405,7 +406,9 @@ export default function FloatingMessenger() {
                         className="w-full p-3 hover:bg-gray-50 transition-colors text-left flex items-center gap-3"
                       >
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src={pro.avatar} />
+                          {resolveAvatarUrl(pro.avatar) && (
+                            <AvatarImage src={resolveAvatarUrl(pro.avatar)} />
+                          )}
                           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
                             {pro.name.split(" ").map((n) => n[0]).join("")}
                           </AvatarFallback>
@@ -449,7 +452,9 @@ export default function FloatingMessenger() {
                         <div className="flex items-start gap-2.5">
                           <div className="relative flex-shrink-0">
                             <Avatar className="w-11 h-11">
-                              <AvatarImage src={contact.avatar} />
+                              {resolveAvatarUrl(contact.avatar) && (
+                                <AvatarImage src={resolveAvatarUrl(contact.avatar)} />
+                              )}
                               <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
                                 {contact.name
                                   ? contact.name.split(" ").map((n) => n[0]).join("")
@@ -507,7 +512,9 @@ export default function FloatingMessenger() {
                       </Button>
                       <div className="relative">
                         <Avatar className="w-11 h-11">
-                          <AvatarImage src={selectedContact.avatar} />
+                          {resolveAvatarUrl(selectedContact.avatar) && (
+                            <AvatarImage src={resolveAvatarUrl(selectedContact.avatar)} />
+                          )}
                           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[15px]">
                             {selectedContact.name
                               ? selectedContact.name.split(" ").map((n) => n[0]).join("")
@@ -596,7 +603,9 @@ export default function FloatingMessenger() {
                                 {/* Avatar for received messages */}
                                 {!isOwnMessage && (
                                   <Avatar className="w-8 h-8 flex-shrink-0">
-                                    <AvatarImage src={senderAvatar} />
+                                    {resolveAvatarUrl(senderAvatar) && (
+                                      <AvatarImage src={resolveAvatarUrl(senderAvatar)} />
+                                    )}
                                     <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[12px]">
                                       {senderName
                                         ? senderName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -908,7 +917,9 @@ export default function FloatingMessenger() {
                                 {/* Avatar for sent messages */}
                                 {isOwnMessage && (
                                   <Avatar className="w-8 h-8 flex-shrink-0">
-                                    <AvatarImage src={senderAvatar} />
+                                    {resolveAvatarUrl(senderAvatar) && (
+                                      <AvatarImage src={resolveAvatarUrl(senderAvatar)} />
+                                    )}
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[12px]">
                                       {senderName
                                         ? senderName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)

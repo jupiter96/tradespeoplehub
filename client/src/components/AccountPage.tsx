@@ -107,6 +107,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
+import { resolveAvatarUrl } from "./orders/utils";
 import { useCountdown } from "../hooks/useCountdown";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 import {
@@ -454,7 +455,9 @@ export default function AccountPage() {
               >
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16 border-4 border-white/20">
-                    <AvatarImage src={userInfo?.avatar} />
+                    {resolveAvatarUrl(userInfo?.avatar) && (
+                      <AvatarImage src={resolveAvatarUrl(userInfo?.avatar)} />
+                    )}
                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[20px]">
                       {(() => {
                         if (userInfo?.firstName && userInfo?.lastName) {
@@ -1571,7 +1574,9 @@ function JobsSection() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="w-8 h-8 border border-gray-200">
-                        <AvatarImage src={job.clientAvatar} alt={job.client} />
+                        {resolveAvatarUrl(job.clientAvatar) && (
+                          <AvatarImage src={resolveAvatarUrl(job.clientAvatar)} alt={job.client} />
+                        )}
                         <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[12px]">
                           {job.client.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
@@ -1668,7 +1673,9 @@ function JobsSection() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-12 h-12 border-2 border-[#3B82F6]/20">
-                        <AvatarImage src={selectedJob.clientAvatar} alt={selectedJob.client} />
+                        {resolveAvatarUrl(selectedJob.clientAvatar) && (
+                          <AvatarImage src={resolveAvatarUrl(selectedJob.clientAvatar)} alt={selectedJob.client} />
+                        )}
                         <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
                           {selectedJob.client.split(' ').map((n: string) => n[0]).join('')}
                         </AvatarFallback>
@@ -6153,7 +6160,9 @@ function MessengerSection() {
                       <div className="flex items-start gap-2.5">
                         <div className="relative flex-shrink-0">
                           <Avatar className="w-11 h-11">
-                            <AvatarImage src={contact.avatar} />
+                            {resolveAvatarUrl(contact.avatar) && (
+                              <AvatarImage src={resolveAvatarUrl(contact.avatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
                               {contact.name
                                 .split(" ")
@@ -6212,7 +6221,9 @@ function MessengerSection() {
                     </Button>
                     <div className="relative">
                       <Avatar className="w-11 h-11">
-                        <AvatarImage src={selectedContact.avatar} />
+                        {resolveAvatarUrl(selectedContact.avatar) && (
+                          <AvatarImage src={resolveAvatarUrl(selectedContact.avatar)} />
+                        )}
                         <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[15px]">
                           {selectedContact.name
                             .split(" ")

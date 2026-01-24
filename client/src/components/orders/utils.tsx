@@ -146,20 +146,70 @@ export const getStatusIcon = (status?: string): React.ReactNode => {
 };
 
 // Helper function to resolve and validate avatar URL
+// Returns undefined for hash-based filenames (e.g., "c1e5f236e69ba84c123ce1336bb460f448af2762.png")
+// to force text-based avatar fallback
 export const resolveAvatarUrl = (avatar?: string): string | undefined => {
-  if (!avatar) return undefined;
-  // Filter out fake/placeholder images
-  if (/images\.unsplash\.com/i.test(avatar) || 
-      /placeholder|dummy|fake|default-avatar/i.test(avatar.toLowerCase())) {
+  // Return undefined if avatar is empty, null, or just whitespace
+  if (!avatar || !avatar.trim()) return undefined;
+  
+  const trimmedAvatar = avatar.trim();
+  
+  // Extract filename from path/URL
+  const getFilename = (path: string): string => {
+    // Remove query parameters and hash
+    const withoutQuery = path.split('?')[0].split('#')[0];
+    // Get the last part after /
+    const parts = withoutQuery.split('/');
+    return parts[parts.length - 1];
+  };
+  
+  const filename = getFilename(trimmedAvatar);
+  
+  // Filter out hash-based filenames (32-64 character hex strings with image extensions)
+  // Pattern: 32-64 hex characters followed by image extension
+  const hashPattern = /^[a-f0-9]{32,64}\.(png|jpg|jpeg|gif|webp|svg)$/i;
+  if (hashPattern.test(filename)) {
     return undefined;
   }
-  // If it's already a full URL, return as is
-  if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
-    return avatar;
+  
+  // Filter out fake/placeholder images and common invalid patterns
+  if (/images\.unsplash\.com/i.test(trimmedAvatar) || 
+      /placeholder|dummy|fake|default-avatar|broken|error|404/i.test(trimmedAvatar.toLowerCase()) ||
+      trimmedAvatar === 'null' ||
+      trimmedAvatar === 'undefined' ||
+      trimmedAvatar === 'false') {
+    return undefined;
   }
+  
+  // If it's already a full URL, validate it
+  if (trimmedAvatar.startsWith("http://") || trimmedAvatar.startsWith("https://")) {
+    // Additional validation for common invalid URLs
+    if (/images\.unsplash\.com/i.test(trimmedAvatar) || 
+        /placeholder|dummy|fake|default-avatar/i.test(trimmedAvatar.toLowerCase())) {
+      return undefined;
+    }
+    // Check for hash filename in URL
+    if (hashPattern.test(filename)) {
+      return undefined;
+    }
+    return trimmedAvatar;
+  }
+  
   // Otherwise, resolve using API URL
   const baseUrl = import.meta.env.VITE_API_URL || "";
-  return `${baseUrl}${avatar.startsWith("/") ? "" : "/"}${avatar}`;
+  const resolvedUrl = `${baseUrl}${trimmedAvatar.startsWith("/") ? "" : "/"}${trimmedAvatar}`;
+  
+  // Final check - don't return if it looks invalid
+  if (!resolvedUrl || resolvedUrl === baseUrl || resolvedUrl === `${baseUrl}/`) {
+    return undefined;
+  }
+  
+  // Final hash pattern check on resolved URL
+  if (hashPattern.test(filename)) {
+    return undefined;
+  }
+  
+  return resolvedUrl;
 };
 
 // Check if file is video

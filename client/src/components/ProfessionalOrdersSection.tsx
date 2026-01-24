@@ -868,7 +868,9 @@ function ProfessionalOrdersSection() {
       {/* Client Info */}
       <div className="flex items-center gap-3 mb-4">
         <Avatar className="w-10 h-10">
-          <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+          {resolveAvatarUrl(order.clientAvatar) && (
+            <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+          )}
           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
             {order.client
               ?.split(" ")
@@ -950,6 +952,7 @@ function ProfessionalOrdersSection() {
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
          currentOrder.status !== "Cancellation Pending" &&
+         currentOrder.status !== "delivered" &&
          currentOrder.deliveryStatus !== "delivered" && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             {/* Header */}
@@ -1036,6 +1039,7 @@ function ProfessionalOrdersSection() {
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
          currentOrder.status !== "Cancellation Pending" &&
+         currentOrder.status !== "delivered" &&
          currentOrder.deliveryStatus !== "delivered" && (
           <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
             {/* Header */}
@@ -1325,7 +1329,9 @@ function ProfessionalOrdersSection() {
                           <div key={msg.id} className={`border rounded-lg p-4 ${showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
                             <div className="flex gap-3">
                               <Avatar className="w-12 h-12 flex-shrink-0">
-                                <AvatarImage src={msg.userAvatar} />
+                                {resolveAvatarUrl(msg.userAvatar) && (
+                                  <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
+                                )}
                                 <AvatarFallback className="bg-[#3D78CB] text-white">
                                   {msg.userName.charAt(0)}
                                 </AvatarFallback>
@@ -1578,7 +1584,9 @@ function ProfessionalOrdersSection() {
                     </h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={resolveAvatarUrl(clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar)} />
+                        {resolveAvatarUrl(clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar) && (
+                          <AvatarImage src={resolveAvatarUrl(clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar)} />
+                        )}
                         <AvatarFallback className="bg-blue-100 text-blue-600">
                           {(clientReviewData?.reviewer?.name || currentOrder.client)?.charAt(0) || "C"}
                         </AvatarFallback>
@@ -1663,7 +1671,9 @@ function ProfessionalOrdersSection() {
                 {currentOrder?.rating ? (
                   <div className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={resolveAvatarUrl(currentOrder.clientAvatar)} />
+                      {resolveAvatarUrl(currentOrder.clientAvatar) && (
+                        <AvatarImage src={resolveAvatarUrl(currentOrder.clientAvatar)} />
+                      )}
                       <AvatarFallback className="bg-blue-100 text-blue-600">
                         {currentOrder.client?.charAt(0) || "C"}
                       </AvatarFallback>
@@ -1803,7 +1813,9 @@ function ProfessionalOrdersSection() {
                     </h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={resolveAvatarUrl(clientReviewData.reviewer?.avatar)} />
+                        {resolveAvatarUrl(clientReviewData.reviewer?.avatar) && (
+                          <AvatarImage src={resolveAvatarUrl(clientReviewData.reviewer?.avatar)} />
+                        )}
                         <AvatarFallback className="bg-blue-100 text-blue-600">
                           {clientReviewData.reviewer?.name?.charAt(0) || "C"}
                         </AvatarFallback>
@@ -2117,6 +2129,65 @@ function ProfessionalOrdersSection() {
             setCancellationReason("");
           }}
         />
+
+        {/* Dispute Response Dialog */}
+        <DisputeResponseDialog
+          open={isDisputeResponseDialogOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              openModal('disputeResponse');
+            } else {
+              closeAllModals();
+            }
+          }}
+          disputeResponseMessage={disputeResponseMessage}
+          onDisputeResponseMessageChange={setDisputeResponseMessage}
+          onSubmit={handleRespondToDispute}
+          onCancel={() => {
+            closeAllModals();
+            setDisputeResponseMessage("");
+          }}
+        />
+
+        {/* Revision Response Dialog */}
+        <RevisionResponseDialog
+          open={isRevisionResponseDialogOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              openModal('revisionResponse');
+            } else {
+              closeAllModals();
+            }
+          }}
+          revisionResponseAction={revisionResponseAction}
+          revisionAdditionalNotes={revisionAdditionalNotes}
+          onRevisionAdditionalNotesChange={setRevisionAdditionalNotes}
+          currentOrder={currentOrder}
+          onSubmit={handleRespondToRevision}
+          onCancel={() => {
+            closeAllModals();
+            setRevisionAdditionalNotes("");
+          }}
+        />
+
+        {/* Withdraw Cancellation Request Dialog */}
+        <WithdrawCancellationDialog
+          open={isWithdrawCancellationDialogOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              openModal('withdrawCancellation');
+            } else {
+              closeAllModals();
+            }
+          }}
+          withdrawCancellationReason={withdrawCancellationReason}
+          onWithdrawCancellationReasonChange={setWithdrawCancellationReason}
+          onSubmit={handleWithdrawCancellation}
+          onCancel={() => {
+            closeAllModals();
+            setWithdrawCancellationReason("");
+          }}
+        />
       </div>
     );
   }
@@ -2139,65 +2210,6 @@ function ProfessionalOrdersSection() {
         onActiveTabChange={setActiveTab}
         onViewOrder={handleViewOrder}
         onStartConversation={startConversation}
-      />
-
-      {/* Dispute Response Dialog */}
-      <DisputeResponseDialog
-        open={isDisputeResponseDialogOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            openModal('disputeResponse');
-          } else {
-            closeAllModals();
-          }
-        }}
-        disputeResponseMessage={disputeResponseMessage}
-        onDisputeResponseMessageChange={setDisputeResponseMessage}
-        onSubmit={handleRespondToDispute}
-        onCancel={() => {
-          closeAllModals();
-          setDisputeResponseMessage("");
-        }}
-      />
-
-      {/* Revision Response Dialog */}
-      <RevisionResponseDialog
-        open={isRevisionResponseDialogOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            openModal('revisionResponse');
-          } else {
-            closeAllModals();
-          }
-        }}
-        revisionResponseAction={revisionResponseAction}
-        revisionAdditionalNotes={revisionAdditionalNotes}
-        onRevisionAdditionalNotesChange={setRevisionAdditionalNotes}
-        currentOrder={currentOrder}
-        onSubmit={handleRespondToRevision}
-        onCancel={() => {
-          closeAllModals();
-          setRevisionAdditionalNotes("");
-        }}
-      />
-
-      {/* Withdraw Cancellation Request Dialog */}
-      <WithdrawCancellationDialog
-        open={isWithdrawCancellationDialogOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            openModal('withdrawCancellation');
-          } else {
-            closeAllModals();
-          }
-        }}
-        withdrawCancellationReason={withdrawCancellationReason}
-        onWithdrawCancellationReasonChange={setWithdrawCancellationReason}
-        onSubmit={handleWithdrawCancellation}
-        onCancel={() => {
-          closeAllModals();
-          setWithdrawCancellationReason("");
-        }}
       />
     </>
   );

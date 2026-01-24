@@ -45,6 +45,7 @@ import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { toast } from "sonner@2.0.3";
+import { resolveAvatarUrl } from "./orders/utils";
 
 export default function MyJobsSection() {
   const navigate = useNavigate();
@@ -387,7 +388,9 @@ export default function MyJobsSection() {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-start gap-3">
                               <Avatar className="w-12 h-12">
-                                <AvatarImage src={quote.professionalAvatar} />
+                                {resolveAvatarUrl(quote.professionalAvatar) && (
+                                  <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                                )}
                                 <AvatarFallback className="bg-[#1976D2] text-white font-['Poppins',sans-serif]">
                                   {quote.professionalName.charAt(0)}
                                 </AvatarFallback>

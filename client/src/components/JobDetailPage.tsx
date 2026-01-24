@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs, JobQuote, Milestone } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
+import { resolveAvatarUrl } from "./orders/utils";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import {
@@ -684,7 +685,9 @@ export default function JobDetailPage() {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#f8f9fa] p-4 sm:p-5 rounded-lg">
                       <div className="flex items-start gap-4 flex-1">
                         <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 flex-shrink-0">
-                          <AvatarImage src={myAwardedQuote.professionalAvatar} />
+                          {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
+                            <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
+                          )}
                           <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
                             {myAwardedQuote.professionalName.charAt(0)}
                           </AvatarFallback>
@@ -773,7 +776,9 @@ export default function JobDetailPage() {
                       <div className="block sm:hidden p-4">
                         <div className="flex items-start gap-3 mb-3">
                           <Avatar className="w-12 h-12 flex-shrink-0">
-                            <AvatarImage src={quote.professionalAvatar} />
+                            {resolveAvatarUrl(quote.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                               {quote.professionalName.charAt(0)}
                             </AvatarFallback>
@@ -845,7 +850,9 @@ export default function JobDetailPage() {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-4 flex-1">
                             <Avatar className="w-14 h-14 flex-shrink-0">
-                              <AvatarImage src={quote.professionalAvatar} />
+                              {resolveAvatarUrl(quote.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                            )}
                               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                 {quote.professionalName.charAt(0)}
                               </AvatarFallback>
@@ -1273,7 +1280,9 @@ export default function JobDetailPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={userInfo?.avatar} />
+                    {resolveAvatarUrl(userInfo?.avatar) && (
+                      <AvatarImage src={resolveAvatarUrl(userInfo?.avatar)} />
+                    )}
                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                       {userInfo?.name?.charAt(0) || "C"}
                     </AvatarFallback>
@@ -1512,7 +1521,9 @@ export default function JobDetailPage() {
               {/* Professional Info */}
               <div className="flex items-center gap-3 bg-[#f8f9fa] p-3 rounded-lg">
                 <Avatar className="w-10 h-10 border-2 border-gray-200 flex-shrink-0">
-                  <AvatarImage src={selectedQuoteForAward.professionalAvatar} />
+                  {resolveAvatarUrl(selectedQuoteForAward.professionalAvatar) && (
+                    <AvatarImage src={resolveAvatarUrl(selectedQuoteForAward.professionalAvatar)} />
+                  )}
                   <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
                     {selectedQuoteForAward.professionalName.charAt(0)}
                   </AvatarFallback>

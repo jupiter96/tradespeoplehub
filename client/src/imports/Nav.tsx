@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import svgPaths from "./svg-fomenmyfjn";
 import { getSocket, connectSocket } from "../services/socket";
 import { resolveApiUrl } from "../config/api";
+import { resolveAvatarUrl } from "../components/orders/utils";
 
 // Helper function to convert sector name to URL slug
 const sectorToSlug = (sectorName: string): string => {
@@ -133,10 +134,12 @@ function LoginButton() {
         data-name="Login"
       >
         <Avatar className="w-10 h-10 border-2 border-transparent group-hover:border-[#FE8A0F] transition-all">
-          <AvatarImage
-            src={userInfo.avatar}
-            alt={userInfo.name}
-          />
+          {resolveAvatarUrl(userInfo.avatar) && (
+            <AvatarImage
+              src={resolveAvatarUrl(userInfo.avatar)}
+              alt={userInfo.name}
+            />
+          )}
           <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
             {userInfo.name
               .split(" ")
@@ -192,10 +195,12 @@ function MobileLoginButton() {
         <div className="px-4 py-4 bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] rounded-xl hover:shadow-lg transition-shadow cursor-pointer">
           <div className="flex items-center gap-4">
             <Avatar className="w-14 h-14 border-4 border-white/20">
-              <AvatarImage
-                src={userInfo.avatar}
-                alt={userInfo.name}
-              />
+              {resolveAvatarUrl(userInfo.avatar) && (
+                <AvatarImage
+                  src={resolveAvatarUrl(userInfo.avatar)}
+                  alt={userInfo.name}
+                />
+              )}
               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
                 {userInfo.name
                   .split(" ")

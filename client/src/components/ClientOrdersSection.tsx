@@ -47,6 +47,7 @@ import {
 
 // Import separated order components
 import { AddInfoDialog, getStatusLabel, getStatusLabelForTable } from "./orders";
+import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
@@ -1002,7 +1003,9 @@ export default function ClientOrdersSection() {
       {/* Professional Info */}
       <div className="flex items-center gap-3 mb-4">
         <Avatar className="w-10 h-10">
-          <AvatarImage src={order.professionalAvatar} />
+          {resolveAvatarUrl(order.professionalAvatar) && (
+            <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+          )}
           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
             {order.professional
               ?.split(" ")
@@ -1249,6 +1252,7 @@ export default function ClientOrdersSection() {
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
          currentOrder.status !== "Cancellation Pending" &&
+         currentOrder.status !== "delivered" &&
          currentOrder.deliveryStatus !== "delivered" && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             {/* Header */}
@@ -1335,6 +1339,7 @@ export default function ClientOrdersSection() {
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
          currentOrder.status !== "Cancellation Pending" &&
+         currentOrder.status !== "delivered" &&
          currentOrder.deliveryStatus !== "delivered" && (
           <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
             {/* Header */}
@@ -2729,7 +2734,9 @@ export default function ClientOrdersSection() {
                             <div key={msg.id} className={`border rounded-lg p-4 ${showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
                               <div className="flex gap-3">
                                 <Avatar className="w-12 h-12 flex-shrink-0">
-                                  <AvatarImage src={msg.userAvatar} />
+                                  {resolveAvatarUrl(msg.userAvatar) && (
+                                    <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
+                                  )}
                                   <AvatarFallback className="bg-[#3D78CB] text-white">
                                     {msg.userName.charAt(0)}
                                   </AvatarFallback>
@@ -3559,7 +3566,9 @@ export default function ClientOrdersSection() {
                   </p>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={currentOrder.professionalAvatar} />
+                      {resolveAvatarUrl(currentOrder.professionalAvatar) && (
+                        <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
+                      )}
                       <AvatarFallback>{currentOrder.professional?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -3714,7 +3723,9 @@ export default function ClientOrdersSection() {
                           <div key={msg.id} className={`border rounded-lg p-4 ${showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
                             <div className="flex gap-3">
                               <Avatar className="w-12 h-12 flex-shrink-0">
-                                <AvatarImage src={msg.userAvatar} />
+                                {resolveAvatarUrl(msg.userAvatar) && (
+                                  <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
+                                )}
                                 <AvatarFallback className="bg-[#3D78CB] text-white">
                                   {msg.userName.charAt(0)}
                                 </AvatarFallback>
@@ -3901,7 +3912,9 @@ export default function ClientOrdersSection() {
                     </h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={currentOrder.professionalAvatar} />
+                        {resolveAvatarUrl(currentOrder.professionalAvatar) && (
+                          <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
+                        )}
                         <AvatarFallback className="bg-blue-100 text-blue-600">
                           {currentOrder.professional?.charAt(0) || "P"}
                         </AvatarFallback>
@@ -4764,7 +4777,9 @@ export default function ClientOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.professionalAvatar} />
+                            {resolveAvatarUrl(order.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
                             </AvatarFallback>
@@ -4861,7 +4876,9 @@ export default function ClientOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.professionalAvatar} />
+                            {resolveAvatarUrl(order.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
                             </AvatarFallback>
@@ -4958,7 +4975,9 @@ export default function ClientOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.professionalAvatar} />
+                            {resolveAvatarUrl(order.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
                             </AvatarFallback>
@@ -5055,7 +5074,9 @@ export default function ClientOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.professionalAvatar} />
+                            {resolveAvatarUrl(order.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
                             </AvatarFallback>
@@ -5137,7 +5158,9 @@ export default function ClientOrdersSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={order.professionalAvatar} />
+                            {resolveAvatarUrl(order.professionalAvatar) && (
+                              <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
+                            )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                               {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
                             </AvatarFallback>

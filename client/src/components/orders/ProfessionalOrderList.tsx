@@ -126,7 +126,9 @@ export default function ProfessionalOrderList({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+                      {resolveAvatarUrl(order.clientAvatar) && (
+                        <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+                      )}
                       <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                         {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                       </AvatarFallback>
@@ -212,7 +214,9 @@ export default function ProfessionalOrderList({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+                      {resolveAvatarUrl(order.clientAvatar) && (
+                        <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
+                      )}
                       <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
                         {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
                       </AvatarFallback>
