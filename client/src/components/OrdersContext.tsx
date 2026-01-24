@@ -1107,6 +1107,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         if (order.id === orderId) {
           return {
             ...order,
+            status: data.orderStatus || order.status,
+            deliveryStatus: data.revisionRequest.status === 'in_progress' ? 'active' : order.deliveryStatus,
             revisionRequest: {
               ...order.revisionRequest!,
               status: data.revisionRequest.status,

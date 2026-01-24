@@ -174,12 +174,114 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
-  // Work delivered
-  if (
-    order.deliveryStatus === "delivered" ||
-    order.deliveryMessage ||
-    (order.deliveryFiles && order.deliveryFiles.length > 0)
-  ) {
+  // Work delivered - handle multiple deliveries (first delivery and revision re-delivery)
+  const rev = order.revisionRequest;
+  const revisionRequestedAt = rev && (rev as any).requestedAt ? new Date((rev as any).requestedAt).getTime() : null;
+  const revisionCompletedAt = rev?.status === 'completed' && (rev as any).respondedAt 
+    ? new Date((rev as any).respondedAt).getTime() 
+    : null;
+  
+  // Group delivery files by upload time to identify separate deliveries
+  if (order.deliveryFiles && order.deliveryFiles.length > 0) {
+    // Sort files by upload time
+    const sortedFiles = [...order.deliveryFiles].sort((a: any, b: any) => {
+      const aTime = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+      const bTime = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+      return aTime - bTime;
+    });
+    
+    // First delivery: files uploaded before revision request (or all files if no revision)
+    const firstDeliveryFiles = revisionRequestedAt 
+      ? sortedFiles.filter((file: any) => {
+          const fileUploadTime = file.uploadedAt ? new Date(file.uploadedAt).getTime() : 0;
+          return fileUploadTime < revisionRequestedAt;
+        })
+      : sortedFiles;
+    
+    // Second delivery: files uploaded after revision request (when revision is completed)
+    const secondDeliveryFiles = rev?.status === 'completed' && revisionRequestedAt
+      ? sortedFiles.filter((file: any) => {
+          const fileUploadTime = file.uploadedAt ? new Date(file.uploadedAt).getTime() : 0;
+          return fileUploadTime >= revisionRequestedAt;
+        })
+      : [];
+    
+    // First delivery event
+    if (firstDeliveryFiles.length > 0) {
+      const firstDeliveryDate = firstDeliveryFiles[0]?.uploadedAt || (order as any).deliveredDate;
+      const firstMessage = order.deliveryMessage?.includes('[Revision]')
+        ? order.deliveryMessage.split('\n\n[Revision]')[0]?.trim()
+        : order.deliveryMessage;
+      
+      push(
+        {
+          at: firstDeliveryDate,
+          label: "Work Delivered",
+          description: "You delivered the work to the client.",
+          message: firstMessage,
+          files: firstDeliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered"
+      );
+    } else if (!rev && (order.deliveryStatus === "delivered" || order.status === "delivered" || order.deliveryMessage)) {
+      // Fallback: if no files but status is delivered and no revision, show delivery event
+      push(
+        {
+          at: (order as any).deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
+          label: "Work Delivered",
+          description: "You delivered the work to the client.",
+          message: order.deliveryMessage,
+          files: order.deliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered"
+      );
+    }
+    
+    // Second delivery event (after revision completion)
+    if (rev?.status === 'completed' && secondDeliveryFiles.length > 0) {
+      const secondDeliveryDate = secondDeliveryFiles[0]?.uploadedAt || (order as any).deliveredDate;
+      const revisionMessage = order.deliveryMessage?.includes('[Revision]')
+        ? order.deliveryMessage.split('[Revision]')[1]?.trim()
+        : order.deliveryMessage;
+      
+      push(
+        {
+          at: secondDeliveryDate,
+          label: "Work Delivered",
+          description: "You delivered the revised work to the client.",
+          message: revisionMessage,
+          files: secondDeliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered-revision"
+      );
+    } else if (rev?.status === 'completed' && revisionCompletedAt && (order.deliveryStatus === "delivered" || order.status === "delivered")) {
+      // If revision is completed but no new files, show second delivery with current deliveredDate
+      // This handles the case where revision was completed but no new files were uploaded
+      const revisionMessage = order.deliveryMessage?.includes('[Revision]')
+        ? order.deliveryMessage.split('[Revision]')[1]?.trim()
+        : order.deliveryMessage;
+      
+      push(
+        {
+          at: (order as any).deliveredDate || (rev as any).respondedAt,
+          label: "Work Delivered",
+          description: "You delivered the revised work to the client.",
+          message: revisionMessage,
+          files: secondDeliveryFiles.length > 0 ? secondDeliveryFiles : order.deliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered-revision"
+      );
+    }
+  } else if (order.deliveryStatus === "delivered" || order.status === "delivered" || order.deliveryMessage) {
+    // Fallback: if no files but status is delivered, show delivery event
     push(
       {
         at: (order as any).deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
@@ -261,8 +363,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
-  // Revision events
-  const rev = order.revisionRequest;
+  // Revision events (rev already declared above)
   if (rev && (rev as any).requestedAt) {
     push(
       {
@@ -278,6 +379,21 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
   if (rev && (rev as any).respondedAt && rev.status) {
+    const getRevisionDescription = () => {
+      if (rev.status === "rejected") {
+        return (rev as any).additionalNotes 
+          ? `Revision request was rejected. Reason: ${(rev as any).additionalNotes}`
+          : "Revision request was rejected.";
+      } else if (rev.status === "in_progress") {
+        return (rev as any).additionalNotes 
+          ? `Revision accepted. ${(rev as any).additionalNotes}`
+          : "Revision accepted. Work resumed.";
+      } else if (rev.status === "completed") {
+        return "Revision completed and work re-delivered.";
+      }
+      return (rev as any).additionalNotes || undefined;
+    };
+
     push(
       {
         at: (rev as any).respondedAt,
@@ -289,7 +405,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
             : rev.status === "rejected"
             ? "Revision Rejected"
             : "Revision Updated",
-        description: (rev as any).additionalNotes || undefined,
+        description: getRevisionDescription(),
         colorClass:
           rev.status === "completed"
             ? "bg-green-600"
@@ -299,6 +415,8 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         icon:
           rev.status === "completed" ? (
             <CheckCircle2 className="w-5 h-5 text-white" />
+          ) : rev.status === "rejected" ? (
+            <XCircle className="w-5 h-5 text-white" />
           ) : (
             <FileText className="w-5 h-5 text-white" />
           ),

@@ -221,8 +221,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       return res.status(400).json({ error: 'Order must contain at least one item' });
     }
 
-    if (!paymentMethod || !['card', 'paypal', 'wallet'].includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Invalid payment method. Only card and paypal are allowed.' });
+    if (!paymentMethod || !['card', 'paypal', 'account_balance'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method. Only card, paypal, and account_balance are allowed.' });
     }
 
     if (!total || total <= 0) {
@@ -270,9 +270,9 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       return res.status(400).json({ error: 'Payment method ID is required for card payments when remainder > 0' });
     }
     
-    // If remainder is 0, payment method should be wallet
-    if (remainderAmount === 0 && paymentMethod !== 'wallet') {
-      return res.status(400).json({ error: 'Payment method must be wallet when remainder is 0' });
+    // If remainder is 0, payment method should be account_balance
+    if (remainderAmount === 0 && paymentMethod !== 'account_balance') {
+      return res.status(400).json({ error: 'Payment method must be account_balance when remainder is 0' });
     }
 
     // Get professional from first item (assuming all items are from same professional)
@@ -396,7 +396,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     let walletTransactionId = null;
     let paymentTransactionId = null;
     let newBalance = user.walletBalance || 0;
-    const Wallet = (await import('../models/WalletTransaction.js')).default;
+    const Wallet = (await import('../models/Wallet.js')).default;
 
     // Step 1: Deduct from wallet if walletAmount > 0
     if (walletAmount > 0) {
@@ -406,11 +406,13 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       
       // Create wallet transaction record
       const walletTransaction = new Wallet({
-        user: user._id,
-        type: 'debit',
+        userId: user._id,
+        type: 'payment',
         amount: walletAmount,
+        balance: newBalance,
         description: `Order payment - ${orderNumber}`,
         status: 'completed',
+        paymentMethod: 'wallet',
         orderId: null, // Will be updated after order creation
       });
       await walletTransaction.save();
@@ -605,7 +607,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         phone: address.phone,
       } : undefined,
       skipAddress: skipAddress || false,
-      paymentMethod: walletAmount > 0 && remainderAmount > 0 ? 'split' : (walletAmount > 0 ? 'wallet' : paymentMethod),
+      paymentMethod: walletAmount > 0 && remainderAmount > 0 ? paymentMethod : (walletAmount > 0 ? 'account_balance' : paymentMethod),
       paymentMethodId: remainderAmount > 0 && paymentMethod === 'card' ? paymentMethodId : undefined,
       total,
       subtotal,
@@ -664,8 +666,8 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       return res.status(400).json({ error: 'At least one order is required' });
     }
 
-    if (!paymentMethod || !['card', 'paypal', 'wallet'].includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Invalid payment method. Only card and paypal are allowed.' });
+    if (!paymentMethod || !['card', 'paypal', 'account_balance'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method. Only card, paypal, and account_balance are allowed.' });
     }
 
     if (!totalAmount || totalAmount <= 0) {
@@ -713,9 +715,9 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       return res.status(400).json({ error: 'Payment method ID is required for card payments when remainder > 0' });
     }
     
-    // If remainder is 0, payment method should be wallet
-    if (remainderAmount === 0 && paymentMethod !== 'wallet') {
-      return res.status(400).json({ error: 'Payment method must be wallet when remainder is 0' });
+    // If remainder is 0, payment method should be account_balance
+    if (remainderAmount === 0 && paymentMethod !== 'account_balance') {
+      return res.status(400).json({ error: 'Payment method must be account_balance when remainder is 0' });
     }
 
     // Get payment settings
@@ -770,13 +772,15 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       await user.save();
       
       // Create wallet transaction record
-      const WalletTransaction = (await import('../models/WalletTransaction.js')).default;
-      walletTransactionId = (await WalletTransaction.create({
-        user: user._id,
-        type: 'debit',
+      const Wallet = (await import('../models/Wallet.js')).default;
+      walletTransactionId = (await Wallet.create({
+        userId: user._id,
+        type: 'payment',
         amount: walletAmount,
+        balance: newBalance,
         description: `Order payment (${orderRequests.length} order${orderRequests.length > 1 ? 's' : ''})`,
         status: 'completed',
+        paymentMethod: 'wallet',
         orderId: null, // Will be updated after orders are created
       }))._id;
     }
@@ -790,7 +794,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
             user.walletBalance = (user.walletBalance || 0) + walletAmount;
             await user.save();
             if (walletTransactionId) {
-              await WalletTransaction.findByIdAndDelete(walletTransactionId);
+              await Wallet.findByIdAndDelete(walletTransactionId);
             }
           }
           return res.status(400).json({ error: 'Payment method ID is required for card payments' });
@@ -825,7 +829,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
               user.walletBalance = (user.walletBalance || 0) + walletAmount;
               await user.save();
               if (walletTransactionId) {
-                await WalletTransaction.findByIdAndDelete(walletTransactionId);
+                await Wallet.findByIdAndDelete(walletTransactionId);
               }
             }
             return res.status(400).json({ 
@@ -841,7 +845,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
             user.walletBalance = (user.walletBalance || 0) + walletAmount;
             await user.save();
             if (walletTransactionId) {
-              await WalletTransaction.findByIdAndDelete(walletTransactionId);
+              await Wallet.findByIdAndDelete(walletTransactionId);
             }
           }
           console.error('[Server] Card payment error:', error);
@@ -1006,7 +1010,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
           phone: address.phone,
         } : undefined,
         skipAddress: skipAddress || false,
-        paymentMethod: walletAmount > 0 && remainderAmount > 0 ? 'split' : (walletAmount > 0 ? 'wallet' : paymentMethod),
+        paymentMethod: walletAmount > 0 && remainderAmount > 0 ? paymentMethod : (walletAmount > 0 ? 'account_balance' : paymentMethod),
         total: orderTotal,
         subtotal,
         discount,

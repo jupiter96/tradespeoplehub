@@ -308,7 +308,7 @@ export default function DisputeDiscussionPage() {
             </h1>
             {isOrderDispute && order && (
               <Button
-                onClick={() => navigate(`/order/${order.id}`)}
+                onClick={() => navigate(`/account?tab=orders&orderId=${order.id}`)}
                 variant="ghost"
                 className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:text-[#2C5AA0] hover:bg-transparent"
               >

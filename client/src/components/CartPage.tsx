@@ -1409,7 +1409,7 @@ export default function CartPage() {
 
   // Removed handleBookingConfirm - booking is now handled directly in handlePlaceOrder
 
-  const proceedWithOrder = async () => {
+  const proceedWithOrder = async (serviceTypeChecks?: Array<{ item: any; isOnline: boolean }>) => {
     // Check if account balance is 0
     if (walletBalance === 0 || walletBalance <= 0) {
       toast.error("Please top up account balance first.");
@@ -1449,10 +1449,14 @@ export default function CartPage() {
       const timeSlot = itemTimeSlots[item.id];
       const itemSubtotal = (item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity;
       
+      // Find if this item is online from serviceTypeChecks
+      const serviceTypeCheck = serviceTypeChecks?.find(check => check.item.id === item.id);
+      const isItemOnline = serviceTypeCheck?.isOnline || false;
+      
       // Format date for booking - only for in-person services
       let bookingInfo: { date: string; time: string; endTime?: string; timeSlot: string } | undefined = undefined;
       // Only include booking info if service is in-person and time slot is selected
-      if (hasInPersonService && timeSlot && timeSlot.date && timeSlot.time) {
+      if (!isItemOnline && timeSlot && timeSlot.date && timeSlot.time) {
         const dateStr = timeSlot.date.toLocaleDateString('en-GB', {
           year: 'numeric',
           month: '2-digit',
@@ -1525,9 +1529,9 @@ export default function CartPage() {
         }
       }
       
-      // If remainder is 0, set payment method to wallet (will be handled by backend)
+      // If remainder is 0, set payment method to account_balance (will be handled by backend)
       if (remainderAmount === 0) {
-        paymentMethodType = "wallet";
+        paymentMethodType = "account_balance";
         paymentMethodId = undefined;
       }
       
@@ -1640,45 +1644,79 @@ export default function CartPage() {
 
   const handlePlaceOrder = async () => {
     
-    // Check each item has a time slot selected (date, start time, and end time)
-    const missingTimeSlots = cartItems.filter(item => {
-      const timeSlot = itemTimeSlots[item.id];
-      return !timeSlot || !timeSlot.date || !timeSlot.time || !timeSlot.endTime;
-    });
+    // Helper function to check if a service is online
+    const isServiceOnline = async (item: any): Promise<boolean> => {
+      try {
+        const serviceId = (item as any).serviceId || item.id;
+        const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const serviceType = data?.service?.serviceType || "in-person";
+          return serviceType === "online";
+        }
+      } catch (error) {
+        console.warn(`Failed to check service type for ${item.id}:`, error);
+      }
+      // Default to in-person if check fails
+      return false;
+    };
+    
+    // Check service types for all items first
+    const serviceTypeChecks = await Promise.all(
+      cartItems.map(async (item) => ({
+        item,
+        isOnline: await isServiceOnline(item)
+      }))
+    );
+    
+    // Check each in-person item has a time slot selected (date, start time, and end time)
+    // Online services don't need time slots
+    const missingTimeSlots = serviceTypeChecks
+      .filter(({ item, isOnline }) => !isOnline)
+      .map(({ item }) => item)
+      .filter(item => {
+        const timeSlot = itemTimeSlots[item.id];
+        return !timeSlot || !timeSlot.date || !timeSlot.time || !timeSlot.endTime;
+      });
     
     if (missingTimeSlots.length > 0) {
-      toast.error(`Please select date and time range for all items (${missingTimeSlots.length} item${missingTimeSlots.length > 1 ? 's' : ''} missing)`);
+      toast.error(`Please select date and time range for all in-person services (${missingTimeSlots.length} item${missingTimeSlots.length > 1 ? 's' : ''} missing)`);
       setShowTimeSection(true);
       return;
     }
     
-    // Validate time slots are within availability ranges
+    // Validate time slots are within availability ranges (only for in-person services)
     const invalidTimeSlots: string[] = [];
-    cartItems.forEach(item => {
-      const timeSlot = itemTimeSlots[item.id];
-      if (timeSlot?.date && timeSlot?.time && timeSlot?.endTime) {
-        const range = getAvailabilityRange(item.id, timeSlot.date);
-        if (range) {
-          // Start time must be >= minTime and < maxTime
-          if (timeSlot.time < range.minTime) {
-            invalidTimeSlots.push(`${item.title}: Start time is before minimum time (${range.minTime})`);
-          }
-          if (timeSlot.time >= range.maxTime) {
-            invalidTimeSlots.push(`${item.title}: Start time is at or after maximum time (${range.maxTime})`);
-          }
-          // End time must be > startTime and <= maxTime
-          if (timeSlot.endTime <= timeSlot.time) {
-            invalidTimeSlots.push(`${item.title}: End time must be after start time`);
-          }
-          if (timeSlot.endTime > range.maxTime) {
-            invalidTimeSlots.push(`${item.title}: End time exceeds maximum time (${range.maxTime})`);
-          }
-          if (timeSlot.endTime < range.minTime) {
-            invalidTimeSlots.push(`${item.title}: End time is before minimum time (${range.minTime})`);
+    serviceTypeChecks
+      .filter(({ isOnline }) => !isOnline)
+      .forEach(({ item }) => {
+        const timeSlot = itemTimeSlots[item.id];
+        if (timeSlot?.date && timeSlot?.time && timeSlot?.endTime) {
+          const range = getAvailabilityRange(item.id, timeSlot.date);
+          if (range) {
+            // Start time must be >= minTime and < maxTime
+            if (timeSlot.time < range.minTime) {
+              invalidTimeSlots.push(`${item.title}: Start time is before minimum time (${range.minTime})`);
+            }
+            if (timeSlot.time >= range.maxTime) {
+              invalidTimeSlots.push(`${item.title}: Start time is at or after maximum time (${range.maxTime})`);
+            }
+            // End time must be > startTime and <= maxTime
+            if (timeSlot.endTime <= timeSlot.time) {
+              invalidTimeSlots.push(`${item.title}: End time must be after start time`);
+            }
+            if (timeSlot.endTime > range.maxTime) {
+              invalidTimeSlots.push(`${item.title}: End time exceeds maximum time (${range.maxTime})`);
+            }
+            if (timeSlot.endTime < range.minTime) {
+              invalidTimeSlots.push(`${item.title}: End time is before minimum time (${range.minTime})`);
+            }
           }
         }
-      }
-    });
+      });
     
     if (invalidTimeSlots.length > 0) {
       toast.error("Invalid time slots detected", {
@@ -1690,7 +1728,7 @@ export default function CartPage() {
     
     
     // Proceed with creating multiple orders
-    proceedWithOrder();
+    proceedWithOrder(serviceTypeChecks);
   };
 
     const subtotal = cartTotal;

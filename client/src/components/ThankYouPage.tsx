@@ -34,7 +34,7 @@ export default function ThankYouPage() {
       // Auto-navigate to order details after 2 seconds
       const timer = setTimeout(() => {
         if (orderIds.length === 1) {
-          navigate(`/order/${orderIds[0]}`, { replace: true });
+          navigate(`/account?tab=orders&orderId=${orderIds[0]}`, { replace: true });
         } else {
           navigate('/account?tab=orders', { replace: true });
         }
@@ -47,7 +47,7 @@ export default function ThankYouPage() {
 
   const handleViewOrders = () => {
     if (orderIds.length === 1) {
-      navigate(`/order/${orderIds[0]}`);
+      navigate(`/account?tab=orders&orderId=${orderIds[0]}`);
     } else {
       navigate('/account?tab=orders');
     }

@@ -431,7 +431,7 @@ function ProfessionalOrdersSection() {
     if (!currentOrder) return null;
     // Stop timer for completed or cancelled orders
     if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled" || currentOrder.status === "Cancellation Pending") return null;
-    if (currentOrder.deliveryStatus === "delivered" || currentOrder.deliveryStatus === "completed" || currentOrder.deliveryStatus === "cancelled") {
+    if (currentOrder.deliveryStatus === "cancelled") {
       return null;
     }
 
@@ -459,7 +459,29 @@ function ProfessionalOrdersSection() {
     return null;
   }, [currentOrder]);
 
-  const workElapsedTime = useElapsedTime(workStartTime);
+  // Calculate pause time (when work was delivered)
+  const pauseTime = useMemo(() => {
+    if (!currentOrder) return null;
+    // Pause when work is delivered (but not if revision is in progress)
+    if ((currentOrder.deliveryStatus === "delivered" || currentOrder.status === "delivered") && 
+        currentOrder.revisionRequest?.status !== "in_progress" &&
+        currentOrder.deliveredDate) {
+      return new Date(currentOrder.deliveredDate);
+    }
+    return null;
+  }, [currentOrder]);
+
+  // Calculate resume time (when revision was accepted)
+  const resumeTime = useMemo(() => {
+    if (!currentOrder) return null;
+    // Resume when revision is accepted (in_progress)
+    if (currentOrder.revisionRequest?.status === "in_progress" && currentOrder.revisionRequest.respondedAt) {
+      return new Date(currentOrder.revisionRequest.respondedAt);
+    }
+    return null;
+  }, [currentOrder]);
+
+  const workElapsedTime = useElapsedTime(workStartTime, pauseTime, resumeTime);
 
   // Poll for latest order updates while viewing details
   useEffect(() => {

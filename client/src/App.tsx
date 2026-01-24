@@ -23,7 +23,6 @@ import AdminLoginPage from "./components/AdminLoginPage";
 import AdminDashboardPage from "./components/AdminDashboardPage";
 import SocialOnboardingPage from "./components/SocialOnboardingPage";
 import ThankYouPage from "./components/ThankYouPage";
-import OrderDetailPage from "./components/OrderDetailPage";
 import { CartProvider } from "./components/CartContext";
 import { AccountProvider, useAccount } from "./components/AccountContext";
 import { JobsProvider } from "./components/JobsContext";
@@ -57,7 +56,6 @@ function AppContent() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/social-onboarding" element={<SocialOnboardingPage />} />
         <Route path="/account" element={<AccountPage />} />
-        <Route path="/order/:orderId" element={<OrderDetailPage />} />
         <Route path="/professional-setup" element={<ProfessionalProfileSetup />} />
         <Route path="/professional-about" element={<ProfessionalAboutService />} />
         <Route path="/professional-registration-steps" element={<ProfessionalRegistrationSteps />} />
