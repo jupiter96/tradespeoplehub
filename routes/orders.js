@@ -1196,6 +1196,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       if (status === 'in_progress' || status === 'In Progress') status = 'In Progress';
       if (status === 'completed' || status === 'Completed') status = 'Completed';
       if (status === 'cancelled' || status === 'Cancelled') status = 'Cancelled';
+      if (status === 'Cancellation Pending' || status === 'cancellation_pending') status = 'Cancellation Pending';
       if (status === 'rejected' || status === 'Rejected') status = 'Cancelled';
       if (status === 'disputed') status = 'disputed';
       
@@ -1546,6 +1547,11 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
       return res.status(400).json({ error: 'Cannot cancel order that has been delivered. Please initiate a dispute instead.' });
     }
 
+    // Can't request cancellation if order is already cancelled or in cancellation-pending flow
+    if (order.status === 'Cancelled') {
+      return res.status(400).json({ error: 'Order is already cancelled.' });
+    }
+
     // If order is "In Progress" and client is requesting cancellation, require professional approval
     if (order.status === 'In Progress' && isClient) {
       // This will create a cancellation request that requires professional approval
@@ -1583,12 +1589,16 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
       respondedBy: null,
     };
 
+    // When anyone (client or professional) requests cancellation, set order status to Cancellation Pending
+    order.status = 'Cancellation Pending';
+
     await order.save();
 
     res.json({ 
       message: 'Cancellation request submitted successfully',
       cancellationRequest: order.cancellationRequest,
-      responseDeadline: responseDeadline
+      responseDeadline: responseDeadline,
+      orderStatus: order.status
     });
   } catch (error) {
     console.error('Cancellation request error:', error);
@@ -1600,7 +1610,7 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
 router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['client', 'professional']), async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { action } = req.body; // 'approve' or 'reject'
+    const { action, reason } = req.body; // 'approve' or 'reject', reason is optional
 
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ error: 'Action must be either "approve" or "reject"' });
@@ -1631,7 +1641,7 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
     }
 
     if (action === 'approve') {
-      // Cancel the order
+      // Cancel the order – professional accepted; status becomes Cancelled immediately
       order.status = 'Cancelled';
       order.deliveryStatus = 'cancelled';
       order.cancellationRequest.status = 'approved';
@@ -1640,8 +1650,12 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
       // TODO: Implement refund logic here based on payment method
       
     } else {
-      // Reject cancellation - order continues
+      // Reject cancellation – restore order status and continue
       order.cancellationRequest.status = 'rejected';
+      order.status = order.metadata?.statusBeforeCancellationRequest || 'In Progress';
+      if (reason && reason.trim()) {
+        order.cancellationRequest.rejectionReason = reason.trim();
+      }
     }
 
     order.cancellationRequest.respondedAt = new Date();
@@ -1651,7 +1665,10 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
 
     res.json({ 
       message: `Cancellation request ${action}d successfully`,
-      cancellationRequest: order.cancellationRequest,
+      cancellationRequest: {
+        ...order.cancellationRequest.toObject(),
+        rejectionReason: order.cancellationRequest.rejectionReason || undefined,
+      },
       orderStatus: order.status
     });
   } catch (error) {
@@ -1681,18 +1698,11 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
     }
 
     // Store the previous status before cancellation request (for restoration)
-    const previousStatus = order.metadata?.statusBeforeCancellationRequest || order.status;
+    const previousStatus = order.metadata?.statusBeforeCancellationRequest || 'In Progress';
     
-    // Withdraw cancellation request - order returns to processing
+    // Withdraw cancellation request – order returns to processing
     order.cancellationRequest.status = 'withdrawn';
-    
-    // Restore order status to previous status (before cancellation request)
-    if (previousStatus === 'In Progress') {
-      order.status = previousStatus;
-    } else if (order.status === 'Cancelled') {
-      // If order was already cancelled, restore to previous status
-      order.status = previousStatus;
-    }
+    order.status = previousStatus;
 
     await order.save();
 

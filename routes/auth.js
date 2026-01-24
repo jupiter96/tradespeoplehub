@@ -4112,6 +4112,70 @@ router.post('/profile/addresses', requireAuth, async (req, res) => {
   }
 });
 
+router.put('/profile/addresses/:addressId', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+
+    const { addressId } = req.params;
+    const { postcode, address, city, county, phone, isDefault } = req.body;
+
+    if (!postcode || !address || !city || !phone) {
+      return res.status(400).json({ error: 'Please fill in all required fields' });
+    }
+
+    if (!user.addresses || user.addresses.length === 0) {
+      return res.status(404).json({ error: 'Address not found' });
+    }
+
+    const addressIndex = user.addresses.findIndex(addr => addr.id === addressId || addr._id?.toString() === addressId);
+    if (addressIndex === -1) {
+      return res.status(404).json({ error: 'Address not found' });
+    }
+
+    // If this is set as default, unset other defaults
+    if (isDefault) {
+      user.addresses = user.addresses.map((addr, idx) => {
+        if (idx === addressIndex) return addr;
+        const addrObj = addr.toObject ? addr.toObject() : addr;
+        return { ...addrObj, isDefault: false };
+      });
+    }
+
+    // Update the address
+    const updatedAddress = {
+      ...user.addresses[addressIndex].toObject ? user.addresses[addressIndex].toObject() : user.addresses[addressIndex],
+      postcode: postcode.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      county: county?.trim() || '',
+      phone: phone.trim(),
+      isDefault: isDefault !== undefined ? isDefault : user.addresses[addressIndex].isDefault,
+    };
+
+    user.addresses[addressIndex] = updatedAddress;
+    await user.save();
+
+    // Return the updated address
+    const addressResponse = {
+      id: updatedAddress.id || updatedAddress._id?.toString() || addressId,
+      postcode: updatedAddress.postcode,
+      address: updatedAddress.address,
+      city: updatedAddress.city,
+      county: updatedAddress.county || '',
+      phone: updatedAddress.phone,
+      isDefault: updatedAddress.isDefault || false,
+    };
+
+    return res.json({ address: addressResponse, message: 'Address updated successfully' });
+  } catch (error) {
+    console.error('Error updating address:', error);
+    return res.status(500).json({ error: 'Failed to update address', details: error.message });
+  }
+});
+
 router.delete('/profile/addresses/:addressId', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.session.userId);

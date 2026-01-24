@@ -789,7 +789,7 @@ export default function FloatingMessenger() {
                                 {message.type === "order" && (
                                   <Button
                                     onClick={() => {
-                                      navigate(`/account?tab=orders&orderId=${message.orderId}`);
+                                      navigate(`/order/${message.orderId}`);
                                       closeMessenger();
                                       window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }}
@@ -1147,7 +1147,7 @@ export default function FloatingMessenger() {
           serviceFee={selectedOffer.serviceFee}
           total={selectedOffer.total}
           onSuccess={(orderNumber) => {
-            navigate(`/account?tab=orders&orderId=${orderNumber}`);
+            navigate(`/order/${orderNumber}`);
             closeMessenger();
             setShowOfferPaymentModal(false);
             setSelectedOffer(null);

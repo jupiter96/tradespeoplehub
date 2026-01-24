@@ -1893,9 +1893,31 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               }
               setGalleryItems(draftItems);
 
-              // Set packages
+              // Set packages - convert deliveryDays for online services
               if (draft.packages && Array.isArray(draft.packages) && draft.packages.length > 0) {
-                setPackages(draft.packages);
+                const draftServiceType = draft.serviceType || "in-person";
+                const mappedPackages = draft.packages.map((pkg: any) => {
+                  if (draftServiceType === "online") {
+                    // For online services, keep deliveryDays as string
+                    return {
+                      ...pkg,
+                      deliveryDays: typeof pkg.deliveryDays === "string" ? pkg.deliveryDays : "",
+                    };
+                  } else {
+                    // For in-person services, convert to string format
+                    let deliveryDaysStr = "standard";
+                    if (typeof pkg.deliveryDays === "number") {
+                      deliveryDaysStr = pkg.deliveryDays === 0 ? "same-day" : (pkg.deliveryDays <= 1 ? "same-day" : "standard");
+                    } else if (typeof pkg.deliveryDays === "string") {
+                      deliveryDaysStr = pkg.deliveryDays;
+                    }
+                    return {
+                      ...pkg,
+                      deliveryDays: deliveryDaysStr,
+                    };
+                  }
+                });
+                setPackages(mappedPackages);
                 setOfferPackages(true);
               }
 
@@ -1990,7 +2012,16 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             }))
           : [],
         packages: Array.isArray(initialService.packages) 
-          ? initialService.packages.map((pkg: any) => ({
+          ? initialService.packages.map((pkg: any) => {
+              // For online services, keep deliveryDays as string; for in-person, convert to number
+              const serviceTypeForPkg = initialService.serviceType || "in-person";
+              let deliveryDaysValue: number | string;
+              if (serviceTypeForPkg === "online") {
+                deliveryDaysValue = typeof pkg.deliveryDays === "string" ? pkg.deliveryDays : "";
+              } else {
+                deliveryDaysValue = typeof pkg.deliveryDays === 'number' ? pkg.deliveryDays : (pkg.deliveryDays ? parseFloat(String(pkg.deliveryDays)) : 7);
+              }
+              return {
               id: pkg.id,
               name: pkg.name,
               description: pkg.description || "",
@@ -1998,11 +2029,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
               originalPrice: pkg.originalPrice ? (typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice))) : undefined,
               originalPriceValidFrom: pkg.originalPriceValidFrom ? (typeof pkg.originalPriceValidFrom === 'string' ? pkg.originalPriceValidFrom : new Date(pkg.originalPriceValidFrom).toISOString()) : undefined,
               originalPriceValidUntil: pkg.originalPriceValidUntil ? (typeof pkg.originalPriceValidUntil === 'string' ? pkg.originalPriceValidUntil : new Date(pkg.originalPriceValidUntil).toISOString()) : undefined,
-              deliveryDays: typeof pkg.deliveryDays === 'number' ? pkg.deliveryDays : (pkg.deliveryDays ? parseFloat(String(pkg.deliveryDays)) : 7),
+              deliveryDays: deliveryDaysValue,
               revisions: pkg.revisions || "",
               features: Array.isArray(pkg.features) ? pkg.features : [],
               order: pkg.order || 0,
-            }))
+            };
+            })
           : [],
         addons: Array.isArray(initialService.addons)
           ? initialService.addons.map((addon: any, index: number) => ({
@@ -2111,17 +2143,27 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       // Set packages - convert deliveryDays from number to string for UI
       if (initialService.packages && Array.isArray(initialService.packages) && initialService.packages.length > 0) {
         const mappedPackages = initialService.packages.map((pkg: any) => {
-          let deliveryDaysStr = "standard";
-          if (typeof pkg.deliveryDays === "number") {
-            if (pkg.deliveryDays === 0) {
-              deliveryDaysStr = "same-day";
-            } else {
-              // If it's a number, keep it as string representation for UI
-              // But for now, map common values
-              deliveryDaysStr = pkg.deliveryDays <= 1 ? "same-day" : "standard";
+          let deliveryDaysStr = serviceType === "online" ? "" : "standard";
+          if (serviceType === "online") {
+            // For online services, keep as string (e.g., "1-2 days", "2-4 days")
+            if (typeof pkg.deliveryDays === "string") {
+              deliveryDaysStr = pkg.deliveryDays;
+            } else if (typeof pkg.deliveryDays === "number") {
+              // Convert number to string format if needed
+              // This shouldn't happen for online services, but handle it just in case
+              deliveryDaysStr = "";
             }
-          } else if (typeof pkg.deliveryDays === "string") {
-            deliveryDaysStr = pkg.deliveryDays;
+          } else {
+            // For in-person services, convert to string format
+            if (typeof pkg.deliveryDays === "number") {
+              if (pkg.deliveryDays === 0) {
+                deliveryDaysStr = "same-day";
+              } else {
+                deliveryDaysStr = pkg.deliveryDays <= 1 ? "same-day" : "standard";
+              }
+            } else if (typeof pkg.deliveryDays === "string") {
+              deliveryDaysStr = pkg.deliveryDays;
+            }
           }
           
           return {
@@ -3865,19 +3907,27 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
 
       if (packages && packages.length > 0) {
-        // Convert deliveryDays to number for draft
+        // For online services, keep deliveryDays as string; for in-person, convert to number
         draftData.packages = packages.map((pkg) => {
-          let deliveryDaysNum = 0;
-          if (pkg.deliveryDays === "same-day") {
-            deliveryDaysNum = 0;
-          } else if (pkg.deliveryDays === "standard") {
-            deliveryDaysNum = 7;
-          } else if (typeof pkg.deliveryDays === "string" && !isNaN(parseFloat(pkg.deliveryDays))) {
-            deliveryDaysNum = parseFloat(pkg.deliveryDays);
-          } else if (typeof pkg.deliveryDays === "number") {
-            deliveryDaysNum = pkg.deliveryDays;
+          let deliveryDaysValue: number | string;
+          if (serviceType === "online") {
+            // For online services, keep as string (e.g., "1-2 days", "2-4 days")
+            deliveryDaysValue = typeof pkg.deliveryDays === "string" ? pkg.deliveryDays : "";
           } else {
-            deliveryDaysNum = 7;
+            // For in-person services, convert to number
+            let deliveryDaysNum = 0;
+            if (pkg.deliveryDays === "same-day") {
+              deliveryDaysNum = 0;
+            } else if (pkg.deliveryDays === "standard") {
+              deliveryDaysNum = 7;
+            } else if (typeof pkg.deliveryDays === "string" && !isNaN(parseFloat(pkg.deliveryDays))) {
+              deliveryDaysNum = parseFloat(pkg.deliveryDays);
+            } else if (typeof pkg.deliveryDays === "number") {
+              deliveryDaysNum = pkg.deliveryDays;
+            } else {
+              deliveryDaysNum = 7;
+            }
+            deliveryDaysValue = deliveryDaysNum;
           }
           
           // For draft, price can be empty, so set default to 0 if not provided
@@ -3888,7 +3938,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           return {
             ...pkg,
             price: pkgPrice,
-            deliveryDays: deliveryDaysNum,
+            deliveryDays: deliveryDaysValue,
             originalPrice: pkg.originalPrice && pkg.originalPrice.trim() !== "" 
               ? parseFloat(String(pkg.originalPrice)) 
               : undefined,
@@ -4345,6 +4395,28 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("service-details");
       return;
     }
+    // Validate Service Type and Online Delivery Days
+    if (!serviceType) {
+      toast.error("Please select a service type");
+      setActiveTab("service-details");
+      return;
+    }
+    // For single services, validate onlineDeliveryDays in first step
+    // For package services, delivery time is set per package in packages step
+    if (serviceType === "online" && !isPackageService && !onlineDeliveryDays) {
+      toast.error("Please select delivery time for online service");
+      setActiveTab("service-details");
+      return;
+    }
+    // For package services with online type, validate that each package has deliveryDays
+    if (serviceType === "online" && isPackageService && packages.length > 0) {
+      const packagesWithoutDelivery = packages.filter(pkg => !pkg.deliveryDays || pkg.deliveryDays === "");
+      if (packagesWithoutDelivery.length > 0) {
+        toast.error("Please select delivery time for all packages");
+        setActiveTab("packages");
+        return;
+      }
+    }
     // Validate How do you charge? (mandatory if priceUnitOptions available) - Only for single services
     // Package services have their own price settings per package
     if (!isPackageService && currentServiceCategory && priceUnitOptions.length > 0 && !priceUnit) {
@@ -4433,18 +4505,27 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           size: item.size,
         })),
         packages: offerPackages ? packages.map((pkg) => {
-          // Convert deliveryDays string to number
-          let deliveryDaysNum = 0;
-          if (pkg.deliveryDays === "same-day") {
-            deliveryDaysNum = 0; // Same day = 0 days
-          } else if (pkg.deliveryDays === "standard") {
-            deliveryDaysNum = 7; // Standard = 7 days (default)
-          } else if (typeof pkg.deliveryDays === "string" && !isNaN(parseFloat(pkg.deliveryDays))) {
-            deliveryDaysNum = parseFloat(pkg.deliveryDays);
-          } else if (typeof pkg.deliveryDays === "number") {
-            deliveryDaysNum = pkg.deliveryDays;
+          // For online services, keep deliveryDays as string (e.g., "1-2 days", "2-4 days")
+          // For in-person services, convert to number
+          let deliveryDaysValue: number | string;
+          if (serviceType === "online") {
+            // For online services, keep the string format (e.g., "1-2 days", "2-4 days")
+            deliveryDaysValue = pkg.deliveryDays || "";
           } else {
-            deliveryDaysNum = 7; // Default to 7 days if invalid
+            // For in-person services, convert to number
+            let deliveryDaysNum = 0;
+            if (pkg.deliveryDays === "same-day") {
+              deliveryDaysNum = 0; // Same day = 0 days
+            } else if (pkg.deliveryDays === "standard") {
+              deliveryDaysNum = 7; // Standard = 7 days (default)
+            } else if (typeof pkg.deliveryDays === "string" && !isNaN(parseFloat(pkg.deliveryDays))) {
+              deliveryDaysNum = parseFloat(pkg.deliveryDays);
+            } else if (typeof pkg.deliveryDays === "number") {
+              deliveryDaysNum = pkg.deliveryDays;
+            } else {
+              deliveryDaysNum = 7; // Default to 7 days if invalid
+            }
+            deliveryDaysValue = deliveryDaysNum;
           }
           
           return {
@@ -4455,7 +4536,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
             originalPriceValidFrom: pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom).toISOString() : undefined,
             originalPriceValidUntil: pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil).toISOString() : undefined,
-            deliveryDays: deliveryDaysNum,
+            deliveryDays: deliveryDaysValue,
           revisions: pkg.revisions || "",
           features: Array.isArray(pkg.features) ? pkg.features : [],
           order: pkg.order || 0,
@@ -5397,7 +5478,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                 )}
 
                 {/* Service Type - How the service is provided */}
-                {!isPackageService && (
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Service Type <span className="text-red-500">*</span>
@@ -5440,10 +5520,9 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     </button>
                   </div>
                 </div>
-                )}
 
-                {/* Online Delivery Days - Only show for online services */}
-                {!isPackageService && serviceType === "online" && (
+                {/* Online Delivery Days - Only show for online services, but not for package services */}
+                {serviceType === "online" && !isPackageService && (
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Delivery Time <span className="text-red-500">*</span>
@@ -5464,8 +5543,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                   </div>
                 )}
 
-                {/* Delivery Type - Only show for in-person services, not package services */}
-                {!isPackageService && serviceType === "in-person" && (
+                {/* Delivery Type - Only show for in-person services */}
+                {serviceType === "in-person" && (
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Delivery Type
@@ -5795,18 +5874,40 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
 
                           {/* Delivery Dropdown */}
                           <div>
-                            <Select
-                              value={pkg.deliveryDays || "standard"}
-                              onValueChange={(value) => updatePackage(pkg.id, "deliveryDays", value)}
-                            >
-                              <SelectTrigger className="font-['Poppins',sans-serif] text-[13px] border-gray-300">
-                                <SelectValue placeholder="Standard Delivery" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="standard">Standard Delivery</SelectItem>
-                                <SelectItem value="same-day">Delivers in 2 days</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
+                              DELIVERY TIME {serviceType === "online" && <span className="text-red-500">*</span>}
+                            </Label>
+                            {serviceType === "online" ? (
+                              <Select
+                                value={pkg.deliveryDays || ""}
+                                onValueChange={(value) => updatePackage(pkg.id, "deliveryDays", value)}
+                              >
+                                <SelectTrigger className="font-['Poppins',sans-serif] text-[13px] border-gray-300">
+                                  <SelectValue placeholder="DELIVERY TIME" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1-2 days">1 DAY DELIVERY</SelectItem>
+                                  <SelectItem value="2-4 days">2 DAYS DELIVERY</SelectItem>
+                                  <SelectItem value="3-5 days">3 DAYS DELIVERY</SelectItem>
+                                  <SelectItem value="5-7 days">5-7 DAYS DELIVERY</SelectItem>
+                                  <SelectItem value="7-14 days">7-14 DAYS DELIVERY</SelectItem>
+                                  <SelectItem value="14-30 days">14-30 DAYS DELIVERY</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Select
+                                value={pkg.deliveryDays || "standard"}
+                                onValueChange={(value) => updatePackage(pkg.id, "deliveryDays", value)}
+                              >
+                                <SelectTrigger className="font-['Poppins',sans-serif] text-[13px] border-gray-300">
+                                  <SelectValue placeholder="Standard Delivery" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="standard">Standard Delivery</SelectItem>
+                                  <SelectItem value="same-day">Delivers in 2 days</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                           </div>
 
                           {/* Price Label and Input */}

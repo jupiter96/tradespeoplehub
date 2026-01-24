@@ -423,7 +423,18 @@ export default function ServiceDetailPage() {
                   answer: f.answer || "",
                 }))
               : [],
+            serviceType: s.serviceType || "in-person",
+            onlineDeliveryDays: s.onlineDeliveryDays || null,
           };
+          
+          // Console log for debugging
+          console.log("=== Service Detail Page - Service Data ===");
+          console.log("Full Service Data:", transformedService);
+          console.log("Service Type:", transformedService.serviceType);
+          console.log("Online Delivery Days:", transformedService.onlineDeliveryDays);
+          console.log("Original Service Data (s):", s);
+          console.log("==========================================");
+          
           setService(transformedService);
           
           // Check if service is not approved (only redirect if not admin access)
@@ -462,6 +473,18 @@ export default function ServiceDetailPage() {
 
     fetchService();
   }, [id, isAdminAccess, isLoggedIn, userRole]);
+
+  // Log service data when service state changes
+  useEffect(() => {
+    if (service) {
+      console.log("=== Service State Updated ===");
+      console.log("Service:", service);
+      console.log("Service Type:", service.serviceType);
+      console.log("Online Delivery Days:", service.onlineDeliveryDays);
+      console.log("Has Packages:", !!(service.packages && service.packages.length > 0));
+      console.log("===========================");
+    }
+  }, [service]);
 
   // Handle pending service redirect
   useEffect(() => {

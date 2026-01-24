@@ -91,7 +91,7 @@ export interface Order {
   items: OrderItem[];
   service: string; // main service title for display
   date: string; // order creation date
-  status: "In Progress" | "Completed" | "Cancelled" | "Rejected" | "disputed";
+  status: "In Progress" | "Completed" | "Cancelled" | "Cancellation Pending" | "Rejected" | "disputed";
   amount: string; // formatted amount with £
   amountValue: number; // numeric value for sorting
   professional: string;
@@ -250,7 +250,7 @@ interface OrdersContextType {
   acceptDisputeOffer: (disputeId: string) => Promise<void>;
   rejectDisputeOffer: (disputeId: string, message?: string) => Promise<void>;
   requestCancellation: (orderId: string, reason?: string) => Promise<void>;
-  respondToCancellation: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
+  respondToCancellation: (orderId: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   withdrawCancellation: (orderId: string) => Promise<void>;
   requestRevision: (orderId: string, reason: string, message?: string, files?: File[]) => Promise<void>;
   respondToRevision: (orderId: string, action: 'accept' | 'reject', additionalNotes?: string) => Promise<void>;
@@ -885,11 +885,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order with cancellation request
+      // Update order with cancellation request (status → Cancellation Pending when anyone requests)
       setOrders(prev => prev.map(order => {
         if (order.id === orderId) {
           return {
             ...order,
+            status: data.orderStatus || order.status,
             cancellationRequest: {
               status: 'pending',
               requestedBy: data.cancellationRequest.requestedBy,
@@ -912,7 +913,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const respondToCancellation = async (orderId: string, action: 'approve' | 'reject'): Promise<void> => {
+  const respondToCancellation = async (orderId: string, action: 'approve' | 'reject', reason?: string): Promise<void> => {
     try {
       const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/cancellation-request`), {
         method: 'PUT',
@@ -920,7 +921,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, reason }),
       });
 
       if (!response.ok) {
@@ -941,6 +942,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
               status: data.cancellationRequest.status,
               respondedAt: data.cancellationRequest.respondedAt,
               respondedBy: data.cancellationRequest.respondedBy,
+              rejectionReason: data.cancellationRequest.rejectionReason || order.cancellationRequest?.rejectionReason,
             },
           };
         }

@@ -2679,7 +2679,17 @@ const BankLogo = () => (
 // Billing Section
 function BillingSection() {
   const { userInfo, refreshUser } = useAccount();
+  const location = useLocation();
   const [billingTab, setBillingTab] = useState<"wallet" | "card" | "invoice" | "history">("wallet");
+  
+  // Check URL parameters for billing tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get("section");
+    if (section === "card") {
+      setBillingTab("card");
+    }
+  }, [location.search]);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [showFundSection, setShowFundSection] = useState(false);

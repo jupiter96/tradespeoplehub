@@ -65,7 +65,7 @@ export interface Order {
   clientId?: string;
   clientName?: string;
   clientAvatar?: string;
-  status: 'In Progress' | 'Completed' | 'Cancelled' | 'disputed';
+  status: 'In Progress' | 'Completed' | 'Cancelled' | 'Cancellation Pending' | 'disputed';
   deliveryStatus?: 'pending' | 'active' | 'delivered' | 'completed' | 'cancelled';
   date: string;
   amount: string;
@@ -105,5 +105,16 @@ export interface ServiceThumbnail {
   type: 'image' | 'video';
   url: string;
   thumbnail?: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  at?: string;
+  label: string;
+  description?: string;
+  message?: string;
+  files?: OrderFile[];
+  colorClass: string;
+  icon: React.ReactNode;
 }
 

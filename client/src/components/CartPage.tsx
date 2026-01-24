@@ -316,6 +316,7 @@ export default function CartPage() {
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [skipAddress, setSkipAddress] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   
@@ -858,60 +859,129 @@ export default function CartPage() {
     toast.info("Promo code removed");
   };
 
-  const handleAddAddress = async () => {
+  const handleOpenChangeAddress = (addressId: string) => {
+    const address = addresses.find(addr => addr.id === addressId);
+    if (address) {
+      setEditingAddressId(addressId);
+      setNewAddress({
+        postcode: address.postcode || "",
+        address: address.address || "",
+        city: address.city || "",
+        county: address.county || "",
+        phone: address.phone || ""
+      });
+      setShowAddressDialog(true);
+    }
+  };
+
+  const handleSaveAddress = async () => {
     if (!newAddress.postcode || !newAddress.address || !newAddress.city || !newAddress.phone) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     try {
-      const newAddressData = {
-        postcode: newAddress.postcode,
-        address: newAddress.address,
-        city: newAddress.city,
-        county: newAddress.county || "",
-        phone: newAddress.phone,
-        isDefault: addresses.length === 0, // First address is default
-      };
+      if (editingAddressId) {
+        // Update existing address
+        const addressToUpdate = addresses.find(addr => addr.id === editingAddressId);
+        const updateData = {
+          postcode: newAddress.postcode,
+          address: newAddress.address,
+          city: newAddress.city,
+          county: newAddress.county || "",
+          phone: newAddress.phone,
+          isDefault: addressToUpdate?.isDefault || false,
+        };
 
-      // Save to API
-      const response = await fetch(resolveApiUrl("/api/auth/profile/addresses"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(newAddressData),
-      });
+        const response = await fetch(resolveApiUrl(`/api/auth/profile/addresses/${editingAddressId}`), {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(updateData),
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to save address");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to update address");
+        }
+
+        const data = await response.json();
+        const updatedAddress: Address = {
+          id: data.address?.id || editingAddressId,
+          postcode: data.address?.postcode || updateData.postcode,
+          address: data.address?.address || updateData.address,
+          city: data.address?.city || updateData.city,
+          county: data.address?.county || updateData.county,
+          phone: data.address?.phone || updateData.phone,
+          isDefault: data.address?.isDefault || updateData.isDefault,
+        };
+
+        // Update local state
+        const updatedAddresses = addresses.map(addr => 
+          addr.id === editingAddressId ? updatedAddress : addr
+        );
+        setAddresses(updatedAddresses);
+        setSelectedAddress(updatedAddress.id);
+        setShowAddressDialog(false);
+        setEditingAddressId(null);
+        setNewAddress({
+          postcode: "",
+          address: "",
+          city: "",
+          county: "",
+          phone: ""
+        });
+        toast.success("Address updated successfully!");
+      } else {
+        // Add new address (shouldn't happen in checkout, but keep for safety)
+        const newAddressData = {
+          postcode: newAddress.postcode,
+          address: newAddress.address,
+          city: newAddress.city,
+          county: newAddress.county || "",
+          phone: newAddress.phone,
+          isDefault: addresses.length === 0,
+        };
+
+        const response = await fetch(resolveApiUrl("/api/auth/profile/addresses"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(newAddressData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to save address");
+        }
+
+        const data = await response.json();
+        const savedAddress: Address = {
+          id: data.address?.id || data.address?._id || Date.now().toString(),
+          postcode: data.address?.postcode || newAddressData.postcode,
+          address: data.address?.address || newAddressData.address,
+          city: data.address?.city || newAddressData.city,
+          county: data.address?.county || newAddressData.county,
+          phone: data.address?.phone || newAddressData.phone,
+          isDefault: data.address?.isDefault || newAddressData.isDefault,
+        };
+
+        setAddresses([...addresses, savedAddress]);
+        setSelectedAddress(savedAddress.id);
+        setShowAddressDialog(false);
+        setNewAddress({
+          postcode: "",
+          address: "",
+          city: "",
+          county: "",
+          phone: ""
+        });
+        toast.success("Address added successfully!");
       }
-
-      const data = await response.json();
-      const savedAddress: Address = {
-        id: data.address?.id || data.address?._id || Date.now().toString(),
-        postcode: data.address?.postcode || newAddressData.postcode,
-        address: data.address?.address || newAddressData.address,
-        city: data.address?.city || newAddressData.city,
-        county: data.address?.county || newAddressData.county,
-        phone: data.address?.phone || newAddressData.phone,
-        isDefault: data.address?.isDefault || newAddressData.isDefault,
-      };
-
-      // Update local state
-      setAddresses([...addresses, savedAddress]);
-      setSelectedAddress(savedAddress.id);
-      setShowAddressDialog(false);
-      setNewAddress({
-        postcode: "",
-        address: "",
-        city: "",
-        county: "",
-        phone: ""
-      });
-      toast.success("Address added successfully!");
     } catch (error: any) {
       toast.error(error.message || "Failed to save address");
     }
@@ -1374,13 +1444,15 @@ export default function CartPage() {
     
     
     // Build order requests for each item with their individual time slots
+    // For online services, no booking/time slot is needed
     const orderRequests = cartItems.map((item, index) => {
       const timeSlot = itemTimeSlots[item.id];
       const itemSubtotal = (item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity;
       
-      // Format date for booking
+      // Format date for booking - only for in-person services
       let bookingInfo: { date: string; time: string; endTime?: string; timeSlot: string } | undefined = undefined;
-      if (timeSlot && timeSlot.date && timeSlot.time) {
+      // Only include booking info if service is in-person and time slot is selected
+      if (hasInPersonService && timeSlot && timeSlot.date && timeSlot.time) {
         const dateStr = timeSlot.date.toLocaleDateString('en-GB', {
           year: 'numeric',
           month: '2-digit',
@@ -1738,7 +1810,7 @@ export default function CartPage() {
                         <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">1</span>
                       </div>
                       <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
-                        Service Location
+                        Address
                       </h2>
                     </div>
                     {/* Toggle Icon */}
@@ -1755,27 +1827,29 @@ export default function CartPage() {
                 {/* Collapsible Content */}
                 <div className={`${showAddressSection ? 'block' : 'hidden'}`}>
                   <div className="p-4 md:p-6">
-                    {/* Add New Address Button */}
-                    <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-5">
-                      <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 border-2 border-dashed border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 h-auto"
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add New Address
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="w-full">
-                          <DialogHeader>
-                            <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                              Add New Address
-                            </DialogTitle>
-                            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                              Enter your delivery address details
-                            </DialogDescription>
-                          </DialogHeader>
+                    {/* Change Address Dialog */}
+                    <Dialog open={showAddressDialog} onOpenChange={(open) => {
+                      setShowAddressDialog(open);
+                      if (!open) {
+                        setEditingAddressId(null);
+                        setNewAddress({
+                          postcode: "",
+                          address: "",
+                          city: "",
+                          county: "",
+                          phone: ""
+                        });
+                      }
+                    }}>
+                      <DialogContent className="w-full">
+                        <DialogHeader>
+                          <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                            {editingAddressId ? "Change Address" : "Add New Address"}
+                          </DialogTitle>
+                          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            {editingAddressId ? "Update your delivery address details" : "Enter your delivery address details"}
+                          </DialogDescription>
+                        </DialogHeader>
                           <div className="space-y-4 mt-4">
                               <div>
                                 <AddressAutocomplete
@@ -1816,14 +1890,24 @@ export default function CartPage() {
                               </div>
                               <div className="flex gap-3 pt-4">
                                 <Button
-                                  onClick={handleAddAddress}
+                                  onClick={handleSaveAddress}
                                   className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
                                 >
-                                  Save Address
+                                  {editingAddressId ? "Update Address" : "Save Address"}
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  onClick={() => setShowAddressDialog(false)}
+                                  onClick={() => {
+                                    setShowAddressDialog(false);
+                                    setEditingAddressId(null);
+                                    setNewAddress({
+                                      postcode: "",
+                                      address: "",
+                                      city: "",
+                                      county: "",
+                                      phone: ""
+                                    });
+                                  }}
                                   className="flex-1 font-['Poppins',sans-serif]"
                                 >
                                   Cancel
@@ -1832,7 +1916,6 @@ export default function CartPage() {
                             </div>
                           </DialogContent>
                         </Dialog>
-                      </div>
 
                     {/* Address List */}
                     {loadingAddresses ? (
@@ -1897,14 +1980,31 @@ export default function CartPage() {
                                       </div>
                                     </Label>
                                   </div>
-                                  {!address.isDefault && (
-                                    <button
-                                      onClick={() => handleRemoveAddress(address.id)}
-                                      className="p-1.5 md:p-2 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />
-                                    </button>
-                                  )}
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {selectedAddress === address.id && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenChangeAddress(address.id);
+                                        }}
+                                        className="px-3 py-1.5 md:px-4 md:py-2 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex items-center gap-1.5 md:gap-2 shadow-md hover:shadow-lg font-['Poppins',sans-serif] text-[12px] md:text-[13px]"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                        <span className="hidden md:inline">Change</span>
+                                      </button>
+                                    )}
+                                    {!address.isDefault && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemoveAddress(address.id);
+                                        }}
+                                        className="p-1.5 md:p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -2029,6 +2129,20 @@ export default function CartPage() {
                                   )}
                                 </Label>
                               </div>
+                              {method.type === "card" && selectedPayment === method.id && (
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate('/account?tab=billing&section=card');
+                                    }}
+                                    className="px-3 py-1.5 md:px-4 md:py-2 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex items-center gap-1.5 md:gap-2 shadow-md hover:shadow-lg font-['Poppins',sans-serif] text-[12px] md:text-[13px]"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                    <span className="hidden md:inline">Change</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2036,16 +2150,6 @@ export default function CartPage() {
                       </RadioGroup>
                     )}
 
-                    {selectedPayment && selectedPayment !== "paypal" && paymentMethods.find(m => m.id === selectedPayment && m.type === "card") && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] py-5 md:py-6 mt-1 md:mt-2"
-                        onClick={() => navigate('/account?tab=billing&section=fund')}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add New Card
-                      </Button>
-                    )}
 
                     {/* Security Note */}
                     <div className="mt-3 md:mt-4 flex items-start gap-2 bg-gray-50 rounded-lg md:rounded-xl p-2.5 md:p-3">
@@ -2058,7 +2162,8 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Step: Choose Time Slot for Each Service */}
+              {/* Step: Choose Time Slot for Each Service - Only show for in-person services */}
+              {hasInPersonService && (
               <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {/* Header with Toggle */}
                 <button
@@ -2068,10 +2173,10 @@ export default function CartPage() {
                   <div className="flex items-center justify-between gap-2 md:gap-3">
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className="w-6 h-6 md:w-7 md:h-7 bg-[#10B981] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">{hasInPersonService ? '3' : '2'}</span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">3</span>
                       </div>
                       <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
-                        Choose Time Slots
+                        Time Slot
                       </h2>
                       {/* Show completion status */}
                       <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
@@ -2329,150 +2434,154 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
+              )}
+
+              {/* Step 4: Cart Items */}
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Header with Toggle */}
+                <button
+                  onClick={() => setShowItemsSection(!showItemsSection)}
+                  className="w-full px-4 md:px-6 py-3 md:py-4 border-b border-gray-100"
+                >
+                  <div className="flex items-center justify-between gap-2 md:gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-6 h-6 md:w-7 md:h-7 bg-[#FE8A0F] rounded-full flex items-center justify-center shrink-0">
+                        <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-white font-medium">{hasInPersonService ? '4' : '2'}</span>
+                      </div>
+                      <h2 className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-[#2c353f] font-medium text-left">
+                        Cart Items
+                      </h2>
+                      <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px]">{cartItems.length} items</Badge>
+                    </div>
+                    {/* Toggle Icon */}
+                    <div>
+                      {showItemsSection ? (
+                        <ChevronUp className="w-5 h-5 text-[#6b6b6b]" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Collapsible Content */}
+                <div className={`${showItemsSection ? 'block' : 'hidden'}`}>
+                  <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+                    {cartItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="border border-gray-200 rounded-lg md:rounded-xl p-3 md:p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="flex gap-3 md:gap-4">
+                          {/* Service Image/Video - Minimalist */}
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                            {item.thumbnailVideo && item.thumbnailVideo.url ? (
+                              <VideoThumbnail
+                                videoUrl={item.thumbnailVideo.url}
+                                thumbnail={item.thumbnailVideo.thumbnail}
+                                fallbackImage={item.image}
+                                className="w-full h-full"
+                              />
+                            ) : item.image ? (
+                              <img
+                                src={resolveMediaUrl(item.image)}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <ShoppingBag className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Service Details */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium mb-0.5 line-clamp-2">
+                              {item.title}
+                            </h3>
+                            <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">
+                              by {item.seller}
+                            </p>
+                            
+                            {/* Selected Addons - Minimalist */}
+                            {item.addons && item.addons.length > 0 && (
+                              <div className="mb-2 space-y-0.5">
+                                {item.addons.map((addon) => (
+                                  <p key={addon.id} className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#FE8A0F]">
+                                    + {addon.title} (£{addon.price})
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Booking Information - Minimalist */}
+                            {item.booking && (
+                              <div className="bg-blue-50/70 border border-blue-200 rounded-md md:rounded-lg p-2 mb-2">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <Calendar className="w-3 h-3 text-[#3B82F6]" />
+                                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
+                                    Appointment Scheduled
+                                  </p>
+                                </div>
+                                <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
+                                  {new Date(item.booking.date).toLocaleDateString('en-GB', { 
+                                    weekday: 'short',
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })} • {item.booking.time}{item.booking.endTime ? ` - ${item.booking.endTime}` : ''}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Quantity and Price - Mobile Optimized */}
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center gap-1.5 md:gap-2">
+                                <button
+                                  onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 md:gap-3">
+                                <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
+                                  £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
+                                </p>
+                                <button
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors active:scale-95"
+                                >
+                                  <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
             </div>
 
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1 order-1 lg:order-2">
-              <div className="space-y-4 md:space-y-5">
-                {/* Order Summary Section */}
-                <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  {/* Header with Toggle */}
-                  <button
-                    onClick={() => setShowItemsSection(!showItemsSection)}
-                    className="w-full px-4 md:px-6 py-3 md:py-4 border-b border-gray-100"
-                  >
-                    <div className="flex items-center justify-between gap-2 md:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <h2 className="font-['Poppins',sans-serif] text-[18px] md:text-[20px] text-[#2c353f] font-semibold">
-                          Order Summary
-                        </h2>
-                        <Badge className="bg-gray-100 text-[#2c353f] text-[11px] md:text-[12px]">{cartItems.length} items</Badge>
-                      </div>
-                      {/* Toggle Icon */}
-                      <div>
-                        {showItemsSection ? (
-                          <ChevronUp className="w-5 h-5 text-[#6b6b6b]" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
-                        )}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Collapsible Content */}
-                  <div className={`${showItemsSection ? 'block' : 'hidden'}`}>
-                    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-                      {cartItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="border border-gray-200 rounded-lg md:rounded-xl p-3 md:p-4 hover:border-gray-300 hover:shadow-sm transition-all"
-                        >
-                          <div className="flex gap-3 md:gap-4">
-                            {/* Service Image/Video - Minimalist */}
-                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                              {item.thumbnailVideo && item.thumbnailVideo.url ? (
-                                <VideoThumbnail
-                                  videoUrl={item.thumbnailVideo.url}
-                                  thumbnail={item.thumbnailVideo.thumbnail}
-                                  fallbackImage={item.image}
-                                  className="w-full h-full"
-                                />
-                              ) : item.image ? (
-                                <img
-                                  src={resolveMediaUrl(item.image)}
-                                  alt={item.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                  <ShoppingBag className="w-6 h-6 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Service Details */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium mb-0.5 line-clamp-2">
-                                {item.title}
-                              </h3>
-                              <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">
-                                by {item.seller}
-                              </p>
-                              
-                              {/* Selected Addons - Minimalist */}
-                              {item.addons && item.addons.length > 0 && (
-                                <div className="mb-2 space-y-0.5">
-                                  {item.addons.map((addon) => (
-                                    <p key={addon.id} className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#FE8A0F]">
-                                      + {addon.title} (£{addon.price})
-                                    </p>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Booking Information - Minimalist */}
-                              {item.booking && (
-                                <div className="bg-blue-50/70 border border-blue-200 rounded-md md:rounded-lg p-2 mb-2">
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <Calendar className="w-3 h-3 text-[#3B82F6]" />
-                                    <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
-                                      Appointment Scheduled
-                                    </p>
-                                  </div>
-                                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
-                                    {new Date(item.booking.date).toLocaleDateString('en-GB', { 
-                                      weekday: 'short',
-                                      month: 'short', 
-                                      day: 'numeric',
-                                      year: 'numeric'
-                                    })} • {item.booking.time}{item.booking.endTime ? ` - ${item.booking.endTime}` : ''}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Quantity and Price - Mobile Optimized */}
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-1.5 md:gap-2">
-                                  <button
-                                    onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                    className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
-                                  >
-                                    <Minus className="w-3 h-3" />
-                                  </button>
-                                  <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
-                                    {item.quantity}
-                                  </span>
-                                  <button
-                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                    className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </button>
-                                </div>
-                                
-                                <div className="flex items-center gap-2 md:gap-3">
-                                  <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
-                                    £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
-                                  </p>
-                                  <button
-                                    onClick={() => removeFromCart(item.id)}
-                                    className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors active:scale-95"
-                                  >
-                                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
+              <div className="lg:sticky lg:top-24 space-y-4 md:space-y-5">
                 {/* Price Details */}
-                <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6 sticky top-32">
+                <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6">
                 {/* Promo Code */}
                 <div className="mb-6">
                   <label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2 flex items-center gap-2">
@@ -2528,13 +2637,6 @@ export default function CartPage() {
 
                 {/* Modern Invoice-Style Breakdown */}
                 <div className="mb-6">
-                  <div className="bg-gradient-to-br from-[#FFF5EB] to-[#FFE8CC] rounded-xl p-4 mb-4">
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-[#FE8A0F]" />
-                      Order Invoice
-                    </h3>
-                  </div>
-                  
                   {/* Single Invoice Card */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="space-y-3">
@@ -2543,7 +2645,7 @@ export default function CartPage() {
                         <div key={item.id + index} className={index > 0 ? 'pt-3 border-t border-gray-300' : ''}>
                           <div className="flex justify-between items-center mb-2">
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold">
-                              {item.title} ({item.quantity} × £{item.price.toFixed(2)})
+                              Service {index + 1} ({item.quantity} × £{item.price.toFixed(2)})
                             </p>
                             <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
                               £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}

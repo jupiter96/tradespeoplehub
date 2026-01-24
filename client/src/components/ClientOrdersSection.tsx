@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 
 // Import separated order components
-import { AddInfoDialog } from "./orders";
+import { AddInfoDialog, getStatusLabel, getStatusLabelForTable } from "./orders";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
@@ -233,6 +233,52 @@ export default function ClientOrdersSection() {
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
 
+  // Function to close all modals and reset related states
+  const closeAllModals = () => {
+    setIsRatingDialogOpen(false);
+    setIsCancelDialogOpen(false);
+    setIsDisputeDialogOpen(false);
+    setIsCancellationRequestDialogOpen(false);
+    setIsRevisionRequestDialogOpen(false);
+    setIsDisputeResponseDialogOpen(false);
+    setIsAddInfoDialogOpen(false);
+    // Reset form states when closing modals
+    setCancelReason("");
+    setCancellationReason("");
+    setRevisionReason("");
+    setRevisionMessage("");
+    setRevisionFiles([]);
+    setDisputeResponseMessage("");
+  };
+
+  // Function to open a specific modal and close all others
+  const openModal = (modalName: 'rating' | 'cancel' | 'dispute' | 'cancellationRequest' | 'revisionRequest' | 'disputeResponse' | 'addInfo') => {
+    closeAllModals();
+    switch (modalName) {
+      case 'rating':
+        setIsRatingDialogOpen(true);
+        break;
+      case 'cancel':
+        setIsCancelDialogOpen(true);
+        break;
+      case 'dispute':
+        setIsDisputeDialogOpen(true);
+        break;
+      case 'cancellationRequest':
+        setIsCancellationRequestDialogOpen(true);
+        break;
+      case 'revisionRequest':
+        setIsRevisionRequestDialogOpen(true);
+        break;
+      case 'disputeResponse':
+        setIsDisputeResponseDialogOpen(true);
+        break;
+      case 'addInfo':
+        setIsAddInfoDialogOpen(true);
+        break;
+    }
+  };
+
   // Check for orderId in URL params and auto-select that order
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -251,11 +297,15 @@ export default function ClientOrdersSection() {
   );
 
   // Get orders by order status (not deliveryStatus)
+  // "Cancelled" tab shows both Cancelled and Cancellation Pending (same treatment)
   const getOrdersByStatus = (status: string) => {
     if (status === "all") return clientOrders;
-    return clientOrders.filter(
-      (order) => order.status === status
-    );
+    if (status === "Cancelled") {
+      return clientOrders.filter(
+        (o) => o.status === "Cancelled" || o.status === "Cancellation Pending"
+      );
+    }
+    return clientOrders.filter((order) => order.status === status);
   };
 
   // Filter and sort orders by order status
@@ -303,6 +353,7 @@ export default function ClientOrdersSection() {
         return "bg-green-50 text-green-700 border-green-200";
       case "cancelled":
       case "Cancelled":
+      case "Cancellation Pending":
         return "bg-red-50 text-red-700 border-red-200";
       case "Rejected":
         return "bg-red-50 text-red-700 border-red-200";
@@ -324,6 +375,7 @@ export default function ClientOrdersSection() {
       case "completed":
         return <CheckCircle2 className="w-4 h-4" />;
       case "cancelled":
+      case "Cancellation Pending":
         return <XCircle className="w-4 h-4" />;
       case "dispute":
         return <AlertTriangle className="w-4 h-4" />;
@@ -547,6 +599,25 @@ export default function ClientOrdersSection() {
       );
     }
 
+    if (
+      order.cancellationRequest &&
+      order.cancellationRequest.status === "rejected" &&
+      order.cancellationRequest.respondedAt
+    ) {
+      push(
+        {
+          at: order.cancellationRequest.respondedAt,
+          title: "Cancellation Request Rejected",
+          description: order.cancellationRequest.rejectionReason
+            ? `Your cancellation request was rejected. Reason: ${order.cancellationRequest.rejectionReason}`
+            : "Your cancellation request was rejected. The order will continue.",
+          colorClass: "bg-green-600",
+          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        },
+        "cancellation-rejected"
+      );
+    }
+
     if (order.status === "Completed") {
       push(
         {
@@ -588,7 +659,7 @@ export default function ClientOrdersSection() {
         try {
           await requestCancellation(selectedOrder, cancelReason);
           toast.success("Cancellation request submitted. Waiting for professional approval.");
-          setIsCancelDialogOpen(false);
+          closeAllModals();
           setCancelReason("");
         } catch (error: any) {
           toast.error(error.message || "Failed to request cancellation");
@@ -609,8 +680,7 @@ export default function ClientOrdersSection() {
     try {
       await requestCancellation(selectedOrder, cancellationReason);
       toast.success("Cancellation request submitted. Waiting for response.");
-      setIsCancellationRequestDialogOpen(false);
-      setCancellationReason("");
+      closeAllModals();
     } catch (error: any) {
       toast.error(error.message || "Failed to request cancellation");
     }
@@ -649,12 +719,7 @@ export default function ClientOrdersSection() {
         revisionFiles.length > 0 ? revisionFiles : undefined
       );
       toast.success("Revision request submitted. The professional will review your request.");
-      setIsRevisionRequestDialogOpen(false);
-      // Keep selectedOrder to stay on detail page
-      // setSelectedOrder(null); // Removed to keep order detail page open
-      setRevisionReason("");
-      setRevisionMessage("");
-      setRevisionFiles([]);
+      closeAllModals();
       // Refresh orders to update timeline
       await refreshOrders();
     } catch (error: any) {
@@ -689,7 +754,7 @@ export default function ClientOrdersSection() {
     try {
       await respondToDispute(selectedOrder, disputeResponseMessage || undefined);
       toast.success("Dispute response submitted successfully. Negotiation period has started.");
-      setIsDisputeResponseDialogOpen(false);
+      closeAllModals();
       setDisputeResponseMessage("");
     } catch (error: any) {
       toast.error(error.message || "Failed to respond to dispute");
@@ -725,7 +790,7 @@ export default function ClientOrdersSection() {
       await acceptDelivery(orderId);
       toast.success("Order completed! Funds have been released to the professional. You can now rate the service.");
       setSelectedOrder(orderId);
-      setIsRatingDialogOpen(true);
+      openModal('rating');
       // Refresh orders to update status
       await refreshOrders();
     } catch (error: any) {
@@ -795,7 +860,7 @@ export default function ClientOrdersSection() {
         const data = await response.json();
         
         toast.success("Dispute has been created");
-        setIsDisputeDialogOpen(false);
+        closeAllModals();
         setDisputeRequirements("");
         setDisputeUnmetRequirements("");
         setDisputeEvidenceFiles([]);
@@ -827,7 +892,7 @@ export default function ClientOrdersSection() {
         await rateOrder(selectedOrder, averageRating, review);
       }
       toast.success("Thank you for your feedback! Your review has been submitted.");
-      setIsRatingDialogOpen(false);
+      closeAllModals();
       setRating(0);
       setReview("");
       setCommunicationRating(5);
@@ -875,7 +940,7 @@ export default function ClientOrdersSection() {
             >
               <span className="flex items-center gap-1">
                 {getStatusIcon(order.status)}
-                {order.status?.toUpperCase()}
+                {getStatusLabelForTable(order.status)}
               </span>
             </Badge>
           </div>
@@ -1106,8 +1171,8 @@ export default function ClientOrdersSection() {
   // Elapsed time since booking time arrives (work in progress timer)
   const workStartTime = useMemo(() => {
     if (!currentOrder) return null;
-    // Stop timer for completed or cancelled orders
-    if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled") return null;
+    // Stop timer for completed, cancelled, or cancellation-pending orders
+    if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled" || currentOrder.status === "Cancellation Pending") return null;
     if (currentOrder.deliveryStatus === "delivered" || currentOrder.deliveryStatus === "completed" || currentOrder.deliveryStatus === "cancelled") {
       return null;
     }
@@ -1152,6 +1217,7 @@ export default function ClientOrdersSection() {
          !appointmentCountdown.expired &&
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
+         currentOrder.status !== "Cancellation Pending" &&
          currentOrder.deliveryStatus !== "delivered" && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             {/* Header */}
@@ -1237,6 +1303,7 @@ export default function ClientOrdersSection() {
         {workElapsedTime.started &&
          currentOrder.status !== "Completed" &&
          currentOrder.status !== "Cancelled" &&
+         currentOrder.status !== "Cancellation Pending" &&
          currentOrder.deliveryStatus !== "delivered" && (
           <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
             {/* Header */}
@@ -1341,19 +1408,25 @@ export default function ClientOrdersSection() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge
-                className={`${getStatusBadge(
-                  currentOrder.status
-                )} font-['Poppins',sans-serif] text-[11px]`}
-              >
-                <span className="flex items-center gap-1">
-                  {getStatusIcon(currentOrder.status)}
-                  {currentOrder.status?.toUpperCase()}
-                </span>
-              </Badge>
+              {(() => {
+                const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                const displayStatus = cr?.status === "pending" ? "Cancellation Pending" : currentOrder.status;
+                return (
+                  <Badge
+                    className={`${getStatusBadge(displayStatus)} font-['Poppins',sans-serif] text-[11px]`}
+                  >
+                    <span className="flex items-center gap-1">
+                      {getStatusIcon(displayStatus)}
+                      {getStatusLabel(displayStatus)}
+                    </span>
+                  </Badge>
+                );
+              })()}
               
-              {/* Three Dots Menu - Show on all screens */}
-              {(currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") && (
+              {/* Three Dots Menu - Hide when Cancellation Pending (unless has delivery files for Dispute) */}
+              {(currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") &&
+               (!((currentOrder as any).cancellationRequest?.status === "pending" || (currentOrder as any).metadata?.cancellationRequest?.status === "pending") ||
+                (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -1367,21 +1440,21 @@ export default function ClientOrdersSection() {
                   <DropdownMenuContent align="end" className="w-48">
                     {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 ? (
                       <DropdownMenuItem
-                        onClick={() => setIsDisputeDialogOpen(true)}
+                        onClick={() => openModal('dispute')}
                         className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
                       >
                         <AlertTriangle className="w-4 h-4 mr-2" />
                         Open Dispute
                       </DropdownMenuItem>
-                    ) : (
+                    ) : ((currentOrder as any).cancellationRequest?.status !== "pending" && (currentOrder as any).metadata?.cancellationRequest?.status !== "pending") ? (
                       <DropdownMenuItem
-                        onClick={() => setIsCancelDialogOpen(true)}
+                        onClick={() => openModal('cancel')}
                         className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Cancel Order
                       </DropdownMenuItem>
-                    )}
+                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -1426,6 +1499,47 @@ export default function ClientOrdersSection() {
 
           {/* Timeline Tab */}
           <TabsContent value="timeline" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
+            {/* Order Cancellation Initiated – client sent cancel request (pending) or already cancelled */}
+            {((currentOrder.status === "Cancellation Pending" || (currentOrder as any).cancellationRequest?.status === "pending") &&
+              currentOrder.cancellationRequest?.requestedBy &&
+              currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString()) ||
+            currentOrder.status === "Cancelled" ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+                  Order Cancellation Initiated
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words mb-4">
+                  {currentOrder.status === "Cancelled"
+                    ? (currentOrder.cancellationRequest?.requestedBy?.toString() === userInfo?.id?.toString()
+                        ? `You have initiated the cancellation of your order. The order has been cancelled.`
+                        : currentOrder.professional
+                          ? `The order has been cancelled. ${currentOrder.cancellationRequest?.reason ? `Reason: ${currentOrder.cancellationRequest.reason}` : ''}`
+                          : 'The order has been cancelled.')
+                    : `You have initiated the cancellation of your order. ${currentOrder.professional ? `Please wait for ${currentOrder.professional} to respond.` : 'Please wait for the professional to respond.'}${currentOrder.cancellationRequest?.responseDeadline ? ' If they fail to respond before the deadline, the order will be automatically canceled.' : ''}`}
+                </p>
+                {currentOrder.status !== "Cancelled" &&
+                 (currentOrder as any).cancellationRequest?.status === "pending" && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        if (selectedOrder) {
+                          await withdrawCancellation(selectedOrder);
+                          toast.success("Cancellation request withdrawn. Order will continue.");
+                        }
+                      } catch (error: any) {
+                        toast.error(error.message || "Failed to withdraw cancellation request");
+                      }
+                    }}
+                    variant="outline"
+                    className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[13px] sm:text-[14px]"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Withdraw
+                  </Button>
+                )}
+              </div>
+            ) : null}
+
             {/* Completion Message for Completed Orders */}
             {currentOrder.status === "Completed" && (
               <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md">
@@ -1436,7 +1550,7 @@ export default function ClientOrdersSection() {
                   Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.
                 </p>
                 <Button
-                  onClick={() => setIsRatingDialogOpen(true)}
+                  onClick={() => openModal('rating')}
                   className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
                 >
                   View review
@@ -1444,10 +1558,11 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Cancellation Request - Pending (Client can respond) */}
+            {/* Cancellation Request - Pending (Client can respond to professional's request) */}
             {currentOrder.cancellationRequest && 
              currentOrder.cancellationRequest.status === 'pending' && 
-             currentOrder.cancellationRequest.requestedBy !== userInfo?.id && (
+             currentOrder.cancellationRequest.requestedBy && 
+             currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <div className="flex items-start gap-2 sm:gap-3 mb-4">
                   <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
@@ -1533,7 +1648,16 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {currentOrder.deliveryStatus === "active" && currentOrder.status !== "Completed" && currentOrder.status !== "disputed" && (
+            {/* Service In Progress - Only show if no pending cancellation request from client and order is not cancelled */}
+            {currentOrder.deliveryStatus === "active" && 
+             currentOrder.status !== "Completed" && 
+             currentOrder.status !== "Cancelled" &&
+             currentOrder.status !== "Cancellation Pending" &&
+             currentOrder.status !== "disputed" && 
+             !(currentOrder.cancellationRequest && 
+               currentOrder.cancellationRequest.status === 'pending' && 
+               currentOrder.cancellationRequest.requestedBy && 
+               currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString()) && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service In Progress
@@ -1864,7 +1988,7 @@ export default function ClientOrdersSection() {
                         e.preventDefault();
                         e.stopPropagation();
                         setSelectedOrder(currentOrder.id);
-                        setIsRevisionRequestDialogOpen(true);
+                        openModal('revisionRequest');
                         setRevisionReason("");
                       }}
                       variant="outline"
@@ -1974,7 +2098,7 @@ export default function ClientOrdersSection() {
                                   <div className="flex flex-col sm:flex-row gap-2">
                                     <Button
                                       onClick={() => {
-                                        setIsDisputeResponseDialogOpen(true);
+                                        openModal('disputeResponse');
                                         setDisputeResponseMessage("");
                                       }}
                                       className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] w-full sm:w-auto"
@@ -2294,7 +2418,7 @@ export default function ClientOrdersSection() {
                               e.preventDefault();
                               e.stopPropagation();
                               setSelectedOrder(currentOrder.id);
-                              setIsRevisionRequestDialogOpen(true);
+                              openModal('revisionRequest');
                             }}
                             variant="outline"
                             className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-4 sm:px-6 w-full sm:w-auto"
@@ -2698,7 +2822,7 @@ export default function ClientOrdersSection() {
                               e.preventDefault();
                               e.stopPropagation();
                               setSelectedOrder(currentOrder.id);
-                              setIsRevisionRequestDialogOpen(true);
+                              openModal('revisionRequest');
                             }}
                             variant="outline"
                             className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
@@ -2994,7 +3118,7 @@ export default function ClientOrdersSection() {
                     className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px] relative z-10"
                     onClick={() => {
                       setSelectedOrder(currentOrder.id);
-                      setIsAddInfoDialogOpen(true);
+                      openModal('addInfo');
                     }}
                   >
                     + Add now
@@ -3191,7 +3315,7 @@ export default function ClientOrdersSection() {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       setSelectedOrder(currentOrder.id);
-                                      setIsRevisionRequestDialogOpen(true);
+                                      openModal('revisionRequest');
                                     }}
                                     variant="outline"
                                     className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
@@ -3457,7 +3581,7 @@ export default function ClientOrdersSection() {
                     <Separator className="mb-6" />
                     <div className="space-y-2">
                       <Button
-                        onClick={() => setIsDisputeDialogOpen(true)}
+                        onClick={() => openModal('dispute')}
                         variant="outline"
                         className="w-full font-['Poppins',sans-serif] text-[13px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                       >
@@ -3633,7 +3757,13 @@ export default function ClientOrdersSection() {
           })()}
 
         {/* Rating Dialog - Full Page Style */}
-        <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
+        <Dialog open={isRatingDialogOpen} onOpenChange={(open) => {
+          if (open) {
+            openModal('rating');
+          } else {
+            closeAllModals();
+          }
+        }}>
           <DialogContent className="w-[95vw] !max-w-[1400px] sm:!max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
             <DialogHeader className="sr-only">
               <DialogTitle>Rate Your Service</DialogTitle>
@@ -4028,7 +4158,13 @@ export default function ClientOrdersSection() {
         </Dialog>
 
         {/* Cancel Order Dialog */}
-        <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <Dialog open={isCancelDialogOpen} onOpenChange={(open) => {
+          if (open) {
+            openModal('cancel');
+          } else {
+            closeAllModals();
+          }
+        }}>
           <DialogContent className="w-[70vw]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
@@ -4062,8 +4198,7 @@ export default function ClientOrdersSection() {
               <div className="flex gap-3">
                 <Button
                   onClick={() => {
-                    setIsCancelDialogOpen(false);
-                    setCancelReason("");
+                    closeAllModals();
                   }}
                   variant="outline"
                   className="flex-1 font-['Poppins',sans-serif]"
@@ -4083,7 +4218,13 @@ export default function ClientOrdersSection() {
         </Dialog>
 
         {/* Dispute Dialog */}
-        <Dialog open={isDisputeDialogOpen} onOpenChange={setIsDisputeDialogOpen}>
+        <Dialog open={isDisputeDialogOpen} onOpenChange={(open) => {
+          if (open) {
+            openModal('dispute');
+          } else {
+            closeAllModals();
+          }
+        }}>
           <DialogContent className="w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[70vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
@@ -4225,7 +4366,7 @@ export default function ClientOrdersSection() {
               <div className="flex gap-3 justify-end pt-4">
                 <Button
                   onClick={() => {
-                    setIsDisputeDialogOpen(false);
+                    closeAllModals();
                     setDisputeRequirements("");
                     setDisputeUnmetRequirements("");
                     setDisputeEvidenceFiles([]);
@@ -4356,7 +4497,7 @@ export default function ClientOrdersSection() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setIsRevisionRequestDialogOpen(false);
+                  closeAllModals();
                   setSelectedOrder(null);
                   setRevisionReason("");
                   setRevisionMessage("");
@@ -4552,7 +4693,7 @@ export default function ClientOrdersSection() {
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
                             {getStatusIcon(order.status)}
-                            {order.status?.toUpperCase()}
+                            {getStatusLabelForTable(order.status)}
                           </span>
                         </Badge>
                       </TableCell>
@@ -4649,7 +4790,7 @@ export default function ClientOrdersSection() {
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
                             {getStatusIcon(order.status)}
-                            {order.status?.toUpperCase()}
+                            {getStatusLabelForTable(order.status)}
                           </span>
                         </Badge>
                       </TableCell>
@@ -4843,7 +4984,7 @@ export default function ClientOrdersSection() {
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
                             {getStatusIcon(order.status)}
-                            {order.status?.toUpperCase()}
+                            {getStatusLabelForTable(order.status)}
                           </span>
                         </Badge>
                       </TableCell>
@@ -4925,7 +5066,7 @@ export default function ClientOrdersSection() {
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
                           <span className="flex items-center gap-1">
                             {getStatusIcon(order.status)}
-                            {order.status?.toUpperCase()}
+                            {getStatusLabelForTable(order.status)}
                           </span>
                         </Badge>
                       </TableCell>
@@ -5075,7 +5216,7 @@ export default function ClientOrdersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setIsRevisionRequestDialogOpen(false);
+                closeAllModals();
                 setSelectedOrder(null);
                 setRevisionReason("");
                 setRevisionMessage("");
@@ -5099,7 +5240,13 @@ export default function ClientOrdersSection() {
       {/* Additional Info Dialog */}
       <AddInfoDialog
         open={isAddInfoDialogOpen}
-        onOpenChange={setIsAddInfoDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            openModal('addInfo');
+          } else {
+            closeAllModals();
+          }
+        }}
         order={orders.find(o => o.id === selectedOrder) || null}
         onSubmit={async (orderId, message, files) => {
           await addAdditionalInfo(orderId, message, files);
@@ -5109,7 +5256,13 @@ export default function ClientOrdersSection() {
       />
 
       {/* Dispute Response Dialog */}
-      <Dialog open={isDisputeResponseDialogOpen} onOpenChange={setIsDisputeResponseDialogOpen}>
+      <Dialog open={isDisputeResponseDialogOpen} onOpenChange={(open) => {
+        if (open) {
+          openModal('disputeResponse');
+        } else {
+          closeAllModals();
+        }
+      }}>
         <DialogContent className="w-[90vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
@@ -5159,7 +5312,7 @@ export default function ClientOrdersSection() {
             <Button
               variant="outline"
               onClick={() => {
-                setIsDisputeResponseDialogOpen(false);
+                closeAllModals();
                 setDisputeResponseMessage("");
               }}
               className="font-['Poppins',sans-serif]"

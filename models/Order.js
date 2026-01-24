@@ -143,7 +143,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['In Progress', 'Completed', 'Cancelled', 'Rejected', 'disputed'],
+      enum: ['In Progress', 'Completed', 'Cancelled', 'Cancellation Pending', 'Rejected', 'disputed'],
       default: 'In Progress',
       index: true,
     },
@@ -240,6 +240,10 @@ const orderSchema = new mongoose.Schema(
     },
     // Cancellation request
     cancellationRequest: {
+      rejectionReason: {
+        type: String,
+        trim: true,
+      },
       status: {
         type: String,
         enum: ['pending', 'approved', 'rejected', 'withdrawn'],
