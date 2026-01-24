@@ -12,6 +12,7 @@ import {
   PlayCircle,
   Edit,
   ChevronDown,
+  Paperclip,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
@@ -204,6 +205,26 @@ export default function ProfessionalOrderTimelineTab({
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                     {currentOrder.cancellationRequest.reason}
                   </p>
+                </div>
+              )}
+              {(currentOrder.cancellationRequest.files || []).length > 0 && (
+                <div className="mb-3">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({currentOrder.cancellationRequest.files.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {currentOrder.cancellationRequest.files.map((file: any, idx: number) => (
+                      <Button
+                        key={idx}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
+                        onClick={() => window.open(resolveFileUrl(file.url), "_blank")}
+                      >
+                        <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                        <span className="truncate">{file.fileName || "Attachment"}</span>
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
               {currentOrder.cancellationRequest.responseDeadline && (
@@ -871,7 +892,7 @@ export default function ProfessionalOrderTimelineTab({
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                         📎 Attachments ({event.files.length})
                       </p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="space-y-3">
                         {event.files.map((file: any, index: number) => {
                           const fileUrl = file.url || "";
                           const fileName = file.fileName || "attachment";
@@ -886,19 +907,20 @@ export default function ProfessionalOrderTimelineTab({
                                 <img
                                   src={resolvedUrl}
                                   alt={fileName}
-                                  className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                  className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
                                   onClick={() => window.open(resolvedUrl, "_blank")}
                                 />
                               ) : (
-                                <div
-                                  className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
                                   onClick={() => window.open(resolvedUrl, "_blank")}
                                 >
-                                  <PlayCircle className="w-8 h-8 text-gray-600" />
-                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
-                                    {fileName}
-                                  </div>
-                                </div>
+                                  <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                  <span className="truncate">{fileName}</span>
+                                </Button>
                               )}
                             </div>
                           );

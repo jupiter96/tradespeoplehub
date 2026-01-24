@@ -1,4 +1,5 @@
 // Order-related utility functions
+import { resolveApiUrl } from "../../config/api";
 
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -95,10 +96,11 @@ export const getStatusLabel = (status?: string): string => {
   return status.toUpperCase();
 };
 
-/** Table/list: show "Cancelled" for both Cancelled and Cancellation Pending (same treatment). */
+/** Table/list: show actual status; "Cancellation Pending" and "Cancelled" as-is. */
 export const getStatusLabelForTable = (status?: string): string => {
   if (!status) return "";
-  if (status === "Cancellation Pending" || status === "Cancelled" || status === "cancelled") return "Cancelled";
+  if (status === "Cancellation Pending") return "Cancellation Pending";
+  if (status === "Cancelled" || status === "cancelled") return "Cancelled";
   return status.toUpperCase();
 };
 
@@ -107,9 +109,8 @@ export const resolveFileUrl = (url: string): string => {
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
-  // Assume it's a relative path and prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_URL || "";
-  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return resolveApiUrl(path);
 };
 
 // Status icon helper

@@ -219,6 +219,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         description: canc.reason
           ? `Cancellation reason: ${canc.reason}`
           : "A cancellation was requested for this order.",
+        files: canc.files && canc.files.length > 0 ? canc.files : undefined,
         colorClass: "bg-red-500",
         icon: <AlertTriangle className="w-5 h-5 text-white" />,
       },

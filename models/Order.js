@@ -258,6 +258,12 @@ const orderSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+      files: [{
+        url: { type: String, required: true },
+        fileName: { type: String, required: true },
+        fileType: { type: String, enum: ['image', 'video', 'document'], required: true },
+        uploadedAt: { type: Date, default: Date.now },
+      }],
       requestedAt: {
         type: Date,
         default: null,

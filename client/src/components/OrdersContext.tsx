@@ -249,7 +249,7 @@ interface OrdersContextType {
   makeOrderDisputeOffer: (disputeId: string, amount: number) => Promise<void>;
   acceptDisputeOffer: (disputeId: string) => Promise<void>;
   rejectDisputeOffer: (disputeId: string, message?: string) => Promise<void>;
-  requestCancellation: (orderId: string, reason?: string) => Promise<void>;
+  requestCancellation: (orderId: string, reason?: string, files?: File[]) => Promise<void>;
   respondToCancellation: (orderId: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   withdrawCancellation: (orderId: string) => Promise<void>;
   requestRevision: (orderId: string, reason: string, message?: string, files?: File[]) => Promise<void>;
@@ -867,15 +867,23 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   // Cancellation Request Management
-  const requestCancellation = async (orderId: string, reason?: string): Promise<void> => {
+  const requestCancellation = async (orderId: string, reason?: string, files?: File[]): Promise<void> => {
     try {
+      const hasFiles = files && files.length > 0;
+      const body = hasFiles
+        ? (() => {
+            const fd = new FormData();
+            fd.append('reason', reason ?? '');
+            files!.forEach((f) => fd.append('files', f));
+            return fd;
+          })()
+        : JSON.stringify({ reason: reason ?? '' });
+
       const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/cancellation-request`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: hasFiles ? undefined : { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ reason: reason || '' }),
+        body,
       });
 
       if (!response.ok) {
@@ -884,28 +892,26 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
+      const cr = data.cancellationRequest || {};
 
-      // Update order with cancellation request (status → Cancellation Pending when anyone requests)
       setOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          return {
-            ...order,
-            status: data.orderStatus || order.status,
-            cancellationRequest: {
-              status: 'pending',
-              requestedBy: data.cancellationRequest.requestedBy,
-              reason: data.cancellationRequest.reason,
-              requestedAt: data.cancellationRequest.requestedAt,
-              responseDeadline: data.responseDeadline || data.cancellationRequest.responseDeadline,
-              respondedAt: undefined,
-              respondedBy: undefined,
-            },
-          };
-        }
-        return order;
+        if (order.id !== orderId) return order;
+        return {
+          ...order,
+          status: data.orderStatus || order.status,
+          cancellationRequest: {
+            status: 'pending',
+            requestedBy: cr.requestedBy,
+            reason: cr.reason,
+            files: cr.files || [],
+            requestedAt: cr.requestedAt,
+            responseDeadline: data.responseDeadline || cr.responseDeadline,
+            respondedAt: undefined,
+            respondedBy: undefined,
+          },
+        };
       }));
 
-      // Refresh orders to get latest data
       await refreshOrders();
     } catch (error: any) {
       console.error('Cancellation request error:', error);

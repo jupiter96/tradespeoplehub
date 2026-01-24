@@ -56,7 +56,8 @@ export default function ProfessionalOrderDetailHeader({
             </span>
           </Badge>
           
-          {(order.deliveryStatus === "pending" || order.deliveryStatus === "active") && 
+          {order.status !== "Cancelled" && order.status !== "Cancellation Pending" &&
+           (order.deliveryStatus === "pending" || order.deliveryStatus === "active") && 
            order.deliveryFiles && order.deliveryFiles.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

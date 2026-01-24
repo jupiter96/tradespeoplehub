@@ -210,6 +210,7 @@ export default function ClientOrdersSection() {
   const [serviceThumbnails, setServiceThumbnails] = useState<{[orderId: string]: { type: 'image' | 'video', url: string, thumbnail?: string }}>({});
   const [rating, setRating] = useState(0);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelFiles, setCancelFiles] = useState<File[]>([]);
   const [review, setReview] = useState("");
   // Detailed rating categories
   const [communicationRating, setCommunicationRating] = useState(5);
@@ -244,6 +245,7 @@ export default function ClientOrdersSection() {
     setIsAddInfoDialogOpen(false);
     // Reset form states when closing modals
     setCancelReason("");
+    setCancelFiles([]);
     setCancellationReason("");
     setRevisionReason("");
     setRevisionMessage("");
@@ -580,6 +582,22 @@ export default function ClientOrdersSection() {
       );
     }
 
+    if (order.cancellationRequest?.requestedAt && order.cancellationRequest?.status) {
+      push(
+        {
+          at: order.cancellationRequest.requestedAt,
+          title: "Cancellation Requested",
+          description: order.cancellationRequest.reason
+            ? `Cancellation reason: ${order.cancellationRequest.reason}`
+            : "A cancellation was requested for this order.",
+          files: order.cancellationRequest.files && order.cancellationRequest.files.length > 0 ? order.cancellationRequest.files : undefined,
+          colorClass: "bg-red-500",
+          icon: <AlertTriangle className="w-5 h-5 text-white" />,
+        },
+        "cancellation-requested"
+      );
+    }
+
     if (
       order.cancellationRequest &&
       order.cancellationRequest.status === "approved" &&
@@ -654,31 +672,44 @@ export default function ClientOrdersSection() {
     }
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
-      // If order is "In Progress", use cancellation request (requires professional approval)
       if (order && order.status === "In Progress") {
         try {
-          await requestCancellation(selectedOrder, cancelReason);
+          await requestCancellation(selectedOrder, cancelReason, cancelFiles.length > 0 ? cancelFiles : undefined);
           toast.success("Cancellation request submitted. Waiting for professional approval.");
           closeAllModals();
           setCancelReason("");
+          setCancelFiles([]);
         } catch (error: any) {
           toast.error(error.message || "Failed to request cancellation");
         }
       } else {
-        // For other statuses, cancel immediately
         cancelOrder(selectedOrder);
         toast.success("Order has been cancelled");
         setIsCancelDialogOpen(false);
         setCancelReason("");
+        setCancelFiles([]);
         setSelectedOrder(null);
       }
     }
   };
 
-  const handleRequestCancellation = async () => {
+  const cancelFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCancelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files;
+    if (!chosen?.length) return;
+    const list = Array.from(chosen);
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "video/mp4", "video/mpeg", "video/quicktime", "video/webm", "application/pdf", "text/plain"];
+    const valid = list.filter((f) => allowed.includes(f.type));
+    if (valid.length < list.length) toast.error("Some files were skipped. Use images, videos, or documents only.");
+    setCancelFiles((prev) => [...prev, ...valid].slice(0, 10));
+    e.target.value = "";
+  };
+
+  const handleRequestCancellation = async (files?: File[]) => {
     if (!selectedOrder) return;
     try {
-      await requestCancellation(selectedOrder, cancellationReason);
+      await requestCancellation(selectedOrder, cancellationReason, files);
       toast.success("Cancellation request submitted. Waiting for response.");
       closeAllModals();
     } catch (error: any) {
@@ -1423,8 +1454,9 @@ export default function ClientOrdersSection() {
                 );
               })()}
               
-              {/* Three Dots Menu - Hide when Cancellation Pending (unless has delivery files for Dispute) */}
-              {(currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") &&
+              {/* Three Dots Menu - Hide when Cancelled or Cancellation Pending */}
+              {currentOrder.status !== "Cancelled" && currentOrder.status !== "Cancellation Pending" &&
+               (currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") &&
                (!((currentOrder as any).cancellationRequest?.status === "pending" || (currentOrder as any).metadata?.cancellationRequest?.status === "pending") ||
                 (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
                 <DropdownMenu>
@@ -1581,6 +1613,26 @@ export default function ClientOrdersSection() {
                         <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
                           {currentOrder.cancellationRequest.reason}
                         </p>
+                      </div>
+                    )}
+                    {(currentOrder.cancellationRequest.files || []).length > 0 && (
+                      <div className="mb-3">
+                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({currentOrder.cancellationRequest.files.length})</p>
+                        <div className="flex flex-wrap gap-2">
+                          {currentOrder.cancellationRequest.files.map((file: any, idx: number) => (
+                            <Button
+                              key={idx}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
+                              onClick={() => window.open(resolveFileUrl(file.url), "_blank")}
+                            >
+                              <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                              <span className="truncate">{file.fileName || "Attachment"}</span>
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     )}
                     {currentOrder.cancellationRequest.responseDeadline && (
@@ -2353,7 +2405,7 @@ export default function ClientOrdersSection() {
                         <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">
                           📎 Attachments ({event.files.length})
                         </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                        <div className="space-y-3">
                           {event.files.map((file: any, index: number) => {
                             const fileUrl = file.url || "";
                             const fileName = file.fileName || "attachment";
@@ -2363,26 +2415,27 @@ export default function ClientOrdersSection() {
                               /\.(png|jpe?g|gif|webp)$/i.test(fileName);
                             const resolvedUrl = resolveFileUrl(fileUrl);
                             return (
-                            <div key={index} className="relative group">
-                              {isImage ? (
-                                <img
-                                  src={resolvedUrl}
-                                  alt={fileName}
-                                  className="w-full h-20 sm:h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => window.open(resolvedUrl, "_blank")}
-                                />
-                              ) : (
-                                <div
-                                  className="w-full h-20 sm:h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                                  onClick={() => window.open(resolvedUrl, "_blank")}
-                                >
-                                  <PlayCircle className="w-6 sm:w-8 h-6 sm:h-8 text-gray-600" />
-                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[9px] sm:text-[10px] px-1 py-0.5 rounded truncate">
-                                    {fileName}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                              <div key={index} className="relative group">
+                                {isImage ? (
+                                  <img
+                                    src={resolvedUrl}
+                                    alt={fileName}
+                                    className="max-w-full max-h-48 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => window.open(resolvedUrl, "_blank")}
+                                  />
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
+                                    onClick={() => window.open(resolvedUrl, "_blank")}
+                                  >
+                                    <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                    <span className="truncate">{fileName}</span>
+                                  </Button>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -4184,7 +4237,7 @@ export default function ClientOrdersSection() {
 
               <div>
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Reason for Cancellation
+                  Reason for Cancellation *
                 </Label>
                 <Textarea
                   placeholder="Please provide a reason for cancelling this order..."
@@ -4193,6 +4246,42 @@ export default function ClientOrdersSection() {
                   rows={4}
                   className="font-['Poppins',sans-serif] text-[13px]"
                 />
+              </div>
+
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  Attachments (optional)
+                </Label>
+                <input
+                  ref={cancelFileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,video/*,.pdf,.txt"
+                  onChange={handleCancelFileChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cancelFileInputRef.current?.click()}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                >
+                  <Paperclip className="w-4 h-4 mr-2" />
+                  Add files
+                </Button>
+                {cancelFiles.length > 0 && (
+                  <ul className="mt-2 space-y-1 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    {cancelFiles.map((f, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <span className="truncate flex-1">{f.name}</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setCancelFiles((p) => p.filter((_, j) => j !== i))}>
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="flex gap-3">

@@ -739,10 +739,10 @@ function ProfessionalOrdersSection() {
     }
   };
 
-  const handleRequestCancellation = async () => {
+  const handleRequestCancellation = async (files?: File[]) => {
     if (!selectedOrder) return;
     try {
-      await requestCancellation(selectedOrder, cancellationReason);
+      await requestCancellation(selectedOrder, cancellationReason, files);
       toast.success("Cancellation request submitted. Waiting for response.");
       closeAllModals();
       setCancellationReason("");

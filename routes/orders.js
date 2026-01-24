@@ -139,6 +139,39 @@ const upload = multer({
   }
 });
 
+// Configure multer for cancellation request attachments
+const cancellationDir = path.join(__dirname, '..', 'uploads', 'cancellations');
+fs.mkdir(cancellationDir, { recursive: true }).catch(() => {});
+
+const cancellationStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, cancellationDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${sanitized}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const cancellationUpload = multer({
+  storage: cancellationStorage,
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+      'application/pdf', 'text/plain', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Images, videos, or documents only.'));
+    }
+  }
+});
+
 // Helper function to get Stripe instance
 function getStripeInstance(settings) {
   const isLive = settings?.stripeLiveMode === true;
@@ -1290,6 +1323,12 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           status: order.cancellationRequest.status,
           requestedBy: order.cancellationRequest.requestedBy ? order.cancellationRequest.requestedBy.toString() : undefined,
           reason: order.cancellationRequest.reason,
+          files: order.cancellationRequest.files ? order.cancellationRequest.files.map(f => ({
+            url: f.url,
+            fileName: f.fileName,
+            fileType: f.fileType,
+            uploadedAt: f.uploadedAt ? new Date(f.uploadedAt).toISOString() : undefined,
+          })) : [],
           requestedAt: order.cancellationRequest.requestedAt ? new Date(order.cancellationRequest.requestedAt).toISOString() : undefined,
           responseDeadline: order.cancellationRequest.responseDeadline ? new Date(order.cancellationRequest.responseDeadline).toISOString() : undefined,
           respondedAt: order.cancellationRequest.respondedAt ? new Date(order.cancellationRequest.respondedAt).toISOString() : undefined,
@@ -1522,44 +1561,51 @@ router.put('/:orderId/extension-request', authenticateToken, requireRole(['clien
   }
 });
 
-// Request cancellation (both client and professional can request)
-router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['client', 'professional']), async (req, res) => {
+// Optional multipart middleware: use multer only for multipart/form-data
+function optionalCancellationUpload(req, res, next) {
+  const ct = req.headers['content-type'] || '';
+  if (ct.includes('multipart/form-data')) {
+    return cancellationUpload.array('files', 10)(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message || 'File upload failed' });
+      next();
+    });
+  }
+  next();
+}
+
+// Request cancellation (both client and professional can request); optional files via multipart
+router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['client', 'professional']), optionalCancellationUpload, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason } = req.body;
+    const reason = (req.body?.reason != null ? String(req.body.reason) : '') || '';
 
     const order = await Order.findOne(await buildOrderQuery(orderId)).populate('client professional');
 
     if (!order) {
+      if (req.files?.length) req.files.forEach(f => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if user is authorized (must be client or professional for this order)
     const isClient = order.client._id.toString() === req.user.id.toString();
     const isProfessional = order.professional._id.toString() === req.user.id.toString();
 
     if (!isClient && !isProfessional) {
+      if (req.files?.length) req.files.forEach(f => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(403).json({ error: 'Not authorized to request cancellation for this order' });
     }
 
-    // Can't request cancellation if order has been delivered
     if (order.status === 'Completed' || order.deliveryStatus === 'delivered' || order.deliveryStatus === 'completed') {
+      if (req.files?.length) req.files.forEach(f => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(400).json({ error: 'Cannot cancel order that has been delivered. Please initiate a dispute instead.' });
     }
 
-    // Can't request cancellation if order is already cancelled or in cancellation-pending flow
     if (order.status === 'Cancelled') {
+      if (req.files?.length) req.files.forEach(f => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(400).json({ error: 'Order is already cancelled.' });
     }
 
-    // If order is "In Progress" and client is requesting cancellation, require professional approval
-    if (order.status === 'In Progress' && isClient) {
-      // This will create a cancellation request that requires professional approval
-      // The logic below will handle this
-    }
-
-    // Check if there's already a pending cancellation request
     if (order.cancellationRequest && order.cancellationRequest.status === 'pending') {
+      if (req.files?.length) req.files.forEach(f => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(400).json({ error: 'There is already a pending cancellation request' });
     }
 
@@ -1578,29 +1624,45 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
       order.metadata.statusBeforeCancellationRequest = order.status;
     }
 
-    // Update cancellation request
+    const cancellationFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        let fileType = 'document';
+        if (file.mimetype.startsWith('image/')) fileType = 'image';
+        else if (file.mimetype.startsWith('video/')) fileType = 'video';
+        cancellationFiles.push({
+          url: `/api/orders/cancellations/${file.filename}`,
+          fileName: file.originalname,
+          fileType,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
     order.cancellationRequest = {
       status: 'pending',
       requestedBy: req.user.id,
       reason: reason || '',
+      files: cancellationFiles,
       requestedAt: new Date(),
       responseDeadline: responseDeadline,
       respondedAt: null,
       respondedBy: null,
     };
 
-    // When anyone (client or professional) requests cancellation, set order status to Cancellation Pending
     order.status = 'Cancellation Pending';
 
     await order.save();
 
+    const cr = order.cancellationRequest.toObject ? order.cancellationRequest.toObject() : order.cancellationRequest;
     res.json({ 
       message: 'Cancellation request submitted successfully',
-      cancellationRequest: order.cancellationRequest,
+      cancellationRequest: { ...cr, files: cr.files || cancellationFiles },
       responseDeadline: responseDeadline,
       orderStatus: order.status
     });
   } catch (error) {
+    if (req.files?.length) req.files.forEach(f => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
     console.error('Cancellation request error:', error);
     res.status(500).json({ error: error.message || 'Failed to request cancellation' });
   }
@@ -1916,6 +1978,21 @@ router.get('/deliveries/:filename', (req, res) => {
     res.sendFile(filePath);
   } catch (error) {
     console.error('Serve delivery file error:', error);
+    res.status(500).json({ error: 'Failed to serve file' });
+  }
+});
+
+// Serve cancellation request attachment files
+router.get('/cancellations/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(cancellationDir, filename);
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Serve cancellation file error:', error);
     res.status(500).json({ error: 'Failed to serve file' });
   }
 });
