@@ -118,17 +118,16 @@ export default function ProfessionalOrderTimelineTab({
 
   return (
     <div className="space-y-4 md:space-y-6 px-4 md:px-6">
-      {/* Order Cancelled Message */}
-      {currentOrder.status === "Cancelled" && (
+      {/* Order Cancelled Message - Show when professional approved cancellation */}
+      {currentOrder.status === "Cancelled" && 
+       currentOrder.cancellationRequest?.status === "approved" &&
+       currentOrder.cancellationRequest?.respondedBy?.toString() === userInfo?.id?.toString() && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 shadow-md mb-6">
           <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
-            Order Cancellation Initiated
+            Your order has been cancelled!
           </h3>
           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-            {currentOrder.cancellationRequest && currentOrder.cancellationRequest.requestedBy && 
-             currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString()
-              ? `${currentOrder.client || 'The client'} has initiated the cancellation of this order. ${currentOrder.cancellationRequest.responseDeadline ? `If you fail to respond before the deadline, the order will be automatically canceled.` : 'The order has been cancelled.'} ${currentOrder.cancellationRequest.reason ? `Reason: ${currentOrder.cancellationRequest.reason}` : ''}`
-              : 'The order has been cancelled.'}
+            Your order has been successfully cancelled, and the payment has been debited.
           </p>
         </div>
       )}
@@ -332,12 +331,44 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
-      {/* Service In Progress - Only show if no pending cancellation request from client */}
+      {/* Work Delivered Message - Show when status is delivered */}
+      {currentOrder.status === "delivered" &&
+       currentOrder.status !== "Completed" &&
+       currentOrder.status !== "Cancelled" &&
+       currentOrder.status !== "Cancellation Pending" && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md mb-6">
+          <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+            Your work has been delivered!
+          </h3>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            {currentOrder.deliveredDate ? (() => {
+              const deliveryDate = new Date(currentOrder.deliveredDate);
+              const deadlineDate = new Date(deliveryDate);
+              deadlineDate.setDate(deadlineDate.getDate() + 1);
+              deadlineDate.setHours(7, 0, 0, 0);
+              const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+              const day = deadlineDate.getDate();
+              const dayName = dayNames[deadlineDate.getDay()];
+              const month = monthNames[deadlineDate.getMonth()];
+              const year = deadlineDate.getFullYear();
+              const hours = deadlineDate.getHours().toString().padStart(2, "0");
+              const minutes = deadlineDate.getMinutes().toString().padStart(2, "0");
+              const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+              const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+              return `You have delivered your work. The client has until ${deadlineStr}, to approve the delivery or request modifications. If no response is received, the order will be automatically completed.`;
+            })() : "You have delivered your work. The client has 24 hours to approve the delivery or request modifications. If no response is received, the order will be automatically completed."}
+          </p>
+        </div>
+      )}
+
+      {/* Service In Progress - Only show if no pending cancellation request from client and status is not delivered */}
       {(currentOrder.deliveryStatus === "active" || workElapsedTime.started) &&
         currentOrder.status !== "Cancelled" &&
         currentOrder.status !== "Cancellation Pending" &&
         currentOrder.status !== "Completed" &&
         currentOrder.status !== "disputed" &&
+        currentOrder.status !== "delivered" &&
         currentOrder.deliveryStatus !== "delivered" &&
         currentOrder.deliveryStatus !== "pending" &&
         !(currentOrder.cancellationRequest && 
@@ -452,7 +483,7 @@ export default function ProfessionalOrderTimelineTab({
       {timelineTimer}
 
       {/* Delivered Status - Completion Request Section */}
-      {currentOrder.deliveryStatus === "delivered" && (
+      {(currentOrder.deliveryStatus === "delivered" || currentOrder.status === "delivered") && (
         <div className="bg-white rounded-lg p-6 shadow-md">
           <h4 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-3">
             Your work has been delivered!

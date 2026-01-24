@@ -1227,6 +1227,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       let status = order.status || 'In Progress';
       if (status === 'pending') status = 'In Progress';
       if (status === 'in_progress' || status === 'In Progress') status = 'In Progress';
+      if (status === 'delivered' || status === 'Delivered') status = 'delivered';
       if (status === 'completed' || status === 'Completed') status = 'Completed';
       if (status === 'cancelled' || status === 'Cancelled') status = 'Cancelled';
       if (status === 'Cancellation Pending' || status === 'cancellation_pending') status = 'Cancellation Pending';
@@ -1922,7 +1923,7 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
     }
 
     // Mark order as delivered
-    order.status = 'In Progress'; // Keep status as In Progress
+    order.status = 'delivered'; // Set status to delivered when work is delivered
     order.deliveryStatus = 'delivered';
     order.deliveredDate = new Date();
     
@@ -2198,6 +2199,7 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
     order.revisionRequest.respondedAt = new Date();
 
     // Re-deliver the order
+    order.status = 'delivered'; // Set status to delivered when revision is re-delivered
     order.deliveryStatus = 'delivered';
     order.deliveredDate = new Date();
     

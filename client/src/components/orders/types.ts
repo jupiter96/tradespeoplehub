@@ -65,7 +65,7 @@ export interface Order {
   clientId?: string;
   clientName?: string;
   clientAvatar?: string;
-  status: 'In Progress' | 'Completed' | 'Cancelled' | 'Cancellation Pending' | 'disputed';
+  status: 'In Progress' | 'Completed' | 'Cancelled' | 'Cancellation Pending' | 'disputed' | 'delivered';
   deliveryStatus?: 'pending' | 'active' | 'delivered' | 'completed' | 'cancelled';
   date: string;
   amount: string;
