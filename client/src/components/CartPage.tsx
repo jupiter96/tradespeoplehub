@@ -590,15 +590,26 @@ export default function CartPage() {
       // Parse methods response
       if (methodsResponse.ok) {
         const methodsData = await methodsResponse.json();
-        cards = (methodsData.paymentMethods || []).map((pm: any) => ({
-          id: pm.paymentMethodId || pm.id,
-          type: "card" as const,
-          cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
-          cardHolder: pm.billing_details?.name || "Card Holder",
-          expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
-          isDefault: pm.isDefault || false,
-          brand: pm.card?.brand || 'visa', // Store card brand for accurate type detection
-        }));
+        cards = (methodsData.paymentMethods || []).map((pm: any) => {
+          // Get last4 from various possible locations in the response
+          const last4 = pm.card?.last4 || pm.last4 || (pm.cardNumber ? pm.cardNumber.slice(-4) : null);
+          
+          if (!last4) {
+            console.warn('[Payment Methods] Missing last4 for payment method:', pm);
+          }
+          
+          return {
+            id: pm.paymentMethodId || pm.id,
+            type: "card" as const,
+            cardNumber: last4 ? `**** **** **** ${last4}` : '**** **** **** ****',
+            cardHolder: pm.billing_details?.name || pm.cardHolder || "Card Holder",
+            expiryDate: pm.card?.exp_month && pm.card?.exp_year 
+              ? `${pm.card.exp_month}/${pm.card.exp_year % 100}` 
+              : pm.expiryDate || "MM/YY",
+            isDefault: pm.isDefault || false,
+            brand: pm.card?.brand || pm.brand || 'visa', // Store card brand for accurate type detection
+          };
+        });
       }
       
       // Build payment methods list: Only show saved cards and PayPal if enabled
@@ -1803,15 +1814,26 @@ export default function CartPage() {
             });
             if (response.ok) {
               const data = await response.json();
-              const newCards = (data.paymentMethods || []).map((pm: any) => ({
-                id: pm.paymentMethodId || pm.id,
-                type: "card" as const,
-                cardNumber: `**** **** **** ${pm.last4 || '4242'}`,
-                cardHolder: pm.billing_details?.name || "Card Holder",
-                expiryDate: `${pm.card?.exp_month || 12}/${(pm.card?.exp_year || 2025) % 100}`,
-                isDefault: pm.isDefault || false,
-                brand: pm.card?.brand || 'visa',
-              }));
+              const newCards = (data.paymentMethods || []).map((pm: any) => {
+                // Get last4 from various possible locations in the response
+                const last4 = pm.card?.last4 || pm.last4 || (pm.cardNumber ? pm.cardNumber.slice(-4) : null);
+                
+                if (!last4) {
+                  console.warn('[Payment Methods] Missing last4 for payment method:', pm);
+                }
+                
+                return {
+                  id: pm.paymentMethodId || pm.id,
+                  type: "card" as const,
+                  cardNumber: last4 ? `**** **** **** ${last4}` : '**** **** **** ****',
+                  cardHolder: pm.billing_details?.name || pm.cardHolder || "Card Holder",
+                  expiryDate: pm.card?.exp_month && pm.card?.exp_year 
+                    ? `${pm.card.exp_month}/${pm.card.exp_year % 100}` 
+                    : pm.expiryDate || "MM/YY",
+                  isDefault: pm.isDefault || false,
+                  brand: pm.card?.brand || pm.brand || 'visa',
+                };
+              });
               
               // Find the most recently added card by comparing with existing cards
               const existingCardIds = paymentMethods.filter(m => m.type === "card").map(m => m.id);
