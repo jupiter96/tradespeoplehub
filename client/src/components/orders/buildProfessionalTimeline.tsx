@@ -66,10 +66,17 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   }
 
   // Service in progress
-  if (order.deliveryStatus === "active" && order.status !== "disputed") {
+  // Show when order is created and in progress
+  // This should appear right after order is placed if status is "In Progress" and not completed/delivered/cancelled/disputed
+  if (order.status === "In Progress" && 
+      order.status !== "disputed" &&
+      order.deliveryStatus !== "delivered" &&
+      order.deliveryStatus !== "completed" &&
+      order.deliveryStatus !== "cancelled" &&
+      order.deliveryStatus !== "dispute") {
     push(
       {
-        at: order.expectedDelivery || (order as any).scheduledDate,
+        at: order.expectedDelivery || (order as any).scheduledDate || (order as any).createdAt || order.date,
         label: "Service In Progress",
         description:
           "You are currently working on this service. Make sure to deliver on time.",

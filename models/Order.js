@@ -37,8 +37,8 @@ const orderItemSchema = new mongoose.Schema({
   }],
   booking: {
     date: String,
-    time: String, // Start time
-    endTime: String, // End time
+    starttime: String, // Start time (e.g., "09:00")
+    endtime: String, // End time (e.g., "17:00")
     timeSlot: String,
   },
   packageType: {

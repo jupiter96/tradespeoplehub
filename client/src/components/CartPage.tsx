@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useCart } from "./CartContext";
 import { useAccount } from "./AccountContext";
 import { useOrders } from "./OrdersContext";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import SEOHead from "./SEOHead";
 import { 
   Trash2, 
@@ -238,6 +238,7 @@ export default function CartPage() {
   const { isLoggedIn, authReady } = useAccount();
   const { refreshOrders } = useOrders();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Redirect to login if not logged in (only after auth is ready)
   useEffect(() => {
@@ -346,6 +347,34 @@ export default function CartPage() {
     showTimePicker?: boolean;
   }}>({});
   const [showTimeSection, setShowTimeSection] = useState(false);
+  
+  // Check for pre-selected time slot from navigation state
+  useEffect(() => {
+    const preSelectTimeSlot = (location.state as any)?.preSelectTimeSlot;
+    if (preSelectTimeSlot && preSelectTimeSlot.serviceId && preSelectTimeSlot.date) {
+      // Find the cart item by serviceId
+      const cartItem = cartItems.find(item => item.id === preSelectTimeSlot.serviceId || item.serviceId === preSelectTimeSlot.serviceId);
+      if (cartItem) {
+        // Set the time slot for this item
+        setItemTimeSlots(prev => ({
+          ...prev,
+          [cartItem.id]: {
+            date: preSelectTimeSlot.date instanceof Date ? preSelectTimeSlot.date : new Date(preSelectTimeSlot.date),
+            time: preSelectTimeSlot.time,
+            endTime: preSelectTimeSlot.endTime,
+            timeSlot: preSelectTimeSlot.timeSlot,
+            showTimePicker: false
+          }
+        }));
+        
+        // Open time section if it's closed
+        setShowTimeSection(true);
+        
+        // Clear the state to prevent re-applying on re-render
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [location.state, cartItems, navigate, location.pathname]);
   
   // Time validation errors
   const [timeValidationErrors, setTimeValidationErrors] = useState<{[itemId: string]: {
@@ -1480,7 +1509,7 @@ export default function CartPage() {
       const isItemOnline = serviceTypeCheck?.isOnline || false;
       
       // Format date for booking - only for in-person services
-      let bookingInfo: { date: string; time: string; endTime?: string; timeSlot: string } | undefined = undefined;
+      let bookingInfo: { date: string; starttime: string; endtime: string; timeSlot: string } | undefined = undefined;
       // Only include booking info if service is in-person and time slot is selected
       if (!isItemOnline && timeSlot && timeSlot.date && timeSlot.time) {
         const dateStr = timeSlot.date.toLocaleDateString('en-GB', {
@@ -1491,8 +1520,8 @@ export default function CartPage() {
         
         bookingInfo = {
           date: dateStr,
-          time: timeSlot.time,
-          endTime: timeSlot.endTime || '',
+          starttime: timeSlot.time,
+          endtime: timeSlot.endTime || timeSlot.time,
           timeSlot: timeSlot.timeSlot || '',
         };
       }
@@ -2333,7 +2362,14 @@ export default function CartPage() {
                             <div className="mb-3 pb-3 border-b border-gray-200">
                               <div className="flex gap-3 items-center">
                                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                                  {item.image ? (
+                                  {item.thumbnailVideo && item.thumbnailVideo.url ? (
+                                    <VideoThumbnail
+                                      videoUrl={item.thumbnailVideo.url}
+                                      thumbnail={item.thumbnailVideo.thumbnail}
+                                      fallbackImage={item.image}
+                                      className="w-full h-full"
+                                    />
+                                  ) : item.image ? (
                                     <img src={resolveMediaUrl(item.image)} alt={item.title} className="w-full h-full object-cover" />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
@@ -2343,7 +2379,7 @@ export default function CartPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold truncate">
-                                    {item.title} ({item.quantity} × £{item.price.toFixed(2)})
+                                    {item.title} ({item.quantity} × £{typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(String(item.price || 0)).toFixed(2)})
                                   </h4>
                                 </div>
                                 {currentSlot.date && currentSlot.time && (
@@ -2647,7 +2683,7 @@ export default function CartPage() {
                                     month: 'short', 
                                     day: 'numeric',
                                     year: 'numeric'
-                                  })} • {item.booking.time}{item.booking.endTime ? ` - ${item.booking.endTime}` : ''}
+                                  })} • {item.booking.starttime || item.booking.time || ''}{item.booking.endtime && item.booking.endtime !== item.booking.starttime ? ` - ${item.booking.endtime}` : (item.booking.endTime ? ` - ${item.booking.endTime}` : '')}
                                 </p>
                               </div>
                             )}
@@ -2674,7 +2710,14 @@ export default function CartPage() {
                               
                               <div className="flex items-center gap-2 md:gap-3">
                                 <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
-                                  £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
+                                  £{(() => {
+                                    const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0));
+                                    const addonsTotal = item.addons?.reduce((sum, addon) => {
+                                      const addonPrice = typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0));
+                                      return sum + addonPrice;
+                                    }, 0) || 0;
+                                    return ((itemPrice + addonsTotal) * item.quantity).toFixed(2);
+                                  })()}
                                 </p>
                                 <button
                                   onClick={() => removeFromCart(item.id)}
@@ -2762,10 +2805,17 @@ export default function CartPage() {
                         <div key={item.id + index} className={index > 0 ? 'pt-3 border-t border-gray-300' : ''}>
                           <div className="flex justify-between items-center mb-2">
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold">
-                              Service {index + 1} ({item.quantity} × £{item.price.toFixed(2)})
+                              Service {index + 1} ({item.quantity} × £{typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(String(item.price || 0)).toFixed(2)})
                             </p>
                             <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                              £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
+                              £{(() => {
+                                const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0));
+                                const addonsTotal = item.addons?.reduce((sum, addon) => {
+                                  const addonPrice = typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0));
+                                  return sum + addonPrice;
+                                }, 0) || 0;
+                                return ((itemPrice + addonsTotal) * item.quantity).toFixed(2);
+                              })()}
                             </span>
                           </div>
                           <div className="space-y-1.5">
@@ -2775,7 +2825,7 @@ export default function CartPage() {
                                   Addons
                                 </span>
                                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                                  £{item.addons.reduce((sum, addon) => sum + addon.price, 0).toFixed(2)}
+                                  £{item.addons.reduce((sum, addon) => sum + (typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0))), 0).toFixed(2)}
                                 </span>
                               </div>
                             )}
@@ -2791,7 +2841,7 @@ export default function CartPage() {
                                         day: 'numeric',
                                         month: 'short',
                                         year: 'numeric'
-                                      })} • {item.booking.time}{item.booking.endTime ? ` - ${item.booking.endTime}` : ''}
+                                      })} • {item.booking.starttime || item.booking.time || ''}{item.booking.endtime && item.booking.endtime !== item.booking.starttime ? ` - ${item.booking.endtime}` : (item.booking.endTime ? ` - ${item.booking.endTime}` : '')}
                                     </>
                                   ) : itemTimeSlots[item.id]?.date ? (
                                     <>

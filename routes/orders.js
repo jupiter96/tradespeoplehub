@@ -578,11 +578,11 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       };
       
       // Explicitly include booking if it exists
-      if (item.booking && (item.booking.date || item.booking.time)) {
+      if (item.booking && (item.booking.date || item.booking.starttime || item.booking.time)) {
         orderItem.booking = {
           date: item.booking.date,
-          time: item.booking.time || '',
-          endTime: item.booking.endTime || '',
+          starttime: item.booking.starttime || item.booking.time || '',
+          endtime: item.booking.endtime || item.booking.endTime || item.booking.starttime || item.booking.time || '',
           timeSlot: item.booking.timeSlot || undefined,
         };
       } else {
@@ -950,8 +950,8 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       if (booking && booking.date) {
         processedItem.booking = {
           date: booking.date,
-          time: booking.time || '',
-          endTime: booking.endTime || '',
+          starttime: booking.starttime || booking.time || '',
+          endtime: booking.endtime || booking.endTime || booking.starttime || booking.time || '',
           timeSlot: booking.timeSlot || '',
         };
       }
@@ -2043,7 +2043,8 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     }
 
     // Check if order is delivered
-    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
+    // Revision can only be requested when deliveryStatus is 'delivered'
+    if (order.deliveryStatus !== 'delivered') {
       return res.status(400).json({ error: 'Revision can only be requested for delivered orders' });
     }
 

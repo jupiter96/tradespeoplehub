@@ -394,12 +394,18 @@ function ProfessionalOrdersSection() {
   );
 
   // Calculate appointment deadline for countdown
+  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
   const appointmentDeadline = useMemo(() => {
     if (!currentOrder) return null;
     
-    // Use booking date/time or scheduled date + time
+    // First priority: expectedDelivery (selected at order time)
+    if (currentOrder.expectedDelivery) {
+      return new Date(currentOrder.expectedDelivery);
+    }
+    
+    // Second priority: booking date/time
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
     
     if (bookingDate) {
       // Combine date and time
@@ -415,11 +421,6 @@ function ProfessionalOrdersSection() {
       return new Date(currentOrder.scheduledDate);
     }
     
-    // Fallback to expected delivery
-    if (currentOrder.expectedDelivery) {
-      return new Date(currentOrder.expectedDelivery);
-    }
-    
     return null;
   }, [currentOrder]);
 
@@ -427,22 +428,26 @@ function ProfessionalOrdersSection() {
   const appointmentCountdown = useCountdown(appointmentDeadline);
 
   // Elapsed time since order was accepted (work in progress timer)
+  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
   const workStartTime = useMemo(() => {
     if (!currentOrder) return null;
     // Stop timer for completed or cancelled orders
     if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled" || currentOrder.status === "Cancellation Pending") return null;
-    if (currentOrder.deliveryStatus === "cancelled") {
-      return null;
-    }
 
     // If a revision is in progress, restart from respondedAt
     if (currentOrder.revisionRequest?.status === "in_progress" && currentOrder.revisionRequest.respondedAt) {
       return new Date(currentOrder.revisionRequest.respondedAt);
     }
 
-    // Auto-start work timer when scheduled booking time arrives
+    // First priority: expectedDelivery (selected at order time)
+    if (currentOrder.expectedDelivery) {
+      const start = new Date(currentOrder.expectedDelivery);
+      if (Date.now() >= start.getTime()) return start;
+    }
+
+    // Second priority: Auto-start work timer when scheduled booking time arrives
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
     if (bookingDate) {
       const [hours, minutes] = bookingTime.split(":").map(Number);
       const start = new Date(bookingDate);
@@ -451,6 +456,7 @@ function ProfessionalOrdersSection() {
       if (Date.now() >= start.getTime()) return start;
     }
 
+    // Fallback: scheduled date
     if (currentOrder.scheduledDate) {
       const start = new Date(currentOrder.scheduledDate);
       if (Date.now() >= start.getTime()) return start;
@@ -463,7 +469,7 @@ function ProfessionalOrdersSection() {
   const pauseTime = useMemo(() => {
     if (!currentOrder) return null;
     // Pause when work is delivered (but not if revision is in progress)
-    if ((currentOrder.deliveryStatus === "delivered" || currentOrder.status === "delivered") && 
+    if ((currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && 
         currentOrder.revisionRequest?.status !== "in_progress" &&
         currentOrder.deliveredDate) {
       return new Date(currentOrder.deliveredDate);
@@ -496,7 +502,7 @@ function ProfessionalOrdersSection() {
   useEffect(() => {
     if (currentOrder && appointmentDeadline && appointmentCountdown.expired) {
       const orderId = currentOrder.id;
-      const isPendingOrAccepted = currentOrder.deliveryStatus === "pending";
+      const isPendingOrAccepted = currentOrder.status === "In Progress" && (!currentOrder.deliveryFiles || currentOrder.deliveryFiles.length === 0);
       
       if (isPendingOrAccepted && !shownServiceTimeToasts.has(orderId)) {
         toast.success("Service Time Has Arrived!", {
@@ -700,7 +706,7 @@ function ProfessionalOrdersSection() {
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
       // Check if order is delivered
-      if (order?.deliveryStatus !== 'delivered' && order?.status !== 'In Progress') {
+      if (order?.status !== 'In Progress' && (!order?.deliveryFiles || order.deliveryFiles.length === 0)) {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
@@ -832,12 +838,12 @@ function ProfessionalOrdersSection() {
             </h3>
             <Badge
               className={`${getStatusBadge(
-                order.deliveryStatus
+                order.status
               )} font-['Poppins',sans-serif] text-[11px]`}
             >
               <span className="flex items-center gap-1">
-                {getStatusIcon(order.deliveryStatus)}
-                {order.deliveryStatus?.toUpperCase()}
+                {getStatusIcon(order.status)}
+                {order.status?.toUpperCase()}
               </span>
             </Badge>
           </div>
@@ -895,7 +901,7 @@ function ProfessionalOrdersSection() {
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
             Scheduled: {formatDate(order.scheduledDate)}
-            {(order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.time || order.booking.timeSlot}${order.booking?.timeSlot && order.booking?.time ? ` (${order.booking.timeSlot})` : ''}`}
+            {(order.booking?.starttime || order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.time || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && (order.booking.starttime || order.booking.time) ? ` (${order.booking.timeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -945,102 +951,93 @@ function ProfessionalOrdersSection() {
   if (selectedOrder && currentOrder) {
     const timelineTimer = (
       <>
-        {/* Countdown Timer - Until booked time */}
-        {!workElapsedTime.started &&
-         appointmentDeadline &&
-         !appointmentCountdown.expired &&
-         currentOrder.status !== "Completed" &&
-         currentOrder.status !== "Cancelled" &&
-         currentOrder.status !== "Cancellation Pending" &&
-         currentOrder.status !== "delivered" &&
-         currentOrder.deliveryStatus !== "delivered" && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#FE8A0F]" />
-              </div>
-              <div>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
-                  Expected Delivery Time
-                </p>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                  {currentOrder.booking?.date
-                    ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
-                    : currentOrder.scheduledDate
-                      ? formatDate(currentOrder.scheduledDate)
-                      : "TBD"}
-                </p>
-              </div>
-            </div>
+        {/* Timer - Show when status is "In Progress" */}
+        {currentOrder.status === "In Progress" && (
+          <>
+            {/* Countdown Timer - Until booked time */}
+            {!workElapsedTime.started && (
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-[#FE8A0F]" />
+                  </div>
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Expected Delivery Time
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                      {currentOrder.booking?.date
+                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                        : currentOrder.scheduledDate
+                          ? formatDate(currentOrder.scheduledDate)
+                          : "TBD"}
+                    </p>
+                  </div>
+                </div>
 
-            {/* Countdown Display */}
-            <div className="grid grid-cols-4 gap-3">
-              {/* Days */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.days).padStart(2, '0')}
+                {/* Countdown Display */}
+                <div className="grid grid-cols-4 gap-3">
+                  {/* Days */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.days).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Days
+                    </div>
+                  </div>
+
+                  {/* Hours */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.hours).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Hours
+                    </div>
+                  </div>
+
+                  {/* Minutes */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.minutes).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Minutes
+                    </div>
+                  </div>
+
+                  {/* Seconds */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.seconds).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Seconds
+                    </div>
+                  </div>
                 </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Days
+
+                {/* Progress Indicator */}
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
+                      }}
+                    />
+                  </div>
+                  <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                    {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
+                  </span>
                 </div>
               </div>
+            )}
 
-              {/* Hours */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.hours).padStart(2, '0')}
-                </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Hours
-                </div>
-              </div>
-
-              {/* Minutes */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.minutes).padStart(2, '0')}
-                </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Minutes
-                </div>
-              </div>
-
-              {/* Seconds */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.seconds).padStart(2, '0')}
-                </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Seconds
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Indicator */}
-            <div className="mt-4 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
-                  }}
-                />
-              </div>
-              <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Work In Progress Timer - Auto starts at booking time */}
-        {workElapsedTime.started &&
-         currentOrder.status !== "Completed" &&
-         currentOrder.status !== "Cancelled" &&
-         currentOrder.status !== "Cancellation Pending" &&
-         currentOrder.status !== "delivered" &&
-         currentOrder.deliveryStatus !== "delivered" && (
+            {/* Work In Progress Timer - Auto starts at booking time */}
+            {workElapsedTime.started && (
           <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
@@ -1117,6 +1114,8 @@ function ProfessionalOrdersSection() {
               </span>
             </div>
           </div>
+            )}
+          </>
         )}
       </>
     );
@@ -1234,7 +1233,7 @@ function ProfessionalOrdersSection() {
                 {currentOrder.address && (
                   <ProfessionalOrderServiceAddressSection order={currentOrder} />
                 )}
-                {currentOrder.deliveryStatus === "completed" && (
+                {currentOrder.status === "Completed" && (
                   <ProfessionalOrderDeliveryCompletionSection
                     order={currentOrder}
                     onOpenReviewModal={() => {

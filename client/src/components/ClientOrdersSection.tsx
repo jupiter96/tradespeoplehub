@@ -479,20 +479,7 @@ export default function ClientOrdersSection() {
       );
     }
 
-    if (order.deliveryStatus === "active" && order.status !== "disputed") {
-      push(
-        {
-          at: order.expectedDelivery || order.scheduledDate,
-          title: "Service In Progress",
-          description:
-            "The professional is currently working on your service.",
-          colorClass: "bg-blue-500",
-          icon: <PlayCircle className="w-5 h-5 text-white" />,
-        },
-        "in-progress"
-      );
-    }
-
+ 
     if (order.revisionRequest?.status) {
       push(
         {
@@ -565,7 +552,6 @@ export default function ClientOrdersSection() {
     }
 
     if (
-      order.deliveryStatus === "delivered" ||
       order.deliveryMessage ||
       (order.deliveryFiles && order.deliveryFiles.length > 0)
     ) {
@@ -860,7 +846,7 @@ export default function ClientOrdersSection() {
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
       // Check if order is delivered
-      if (order?.deliveryStatus !== 'delivered' && order?.status !== 'In Progress') {
+      if (order?.status !== 'In Progress' && (!order?.deliveryFiles || order.deliveryFiles.length === 0)) {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
@@ -1030,7 +1016,7 @@ export default function ClientOrdersSection() {
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
             Appointment: {formatDate(order.booking?.date || order.scheduledDate)}
-            {(order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.time || order.booking.timeSlot}${order.booking?.timeSlot && order.booking?.time ? ` (${order.booking.timeSlot})` : ''}`}
+            {(order.booking?.starttime || order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.time || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && (order.booking.starttime || order.booking.time) ? ` (${order.booking.timeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -1170,12 +1156,18 @@ export default function ClientOrdersSection() {
   );
 
   // Calculate appointment deadline for countdown
+  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
   const appointmentDeadline = useMemo(() => {
     if (!currentOrder) return null;
     
-    // Use booking date/time or scheduled date + time
+    // First priority: expectedDelivery (selected at order time)
+    if (currentOrder.expectedDelivery) {
+      return new Date(currentOrder.expectedDelivery);
+    }
+    
+    // Second priority: booking date/time
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
     
     if (bookingDate) {
       // Combine date and time
@@ -1191,11 +1183,6 @@ export default function ClientOrdersSection() {
       return new Date(currentOrder.scheduledDate);
     }
     
-    // Fallback to expected delivery
-    if (currentOrder.expectedDelivery) {
-      return new Date(currentOrder.expectedDelivery);
-    }
-    
     return null;
   }, [currentOrder]);
 
@@ -1203,17 +1190,21 @@ export default function ClientOrdersSection() {
   const appointmentCountdown = useCountdown(appointmentDeadline);
 
   // Elapsed time since booking time arrives (work in progress timer)
+  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
   const workStartTime = useMemo(() => {
     if (!currentOrder) return null;
     // Stop timer for completed, cancelled, or cancellation-pending orders
     if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled" || currentOrder.status === "Cancellation Pending") return null;
-    if (currentOrder.deliveryStatus === "delivered" || currentOrder.deliveryStatus === "completed" || currentOrder.deliveryStatus === "cancelled") {
-      return null;
+
+    // First priority: expectedDelivery (selected at order time)
+    if (currentOrder.expectedDelivery) {
+      const start = new Date(currentOrder.expectedDelivery);
+      if (Date.now() >= start.getTime()) return start;
     }
 
-    // Auto-start work timer when scheduled booking time arrives
+    // Second priority: Auto-start work timer when scheduled booking time arrives
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
     if (bookingDate) {
       const [hours, minutes] = bookingTime.split(":").map(Number);
       const start = new Date(bookingDate);
@@ -1222,6 +1213,7 @@ export default function ClientOrdersSection() {
       if (Date.now() >= start.getTime()) return start;
     }
 
+    // Fallback: scheduled date
     if (currentOrder.scheduledDate) {
       const start = new Date(currentOrder.scheduledDate);
       if (Date.now() >= start.getTime()) return start;
@@ -1245,102 +1237,93 @@ export default function ClientOrdersSection() {
   if (selectedOrder && currentOrder) {
     const timelineTimer = (
       <>
-        {/* Countdown Timer - Until booked time */}
-        {!workElapsedTime.started &&
-         appointmentDeadline &&
-         !appointmentCountdown.expired &&
-         currentOrder.status !== "Completed" &&
-         currentOrder.status !== "Cancelled" &&
-         currentOrder.status !== "Cancellation Pending" &&
-         currentOrder.status !== "delivered" &&
-         currentOrder.deliveryStatus !== "delivered" && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#FE8A0F]" />
-              </div>
-              <div>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
-                  Expected Delivery Time
-                </p>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                  {currentOrder.booking?.date
-                    ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
-                    : currentOrder.scheduledDate
-                      ? formatDate(currentOrder.scheduledDate)
-                      : "TBD"}
-                </p>
-              </div>
-            </div>
+        {/* Timer - Show when status is "In Progress" */}
+        {currentOrder.status === "In Progress" && (
+          <>
+            {/* Countdown Timer - Until booked time */}
+            {!workElapsedTime.started && (
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-[#FE8A0F]" />
+                  </div>
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Expected Delivery Time
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                      {currentOrder.booking?.date
+                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`
+                        : currentOrder.scheduledDate
+                          ? formatDate(currentOrder.scheduledDate)
+                          : "TBD"}
+                    </p>
+                  </div>
+                </div>
 
-            {/* Countdown Display */}
-            <div className="grid grid-cols-4 gap-3">
-              {/* Days */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.days).padStart(2, '0')}
+                {/* Countdown Display */}
+                <div className="grid grid-cols-4 gap-3">
+                  {/* Days */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.days).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Days
+                    </div>
+                  </div>
+
+                  {/* Hours */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.hours).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Hours
+                    </div>
+                  </div>
+
+                  {/* Minutes */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.minutes).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Minutes
+                    </div>
+                  </div>
+
+                  {/* Seconds */}
+                  <div className="bg-gray-100 rounded-xl p-4 text-center">
+                    <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                      {String(appointmentCountdown.seconds).padStart(2, '0')}
+                    </div>
+                    <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                      Seconds
+                    </div>
+                  </div>
                 </div>
-                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Days
+
+                {/* Progress Indicator */}
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
+                      }}
+                    />
+                  </div>
+                  <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                    {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
+                  </span>
                 </div>
               </div>
+            )}
 
-              {/* Hours */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.hours).padStart(2, '0')}
-                </div>
-                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Hours
-                </div>
-              </div>
-
-              {/* Minutes */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.minutes).padStart(2, '0')}
-                </div>
-                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Minutes
-                </div>
-              </div>
-
-              {/* Seconds */}
-              <div className="bg-gray-100 rounded-xl p-4 text-center">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
-                  {String(appointmentCountdown.seconds).padStart(2, '0')}
-                </div>
-                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                  Seconds
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Indicator */}
-            <div className="mt-4 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, 100 - (appointmentCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
-                  }}
-                />
-              </div>
-              <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Work In Progress Timer - Auto starts at booking time */}
-        {workElapsedTime.started &&
-         currentOrder.status !== "Completed" &&
-         currentOrder.status !== "Cancelled" &&
-         currentOrder.status !== "Cancellation Pending" &&
-         currentOrder.status !== "delivered" &&
-         currentOrder.deliveryStatus !== "delivered" && (
+            {/* Work In Progress Timer - Auto starts at booking time */}
+            {workElapsedTime.started && (
           <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
@@ -1417,6 +1400,8 @@ export default function ClientOrdersSection() {
               </span>
             </div>
           </div>
+            )}
+          </>
         )}
       </>
     );
@@ -1654,44 +1639,39 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Status Alert Box */}
-            {currentOrder.deliveryStatus === "pending" && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 shadow-md">
+            {/* Status Alert Box - Service In Progress */}
+            {currentOrder.status === "In Progress" && (!currentOrder.deliveryFiles || currentOrder.deliveryFiles.length === 0) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                  Waiting for Professional to Start
+                  Service In Progress
                 </h4>
                 <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
-                  Your payment has been processed successfully. The professional will start working on your service soon. {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
-                    <span className="text-[#2c353f] block mt-1">Appointment: {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}{(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && ` at ${currentOrder.booking.time || currentOrder.booking.timeSlot}${currentOrder.booking?.timeSlot && currentOrder.booking?.time ? ` (${currentOrder.booking.timeSlot})` : ''}`}</span>
-                  )}
+                  The professional is currently working on your service.
                 </p>
               </div>
             )}
 
-            {/* Service In Progress / Work Delivered - Show based on delivery status */}
-            {((currentOrder.deliveryStatus === "active" && 
-               currentOrder.status !== "Completed" && 
-               currentOrder.status !== "Cancelled" &&
-               currentOrder.status !== "Cancellation Pending" &&
-               currentOrder.status !== "disputed" && 
-               currentOrder.deliveryStatus !== "delivered" &&
-               !(currentOrder.cancellationRequest && 
-                 currentOrder.cancellationRequest.status === 'pending' && 
-                 currentOrder.cancellationRequest.requestedBy && 
-                 currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString())) ||
-              (currentOrder.deliveryStatus === "delivered" && 
-               currentOrder.status !== "Completed" && 
-               currentOrder.status !== "Cancelled" &&
-               currentOrder.status !== "Cancellation Pending")) && (
-              <div className={`border rounded-lg p-4 sm:p-6 shadow-md ${
-                currentOrder.deliveryStatus === "delivered" 
-                  ? "bg-white border-gray-200" 
-                  : "bg-blue-50 border-blue-200"
-              }`}>
-                {currentOrder.status === "delivered" &&
-                  currentOrder.status !== "Completed" &&
-                  currentOrder.status !== "Cancelled" &&
-                  currentOrder.status !== "Cancellation Pending" && (
+            {/* Service In Progress / Work Delivered - Show based on status */}
+            {(() => {
+              // Check if there's any content to display in the card
+              const hasDeliveryMessage = currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 &&
+                currentOrder.status !== "Completed" &&
+                currentOrder.status !== "Cancelled" &&
+                currentOrder.status !== "Cancellation Pending";
+              const hasExtensionRequest = currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending';
+              const hasExtensionStatus = currentOrder.extensionRequest && 
+                currentOrder.extensionRequest.status !== 'pending' && 
+                currentOrder.status === 'In Progress' && 
+                (currentOrder.extensionRequest.status === 'approved' || currentOrder.extensionRequest.status === 'rejected');
+              const hasCompletionRequest = currentOrder.metadata?.professionalCompleteRequest;
+              
+              const hasContent = hasDeliveryMessage || hasExtensionRequest || hasExtensionStatus || hasCompletionRequest;
+              
+              return hasContent && currentOrder.status !== "Completed" && 
+                currentOrder.status !== "Cancelled" &&
+                currentOrder.status !== "Cancellation Pending" ? (
+              <div className="border rounded-lg p-4 sm:p-6 shadow-md bg-white border-gray-200">
+                {hasDeliveryMessage && (
                   <>
                     <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2 break-words">
                       Your work has been delivered!
@@ -1909,14 +1889,15 @@ export default function ClientOrdersSection() {
                   </div>
                 )}
               </div>
-            )}
+              ) : null;
+            })()}
 
-            {/* Delivery Countdown - Show for active and pending orders */}
-            {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") && currentOrder.expectedDelivery && (
+            {/* Delivery Countdown - Show for in progress orders */}
+            {currentOrder.status === "In Progress" && currentOrder.expectedDelivery && (
               <DeliveryCountdown expectedDelivery={currentOrder.expectedDelivery} />
             )}
 
-            {currentOrder.deliveryStatus === "delivered" && (
+            {(currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service Delivered - Review Required
@@ -2021,7 +2002,6 @@ export default function ClientOrdersSection() {
 
                 {/* Show buttons only if order is not completed and no active revision request */}
                 {currentOrder.status !== "Completed" && 
-                 currentOrder.deliveryStatus !== "completed" &&
                  (!currentOrder.revisionRequest || 
                   (currentOrder.revisionRequest.status !== 'pending' && 
                    currentOrder.revisionRequest.status !== 'in_progress')) && (
@@ -2441,7 +2421,6 @@ export default function ClientOrdersSection() {
                     )}
                     {event.id === "delivered" && 
                      currentOrder.status !== "Completed" && 
-                     currentOrder.deliveryStatus !== "completed" &&
                      (!currentOrder.revisionRequest || 
                       (currentOrder.revisionRequest.status !== 'pending' && 
                        currentOrder.revisionRequest.status !== 'in_progress')) && (
@@ -2607,7 +2586,7 @@ export default function ClientOrdersSection() {
               )}
 
               {/* Dispute Timeline */}
-              {currentOrder.deliveryStatus === "dispute" && (
+              {currentOrder.status === "disputed" && (
                 <>
                   {/* You made an offer */}
                   <div className="flex gap-4">
@@ -2678,7 +2657,7 @@ export default function ClientOrdersSection() {
               )}
 
               {/* Dispute Section - Show when View Dispute is clicked */}
-              {currentOrder.deliveryStatus === "dispute" && showDisputeSection && currentOrder.disputeId && (() => {
+              {currentOrder.status === "disputed" && showDisputeSection && currentOrder.disputeId && (() => {
                 const dispute = getOrderDisputeById(currentOrder.disputeId);
                 if (!dispute) return null;
                 
@@ -2776,7 +2755,7 @@ export default function ClientOrdersSection() {
               })()}
 
               {/* Delivery Event */}
-              {currentOrder.deliveryStatus === "delivered" && (
+              {(currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && (
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center pt-1">
                     <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
@@ -2847,7 +2826,6 @@ export default function ClientOrdersSection() {
 
                     {/* Approval Message - Show only if order is not completed and no active revision request */}
                     {currentOrder.status !== "Completed" && 
-                     currentOrder.deliveryStatus !== "completed" &&
                      (!currentOrder.revisionRequest || 
                       (currentOrder.revisionRequest.status !== 'pending' && 
                        currentOrder.revisionRequest.status !== 'in_progress')) && (
@@ -2891,7 +2869,7 @@ export default function ClientOrdersSection() {
 
 
               {/* Order Started */}
-              {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "delivered") && (
+              {(currentOrder.status === "In Progress" || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center pt-1">
                     <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
@@ -3110,7 +3088,7 @@ export default function ClientOrdersSection() {
                         </td>
                         <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : "TBD"}
-                          {currentOrder.booking?.time && ` at ${currentOrder.booking.time}`}
+                          {(currentOrder.booking?.starttime || currentOrder.booking?.time) && ` at ${currentOrder.booking.starttime || currentOrder.booking.time}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
                           {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
                         </td>
                       </tr>
@@ -3340,7 +3318,6 @@ export default function ClientOrdersSection() {
                             {/* Approval Message - Show only for the latest delivery if order is not completed and no active revision request */}
                             {index === sortedDeliveries.length - 1 &&
                              currentOrder.status !== "Completed" && 
-                             currentOrder.deliveryStatus !== "completed" &&
                              (!currentOrder.revisionRequest || 
                               (currentOrder.revisionRequest.status !== 'pending' && 
                                currentOrder.revisionRequest.status !== 'in_progress')) && (
@@ -3386,7 +3363,7 @@ export default function ClientOrdersSection() {
                 }
 
                 // No deliveries yet - show status message
-                if (currentOrder.deliveryStatus === "active" || currentOrder.status === "In Progress") {
+                if (currentOrder.status === "In Progress") {
                   return (
                     <div className="text-center py-8">
                       <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -3414,7 +3391,7 @@ export default function ClientOrdersSection() {
                 );
               })()}
 
-              {currentOrder.deliveryStatus === "completed" && (
+              {currentOrder.status === "Completed" && (
                 <div className="space-y-4">
                   <div className="text-center py-8">
                     <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
@@ -3477,7 +3454,7 @@ export default function ClientOrdersSection() {
                   </h3>
                   {/* Three Dots Menu - Hide when Cancelled or Cancellation Pending */}
                   {currentOrder.status !== "Cancelled" && currentOrder.status !== "Cancellation Pending" &&
-                   (currentOrder.deliveryStatus === "pending" || currentOrder.deliveryStatus === "active") &&
+                   currentOrder.status === "In Progress" &&
                    (!((currentOrder as any).cancellationRequest?.status === "pending" || (currentOrder as any).metadata?.cancellationRequest?.status === "pending") ||
                     (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
                     <DropdownMenu>
@@ -3630,7 +3607,7 @@ export default function ClientOrdersSection() {
                 <Separator className="mb-6" />
 
                 {/* Delivery Date and Time */}
-                {(currentOrder.booking?.date || currentOrder.booking?.time || currentOrder.scheduledDate) && (
+                {(currentOrder.booking?.date || currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.scheduledDate) && (
                   <div className="mb-6">
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       Delivery Date & Time
@@ -3643,12 +3620,13 @@ export default function ClientOrdersSection() {
                         </span>
                       </div>
                     )}
-                    {(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
+                    {(currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
                       <div className="flex items-center gap-2 text-[#2c353f] mt-2">
                         <Clock className="w-4 h-4 text-[#6b6b6b]" />
                         <span className="font-['Poppins',sans-serif] text-[13px]">
-                          {currentOrder.booking.time ? currentOrder.booking.time : currentOrder.booking.timeSlot}
-                          {currentOrder.booking.timeSlot && currentOrder.booking.time && ` (${currentOrder.booking.timeSlot})`}
+                          {currentOrder.booking.starttime || currentOrder.booking.time || currentOrder.booking.timeSlot}
+                          {currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}
+                          {currentOrder.booking?.timeSlot && (currentOrder.booking.starttime || currentOrder.booking.time) && ` (${currentOrder.booking.timeSlot})`}
                         </span>
                       </div>
                     )}
@@ -3669,7 +3647,7 @@ export default function ClientOrdersSection() {
 
                 {/* Action Buttons - Cancel Order moved to three dots menu in header */}
 
-                {(currentOrder.deliveryStatus === "delivered" || currentOrder.deliveryStatus === "completed") && (
+                {((currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) || currentOrder.status === "Completed") && (
                   <>
                     <Separator className="mb-6" />
                     <div className="space-y-2">

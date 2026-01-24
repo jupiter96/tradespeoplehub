@@ -1087,8 +1087,9 @@ export default function ServiceDetailPage() {
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
       booking: {
-        date: date.toISOString(),
-        time: time,
+        date: date.toISOString().split('T')[0],
+        starttime: time,
+        endtime: time,
         timeSlot: timeSlot
       },
       thumbnailVideo: thumbnailVideo || undefined
@@ -2312,14 +2313,118 @@ export default function ServiceDetailPage() {
                                   </span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                  {blocks.map((block: any, index: number) => (
-                                    <div
-                                      key={`${block.from}-${block.to}-${index}`}
-                                      className="px-3 py-1.5 rounded-full bg-[#F8FAFC] border border-gray-200 text-[13px] text-[#2c353f] font-['Poppins',sans-serif]"
-                                    >
-                                      {block.from} - {block.to}
-                                    </div>
-                                  ))}
+                                  {blocks.map((block: any, index: number) => {
+                                    // Determine time slot based on time
+                                    const getTimeSlot = (time: string) => {
+                                      const hour = parseInt(time.split(':')[0]);
+                                      if (hour < 12) return 'Morning';
+                                      if (hour < 17) return 'Afternoon';
+                                      return 'Evening';
+                                    };
+                                    
+                                    const timeSlot = getTimeSlot(block.from);
+                                    
+                                    return (
+                                      <button
+                                        key={`${block.from}-${block.to}-${index}`}
+                                        onClick={() => {
+                                          // Validate that date is selected
+                                          if (!availabilityDate) {
+                                            toast.error("Please select a date first");
+                                            return;
+                                          }
+                                          
+                                          // Add service to cart with selected date and time block
+                                          const serviceIdForCart = service._id || service.id?.toString();
+                                          
+                                          if (!serviceIdForCart) {
+                                            toast.error("Service information is missing");
+                                            return;
+                                          }
+                                          
+                                          // Check if item already exists in cart
+                                          const existingItem = cartItems.find(item => item.id === serviceIdForCart || item.serviceId === serviceIdForCart);
+                                          
+                                          // If item already exists, just navigate to cart
+                                          if (existingItem) {
+                                            navigate('/cart', {
+                                              state: {
+                                                preSelectTimeSlot: {
+                                                  serviceId: serviceIdForCart,
+                                                  date: availabilityDate,
+                                                  time: block.from,
+                                                  endTime: block.to,
+                                                  timeSlot: timeSlot
+                                                }
+                                              }
+                                            });
+                                            return;
+                                          }
+                                          
+                                          // Get service image
+                                          const serviceImage = galleryItems && galleryItems.length > 0 
+                                            ? galleryItems[0].type === 'video' 
+                                              ? galleryItems[0].thumbnail || galleryItems[0].url
+                                              : galleryItems[0].url
+                                            : service.image || '';
+                                          
+                                          // Calculate price (same logic as handleAddToCart)
+                                          const regularPrice = service.price ? (typeof service.price === 'string' ? parseFloat(service.price.replace(/[£,]/g, '')) : service.price) : 0;
+                                          const discountedPrice = service.discountedPrice 
+                                            ? (typeof service.discountedPrice === 'string' ? parseFloat(service.discountedPrice.replace(/[£,]/g, '')) : service.discountedPrice)
+                                            : (service.originalPrice ? (typeof service.originalPrice === 'string' ? parseFloat(service.originalPrice.replace(/[£,]/g, '')) : service.originalPrice) : null);
+                                          const itemPrice = discountedPrice || regularPrice;
+                                          
+                                          // Determine thumbnail video
+                                          let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+                                          if (galleryItems && galleryItems.length > 0 && galleryItems[0].type === 'video') {
+                                            thumbnailVideo = {
+                                              url: galleryItems[0].url,
+                                              thumbnail: galleryItems[0].thumbnail
+                                            };
+                                          }
+                                          
+                                          // Add to cart with booking info
+                                          addToCart({
+                                            id: serviceIdForCart,
+                                            serviceId: serviceIdForCart,
+                                            title: service.description,
+                                            seller: service.providerName,
+                                            price: itemPrice,
+                                            image: serviceImage,
+                                            rating: service.rating,
+                                            quantity: 1,
+                                            booking: {
+                                              date: availabilityDate.toISOString().split('T')[0],
+                                              starttime: block.from,
+                                              endtime: block.to,
+                                              timeSlot: timeSlot
+                                            },
+                                            thumbnailVideo: thumbnailVideo || undefined,
+                                            priceUnit: service.priceUnit || 'fixed'
+                                          });
+                                          
+                                          // Navigate to cart page
+                                          navigate('/cart', {
+                                            state: {
+                                              preSelectTimeSlot: {
+                                                serviceId: serviceIdForCart,
+                                                date: availabilityDate,
+                                                time: block.from,
+                                                endTime: block.to,
+                                                timeSlot: timeSlot
+                                              }
+                                            }
+                                          });
+                                          
+                                          toast.success("Service added to cart with selected time slot");
+                                        }}
+                                        className="px-3 py-1.5 rounded-full bg-[#F8FAFC] border border-gray-200 text-[13px] text-[#2c353f] font-['Poppins',sans-serif] hover:bg-[#FE8A0F] hover:text-white hover:border-[#FE8A0F] transition-all duration-200 cursor-pointer"
+                                      >
+                                        {block.from} - {block.to}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
