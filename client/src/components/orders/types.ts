@@ -86,6 +86,7 @@ export interface Order {
   additionalInformation?: AdditionalInformation;
   rating?: number;
   review?: string;
+  professionalReview?: { rating: number; comment?: string; reviewedAt?: string };
   hasReview?: boolean;
   items?: OrderItem[];
   metadata?: {

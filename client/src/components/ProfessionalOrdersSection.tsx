@@ -435,8 +435,12 @@ function ProfessionalOrdersSection() {
     if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled" || currentOrder.status === "Cancellation Pending") return null;
 
     // If a revision is in progress, restart from respondedAt
-    if (currentOrder.revisionRequest?.status === "in_progress" && currentOrder.revisionRequest.respondedAt) {
-      return new Date(currentOrder.revisionRequest.respondedAt);
+    const revisionRequests = currentOrder.revisionRequest 
+      ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
+      : [];
+    const inProgressRevision = revisionRequests.find(rr => rr && rr.status === "in_progress");
+    if (inProgressRevision && inProgressRevision.respondedAt) {
+      return new Date(inProgressRevision.respondedAt);
     }
 
     // First priority: expectedDelivery (selected at order time)
@@ -469,8 +473,12 @@ function ProfessionalOrdersSection() {
   const pauseTime = useMemo(() => {
     if (!currentOrder) return null;
     // Pause when work is delivered (but not if revision is in progress)
+    const revisionRequests = currentOrder.revisionRequest 
+      ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
+      : [];
+    const hasInProgressRevision = revisionRequests.some(rr => rr && rr.status === "in_progress");
     if ((currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && 
-        currentOrder.revisionRequest?.status !== "in_progress" &&
+        !hasInProgressRevision &&
         currentOrder.deliveredDate) {
       return new Date(currentOrder.deliveredDate);
     }
@@ -481,8 +489,12 @@ function ProfessionalOrdersSection() {
   const resumeTime = useMemo(() => {
     if (!currentOrder) return null;
     // Resume when revision is accepted (in_progress)
-    if (currentOrder.revisionRequest?.status === "in_progress" && currentOrder.revisionRequest.respondedAt) {
-      return new Date(currentOrder.revisionRequest.respondedAt);
+    const revisionRequests = currentOrder.revisionRequest 
+      ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
+      : [];
+    const inProgressRevision = revisionRequests.find(rr => rr && rr.status === "in_progress");
+    if (inProgressRevision && inProgressRevision.respondedAt) {
+      return new Date(inProgressRevision.respondedAt);
     }
     return null;
   }, [currentOrder]);
@@ -547,7 +559,11 @@ function ProfessionalOrdersSection() {
     if (selectedOrder) {
       const currentOrder = orders.find(o => o.id === selectedOrder);
       // Check if this is a revision completion
-      if (currentOrder?.revisionRequest && currentOrder.revisionRequest.status === 'in_progress') {
+      const revisionRequests = currentOrder?.revisionRequest 
+        ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
+        : [];
+      const hasInProgressRevision = revisionRequests.some(rr => rr && rr.status === 'in_progress');
+      if (hasInProgressRevision) {
         try {
           await completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined);
           toast.success("Revision completed and delivered successfully!");
@@ -951,8 +967,8 @@ function ProfessionalOrdersSection() {
   if (selectedOrder && currentOrder) {
     const timelineTimer = (
       <>
-        {/* Timer - Show when status is "In Progress" */}
-        {currentOrder.status === "In Progress" && (
+        {/* Timer - Show when status is "In Progress" and no delivery files exist yet */}
+        {currentOrder.status === "In Progress" && (!currentOrder.deliveryFiles || currentOrder.deliveryFiles.length === 0) && (
           <>
             {/* Countdown Timer - Until booked time */}
             {!workElapsedTime.started && (
@@ -1443,7 +1459,12 @@ function ProfessionalOrdersSection() {
           deliveryFiles={deliveryFiles}
           onDeliveryFilesChange={setDeliveryFiles}
           onSubmit={handleMarkAsDelivered}
-          isRevisionCompletion={currentOrder?.revisionRequest?.status === 'in_progress'}
+          isRevisionCompletion={(() => {
+            const revisionRequests = currentOrder?.revisionRequest 
+              ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
+              : [];
+            return revisionRequests.some(rr => rr && rr.status === 'in_progress');
+          })()}
         />
 
         {/* Extension Request Dialog */}
@@ -1502,8 +1523,8 @@ function ProfessionalOrdersSection() {
             closeAllModals();
           }
         }}>
-          <DialogContent className="w-[95vw] !max-w-[1400px] sm:!max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
-            <DialogHeader className="sr-only">
+          <DialogContent className="w-[48vw] min-w-[280px] sm:max-w-[280px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+            <DialogHeader className="sr-only shrink-0">
               <DialogTitle>Leave Public Review</DialogTitle>
               <DialogDescription>Review your experience with this buyer</DialogDescription>
             </DialogHeader>
@@ -1515,9 +1536,8 @@ function ProfessionalOrdersSection() {
                 </p>
               </div>
             ) : currentOrder.professionalReview || hasSubmittedBuyerReview ? (
-              <>
-            {/* Already Reviewed - Show Submitted Review */}
-            <div className="bg-blue-50 border-b border-blue-200 p-4">
+              <div className="flex flex-col overflow-y-auto overscroll-contain min-h-0">
+            <div className="bg-blue-50 border-b border-blue-200 p-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-blue-600" />
@@ -1533,18 +1553,13 @@ function ProfessionalOrdersSection() {
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row">
-              {/* Left Side - Submitted Review Display */}
-              <div className="flex-1 p-6 lg:p-8">
-                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-4">
+            <div className="flex flex-col p-4 sm:p-6 space-y-6">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#3D5A80] font-medium">
                   Your Review of the Buyer
                 </h2>
                 
-                {/* Overall Rating */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                    Rating
-                  </p>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">Rating</p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -1564,12 +1579,9 @@ function ProfessionalOrdersSection() {
                   </div>
                 </div>
 
-                {/* Review Text */}
                 {(currentOrder.professionalReview?.comment || buyerReview) && (
-                  <div className="mb-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">
-                      Your Review
-                    </h4>
+                  <div>
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">Your Review</h4>
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
                         {currentOrder.professionalReview?.comment || buyerReview}
@@ -1578,12 +1590,9 @@ function ProfessionalOrdersSection() {
                   </div>
                 )}
 
-                {/* Client's Review if available */}
                 {(clientReviewData || currentOrder.rating) && (
-                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">
-                      Client's Review
-                    </h4>
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">Client&apos;s Review</h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
                         {resolveAvatarUrl(clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar) && (
@@ -1593,7 +1602,7 @@ function ProfessionalOrdersSection() {
                           {(clientReviewData?.reviewer?.name || currentOrder.client)?.charAt(0) || "C"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
                           {clientReviewData?.reviewer?.name || currentOrder.client || "Client"}
                         </p>
@@ -1611,7 +1620,7 @@ function ProfessionalOrdersSection() {
                         </div>
                         {(clientReviewData?.comment || currentOrder.review) && (
                           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            "{clientReviewData?.comment || currentOrder.review}"
+                            &quot;{clientReviewData?.comment || currentOrder.review}&quot;
                           </p>
                         )}
                       </div>
@@ -1619,53 +1628,34 @@ function ProfessionalOrdersSection() {
                   </div>
                 )}
 
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic mt-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">
                   Reviews can only be submitted once and cannot be edited.
                 </p>
-              </div>
 
-              {/* Right Side - Order Summary */}
-              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
-                {/* Service Image */}
-                {currentOrder?.serviceImage && (
-                  <div className="mb-4 rounded-lg overflow-hidden">
-                    <img
-                      src={resolveFileUrl(currentOrder.serviceImage)}
-                      alt={currentOrder.service}
-                      className="w-full h-40 object-cover"
-                    />
-                  </div>
-                )}
-
-                {/* Service Title */}
-                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
-                  {currentOrder?.service || "Service"}
-                </h3>
-
-                {/* Order Details */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
-                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
-                      Completed
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
-                    </span>
+                <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
+                  {currentOrder?.serviceImage && (
+                    <div className="rounded-lg overflow-hidden">
+                      <img src={resolveFileUrl(currentOrder.serviceImage)} alt={currentOrder.service} className="w-full h-36 object-cover" />
+                    </div>
+                  )}
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                      <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">Completed</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">#{currentOrder?.id?.substring(0, 15) || "N/A"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            </>
             ) : (
-              <>
-            <div className="flex flex-col lg:flex-row">
-              {/* Left Side - Review Form */}
-              <div className="flex-1 p-6 lg:p-8">
-                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-4">
+            <div className="flex flex-col overflow-y-auto overscroll-contain min-h-0">
+            <div className="flex flex-col p-4 sm:p-6 space-y-6">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#3D5A80] font-medium">
                   Leave Public Review
                 </h2>
 
@@ -1784,7 +1774,7 @@ function ProfessionalOrdersSection() {
                             }
                             toast.success("Review submitted successfully!");
                             setHasSubmittedBuyerReview(true);
-                            // Fetch client review data
+                            await refreshOrders();
                             const reviewResponse = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/review`), {
                               credentials: 'include',
                             });
@@ -1851,102 +1841,66 @@ function ProfessionalOrdersSection() {
                 {hasSubmittedBuyerReview && !clientReviewData && (
                   <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-blue-700">
-                      Thank you for your review! The client hasn't submitted their review yet.
+                      Thank you for your review! The client hasn&apos;t submitted their review yet.
                     </p>
                   </div>
                 )}
-              </div>
 
-              {/* Right Side - Order Summary */}
-              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
-                {/* Service Image */}
-                {currentOrder?.serviceImage && (
-                  <div className="mb-4 rounded-lg overflow-hidden">
-                    <img
-                      src={resolveFileUrl(currentOrder.serviceImage)}
-                      alt={currentOrder.service}
-                      className="w-full h-40 object-cover"
-                    />
+                {/* Order Summary - single column */}
+                <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
+                  {currentOrder?.serviceImage && (
+                    <div className="rounded-lg overflow-hidden">
+                      <img src={resolveFileUrl(currentOrder.serviceImage)} alt={currentOrder.service} className="w-full h-36 object-cover" />
+                    </div>
+                  )}
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                      <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">Completed</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">#{currentOrder?.id?.substring(0, 15) || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                        {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.quantity || 1}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.amount || "N/A"}</span>
+                    </div>
                   </div>
-                )}
-
-                {/* Service Title */}
-                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
-                  {currentOrder?.service || "Service"}
-                </h3>
-
-                {/* Order Details */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
-                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
-                      Completed
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', {
-                        weekday: 'short',
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      {currentOrder?.quantity || 1}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      {currentOrder?.amount || "N/A"}
-                    </span>
-                  </div>
+                  {currentOrder?.address && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">Task Address</h4>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        {typeof currentOrder.address === 'string' 
+                          ? currentOrder.address 
+                          : (
+                            <>
+                              {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
+                              {currentOrder.address.addressLine1}
+                              {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
+                              <br />
+                              {currentOrder.address.city && <>{currentOrder.address.city}, </>}
+                              {currentOrder.address.postcode}
+                              {currentOrder.address.phone && (<> <br /> Tel: {currentOrder.address.phone} </>)}
+                            </>
+                          )}
+                      </p>
+                    </div>
+                  )}
                 </div>
-
-                {/* Task Address */}
-                {currentOrder?.address && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">
-                      Task Address
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      {typeof currentOrder.address === 'string' 
-                        ? currentOrder.address 
-                        : (
-                          <>
-                            {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
-                            {currentOrder.address.addressLine1}
-                            {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
-                            <br />
-                            {currentOrder.address.city && <>{currentOrder.address.city}, </>}
-                            {currentOrder.address.postcode}
-                            {currentOrder.address.phone && (
-                              <>
-                                <br />
-                                Tel: {currentOrder.address.phone}
-                              </>
-                            )}
-                          </>
-                        )}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
-            </>
             )}
           </DialogContent>
         </Dialog>
@@ -1959,7 +1913,7 @@ function ProfessionalOrdersSection() {
             closeAllModals();
           }
         }}>
-          <DialogContent className="w-[90vw] max-w-[600px]">
+          <DialogContent className="w-[45vw] min-w-[280px] max-w-[320px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                 Deliver Work

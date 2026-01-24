@@ -198,33 +198,6 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
-      {/* Revision Resume Action */}
-      {currentOrder.revisionRequest?.status === "pending" && (
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mt-4 shadow-md">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
-                Client requested a modification. Resume work to continue and update the delivery.
-              </p>
-              <Button
-                onClick={async () => {
-                  try {
-                    await onRespondToRevision("accept");
-                    toast.success("Revision accepted. Work resumed.");
-                  } catch (error: any) {
-                    toast.error(error.message || "Failed to resume work");
-                  }
-                }}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif]"
-              >
-                Resume Work
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Cancellation Request - Pending (Professional can respond) - Show at top of page */}
       {(() => {
         const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;

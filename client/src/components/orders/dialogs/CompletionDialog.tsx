@@ -47,7 +47,7 @@ export default function CompletionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-[600px]">
+      <DialogContent className="w-[45vw] min-w-[280px] max-w-[320px]">
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
             Submit Completion Request

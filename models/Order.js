@@ -147,6 +147,8 @@ const orderSchema = new mongoose.Schema(
       default: 'In Progress',
       index: true,
     },
+    rating: { type: Number, min: 0, max: 5, default: null },
+    review: { type: String, trim: true, default: '' },
     // Order acceptance by professional
     acceptedByProfessional: {
       type: Boolean,
@@ -200,6 +202,10 @@ const orderSchema = new mongoose.Schema(
       uploadedAt: {
         type: Date,
         default: Date.now,
+      },
+      deliveryNumber: {
+        type: Number,
+        default: 1,
       },
     }],
     deliveryMessage: {
@@ -313,11 +319,15 @@ const orderSchema = new mongoose.Schema(
       },
     },
     // Revision request (modification request)
-    revisionRequest: {
+    revisionRequest: [{
+      index: {
+        type: Number,
+        required: true,
+      },
       status: {
         type: String,
         enum: ['pending', 'in_progress', 'completed', 'rejected'],
-        default: null,
+        required: true,
       },
       reason: {
         type: String,
@@ -335,7 +345,7 @@ const orderSchema = new mongoose.Schema(
       }],
       requestedAt: {
         type: Date,
-        default: null,
+        default: Date.now,
       },
       respondedAt: {
         type: Date,
@@ -345,7 +355,7 @@ const orderSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
-    },
+    }],
   },
   {
     timestamps: true,

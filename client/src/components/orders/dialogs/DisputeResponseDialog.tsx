@@ -22,7 +22,7 @@ export default function DisputeResponseDialog({
 }: DisputeResponseDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-2xl">
+      <DialogContent className="w-[45vw] min-w-[280px] max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
             Respond to Dispute

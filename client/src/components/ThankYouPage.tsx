@@ -202,19 +202,16 @@ export default function ThankYouPage() {
         </header>
         <div className="pt-[120px] md:pt-[140px] pb-12 md:pb-20">
           <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              {/* Thank You Banner */}
-              <div className="bg-white rounded-xl md:rounded-2xl p-6 md:p-8 max-w-[700px] w-full shadow-lg border border-gray-200 mt-8 md:mt-12">
+            <div className="flex flex-col md:flex-row flex-wrap items-center justify-center gap-6 md:gap-8 min-h-[60vh] mt-8 md:mt-12">
+              {/* Thank You Banner - half width, centered */}
+              <div className="bg-white rounded-xl md:rounded-2xl p-6 md:p-8 w-full max-w-[350px] md:max-w-[50%] md:min-w-[320px] md:flex-1 shadow-lg border border-gray-200">
                 <div className="flex items-start gap-4 md:gap-6">
-                  {/* Checkmark Icon */}
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="w-7 h-7 md:w-8 md:h-8 text-green-600" strokeWidth={2.5} />
                     </div>
                   </div>
-                  
-                  {/* Text Content */}
-                  <div className="flex-1 pt-1">
+                  <div className="flex-1 pt-1 min-w-0">
                     <h1 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] lg:text-[28px] text-green-600 font-semibold mb-2">
                       Thank You for your Purchase
                     </h1>
@@ -228,9 +225,9 @@ export default function ThankYouPage() {
                 </div>
               </div>
 
-              {/* Orders List */}
+              {/* Order Details - half width, centered */}
               {currentOrders.length > 0 && (
-                <div className="mt-8 md:mt-12 w-full max-w-[700px] space-y-4">
+                <div className="w-full max-w-[350px] md:max-w-[50%] md:min-w-[320px] md:flex-1 space-y-4">
                   <h2 className="font-['Poppins',sans-serif] text-[18px] md:text-[20px] text-[#2c353f] font-semibold mb-4">
                     Your Orders ({currentOrders.length})
                   </h2>
@@ -240,30 +237,30 @@ export default function ThankYouPage() {
 
               {/* No Orders Found */}
               {currentOrders.length === 0 && orderIds.length > 0 && (
-                <div className="mt-8 md:mt-12 w-full max-w-[600px] bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
+                <div className="w-full max-w-[350px] md:max-w-[50%] md:min-w-[320px] bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
                   <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-700">
                     Loading order details... Please wait or check your account page.
                   </p>
                 </div>
               )}
+            </div>
 
-              {/* Action Buttons */}
-              <div className="mt-8 md:mt-10 flex flex-col sm:flex-row gap-4 w-full max-w-[700px]">
-                <Button
-                  onClick={handleViewOrders}
-                  className="w-full sm:w-auto bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 px-8 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]"
-                >
-                  View Orders
-                </Button>
-                <Button
-                  onClick={() => navigate("/services")}
-                  variant="outline"
-                  className="w-full sm:w-auto border-2 border-gray-300 text-[#6b6b6b] hover:bg-gray-50 py-6 px-8 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]"
-                >
-                  <ArrowLeft className="w-5 h-5 mr-2" />
-                  Continue Shopping
-                </Button>
-              </div>
+            {/* Action Buttons - centered */}
+            <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
+              <Button
+                onClick={handleViewOrders}
+                className="w-full sm:w-auto bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 px-8 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]"
+              >
+                View Orders
+              </Button>
+              <Button
+                onClick={() => navigate("/services")}
+                variant="outline"
+                className="w-full sm:w-auto border-2 border-gray-300 text-[#6b6b6b] hover:bg-gray-50 py-6 px-8 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px]"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Continue Shopping
+              </Button>
             </div>
           </div>
         </div>

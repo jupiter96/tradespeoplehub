@@ -1057,20 +1057,30 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order with revision request
+      // Update order with revision request (array format)
       setOrders(prev => prev.map(order => {
         if (order.id === orderId) {
+          const existingRevisionRequests = order.revisionRequest 
+            ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
+            : [];
+          
+          // Add new revision request to array
+          const newRevisionRequest = {
+            index: data.revisionRequest.index || (existingRevisionRequests.length > 0 
+              ? Math.max(...existingRevisionRequests.map(rr => rr.index || 0)) + 1
+              : 1),
+            status: data.revisionRequest.status,
+            reason: data.revisionRequest.reason,
+            clientMessage: data.revisionRequest.clientMessage,
+            clientFiles: data.revisionRequest.clientFiles || [],
+            requestedAt: data.revisionRequest.requestedAt,
+            respondedAt: undefined,
+            additionalNotes: undefined,
+          };
+          
           return {
             ...order,
-            revisionRequest: {
-              status: data.revisionRequest.status,
-              reason: data.revisionRequest.reason,
-              clientMessage: data.revisionRequest.clientMessage,
-              clientFiles: data.revisionRequest.clientFiles || [],
-              requestedAt: data.revisionRequest.requestedAt,
-              respondedAt: undefined,
-              additionalNotes: undefined,
-            },
+            revisionRequest: [...existingRevisionRequests, newRevisionRequest],
           };
         }
         return order;
@@ -1102,19 +1112,32 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order with revision response
+      // Update order with revision response (array format)
       setOrders(prev => prev.map(order => {
         if (order.id === orderId) {
+          const revisionRequests = order.revisionRequest 
+            ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
+            : [];
+          
+          // Find and update the latest revision request
+          const updatedRevisionRequests = revisionRequests.map(rr => {
+            // Update the latest pending/in_progress revision request
+            if (rr && (rr.status === 'pending' || rr.status === 'in_progress')) {
+              return {
+                ...rr,
+                status: data.revisionRequest.status,
+                respondedAt: data.revisionRequest.respondedAt,
+                additionalNotes: data.revisionRequest.additionalNotes,
+              };
+            }
+            return rr;
+          });
+          
           return {
             ...order,
             status: data.orderStatus || order.status,
             deliveryStatus: data.revisionRequest.status === 'in_progress' ? 'active' : order.deliveryStatus,
-            revisionRequest: {
-              ...order.revisionRequest!,
-              status: data.revisionRequest.status,
-              respondedAt: data.revisionRequest.respondedAt,
-              additionalNotes: data.revisionRequest.additionalNotes,
-            },
+            revisionRequest: updatedRevisionRequests,
           };
         }
         return order;

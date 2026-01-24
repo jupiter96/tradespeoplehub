@@ -49,7 +49,7 @@ export default function DisputeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[70vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[48vw] sm:w-[42vw] md:w-[38vw] lg:w-[35vw] min-w-[280px] max-w-[460px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
             Open a Dispute

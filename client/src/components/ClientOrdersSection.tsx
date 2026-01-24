@@ -480,19 +480,28 @@ export default function ClientOrdersSection() {
     }
 
  
-    if (order.revisionRequest?.status) {
-      push(
-        {
-          at: order.revisionRequest.requestedAt,
-          title: "Revision Requested",
-          description: "You requested a modification to the delivered work.",
-          message: order.revisionRequest.clientMessage || order.revisionRequest.reason,
-          files: order.revisionRequest.clientFiles,
-          colorClass: "bg-orange-500",
-          icon: <AlertTriangle className="w-5 h-5 text-white" />,
-        },
-        "revision-requested"
-      );
+    // Handle revision requests as array
+    if (order.revisionRequest) {
+      const revisionRequests = Array.isArray(order.revisionRequest) 
+        ? order.revisionRequest 
+        : [order.revisionRequest];
+      
+      revisionRequests.forEach((rr, index) => {
+        if (rr && rr.status) {
+          push(
+            {
+              at: rr.requestedAt,
+              title: "Revision Requested",
+              description: "You requested a modification to the delivered work.",
+              message: rr.clientMessage || rr.reason,
+              files: rr.clientFiles,
+              colorClass: "bg-orange-500",
+              icon: <AlertTriangle className="w-5 h-5 text-white" />,
+            },
+            `revision-requested-${rr.index || index + 1}`
+          );
+        }
+      });
     }
 
     if (order.additionalInformation?.submittedAt) {
@@ -551,10 +560,118 @@ export default function ClientOrdersSection() {
       );
     }
 
-    if (
-      order.deliveryMessage ||
-      (order.deliveryFiles && order.deliveryFiles.length > 0)
-    ) {
+    // Group delivery files by deliveryNumber to identify separate deliveries
+    // Each delivery is independent - files are grouped by deliveryNumber
+    if (order.deliveryFiles && order.deliveryFiles.length > 0) {
+      // Group files by deliveryNumber
+      const deliveryGroupsMap = new Map<number, any[]>();
+      order.deliveryFiles.forEach((file: any) => {
+        const deliveryNum = file.deliveryNumber || 1;
+        if (!deliveryGroupsMap.has(deliveryNum)) {
+          deliveryGroupsMap.set(deliveryNum, []);
+        }
+        deliveryGroupsMap.get(deliveryNum)!.push(file);
+      });
+      
+      // Sort files within each group by upload time
+      deliveryGroupsMap.forEach((files, deliveryNum) => {
+        files.sort((a: any, b: any) => {
+          const aTime = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+          const bTime = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+          return aTime - bTime;
+        });
+      });
+      
+      // Parse delivery messages by [Delivery #N] markers
+      // Format: "[Delivery #1]\nmessage1\n\n[Delivery #2]\nmessage2\n\n[Delivery #3]\nmessage3"
+      // Or: "message1\n\n[Delivery #2]\nmessage2" (first delivery without marker)
+      const deliveryMessagesMap = new Map<number, string>();
+      
+      if (order.deliveryMessage) {
+        // Find all [Delivery #N] markers and their positions
+        const markerRegex = /\[Delivery #(\d+)\]\n/g;
+        const markers: Array<{ number: number; index: number; markerLength: number }> = [];
+        let match;
+        
+        while ((match = markerRegex.exec(order.deliveryMessage)) !== null) {
+          markers.push({
+            number: parseInt(match[1], 10),
+            index: match.index,
+            markerLength: match[0].length // Length of "[Delivery #N]\n"
+          });
+        }
+        
+        if (markers.length === 0) {
+          // No markers - entire message is delivery #1
+          deliveryMessagesMap.set(1, order.deliveryMessage.trim());
+        } else {
+          // Extract messages between markers
+          for (let i = 0; i < markers.length; i++) {
+            const marker = markers[i];
+            const nextMarker = markers[i + 1];
+            const startIndex = marker.index + marker.markerLength; // After the marker
+            const endIndex = nextMarker ? nextMarker.index : order.deliveryMessage.length;
+            const message = order.deliveryMessage.substring(startIndex, endIndex).trim();
+            // Remove leading/trailing newlines and separators
+            const cleanMessage = message.replace(/^\n+|\n+$/g, '').trim();
+            if (cleanMessage) {
+              deliveryMessagesMap.set(marker.number, cleanMessage);
+            }
+          }
+          
+          // If first marker is not at the start, text before it is delivery #1
+          if (markers[0].index > 0) {
+            const firstMessage = order.deliveryMessage.substring(0, markers[0].index).trim();
+            if (firstMessage) {
+              deliveryMessagesMap.set(1, firstMessage);
+            }
+          }
+        }
+      }
+      
+      // Get all unique delivery numbers (from files and messages)
+      const allDeliveryNumbers = Array.from(new Set([
+        ...Array.from(deliveryGroupsMap.keys()),
+        ...Array.from(deliveryMessagesMap.keys()),
+        ...(deliveryGroupsMap.size === 0 && deliveryMessagesMap.size === 0 ? [1] : [])
+      ])).sort((a, b) => a - b);
+      
+      // Create timeline event for each delivery
+      allDeliveryNumbers.forEach((deliveryNum) => {
+        const files = deliveryGroupsMap.get(deliveryNum) || [];
+        const deliveryMessage = deliveryMessagesMap.get(deliveryNum) || '';
+        const deliveryDate = files.length > 0 
+          ? (files[0]?.uploadedAt || order.deliveredDate)
+          : order.deliveredDate;
+        
+        push(
+          {
+            at: deliveryDate || order.deliveryFiles?.[0]?.uploadedAt,
+            title: "Work Delivered",
+            description: `${order.professional || "Professional"} delivered the work.`,
+            message: deliveryMessage || undefined,
+            files: files,
+            colorClass: "bg-purple-500",
+            icon: <Truck className="w-5 h-5 text-white" />,
+          },
+          `delivered-${deliveryNum}`
+        );
+      });
+    } else if (order.deliveryMessage || order.deliveredDate) {
+      // No message but has files - single delivery
+      push(
+        {
+          at: order.deliveryFiles[0]?.uploadedAt || order.deliveredDate,
+          title: "Work Delivered",
+          description: `${order.professional || "Professional"} delivered the work.`,
+          files: order.deliveryFiles,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-white" />,
+        },
+        "delivered-1"
+      );
+    } else if (order.deliveredDate) {
+      // Fallback: if no files but has message or deliveredDate, show single delivery event
       push(
         {
           at: order.deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
@@ -565,7 +682,7 @@ export default function ClientOrdersSection() {
           colorClass: "bg-purple-500",
           icon: <Truck className="w-5 h-5 text-white" />,
         },
-        "delivered"
+        "delivered-1"
       );
     }
 
@@ -1237,8 +1354,8 @@ export default function ClientOrdersSection() {
   if (selectedOrder && currentOrder) {
     const timelineTimer = (
       <>
-        {/* Timer - Show when status is "In Progress" */}
-        {currentOrder.status === "In Progress" && (
+        {/* Timer - Show when status is "In Progress" and no delivery files exist yet */}
+        {currentOrder.status === "In Progress" && (!currentOrder.deliveryFiles || currentOrder.deliveryFiles.length === 0) && (
           <>
             {/* Countdown Timer - Until booked time */}
             {!workElapsedTime.started && (
@@ -1640,7 +1757,7 @@ export default function ClientOrdersSection() {
             )}
 
             {/* Status Alert Box - Service In Progress */}
-            {currentOrder.status === "In Progress" && (!currentOrder.deliveryFiles || currentOrder.deliveryFiles.length === 0) && (
+            {currentOrder.status === "In Progress" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
                   Service In Progress
@@ -1652,51 +1769,31 @@ export default function ClientOrdersSection() {
             )}
 
             {/* Service In Progress / Work Delivered - Show based on status */}
-            {(() => {
-              // Check if there's any content to display in the card
-              const hasDeliveryMessage = currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 &&
-                currentOrder.status !== "Completed" &&
-                currentOrder.status !== "Cancelled" &&
-                currentOrder.status !== "Cancellation Pending";
-              const hasExtensionRequest = currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending';
-              const hasExtensionStatus = currentOrder.extensionRequest && 
-                currentOrder.extensionRequest.status !== 'pending' && 
-                currentOrder.status === 'In Progress' && 
-                (currentOrder.extensionRequest.status === 'approved' || currentOrder.extensionRequest.status === 'rejected');
-              const hasCompletionRequest = currentOrder.metadata?.professionalCompleteRequest;
-              
-              const hasContent = hasDeliveryMessage || hasExtensionRequest || hasExtensionStatus || hasCompletionRequest;
-              
-              return hasContent && currentOrder.status !== "Completed" && 
-                currentOrder.status !== "Cancelled" &&
-                currentOrder.status !== "Cancellation Pending" ? (
+            {currentOrder.status === "delivered" ? (
               <div className="border rounded-lg p-4 sm:p-6 shadow-md bg-white border-gray-200">
-                {hasDeliveryMessage && (
-                  <>
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2 break-words">
-                      Your work has been delivered!
-                    </h3>
-                    <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
-                      {currentOrder.deliveredDate ? (() => {
-                        const deliveryDate = new Date(currentOrder.deliveredDate);
-                        const deadlineDate = new Date(deliveryDate);
-                        deadlineDate.setDate(deadlineDate.getDate() + 1);
-                        deadlineDate.setHours(7, 0, 0, 0);
-                        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                        const day = deadlineDate.getDate();
-                        const dayName = dayNames[deadlineDate.getDay()];
-                        const month = monthNames[deadlineDate.getMonth()];
-                        const year = deadlineDate.getFullYear();
-                        const hours = deadlineDate.getHours().toString().padStart(2, "0");
-                        const minutes = deadlineDate.getMinutes().toString().padStart(2, "0");
-                        const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                        const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
-                        return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
-                      })() : "Your work has been delivered. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
-                    </p>
-                  </>
-                )}
+              
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2 break-words">
+                    Your work has been delivered!
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+                    {currentOrder.deliveredDate ? (() => {
+                      const deliveryDate = new Date(currentOrder.deliveredDate);
+                      const deadlineDate = new Date(deliveryDate);
+                      deadlineDate.setDate(deadlineDate.getDate() + 1);
+                      deadlineDate.setHours(7, 0, 0, 0);
+                      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                      const day = deadlineDate.getDate();
+                      const dayName = dayNames[deadlineDate.getDay()];
+                      const month = monthNames[deadlineDate.getMonth()];
+                      const year = deadlineDate.getFullYear();
+                      const hours = deadlineDate.getHours().toString().padStart(2, "0");
+                      const minutes = deadlineDate.getMinutes().toString().padStart(2, "0");
+                      const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                      const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+                      return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                    })() : "Your work has been delivered. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
+                  </p>
 
                 {/* Extension Request Alert */}
                 {currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending' && (
@@ -1889,362 +1986,13 @@ export default function ClientOrdersSection() {
                   </div>
                 )}
               </div>
-              ) : null;
-            })()}
+              ) : null}
 
             {/* Delivery Countdown - Show for in progress orders */}
             {currentOrder.status === "In Progress" && currentOrder.expectedDelivery && (
               <DeliveryCountdown expectedDelivery={currentOrder.expectedDelivery} />
             )}
 
-            {(currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 sm:p-6 shadow-md">
-                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                  Service Delivered - Review Required
-                </h4>
-                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
-                  Your work has been delivered on <span className="text-[#2c353f]">{currentOrder.deliveredDate ? formatDate(currentOrder.deliveredDate) : "today"}</span>. {currentOrder.metadata?.professionalCompleteRequest ? "The professional has submitted a completion request with verification data. Please review and complete the order to release funds." : "Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
-                </p>
-
-                {/* Professional Completion Request */}
-                {currentOrder.metadata?.professionalCompleteRequest && (
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
-                    <div className="flex items-start gap-3 mb-3">
-                      <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700 mb-2">
-                          Completion Request Submitted
-                        </h5>
-                        {currentOrder.metadata.professionalCompleteRequest.completionMessage && (
-                          <div className="mb-3 p-3 bg-white rounded">
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Professional's message:
-                            </p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                              {currentOrder.metadata.professionalCompleteRequest.completionMessage}
-                            </p>
-                          </div>
-                        )}
-                        {currentOrder.metadata.professionalCompleteRequest.completionFiles && currentOrder.metadata.professionalCompleteRequest.completionFiles.length > 0 && (
-                          <div className="mb-3">
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                              Verification Files:
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                              {currentOrder.metadata.professionalCompleteRequest.completionFiles.map((file: any, index: number) => {
-                                return (
-                                  <div key={index} className="border border-gray-200 rounded p-2">
-                                    {file.fileType === 'image' ? (
-                                      <img src={resolveFileUrl(file.url)} alt={file.fileName} className="w-full h-24 object-cover rounded" />
-                                    ) : (
-                                      <div className="w-full h-24 bg-gray-200 rounded flex items-center justify-center">
-                                        <PlayCircle className="w-8 h-8 text-gray-600" />
-                                      </div>
-                                    )}
-                                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 truncate">
-                                      {file.fileName}
-                                    </p>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Delivery Message */}
-                {currentOrder.deliveryMessage && (
-                  <div className="bg-white border border-purple-200 rounded-lg p-4 mb-4 shadow-md">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
-                      Remarks:
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      {currentOrder.deliveryMessage}
-                    </p>
-                  </div>
-                )}
-
-                {/* Delivery Files */}
-                {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 && (
-                  <div className="mb-4">
-                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-3">
-                      Attachments ({currentOrder.deliveryFiles.length}):
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                      {currentOrder.deliveryFiles.map((file, index) => (
-                        <div key={index} className="relative group">
-                          {file.fileType === 'image' ? (
-                            <img
-                              src={resolveFileUrl(file.url)}
-                              alt={file.fileName}
-                              className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                            />
-                          ) : (
-                            <div
-                              className="w-full h-24 sm:h-32 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                            >
-                              <PlayCircle className="w-8 sm:w-12 h-8 sm:h-12 text-gray-600" />
-                              <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-[9px] sm:text-[10px] px-1 sm:px-2 py-1 rounded truncate">
-                                {file.fileName}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Show buttons only if order is not completed and no active revision request */}
-                {currentOrder.status !== "Completed" && 
-                 (!currentOrder.revisionRequest || 
-                  (currentOrder.revisionRequest.status !== 'pending' && 
-                   currentOrder.revisionRequest.status !== 'in_progress')) && (
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <Button
-                      onClick={() => handleAcceptDelivery(currentOrder.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Completed
-                    </Button>
-                    <Button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedOrder(currentOrder.id);
-                        openModal('revisionRequest');
-                        setRevisionReason("");
-                      }}
-                      variant="outline"
-                      className="font-['Poppins',sans-serif] border-orange-500 text-orange-600 hover:bg-orange-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Request Revision
-                    </Button>
-                  </div>
-                )}
-                  
-                  {/* Show revision request status if pending or in progress */}
-                  {currentOrder.revisionRequest && (currentOrder.revisionRequest.status === 'pending' || currentOrder.revisionRequest.status === 'in_progress') && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4 shadow-md">
-                      <div className="flex items-start gap-3 mb-2">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-orange-700 mb-1">
-                            Revision Request {currentOrder.revisionRequest.status === 'pending' ? 'Pending' : 'In Progress'}
-                          </h5>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            {currentOrder.revisionRequest.status === 'pending' 
-                              ? 'Your revision request has been submitted. The professional will review it shortly.'
-                              : 'The professional is working on your revision request.'}
-                          </p>
-                          {currentOrder.revisionRequest.reason && (
-                            <div className="mt-2 p-2 bg-white border border-orange-200 rounded shadow-sm">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Your request:
-                              </p>
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                {currentOrder.revisionRequest.reason}
-                              </p>
-                            </div>
-                          )}
-                          {currentOrder.revisionRequest.status === 'in_progress' && currentOrder.revisionRequest.additionalNotes && (
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded shadow-sm">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Professional's notes:
-                              </p>
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                {currentOrder.revisionRequest.additionalNotes}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Show completed revision status */}
-                  {currentOrder.revisionRequest && currentOrder.revisionRequest.status === 'completed' && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 shadow-md">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
-                          Revision Completed
-                        </h5>
-                      </div>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        The professional has completed your revision request. Please review the updated work above.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Show Open Dispute button only for delivered orders and if no dispute exists */}
-                  {!currentOrder.disputeInfo && (
-                    <Button
-                      onClick={() => {
-                        setIsDisputeDialogOpen(true);
-                        setDisputeReason("");
-                        setDisputeEvidence("");
-                      }}
-                      variant="outline"
-                      className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
-                    >
-                      <AlertTriangle className="w-4 h-4 mr-2" />
-                      Open Dispute
-                    </Button>
-                  )}
-
-                  {/* Show dispute status if dispute exists */}
-                  {currentOrder.disputeInfo && (
-                    <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 shadow-md">
-                      <div className="flex items-start gap-2 sm:gap-3 mb-2">
-                        <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <h5 className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] font-medium text-red-700 mb-1 break-words">
-                            Dispute {currentOrder.disputeInfo.status === 'open' ? 'Open' : currentOrder.disputeInfo.status === 'responded' ? 'Responded' : 'Closed'}
-                          </h5>
-                          {currentOrder.disputeInfo.status === 'open' && currentOrder.disputeInfo.responseDeadline && (
-                            <div className="mb-2">
-                              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
-                                Response deadline: {new Date(currentOrder.disputeInfo.responseDeadline).toLocaleString('en-GB', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </p>
-                              {currentOrder.disputeInfo.respondentId && userInfo?.id === currentOrder.disputeInfo.respondentId && (
-                                <div className="mt-3">
-                                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-red-600 mb-2 break-words">
-                                    ⚠️ You need to respond by the deadline, or the dispute will automatically close in favor of the other party.
-                                  </p>
-                                  <div className="flex flex-col sm:flex-row gap-2">
-                                    <Button
-                                      onClick={() => {
-                                        openModal('disputeResponse');
-                                        setDisputeResponseMessage("");
-                                      }}
-                                      className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] w-full sm:w-auto"
-                                    >
-                                      Respond to Dispute
-                                    </Button>
-                                    <Button
-                                      onClick={handleCancelDispute}
-                                      variant="outline"
-                                      className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
-                                    >
-                                      <XCircle className="w-4 h-4 mr-2" />
-                                      Cancel Dispute
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                              {(!currentOrder.disputeInfo.respondentId || userInfo?.id !== currentOrder.disputeInfo.respondentId) && (
-                                <div className="mt-2">
-                                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-red-600 mb-2 break-words">
-                                    ⚠️ The other party needs to respond by the deadline, or the dispute will automatically close in your favor.
-                                  </p>
-                                  <Button
-                                    onClick={handleCancelDispute}
-                                    variant="outline"
-                                    className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
-                                  >
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    Cancel Dispute
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {currentOrder.disputeInfo.status === 'negotiation' && currentOrder.disputeInfo.negotiationDeadline && (
-                            <div className="mb-2">
-                              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
-                                Negotiation deadline: {new Date(currentOrder.disputeInfo.negotiationDeadline).toLocaleString('en-GB', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </p>
-                              <div className="mt-2 space-y-2">
-                                {!currentOrder.disputeInfo.arbitrationRequested && (
-                                  <div>
-                                    <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
-                                      If you can't reach an agreement, you can request admin arbitration by paying an administration fee of £{currentOrder.disputeInfo.arbitrationFeeAmount || 50}. The loser will lose both the arbitration fee and the order amount.
-                                    </p>
-                                    <Button
-                                      onClick={handleRequestArbitration}
-                                      className="bg-orange-600 hover:bg-orange-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] mb-2 w-full sm:w-auto"
-                                    >
-                                      <AlertTriangle className="w-4 h-4 mr-2" />
-                                      Request Admin Arbitration
-                                    </Button>
-                                  </div>
-                                )}
-                                <Button
-                                  onClick={handleCancelDispute}
-                                  variant="outline"
-                                  className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
-                                >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Cancel Dispute
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                          {currentOrder.disputeInfo.status === 'admin_arbitration' && (
-                            <div className="mb-2">
-                              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-blue-600 mb-2 break-words">
-                                ⚖️ Admin is reviewing this dispute. A decision will be made soon.
-                              </p>
-                              {currentOrder.disputeInfo.arbitrationRequestedBy && (
-                                <p className="font-['Poppins',sans-serif] text-[10px] sm:text-[11px] text-[#6b6b6b] mb-2 break-words">
-                                  Arbitration requested by: {currentOrder.disputeInfo.arbitrationRequestedBy === currentOrder.disputeInfo.claimantId ? 'Claimant' : 'Respondent'}
-                                </p>
-                              )}
-                              <Button
-                                onClick={handleCancelDispute}
-                                variant="outline"
-                                className="font-['Poppins',sans-serif] border-gray-500 text-gray-600 hover:bg-gray-50 text-[12px] sm:text-[14px] w-full sm:w-auto"
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Cancel Dispute
-                              </Button>
-                            </div>
-                          )}
-                          {currentOrder.disputeInfo.status === 'closed' && currentOrder.disputeInfo.autoClosed && (
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-green-600 mb-2">
-                              Dispute automatically closed in your favor (no response received)
-                            </p>
-                          )}
-                          {currentOrder.disputeInfo.reason && (
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mt-2">
-                              <span className="font-medium">Reason:</span> {currentOrder.disputeInfo.reason}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={() => handleStartConversation(currentOrder.professional, currentOrder.professionalAvatar)}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif]"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Chat
-                  </Button>
-                </div>
-            )}
 
             {timelineTimer}
 
@@ -2323,27 +2071,43 @@ export default function ClientOrdersSection() {
                 </div>
               )}
               {(() => {
-                // Get all "Work Delivered" events sorted chronologically (oldest first)
+                // Get all "Work Delivered" events sorted chronologically (oldest first for numbering)
                 const deliveryEvents = timelineEvents
                   .filter(e => e.title === "Work Delivered")
                   .sort((a, b) => {
                     const aTime = a.at ? new Date(a.at).getTime() : 0;
                     const bTime = b.at ? new Date(b.at).getTime() : 0;
-                    return aTime - bTime;
+                    return aTime - bTime; // Oldest first for numbering (#1, #2, #3...)
                   });
                 
                 // Create a map of delivery event timestamps to their number
+                // Oldest delivery = #1, second oldest = #2, etc.
                 const deliveryNumberMap = new Map();
                 deliveryEvents.forEach((event, idx) => {
                   const key = event.at || 'no-date';
                   deliveryNumberMap.set(key, idx + 1);
                 });
 
-                return timelineEvents.map((event, index) => {
+                // Sort timeline events by date (newest first for display)
+                const sortedTimelineEvents = [...timelineEvents].sort((a, b) => {
+                  const aTime = a.at ? new Date(a.at).getTime() : 0;
+                  const bTime = b.at ? new Date(b.at).getTime() : 0;
+                  return bTime - aTime; // Newest first
+                });
+
+                // Find the latest delivery event (newest first, so first "Work Delivered" event)
+                const latestDeliveryEvent = sortedTimelineEvents.find(e => e.title === "Work Delivered");
+
+                return sortedTimelineEvents.map((event, index) => {
                   // Get delivery number if this is a "Work Delivered" event
                   const deliveryNumber = event.title === "Work Delivered" 
                     ? deliveryNumberMap.get(event.at || 'no-date')
                     : null;
+                  
+                  // Check if this is the latest delivery event
+                  const isLatestDelivery = latestDeliveryEvent && 
+                    event.title === "Work Delivered" && 
+                    event.at === latestDeliveryEvent.at;
 
                   return (
                     <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-3 sm:gap-5 mb-6 sm:mb-8 relative">
@@ -2378,13 +2142,31 @@ export default function ClientOrdersSection() {
                         </p>
                       </div>
                     )}
-                    {event.files && event.files.length > 0 && (
-                      <div className="mt-3">
-                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">
-                          📎 Attachments ({event.files.length})
-                        </p>
-                        <div className="space-y-3">
-                          {event.files.map((file: any, index: number) => {
+                    {event.files && event.files.length > 0 && (() => {
+                      // For "Work Delivered" events, filter files by deliveryNumber
+                      // For other events (like "Revision Requested"), show all files
+                      let filesToShow = event.files;
+                      
+                      if (event.title === "Work Delivered" && event.id && event.id.startsWith('delivered-')) {
+                        // Extract delivery number from event id (format: "delivered-1", "delivered-2", etc.)
+                        const eventDeliveryNumber = parseInt(event.id.replace('delivered-', ''), 10);
+                        
+                        // Filter files by deliveryNumber
+                        filesToShow = event.files.filter((file: any) => {
+                          const fileDeliveryNumber = file.deliveryNumber || 1;
+                          return fileDeliveryNumber === eventDeliveryNumber;
+                        });
+                      }
+                      
+                      if (filesToShow.length === 0) return null;
+                      
+                      return (
+                        <div className="mt-3">
+                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">
+                            📎 Attachments ({filesToShow.length})
+                          </p>
+                          <div className="space-y-3">
+                            {filesToShow.map((file: any, index: number) => {
                             const fileUrl = file.url || "";
                             const fileName = file.fileName || "attachment";
                             const isImage =
@@ -2415,21 +2197,20 @@ export default function ClientOrdersSection() {
                                 )}
                               </div>
                             );
-                          })}
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {event.id === "delivered" && 
-                     currentOrder.status !== "Completed" && 
-                     (!currentOrder.revisionRequest || 
-                      (currentOrder.revisionRequest.status !== 'pending' && 
-                       currentOrder.revisionRequest.status !== 'in_progress')) && (
+                      );
+                    })()}
+                    {event.title === "Work Delivered" && 
+                     isLatestDelivery &&
+                     currentOrder.status === "delivered" && (
                       <div className="bg-blue-50 border border-blue-300 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4 shadow-sm">
                         <div className="flex gap-2 mb-3 sm:mb-4">
                           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                           <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-blue-900 break-words">
-                            Your work has been delivered. Please approve the delivery or request a revision. {currentOrder.deliveredDate && (() => {
-                              const deliveryDate = new Date(currentOrder.deliveredDate);
+                            Your work has been delivered. Please approve the delivery or request a revision. {event.at && (() => {
+                              const deliveryDate = new Date(event.at);
                               const deadlineDate = new Date(deliveryDate);
                               deadlineDate.setDate(deadlineDate.getDate() + 1);
                               return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
@@ -2825,7 +2606,7 @@ export default function ClientOrdersSection() {
                     )}
 
                     {/* Approval Message - Show only if order is not completed and no active revision request */}
-                    {currentOrder.status !== "Completed" && 
+                    {/* {currentOrder.status !== "Completed" && 
                      (!currentOrder.revisionRequest || 
                       (currentOrder.revisionRequest.status !== 'pending' && 
                        currentOrder.revisionRequest.status !== 'in_progress')) && (
@@ -2862,7 +2643,7 @@ export default function ClientOrdersSection() {
                           </Button>
                         </div>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
               )}
@@ -3235,16 +3016,32 @@ export default function ClientOrdersSection() {
                 const deliveryEvents = timeline.filter(event => event.title === "Work Delivered");
                 
                 // Sort chronologically (oldest first for proper #1, #2, #3 numbering)
+                const sortedForNumbering = [...deliveryEvents].sort((a, b) => {
+                  const aTime = a.at ? new Date(a.at).getTime() : 0;
+                  const bTime = b.at ? new Date(b.at).getTime() : 0;
+                  return aTime - bTime; // Oldest first for numbering
+                });
+                
+                // Create delivery number map (oldest = #1, second = #2, etc.)
+                const deliveryNumberMap = new Map();
+                sortedForNumbering.forEach((event, idx) => {
+                  const key = event.at || 'no-date';
+                  deliveryNumberMap.set(key, idx + 1);
+                });
+                
+                // Sort for display (newest first)
                 const sortedDeliveries = [...deliveryEvents].sort((a, b) => {
                   const aTime = a.at ? new Date(a.at).getTime() : 0;
                   const bTime = b.at ? new Date(b.at).getTime() : 0;
-                  return aTime - bTime;
+                  return bTime - aTime; // Newest first
                 });
 
                 if (sortedDeliveries.length > 0) {
                   return (
                     <div className="space-y-6">
-                      {sortedDeliveries.map((delivery, index) => (
+                      {sortedDeliveries.map((delivery, index) => {
+                        const deliveryNumber = deliveryNumberMap.get(delivery.at || 'no-date') || (index + 1);
+                        return (
                         <div key={index} className="flex gap-4">
                           <div className="flex flex-col items-center pt-1">
                             <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
@@ -3256,7 +3053,7 @@ export default function ClientOrdersSection() {
                           </div>
                           <div className="flex-1 pb-6">
                             <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                              #{index + 1} Work Delivered
+                              #{deliveryNumber} Work Delivered
                             </h4>
                             <p className="font-['Poppins',sans-serif] text-[13px] mb-3">
                               <span className="text-purple-600 hover:underline cursor-pointer">{currentOrder.professional}</span>{" "}
@@ -3281,13 +3078,22 @@ export default function ClientOrdersSection() {
                                 )}
                                 
                                 {/* Delivery Attachments */}
-                                {delivery.files && delivery.files.length > 0 && (
-                                  <div>
-                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                                      📎 Attachments ({delivery.files.length})
-                                    </p>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                      {delivery.files.map((file: any, fileIndex: number) => (
+                                {delivery.files && delivery.files.length > 0 && (() => {
+                                  // Filter files to only show those matching the delivery number
+                                  const filteredFiles = delivery.files.filter((file: any) => {
+                                    const fileDeliveryNumber = file.deliveryNumber || 1;
+                                    return fileDeliveryNumber === deliveryNumber;
+                                  });
+                                  
+                                  if (filteredFiles.length === 0) return null;
+                                  
+                                  return (
+                                    <div>
+                                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                                        📎 Attachments ({filteredFiles.length})
+                                      </p>
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {filteredFiles.map((file: any, fileIndex: number) => (
                                         <div key={fileIndex} className="relative group">
                                           {file.fileType === 'image' ? (
                                             <img
@@ -3311,13 +3117,15 @@ export default function ClientOrdersSection() {
                                       ))}
                                     </div>
                                   </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             )}
 
-                            {/* Approval Message - Show only for the latest delivery if order is not completed and no active revision request */}
-                            {index === sortedDeliveries.length - 1 &&
-                             currentOrder.status !== "Completed" && 
+                            {/* Approval Message - Show for latest delivery if order is not completed and no active revision request */}
+                            {/* {index === sortedDeliveries.length - 1 &&
+                             (currentOrder.status !== "Completed" && currentOrder.status !== "Cancelled") && 
+                             (currentOrder.status === "delivered" || currentOrder.status === "In Progress") &&
                              (!currentOrder.revisionRequest || 
                               (currentOrder.revisionRequest.status !== 'pending' && 
                                currentOrder.revisionRequest.status !== 'in_progress')) && (
@@ -3354,10 +3162,11 @@ export default function ClientOrdersSection() {
                                   </Button>
                                 </div>
                               </div>
-                            )}
+                            )} */}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 }
@@ -3837,8 +3646,8 @@ export default function ClientOrdersSection() {
             closeAllModals();
           }
         }}>
-          <DialogContent className="w-[95vw] !max-w-[1400px] sm:!max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
-            <DialogHeader className="sr-only">
+          <DialogContent className="w-[48vw] min-w-[280px] sm:max-w-[280px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+            <DialogHeader className="sr-only shrink-0">
               <DialogTitle>Rate Your Service</DialogTitle>
               <DialogDescription>Provide your rating and review for the service</DialogDescription>
             </DialogHeader>
@@ -3850,9 +3659,9 @@ export default function ClientOrdersSection() {
                 </p>
               </div>
             ) : currentOrder.rating ? (
-              <>
+              <div className="flex flex-col overflow-y-auto overscroll-contain min-h-0">
             {/* Already Reviewed - Show Submitted Review */}
-            <div className="bg-blue-50 border-b border-blue-200 p-4">
+            <div className="bg-blue-50 border-b border-blue-200 p-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-blue-600" />
@@ -3868,18 +3677,13 @@ export default function ClientOrdersSection() {
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row">
-              {/* Left Side - Submitted Review Display */}
-              <div className="flex-1 p-6 lg:p-8">
-                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-4">
+            <div className="flex flex-col p-4 sm:p-6 space-y-6">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#3D5A80] font-medium">
                   Your Public Review
                 </h2>
                 
-                {/* Overall Rating */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                    Overall Rating
-                  </p>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">Overall Rating</p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -3899,12 +3703,9 @@ export default function ClientOrdersSection() {
                   </div>
                 </div>
 
-                {/* Review Text */}
                 {currentOrder.review && (
-                  <div className="mb-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">
-                      Your Review
-                    </h4>
+                  <div>
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">Your Review</h4>
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
                         {currentOrder.review}
@@ -3913,12 +3714,9 @@ export default function ClientOrdersSection() {
                   </div>
                 )}
 
-                {/* Professional's Review of Client */}
                 {currentOrder.professionalReview && (
-                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">
-                      Professional's Review
-                    </h4>
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">Professional&apos;s Review</h4>
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
                         {resolveAvatarUrl(currentOrder.professionalAvatar) && (
@@ -3928,7 +3726,7 @@ export default function ClientOrdersSection() {
                           {currentOrder.professional?.charAt(0) || "P"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">
                           {currentOrder.professional || "Professional"}
                         </p>
@@ -3946,7 +3744,7 @@ export default function ClientOrdersSection() {
                         </div>
                         {currentOrder.professionalReview?.comment && (
                           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            "{currentOrder.professionalReview.comment}"
+                            &quot;{currentOrder.professionalReview.comment}&quot;
                           </p>
                         )}
                       </div>
@@ -3957,48 +3755,37 @@ export default function ClientOrdersSection() {
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">
                   Reviews can only be submitted once and cannot be edited.
                 </p>
-              </div>
 
-              {/* Right Side - Order Summary */}
-              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
-                {/* Service Image */}
-                {currentOrder?.serviceImage && (
-                  <div className="mb-4 rounded-lg overflow-hidden">
-                    <img
-                      src={resolveFileUrl(currentOrder.serviceImage)}
-                      alt={currentOrder.service}
-                      className="w-full h-40 object-cover"
-                    />
-                  </div>
-                )}
-
-                {/* Service Title */}
-                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
-                  {currentOrder?.service || "Service"}
-                </h3>
-
-                {/* Order Details */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
-                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
-                      Completed
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
-                    </span>
+                {/* Order Summary - single column */}
+                <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
+                  {currentOrder?.serviceImage && (
+                    <div className="rounded-lg overflow-hidden">
+                      <img
+                        src={resolveFileUrl(currentOrder.serviceImage)}
+                        alt={currentOrder.service}
+                        className="w-full h-36 object-cover"
+                      />
+                    </div>
+                  )}
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">
+                    {currentOrder?.service || "Service"}
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                      <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">Completed</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">#{currentOrder?.id?.substring(0, 15) || "N/A"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            </>
             ) : (
-              <>
-            {/* Success Banner */}
-            <div className="bg-green-50 border-b border-green-200 p-4">
+            <div className="flex flex-col overflow-y-auto overscroll-contain min-h-0">
+            <div className="bg-green-50 border-b border-green-200 p-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-green-600" />
@@ -4014,100 +3801,44 @@ export default function ClientOrdersSection() {
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row">
-              {/* Left Side - Review Form */}
-              <div className="flex-1 p-6 lg:p-8">
-                <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#3D5A80] font-medium mb-2">
+            <div className="flex flex-col p-4 sm:p-6 space-y-6">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#3D5A80] font-medium">
                   Leave a public review
                 </h2>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-6">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                   Share your experience of what is it like working with {currentOrder?.professional || "this professional"}.
                 </p>
 
-                {/* Rating Categories */}
                 <div className="space-y-6 mb-8">
-                  {/* Communication With Seller */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold">
-                        Communication With Seller
-                      </h4>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        How responsive was the seller during the process?
-                      </p>
-                    </div>
+                  <div>
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-1">Communication With Seller</h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">How responsive was the seller during the process?</p>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setCommunicationRating(star)}
-                          className="transition-transform hover:scale-110"
-                        >
-                          <Star
-                            className={`w-7 h-7 ${
-                              star <= communicationRating
-                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                : "text-gray-300"
-                            }`}
-                          />
+                        <button key={star} onClick={() => setCommunicationRating(star)} className="transition-transform hover:scale-110">
+                          <Star className={`w-7 h-7 ${star <= communicationRating ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* Service as Described */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold">
-                        Service as Described
-                      </h4>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        Did the result match the service's description?
-                      </p>
-                    </div>
+                  <div>
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-1">Service as Described</h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Did the result match the service&apos;s description?</p>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setServiceAsDescribedRating(star)}
-                          className="transition-transform hover:scale-110"
-                        >
-                          <Star
-                            className={`w-7 h-7 ${
-                              star <= serviceAsDescribedRating
-                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                : "text-gray-300"
-                            }`}
-                          />
+                        <button key={star} onClick={() => setServiceAsDescribedRating(star)} className="transition-transform hover:scale-110">
+                          <Star className={`w-7 h-7 ${star <= serviceAsDescribedRating ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* Buy Again or Recommended */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold">
-                        Buy Again or Recommended
-                      </h4>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        Would you recommend buying this service?
-                      </p>
-                    </div>
+                  <div>
+                    <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-1">Buy Again or Recommended</h4>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Would you recommend buying this service?</p>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setBuyAgainRating(star)}
-                          className="transition-transform hover:scale-110"
-                        >
-                          <Star
-                            className={`w-7 h-7 ${
-                              star <= buyAgainRating
-                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                : "text-gray-300"
-                            }`}
-                          />
+                        <button key={star} onClick={() => setBuyAgainRating(star)} className="transition-transform hover:scale-110">
+                          <Star className={`w-7 h-7 ${star <= buyAgainRating ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
                         </button>
                       ))}
                     </div>
@@ -4128,106 +3859,69 @@ export default function ClientOrdersSection() {
                   />
                 </div>
 
-                {/* Submit Button */}
                 <Button
                   onClick={handleSubmitRating}
                   disabled={isSubmittingReview}
-                  className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
+                  className="w-full sm:w-auto bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
                 >
                   {isSubmittingReview ? "Submitting..." : "Submit"}
                 </Button>
-              </div>
 
-              {/* Right Side - Order Summary */}
-              <div className="lg:w-[320px] bg-gray-50 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-gray-200">
-                {/* Service Image */}
-                {currentOrder?.serviceImage && (
-                  <div className="mb-4 rounded-lg overflow-hidden">
-                    <img
-                      src={resolveFileUrl(currentOrder.serviceImage)}
-                      alt={currentOrder.service}
-                      className="w-full h-40 object-cover"
-                    />
+                {/* Order Summary - single column */}
+                <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
+                  {currentOrder?.serviceImage && (
+                    <div className="rounded-lg overflow-hidden">
+                      <img src={resolveFileUrl(currentOrder.serviceImage)} alt={currentOrder.service} className="w-full h-36 object-cover" />
+                    </div>
+                  )}
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                      <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">Completed</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">#{currentOrder?.id?.substring(0, 15) || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                        {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.quantity || 1}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.amount || "N/A"}</span>
+                    </div>
                   </div>
-                )}
-
-                {/* Service Title */}
-                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-medium mb-4 italic">
-                  {currentOrder?.service || "Service"}
-                </h3>
-
-                {/* Order Details */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
-                    <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">
-                      Completed
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      #{currentOrder?.id?.substring(0, 15) || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', {
-                        weekday: 'short',
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      {currentOrder?.quantity || 1}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      {currentOrder?.amount || "N/A"}
-                    </span>
-                  </div>
+                  {currentOrder?.address && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">Task Address</h4>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        {typeof currentOrder.address === 'string' 
+                          ? currentOrder.address 
+                          : (
+                            <>
+                              {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
+                              {currentOrder.address.addressLine1}
+                              {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
+                              <br />
+                              {currentOrder.address.city && <>{currentOrder.address.city}, </>}
+                              {currentOrder.address.postcode}
+                              {currentOrder.address.phone && (<> <br /> Tel: {currentOrder.address.phone} </>)}
+                            </>
+                          )}
+                      </p>
+                    </div>
+                  )}
                 </div>
-
-                {/* Task Address */}
-                {currentOrder?.address && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">
-                      Task Address
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      {typeof currentOrder.address === 'string' 
-                        ? currentOrder.address 
-                        : (
-                          <>
-                            {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
-                            {currentOrder.address.addressLine1}
-                            {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
-                            <br />
-                            {currentOrder.address.city && <>{currentOrder.address.city}, </>}
-                            {currentOrder.address.postcode}
-                            {currentOrder.address.phone && (
-                              <>
-                                <br />
-                                Tel: {currentOrder.address.phone}
-                              </>
-                            )}
-                          </>
-                        )}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
-            </>
             )}
           </DialogContent>
         </Dialog>
@@ -4240,7 +3934,7 @@ export default function ClientOrdersSection() {
             closeAllModals();
           }
         }}>
-          <DialogContent className="w-[70vw]">
+          <DialogContent className="w-[35vw] min-w-[280px] max-w-[360px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
                 Cancel Order
@@ -4336,7 +4030,7 @@ export default function ClientOrdersSection() {
             closeAllModals();
           }
         }}>
-          <DialogContent className="w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[70vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[48vw] sm:w-[42vw] md:w-[38vw] lg:w-[35vw] min-w-[280px] max-w-[460px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                 Open a Dispute
@@ -4515,7 +4209,7 @@ export default function ClientOrdersSection() {
             }
           }}
         >
-          <DialogContent className="w-[90vw] max-w-2xl">
+          <DialogContent className="w-[45vw] min-w-[280px] max-w-xl">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
                 Request Revision
@@ -5244,7 +4938,7 @@ export default function ClientOrdersSection() {
           }
         }}
       >
-        <DialogContent className="w-[90vw] max-w-2xl">
+        <DialogContent className="w-[45vw] min-w-[280px] max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               Request Revision
@@ -5384,7 +5078,7 @@ export default function ClientOrdersSection() {
           closeAllModals();
         }
       }}>
-        <DialogContent className="w-[90vw] max-w-2xl">
+        <DialogContent className="w-[45vw] min-w-[280px] max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
               Respond to Dispute

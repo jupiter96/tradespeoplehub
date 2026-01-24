@@ -1302,6 +1302,11 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         deliveredDate,
         rating: order.rating || null,
         review: order.review || undefined,
+        professionalReview: order.metadata?.buyerReview ? {
+          rating: order.metadata.buyerReview.rating,
+          comment: order.metadata.buyerReview.comment || undefined,
+          reviewedAt: order.metadata.buyerReview.reviewedAt ? new Date(order.metadata.buyerReview.reviewedAt).toISOString() : undefined,
+        } : undefined,
         deliveryStatus,
         booking,
         disputeId: order.disputeId || dispute?.disputeId || undefined,
@@ -1322,6 +1327,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           fileName: file.fileName,
           fileType: file.fileType,
           uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
+          deliveryNumber: file.deliveryNumber || 1, // Include deliveryNumber field
         })) : [],
         deliveryMessage: order.deliveryMessage || undefined,
         cancellationRequest: order.cancellationRequest ? {
@@ -1343,20 +1349,39 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         acceptedAt: order.acceptedAt ? new Date(order.acceptedAt).toISOString() : undefined,
         rejectedAt: order.rejectedAt ? new Date(order.rejectedAt).toISOString() : undefined,
         rejectionReason: order.rejectionReason || undefined,
-        revisionRequest: order.revisionRequest ? {
-          status: order.revisionRequest.status,
-          reason: order.revisionRequest.reason,
-          clientMessage: order.revisionRequest.clientMessage || undefined,
-          clientFiles: order.revisionRequest.clientFiles ? order.revisionRequest.clientFiles.map(file => ({
-            url: file.url,
-            fileName: file.fileName,
-            fileType: file.fileType,
-            uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
-          })) : [],
-          requestedAt: order.revisionRequest.requestedAt ? new Date(order.revisionRequest.requestedAt).toISOString() : undefined,
-          respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
-          additionalNotes: order.revisionRequest.additionalNotes || undefined,
-        } : undefined,
+        revisionRequest: order.revisionRequest && Array.isArray(order.revisionRequest) && order.revisionRequest.length > 0
+          ? order.revisionRequest.map(rr => ({
+              index: rr.index || 0,
+              status: rr.status,
+              reason: rr.reason || undefined,
+              clientMessage: rr.clientMessage || undefined,
+              clientFiles: rr.clientFiles ? rr.clientFiles.map(file => ({
+                url: file.url,
+                fileName: file.fileName,
+                fileType: file.fileType,
+                uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
+              })) : [],
+              requestedAt: rr.requestedAt ? new Date(rr.requestedAt).toISOString() : undefined,
+              respondedAt: rr.respondedAt ? new Date(rr.respondedAt).toISOString() : undefined,
+              additionalNotes: rr.additionalNotes || undefined,
+            }))
+          : (order.revisionRequest && !Array.isArray(order.revisionRequest)
+            ? [{
+                index: 1,
+                status: order.revisionRequest.status,
+                reason: order.revisionRequest.reason || undefined,
+                clientMessage: order.revisionRequest.clientMessage || undefined,
+                clientFiles: order.revisionRequest.clientFiles ? order.revisionRequest.clientFiles.map(file => ({
+                  url: file.url,
+                  fileName: file.fileName,
+                  fileType: file.fileType,
+                  uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
+                })) : [],
+                requestedAt: order.revisionRequest.requestedAt ? new Date(order.revisionRequest.requestedAt).toISOString() : undefined,
+                respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
+                additionalNotes: order.revisionRequest.additionalNotes || undefined,
+              }]
+            : undefined),
         additionalInformation: order.additionalInformation ? {
           message: order.additionalInformation.message || '',
           files: order.additionalInformation.files ? order.additionalInformation.files.map(file => ({
@@ -1912,7 +1937,35 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
       return res.status(400).json({ error: 'Order must be in progress before marking as delivered' });
     }
 
-    // Process uploaded files
+    // Mark order as delivered
+    order.status = 'delivered'; // Set status to delivered when work is delivered
+    order.deliveryStatus = 'delivered';
+    order.deliveredDate = new Date();
+    
+    // Store delivery files and message - append new files to existing ones
+    // Calculate delivery number based on existing delivery messages
+    // Each delivery is independent - count existing deliveries by [Delivery #N] markers
+    let deliveryNumber = 1;
+    if (order.deliveryMessage) {
+      // Count existing delivery markers
+      const deliveryMatches = order.deliveryMessage.match(/\[Delivery #\d+\]/g);
+      if (deliveryMatches && deliveryMatches.length > 0) {
+        // Extract the highest delivery number
+        const deliveryNumbers = deliveryMatches.map(match => {
+          const numMatch = match.match(/\d+/);
+          return numMatch ? parseInt(numMatch[0], 10) : 0;
+        });
+        deliveryNumber = Math.max(...deliveryNumbers) + 1;
+      } else {
+        // If there's a message but no marker, it's the first delivery
+        deliveryNumber = 2;
+      }
+    } else if (order.deliveryFiles && order.deliveryFiles.length > 0) {
+      // If there are files but no message, this is the second delivery
+      deliveryNumber = 2;
+    }
+    
+    // Process uploaded files with delivery number
     const deliveryFiles = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -1922,21 +1975,33 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
           fileName: file.originalname,
           fileType: fileType,
           uploadedAt: new Date(),
+          deliveryNumber: deliveryNumber, // Store delivery number with each file
         });
       }
     }
-
-    // Mark order as delivered
-    order.status = 'delivered'; // Set status to delivered when work is delivered
-    order.deliveryStatus = 'delivered';
-    order.deliveredDate = new Date();
     
-    // Store delivery files and message
     if (deliveryFiles.length > 0) {
-      order.deliveryFiles = deliveryFiles;
+      order.deliveryFiles = order.deliveryFiles ? [...order.deliveryFiles, ...deliveryFiles] : deliveryFiles;
     }
     if (deliveryMessage && deliveryMessage.trim()) {
-      order.deliveryMessage = deliveryMessage.trim();
+      // Append new message to existing one with separator, or set if none exists
+      if (order.deliveryMessage) {
+        order.deliveryMessage = `${order.deliveryMessage}\n\n[Delivery #${deliveryNumber}]\n${deliveryMessage.trim()}`;
+      } else {
+        order.deliveryMessage = `[Delivery #${deliveryNumber}]\n${deliveryMessage.trim()}`;
+      }
+    }
+
+    // When pro delivers, mark any pending or in_progress revision as completed
+    if (order.revisionRequest && Array.isArray(order.revisionRequest)) {
+      const active = order.revisionRequest.filter(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+      active.forEach(rr => {
+        rr.status = 'completed';
+        rr.respondedAt = new Date();
+      });
+    } else if (order.revisionRequest && (order.revisionRequest.status === 'pending' || order.revisionRequest.status === 'in_progress')) {
+      order.revisionRequest.status = 'completed';
+      order.revisionRequest.respondedAt = new Date();
     }
 
     await order.save();
@@ -2043,13 +2108,24 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     }
 
     // Check if order is delivered
-    // Revision can only be requested when deliveryStatus is 'delivered'
-    if (order.deliveryStatus !== 'delivered') {
+    // Revision can only be requested when:
+    // 1. Delivery files exist (professional has sent delivery result), OR
+    // 2. Status is 'delivered', OR
+    // 3. DeliveryStatus is 'delivered'
+    const hasDeliveryFiles = order.deliveryFiles && order.deliveryFiles.length > 0;
+    const isDeliveredStatus = order.status === 'delivered' || order.status === 'Delivered';
+    const isDeliveredDeliveryStatus = order.deliveryStatus === 'delivered';
+    
+    if (!hasDeliveryFiles && !isDeliveredStatus && !isDeliveredDeliveryStatus) {
       return res.status(400).json({ error: 'Revision can only be requested for delivered orders' });
     }
 
     // Check if there's already a pending or in_progress revision request
-    if (order.revisionRequest && (order.revisionRequest.status === 'pending' || order.revisionRequest.status === 'in_progress')) {
+    const activeRevisionRequest = order.revisionRequest && Array.isArray(order.revisionRequest)
+      ? order.revisionRequest.find(rr => rr.status === 'pending' || rr.status === 'in_progress')
+      : (order.revisionRequest && (order.revisionRequest.status === 'pending' || order.revisionRequest.status === 'in_progress') ? order.revisionRequest : null);
+    
+    if (activeRevisionRequest) {
       return res.status(400).json({ error: 'There is already an active revision request' });
     }
 
@@ -2069,8 +2145,19 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       }
     }
 
-    // Create revision request
-    order.revisionRequest = {
+    // Initialize revisionRequest as array if it doesn't exist or is not an array
+    if (!order.revisionRequest || !Array.isArray(order.revisionRequest)) {
+      order.revisionRequest = [];
+    }
+
+    // Calculate next index
+    const nextIndex = order.revisionRequest.length > 0 
+      ? Math.max(...order.revisionRequest.map(rr => rr.index || 0)) + 1
+      : 1;
+
+    // Create new revision request and add to array
+    const newRevisionRequest = {
+      index: nextIndex,
       status: 'pending',
       reason: reason.trim(),
       clientMessage: message && message.trim() ? message.trim() : null,
@@ -2079,9 +2166,12 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       respondedAt: null,
       additionalNotes: null,
     };
+    
+    order.revisionRequest.push(newRevisionRequest);
 
-    // Update order status - keep delivery status but mark that revision is requested
-    // Order remains in "delivered" status but revision is pending
+    // Update order status - when revision is requested, move order back to "In Progress"
+    order.status = 'In Progress';
+    order.deliveryStatus = 'active';
 
     await order.save();
 
@@ -2111,24 +2201,43 @@ router.put('/:orderId/revision-request', authenticateToken, requireRole(['profes
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    if (!order.revisionRequest || order.revisionRequest.status !== 'pending') {
+    // Find the latest pending revision request
+    let latestRevisionRequest = null;
+    if (order.revisionRequest && Array.isArray(order.revisionRequest)) {
+      // Find the latest pending revision request (highest index with pending status)
+      const pendingRequests = order.revisionRequest.filter(rr => rr.status === 'pending');
+      if (pendingRequests.length > 0) {
+        latestRevisionRequest = pendingRequests.reduce((latest, current) => 
+          (current.index || 0) > (latest.index || 0) ? current : latest
+        );
+      }
+    } else if (order.revisionRequest && order.revisionRequest.status === 'pending') {
+      // Legacy format - convert to array format
+      order.revisionRequest = [{
+        index: 1,
+        ...order.revisionRequest
+      }];
+      latestRevisionRequest = order.revisionRequest[0];
+    }
+
+    if (!latestRevisionRequest) {
       return res.status(400).json({ error: 'No pending revision request found' });
     }
 
     if (action === 'accept') {
       // Accept revision request - mark as in_progress
-      order.revisionRequest.status = 'in_progress';
-      order.revisionRequest.additionalNotes = additionalNotes || null;
-      order.revisionRequest.respondedAt = new Date();
+      latestRevisionRequest.status = 'in_progress';
+      latestRevisionRequest.additionalNotes = additionalNotes || null;
+      latestRevisionRequest.respondedAt = new Date();
 
       // Resume work: move order back to in-progress state
       order.status = 'In Progress';
       order.deliveryStatus = 'active';
     } else {
       // Reject revision request
-      order.revisionRequest.status = 'rejected';
-      order.revisionRequest.respondedAt = new Date();
-      order.revisionRequest.additionalNotes = additionalNotes || null;
+      latestRevisionRequest.status = 'rejected';
+      latestRevisionRequest.respondedAt = new Date();
+      latestRevisionRequest.additionalNotes = additionalNotes || null;
     }
 
     await order.save();
@@ -2168,8 +2277,26 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if there's an active revision request
-    if (!order.revisionRequest || order.revisionRequest.status !== 'in_progress') {
+    // Find the latest in_progress revision request
+    let latestRevisionRequest = null;
+    if (order.revisionRequest && Array.isArray(order.revisionRequest)) {
+      // Find the latest in_progress revision request (highest index with in_progress status)
+      const inProgressRequests = order.revisionRequest.filter(rr => rr.status === 'in_progress');
+      if (inProgressRequests.length > 0) {
+        latestRevisionRequest = inProgressRequests.reduce((latest, current) => 
+          (current.index || 0) > (latest.index || 0) ? current : latest
+        );
+      }
+    } else if (order.revisionRequest && order.revisionRequest.status === 'in_progress') {
+      // Legacy format - convert to array format
+      order.revisionRequest = [{
+        index: 1,
+        ...order.revisionRequest
+      }];
+      latestRevisionRequest = order.revisionRequest[0];
+    }
+
+    if (!latestRevisionRequest) {
       // Clean up uploaded files if no active revision
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => {
@@ -2185,7 +2312,39 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
       return res.status(400).json({ error: 'No active revision request found' });
     }
 
-    // Process uploaded files (if any)
+    // Mark revision as completed
+    latestRevisionRequest.status = 'completed';
+    latestRevisionRequest.respondedAt = new Date();
+
+    // Re-deliver the order
+    order.status = 'delivered'; // Set status to delivered when revision is re-delivered
+    order.deliveryStatus = 'delivered';
+    order.deliveredDate = new Date();
+    
+    // Update or append delivery files and message
+    // Calculate delivery number based on existing delivery messages
+    // Each delivery is independent - count existing deliveries by [Delivery #N] markers
+    let deliveryNumber = 1;
+    if (order.deliveryMessage) {
+      // Count existing delivery markers
+      const deliveryMatches = order.deliveryMessage.match(/\[Delivery #\d+\]/g);
+      if (deliveryMatches && deliveryMatches.length > 0) {
+        // Extract the highest delivery number
+        const deliveryNumbers = deliveryMatches.map(match => {
+          const numMatch = match.match(/\d+/);
+          return numMatch ? parseInt(numMatch[0], 10) : 0;
+        });
+        deliveryNumber = Math.max(...deliveryNumbers) + 1;
+      } else {
+        // If there's a message but no marker, it's the first delivery
+        deliveryNumber = 2;
+      }
+    } else if (order.deliveryFiles && order.deliveryFiles.length > 0) {
+      // If there are files but no message, this is the second delivery
+      deliveryNumber = 2;
+    }
+    
+    // Process uploaded files (if any) with delivery number
     const deliveryFiles = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -2195,29 +2354,20 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
           fileName: file.originalname,
           fileType: fileType,
           uploadedAt: new Date(),
+          deliveryNumber: deliveryNumber, // Store delivery number with each file
         });
       }
     }
-
-    // Mark revision as completed
-    order.revisionRequest.status = 'completed';
-    order.revisionRequest.respondedAt = new Date();
-
-    // Re-deliver the order
-    order.status = 'delivered'; // Set status to delivered when revision is re-delivered
-    order.deliveryStatus = 'delivered';
-    order.deliveredDate = new Date();
     
-    // Update or append delivery files and message
     if (deliveryFiles.length > 0) {
       // Append new files to existing ones or replace if none exist
       order.deliveryFiles = order.deliveryFiles ? [...order.deliveryFiles, ...deliveryFiles] : deliveryFiles;
     }
     if (deliveryMessage && deliveryMessage.trim()) {
-      // Update delivery message or append to existing one
+      // Update delivery message or append to existing one with delivery number
       order.deliveryMessage = order.deliveryMessage 
-        ? `${order.deliveryMessage}\n\n[Revision] ${deliveryMessage.trim()}` 
-        : deliveryMessage.trim();
+        ? `${order.deliveryMessage}\n\n[Delivery #${deliveryNumber}]\n${deliveryMessage.trim()}` 
+        : `[Delivery #${deliveryNumber}]\n${deliveryMessage.trim()}`;
     }
 
     await order.save();

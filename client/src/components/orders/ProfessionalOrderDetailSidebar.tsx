@@ -270,7 +270,15 @@ export default function ProfessionalOrderDetailSidebar({
         </div>
 
         {/* Action Buttons */}
-        {order.deliveryStatus === "active" && (
+        {(() => {
+          const revisionRequests = order.revisionRequest 
+            ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
+            : [];
+          const hasActiveRevision = revisionRequests.some(rr => 
+            rr && (rr.status === 'pending' || rr.status === 'in_progress')
+          );
+          return order.deliveryStatus === "active" || hasActiveRevision;
+        })() && (
           <>
             <Separator className="mb-6" />
             <div className="space-y-2">

@@ -47,7 +47,7 @@ export default function DeliveryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[70vw]">
+      <DialogContent className="w-[35vw] min-w-[280px] max-w-[360px]">
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
             {isRevisionCompletion ? "Complete Revision" : "Deliver Order"}

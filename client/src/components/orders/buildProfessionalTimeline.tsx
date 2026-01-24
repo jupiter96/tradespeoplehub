@@ -68,18 +68,28 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   // Service in progress
   // Show when order is created and in progress
   // This should appear right after order is placed if status is "In Progress" and not completed/delivered/cancelled/disputed
-  if (order.status === "In Progress" && 
+  // Also show when revision request is pending (order status is "In Progress" after revision request)
+  const isInProgress = order.status === "In Progress" && 
       order.status !== "disputed" &&
       order.deliveryStatus !== "delivered" &&
       order.deliveryStatus !== "completed" &&
       order.deliveryStatus !== "cancelled" &&
-      order.deliveryStatus !== "dispute") {
+      order.deliveryStatus !== "dispute";
+  
+  // Check if there's any pending revision request
+  const revisionRequests = order.revisionRequest 
+    ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
+    : [];
+  const hasPendingRevision = revisionRequests.some(rr => rr && rr.status === 'pending');
+  
+  if (isInProgress || hasPendingRevision) {
     push(
       {
         at: order.expectedDelivery || (order as any).scheduledDate || (order as any).createdAt || order.date,
         label: "Service In Progress",
-        description:
-          "You are currently working on this service. Make sure to deliver on time.",
+        description: hasPendingRevision
+          ? "Client requested a revision. Please review and respond to the revision request."
+          : "You are currently working on this service. Make sure to deliver on time.",
         colorClass: "bg-blue-500",
         icon: <PlayCircle className="w-5 h-5 text-white" />,
       },
@@ -181,114 +191,105 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
-  // Work delivered - handle multiple deliveries (first delivery and revision re-delivery)
-  const rev = order.revisionRequest;
-  const revisionRequestedAt = rev && (rev as any).requestedAt ? new Date((rev as any).requestedAt).getTime() : null;
-  const revisionCompletedAt = rev?.status === 'completed' && (rev as any).respondedAt 
-    ? new Date((rev as any).respondedAt).getTime() 
-    : null;
-  
-  // Group delivery files by upload time to identify separate deliveries
+  // Work delivered - handle multiple deliveries (all deliveries as separate events)
+  // Group delivery files by deliveryNumber to identify separate deliveries
   if (order.deliveryFiles && order.deliveryFiles.length > 0) {
-    // Sort files by upload time
-    const sortedFiles = [...order.deliveryFiles].sort((a: any, b: any) => {
-      const aTime = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
-      const bTime = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
-      return aTime - bTime;
+    // Group files by deliveryNumber
+    const deliveryGroupsMap = new Map<number, any[]>();
+    order.deliveryFiles.forEach((file: any) => {
+      const deliveryNum = file.deliveryNumber || 1;
+      if (!deliveryGroupsMap.has(deliveryNum)) {
+        deliveryGroupsMap.set(deliveryNum, []);
+      }
+      deliveryGroupsMap.get(deliveryNum)!.push(file);
     });
     
-    // First delivery: files uploaded before revision request (or all files if no revision)
-    const firstDeliveryFiles = revisionRequestedAt 
-      ? sortedFiles.filter((file: any) => {
-          const fileUploadTime = file.uploadedAt ? new Date(file.uploadedAt).getTime() : 0;
-          return fileUploadTime < revisionRequestedAt;
-        })
-      : sortedFiles;
+    // Sort files within each group by upload time
+    deliveryGroupsMap.forEach((files, deliveryNum) => {
+      files.sort((a: any, b: any) => {
+        const aTime = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+        const bTime = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+        return aTime - bTime;
+      });
+    });
     
-    // Second delivery: files uploaded after revision request (when revision is completed)
-    const secondDeliveryFiles = rev?.status === 'completed' && revisionRequestedAt
-      ? sortedFiles.filter((file: any) => {
-          const fileUploadTime = file.uploadedAt ? new Date(file.uploadedAt).getTime() : 0;
-          return fileUploadTime >= revisionRequestedAt;
-        })
-      : [];
+    // Parse delivery messages by [Delivery #N] markers
+    // Format: "[Delivery #1]\nmessage1\n\n[Delivery #2]\nmessage2\n\n[Delivery #3]\nmessage3"
+    // Or: "message1\n\n[Delivery #2]\nmessage2" (first delivery without marker)
+    const deliveryMessagesMap = new Map<number, string>();
     
-    // First delivery event
-    if (firstDeliveryFiles.length > 0) {
-      const firstDeliveryDate = firstDeliveryFiles[0]?.uploadedAt || (order as any).deliveredDate;
-      const firstMessage = order.deliveryMessage?.includes('[Revision]')
-        ? order.deliveryMessage.split('\n\n[Revision]')[0]?.trim()
-        : order.deliveryMessage;
+    if (order.deliveryMessage) {
+      // Find all [Delivery #N] markers and their positions
+      const markerRegex = /\[Delivery #(\d+)\]\n/g;
+      const markers: Array<{ number: number; index: number; markerLength: number }> = [];
+      let match;
       
-      push(
-        {
-          at: firstDeliveryDate,
-          label: "Work Delivered",
-          description: "You delivered the work to the client.",
-          message: firstMessage,
-          files: firstDeliveryFiles,
-          colorClass: "bg-purple-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
-        },
-        "delivered"
-      );
-    } else if (!rev && (order.deliveryStatus === "delivered" || order.status === "delivered" || order.deliveryMessage)) {
-      // Fallback: if no files but status is delivered and no revision, show delivery event
-      push(
-        {
-          at: (order as any).deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
-          label: "Work Delivered",
-          description: "You delivered the work to the client.",
-          message: order.deliveryMessage,
-          files: order.deliveryFiles,
-          colorClass: "bg-purple-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
-        },
-        "delivered"
-      );
+      while ((match = markerRegex.exec(order.deliveryMessage)) !== null) {
+        markers.push({
+          number: parseInt(match[1], 10),
+          index: match.index,
+          markerLength: match[0].length // Length of "[Delivery #N]\n"
+        });
+      }
+      
+      if (markers.length === 0) {
+        // No markers - entire message is delivery #1
+        deliveryMessagesMap.set(1, order.deliveryMessage.trim());
+      } else {
+        // Extract messages between markers
+        for (let i = 0; i < markers.length; i++) {
+          const marker = markers[i];
+          const nextMarker = markers[i + 1];
+          const startIndex = marker.index + marker.markerLength; // After the marker
+          const endIndex = nextMarker ? nextMarker.index : order.deliveryMessage.length;
+          const message = order.deliveryMessage.substring(startIndex, endIndex).trim();
+          // Remove leading/trailing newlines and separators
+          const cleanMessage = message.replace(/^\n+|\n+$/g, '').trim();
+          if (cleanMessage) {
+            deliveryMessagesMap.set(marker.number, cleanMessage);
+          }
+        }
+        
+        // If first marker is not at the start, text before it is delivery #1
+        if (markers[0].index > 0) {
+          const firstMessage = order.deliveryMessage.substring(0, markers[0].index).trim();
+          if (firstMessage) {
+            deliveryMessagesMap.set(1, firstMessage);
+          }
+        }
+      }
     }
     
-    // Second delivery event (after revision completion)
-    if (rev?.status === 'completed' && secondDeliveryFiles.length > 0) {
-      const secondDeliveryDate = secondDeliveryFiles[0]?.uploadedAt || (order as any).deliveredDate;
-      const revisionMessage = order.deliveryMessage?.includes('[Revision]')
-        ? order.deliveryMessage.split('[Revision]')[1]?.trim()
-        : order.deliveryMessage;
+    // Get all unique delivery numbers (from files and messages)
+    const allDeliveryNumbers = Array.from(new Set([
+      ...Array.from(deliveryGroupsMap.keys()),
+      ...Array.from(deliveryMessagesMap.keys()),
+      ...(deliveryGroupsMap.size === 0 && deliveryMessagesMap.size === 0 ? [1] : [])
+    ])).sort((a, b) => a - b);
+    
+    // Create timeline event for each delivery
+    allDeliveryNumbers.forEach((deliveryNum) => {
+      const files = deliveryGroupsMap.get(deliveryNum) || [];
+      const deliveryMessage = deliveryMessagesMap.get(deliveryNum) || '';
+      const deliveryDate = files.length > 0 
+        ? (files[0]?.uploadedAt || (order as any).deliveredDate)
+        : (order as any).deliveredDate;
       
       push(
         {
-          at: secondDeliveryDate,
+          at: deliveryDate,
           label: "Work Delivered",
-          description: "You delivered the revised work to the client.",
-          message: revisionMessage,
-          files: secondDeliveryFiles,
+          description: "You delivered the work to the client.",
+          message: deliveryMessage || undefined,
+          files: files,
           colorClass: "bg-purple-500",
           icon: <Truck className="w-5 h-5 text-white" />,
         },
-        "delivered-revision"
+        `delivered-${deliveryNum}`
       );
-    } else if (rev?.status === 'completed' && revisionCompletedAt && (order.deliveryStatus === "delivered" || order.status === "delivered")) {
-      // If revision is completed but no new files, show second delivery with current deliveredDate
-      // This handles the case where revision was completed but no new files were uploaded
-      const revisionMessage = order.deliveryMessage?.includes('[Revision]')
-        ? order.deliveryMessage.split('[Revision]')[1]?.trim()
-        : order.deliveryMessage;
-      
-      push(
-        {
-          at: (order as any).deliveredDate || (rev as any).respondedAt,
-          label: "Work Delivered",
-          description: "You delivered the revised work to the client.",
-          message: revisionMessage,
-          files: secondDeliveryFiles.length > 0 ? secondDeliveryFiles : order.deliveryFiles,
-          colorClass: "bg-purple-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
-        },
-        "delivered-revision"
-      );
-    }
+    });
   } else if (order.deliveryStatus === "delivered" || order.status === "delivered" || order.deliveryMessage) {
-    // Fallback: if no files but status is delivered, show delivery event
+    // Fallback: if no files but status is delivered, show single delivery event
     push(
       {
         at: (order as any).deliveredDate || order.deliveryFiles?.[0]?.uploadedAt,
@@ -299,25 +300,11 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         colorClass: "bg-purple-500",
         icon: <Truck className="w-5 h-5 text-white" />,
       },
-      "delivered"
+      "delivered-1"
     );
   }
 
-  if (order.revisionRequest?.status) {
-    push(
-      {
-        at: (order.revisionRequest as any).requestedAt,
-        label: "Revision Requested",
-        description: "Client requested a modification.",
-        message: (order.revisionRequest as any).clientMessage || order.revisionRequest.reason,
-        files: (order.revisionRequest as any).clientFiles,
-        colorClass: "bg-orange-500",
-        icon: <AlertTriangle className="w-5 h-5 text-white" />,
-      },
-      "revision-requested"
-    );
-  }
-
+  // Revision request events - handle as array (revisionRequests already declared above)
   // Cancellation request events
   const canc = (order as any).cancellationRequest;
   if (canc?.requestedAt && canc.status) {
@@ -370,67 +357,76 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
-  // Revision events (rev already declared above)
-  if (rev && (rev as any).requestedAt) {
-    push(
-      {
-        at: (rev as any).requestedAt,
-        label: "Revision Requested",
-        description: rev.reason
-          ? `Client requested a revision. Reason: ${rev.reason}`
-          : "Client requested a revision.",
-        colorClass: "bg-purple-500",
-        icon: <Edit className="w-5 h-5 text-white" />,
-      },
-      "revision-requested"
-    );
-  }
-  if (rev && (rev as any).respondedAt && rev.status) {
-    const getRevisionDescription = () => {
-      if (rev.status === "rejected") {
-        return (rev as any).additionalNotes 
-          ? `Revision request was rejected. Reason: ${(rev as any).additionalNotes}`
-          : "Revision request was rejected.";
-      } else if (rev.status === "in_progress") {
-        return (rev as any).additionalNotes 
-          ? `Revision accepted. ${(rev as any).additionalNotes}`
-          : "Revision accepted. Work resumed.";
-      } else if (rev.status === "completed") {
-        return "Revision completed and work re-delivered.";
-      }
-      return (rev as any).additionalNotes || undefined;
-    };
+  // Revision events - handle as array
+  revisionRequests.forEach((rev) => {
+    if (!rev || !rev.status) return;
+    
+    // Revision Requested event
+    if (rev.requestedAt) {
+      push(
+        {
+          at: rev.requestedAt,
+          label: "Revision Requested",
+          description: rev.reason
+            ? `Client requested a revision. Reason: ${rev.reason}`
+            : "Client requested a revision.",
+          message: rev.clientMessage || undefined,
+          files: rev.clientFiles && rev.clientFiles.length > 0 ? rev.clientFiles : undefined,
+          colorClass: "bg-purple-500",
+          icon: <Edit className="w-5 h-5 text-white" />,
+        },
+        `revision-requested-${rev.index || 0}`
+      );
+    }
+    
+    // Revision Response event (accepted/rejected/completed)
+    if (rev.respondedAt && rev.status !== 'pending') {
+      const getRevisionDescription = () => {
+        if (rev.status === "rejected") {
+          return rev.additionalNotes 
+            ? `Revision request was rejected. Reason: ${rev.additionalNotes}`
+            : "Revision request was rejected.";
+        } else if (rev.status === "in_progress") {
+          return rev.additionalNotes 
+            ? `Revision accepted. ${rev.additionalNotes}`
+            : "Revision accepted. Work resumed.";
+        } else if (rev.status === "completed") {
+          return "Revision completed and work re-delivered.";
+        }
+        return rev.additionalNotes || undefined;
+      };
 
-    push(
-      {
-        at: (rev as any).respondedAt,
-        label:
-          rev.status === "in_progress"
-            ? "Revision Accepted"
-            : rev.status === "completed"
-            ? "Revision Completed"
-            : rev.status === "rejected"
-            ? "Revision Rejected"
-            : "Revision Updated",
-        description: getRevisionDescription(),
-        colorClass:
-          rev.status === "completed"
-            ? "bg-green-600"
-            : rev.status === "rejected"
-            ? "bg-red-600"
-            : "bg-purple-500",
-        icon:
-          rev.status === "completed" ? (
-            <CheckCircle2 className="w-5 h-5 text-white" />
-          ) : rev.status === "rejected" ? (
-            <XCircle className="w-5 h-5 text-white" />
-          ) : (
-            <FileText className="w-5 h-5 text-white" />
-          ),
-      },
-      "revision-responded"
-    );
-  }
+      push(
+        {
+          at: rev.respondedAt,
+          label:
+            rev.status === "in_progress"
+              ? "Revision Accepted"
+              : rev.status === "completed"
+              ? "Revision Completed"
+              : rev.status === "rejected"
+              ? "Revision Rejected"
+              : "Revision Updated",
+          description: getRevisionDescription(),
+          colorClass:
+            rev.status === "completed"
+              ? "bg-green-600"
+              : rev.status === "rejected"
+              ? "bg-red-600"
+              : "bg-purple-500",
+          icon:
+            rev.status === "completed" ? (
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            ) : rev.status === "rejected" ? (
+              <XCircle className="w-5 h-5 text-white" />
+            ) : (
+              <FileText className="w-5 h-5 text-white" />
+            ),
+        },
+        `revision-responded-${rev.index || 0}`
+      );
+    }
+  });
 
   // Additional Information event
   const addInfo = order.additionalInformation;
