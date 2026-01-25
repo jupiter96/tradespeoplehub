@@ -215,9 +215,9 @@ export default function ClientOrdersSection() {
   const [cancelFiles, setCancelFiles] = useState<File[]>([]);
   const [review, setReview] = useState("");
   // Detailed rating categories
-  const [communicationRating, setCommunicationRating] = useState(5);
-  const [serviceAsDescribedRating, setServiceAsDescribedRating] = useState(5);
-  const [buyAgainRating, setBuyAgainRating] = useState(5);
+  const [communicationRating, setCommunicationRating] = useState(0);
+  const [serviceAsDescribedRating, setServiceAsDescribedRating] = useState(0);
+  const [buyAgainRating, setBuyAgainRating] = useState(0);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
@@ -304,6 +304,7 @@ export default function ClientOrdersSection() {
       const newUrl = window.location.pathname + "?tab=orders";
       window.history.replaceState({}, "", newUrl);
     }
+
   }, [location.search, orders]);
 
   // Filter orders for client view (orders where professional is NOT "Current User")
@@ -1064,9 +1065,9 @@ export default function ClientOrdersSection() {
       closeAllModals();
       setRating(0);
       setReview("");
-      setCommunicationRating(5);
-      setServiceAsDescribedRating(5);
-      setBuyAgainRating(5);
+      setCommunicationRating(0);
+      setServiceAsDescribedRating(0);
+      setBuyAgainRating(0);
       // Refresh orders to update review status
       await refreshOrders();
     } catch (error: any) {
@@ -1212,10 +1213,10 @@ export default function ClientOrdersSection() {
   );
 
   // Get current order details
+  
   const currentOrder = selectedOrder
     ? orders.find((o) => o.id === selectedOrder)
     : null;
-
 
   // Fetch service thumbnail for current order
   useEffect(() => {
@@ -1333,7 +1334,6 @@ export default function ClientOrdersSection() {
     if (currentOrder.scheduledDate) {
       return new Date(currentOrder.scheduledDate);
     }
-    
     return null;
   }, [currentOrder]);
 
@@ -3861,8 +3861,29 @@ export default function ClientOrdersSection() {
                 {currentOrder.review && (
                   <div>
                     <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">Your Review</h4>
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
+                    <div className="flex gap-2 p-4 bg-yellow-50 rounded-lg">
+                      <Avatar className="w-14 h-14 border-4 border-white/20">
+                        {resolveAvatarUrl(userInfo?.avatar) && (
+                          <AvatarImage src={resolveAvatarUrl(userInfo?.avatar)} />
+                        )}
+                        <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[20px]">
+                          {(() => {
+                            if (userInfo?.firstName && userInfo?.lastName) {
+                              return (userInfo.firstName[0] + userInfo.lastName[0]).toUpperCase();
+                            }
+                            const name = userInfo?.name || "";
+                            if (name) {
+                              const parts = name.trim().split(/\s+/);
+                              if (parts.length >= 2) {
+                                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                              }
+                              return parts[0][0]?.toUpperCase() || "U";
+                            }
+                            return "U";
+                          })()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap mt-4">
                         {currentOrder.review}
                       </p>
                     </div>
@@ -3956,6 +3977,31 @@ export default function ClientOrdersSection() {
               </div>
             </div>
 
+            {currentOrder?.metadata?.buyerReview ? (
+                <div className="flex items-start gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
+                  <Avatar className="w-10 h-10">
+                    {resolveAvatarUrl(currentOrder.professionalAvatar) && (
+                      <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
+                    )}
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                      {currentOrder.professional?.charAt(0) || "P"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mt-2">
+                      <span className="font-semibold">{currentOrder.professional}</span> has left you a feedback. To see their review, please leave your own feedback.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-700">
+                    The Professional hasn't left a review yet. You can still leave your feedback about working with this Professional.
+                  </p>
+                </div>
+              )}
+
             <div className="flex flex-col p-4 sm:p-6 space-y-6">
                 <h2 className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#3D5A80] font-medium">
                   Leave a public review
@@ -4010,8 +4056,12 @@ export default function ClientOrdersSection() {
                     value={review}
                     onChange={(e) => setReview(e.target.value)}
                     rows={5}
+                    maxLength={100}
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#3D78CB] resize-none"
                   />
+                  <p className="text-xs text-gray-500 text-right mt-2">
+                    {review.length}/100 characters
+                  </p>
                 </div>
 
                 <Button
@@ -4024,56 +4074,61 @@ export default function ClientOrdersSection() {
 
                 {/* Order Summary - single column */}
                 <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
-                  {currentOrder?.serviceImage && (
-                    <div className="rounded-lg overflow-hidden">
-                      <img src={resolveFileUrl(currentOrder.serviceImage)} alt={currentOrder.service} className="w-full h-36 object-cover" />
-                    </div>
-                  )}
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
-                      <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">Completed</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">#{currentOrder?.id?.substring(0, 15) || "N/A"}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                        {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.quantity || 1}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.amount || "N/A"}</span>
-                    </div>
+                  <div className="flex gap-4 items-center">
+                    {currentOrder?.items?.[0]?.image && (
+                      <div className="rounded-lg overflow-hidden w-[50px] h-[50px]">
+                        <img src={resolveFileUrl(currentOrder.items[0].image)} alt={currentOrder.service} className="w-50 h-50 object-cover" />
+                      </div>
+                    )}
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>
                   </div>
-                  {currentOrder?.address && (
-                    <div className="pt-4 border-t border-gray-200">
-                      <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">Task Address</h4>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        {typeof currentOrder.address === 'string' 
-                          ? currentOrder.address 
-                          : (
-                            <>
-                              {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
-                              {currentOrder.address.addressLine1}
-                              {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
-                              <br />
-                              {currentOrder.address.city && <>{currentOrder.address.city}, </>}
-                              {currentOrder.address.postcode}
-                              {currentOrder.address.phone && (<> <br /> Tel: {currentOrder.address.phone} </>)}
-                            </>
-                          )}
-                      </p>
+                  <div className="flex gap-6 w-full">
+
+                    <div className="space-y-2 flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Status</span>
+                        <Badge className="bg-green-100 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[12px]">Completed</Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order</span>
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">#{currentOrder?.id?.substring(0, 15) || "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Order Date</span>
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          {currentOrder?.date ? new Date(currentOrder.date).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Quantity</span>
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.quantity || 1}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Price</span>
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">{currentOrder?.amount || "N/A"}</span>
+                      </div>
                     </div>
-                  )}
+                    {currentOrder?.address && (
+                      <div className="border-gray-200 flex-2">
+                        <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold mb-2">Task Address</h4>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          {typeof currentOrder.address === 'string' 
+                            ? currentOrder.address 
+                            : (
+                              <>
+                                {currentOrder.address.name && <>{currentOrder.address.name}<br /></>}
+                                {currentOrder.address.addressLine1}
+                                {currentOrder.address.addressLine2 && <>, {currentOrder.address.addressLine2}</>}
+                                <br />
+                                {currentOrder.address.city && <>{currentOrder.address.city}, </>}
+                                {currentOrder.address.postcode}
+                                {currentOrder.address.phone && (<> <br /> Tel: {currentOrder.address.phone} </>)}
+                              </>
+                            )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
